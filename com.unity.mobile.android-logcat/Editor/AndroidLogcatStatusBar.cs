@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEditor.Utils;
 using System.Text;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatStatusBar
     {

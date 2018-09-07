@@ -4,8 +4,9 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using UnityEngine;
 using System.Text;
+using UnityEditor;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatInternalLog : EditorWindow
     {

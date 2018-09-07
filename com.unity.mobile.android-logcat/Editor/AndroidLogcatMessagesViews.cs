@@ -6,8 +6,9 @@ using UnityEditor.Modules;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using UnityEditor;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow
     {

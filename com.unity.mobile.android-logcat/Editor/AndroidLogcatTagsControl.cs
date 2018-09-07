@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEditor;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     [Serializable]
     internal class AndroidLogcatTagsControl

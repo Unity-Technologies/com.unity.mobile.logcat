@@ -2,10 +2,10 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEditor.Modules;
+using UnityEditor;
 using System.Text;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     static class AndroidLogcatStyles
     {

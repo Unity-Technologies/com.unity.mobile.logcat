@@ -6,8 +6,10 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEditor;
+using UnityEditor.Android;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu
     {

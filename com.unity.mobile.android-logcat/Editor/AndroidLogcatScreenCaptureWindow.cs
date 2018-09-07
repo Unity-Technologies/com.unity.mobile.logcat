@@ -4,8 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEditor;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {

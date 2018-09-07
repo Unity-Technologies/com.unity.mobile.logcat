@@ -3,10 +3,11 @@ using System.Diagnostics;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
-using UnityEditor.Utils;
+using UnityEditor;
+using UnityEditor.Android;
 using System.Text;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal class AndroidLogcat
     {
