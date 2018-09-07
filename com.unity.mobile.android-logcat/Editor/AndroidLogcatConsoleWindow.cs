@@ -372,7 +372,7 @@ namespace UnityEditor.Android
 
             var cmd = $"connect {ip}";
             var errorMsg = $"Unable to connect to {ip}.";
-            var outputMsg = GetCachedAdb().Run(new[] { cmd }, null, errorMsg);
+            var outputMsg = GetCachedAdb().Run(new[] { cmd }, errorMsg);
             if (outputMsg.StartsWith(errorMsg))
                 Debug.LogError(outputMsg);
         }
@@ -473,7 +473,6 @@ namespace UnityEditor.Android
                 EditorUtility.DisplayCustomMenu(
                     new Rect(rect.x, rect.yMax, 0, 0),
                     names,
-                    packages.Select(m => true).ToArray(),
                     new[] { selectedPackagedId },
                     PackageSelection, packages.ToArray());
             }
@@ -636,7 +635,7 @@ namespace UnityEditor.Android
                 var adb = GetCachedAdb();
                 var cmd = $"-s {deviceId} shell pidof {packageName}";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
-                var output = adb.Run(new[] { cmd }, null, "Unable to get the pid of the given packages.");
+                var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
                 AndroidLogcatInternalLog.Log(output);
                 return int.Parse(output);
             }
@@ -660,7 +659,7 @@ namespace UnityEditor.Android
                 var adb = GetCachedAdb();
                 var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity | grep top-activity\" ";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
-                var output = adb.Run(new[] { cmd }, null, "Unable to get the top activity.");
+                var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
                 AndroidLogcatInternalLog.Log(output);
                 if (output.Length == 0)
                     return false;
@@ -689,7 +688,7 @@ namespace UnityEditor.Android
             var deviceIds = new List<string>();
 
             AndroidLogcatInternalLog.Log("{0} devices", adb.GetADBPath());
-            var adbOutput = adb.Run(new[] { "devices" }, null, "Unable to list connected devices. ");
+            var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
             foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
             {
                 AndroidLogcatInternalLog.Log(" " + line);
@@ -789,7 +788,7 @@ namespace UnityEditor.Android
 
                 // Capture the screen on the device.
                 var cmd = $"-s {m_SelectedDeviceId} shell screencap {screenshotPathOnDevice}";
-                var output = adb.Run(new[] {cmd}, null, $"Unable to capture the screen for device {m_SelectedDeviceId}.");
+                var output = adb.Run(new[] {cmd}, $"Unable to capture the screen for device {m_SelectedDeviceId}.");
                 if (output.StartsWith("Unable to capture the screen for device"))
                 {
                     Debug.LogError(output);
@@ -799,7 +798,7 @@ namespace UnityEditor.Android
                 // Pull screenshot from the device to temp folder.
                 var filePath = Path.Combine(Path.GetTempPath(), "screen_" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".png");
                 cmd = $"-s {m_SelectedDeviceId} pull {screenshotPathOnDevice} {filePath}";
-                output = adb.Run(new[] { cmd }, null, $"Unable to pull the screenshot from device {m_SelectedDeviceId}.");
+                output = adb.Run(new[] { cmd }, $"Unable to pull the screenshot from device {m_SelectedDeviceId}.");
                 if (output.StartsWith("Unable to pull the screenshot from device"))
                 {
                     Debug.LogError(output);

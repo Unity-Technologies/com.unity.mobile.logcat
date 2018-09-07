@@ -89,7 +89,9 @@ namespace UnityEditor.Android
         public void DoGUI(Rect rect)
         {
             var separators = m_TagNames.Select(t => t == null).ToArray();
-            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_TagNames.ToArray(), separators, m_SelectedTags.ToArray(), TagSelected, null);
+            var enabled = new bool[m_TagNames.Count];
+   
+            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_TagNames.ToArray(), enabled, separators, m_SelectedTags.ToArray(), TagSelected, null);
         }
 
         private void TagSelected(object userData, string[] options, int selected)

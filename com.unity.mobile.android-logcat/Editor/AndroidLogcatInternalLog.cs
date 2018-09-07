@@ -47,8 +47,8 @@ namespace UnityEditor.Android
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
-                var menuItems = new[] { "Copy All" };
-                EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), menuItems.ToArray(), null, MenuSelection, null);
+                var menuItems = new[] { new GUIContent("Copy All") };
+                EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), menuItems.ToArray(), -1, MenuSelection, null);
             }
 
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);

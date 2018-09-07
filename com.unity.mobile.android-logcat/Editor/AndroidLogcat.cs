@@ -176,7 +176,7 @@ namespace UnityEditor.Android
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
             AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} -s {device.Id} logcat -c");
-            var adbOutput = adb.Run(new[] { "-s", device.Id, "logcat", "-c" }, null, "Failed to clear logcat.");
+            var adbOutput = adb.Run(new[] { "-s", device.Id, "logcat", "-c" }, "Failed to clear logcat.");
             AndroidLogcatInternalLog.Log(adbOutput);
         }
 
