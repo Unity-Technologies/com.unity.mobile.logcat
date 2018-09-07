@@ -1,0 +1,7 @@
+.DS_Store
+.npmrc
+.npmignore
+.gitignore
+QAReport.md
+QAReport.md.meta
+.gitlab-ci.yml

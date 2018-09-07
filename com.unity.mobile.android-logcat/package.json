@@ -1,0 +1,7 @@
+{
+    "name": "com.unity.mobile.android-logcat",
+    "description": "Android Logcat window.",
+    "version": "0.1.0-preview",
+    "unity": "2019.1",
+    "displayName": "Android Logcat "
+}
