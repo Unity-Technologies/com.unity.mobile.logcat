@@ -387,25 +387,22 @@ namespace UnityEditor.Android
                 // Only update device list, when we select this UI item
                 UpdateConnectedDevicesList(true);
 
-                var enabled = new List<bool>();
-                var names = new List<string>();
-                if (m_DeviceDetails.Length > 0)
-                {
-                    names.AddRange(m_DeviceDetails);
-                    enabled = m_DeviceIds.Select(m => true).ToList();
-                }
-
+                var names = m_DeviceDetails.Select(m => new GUIContent(m)).ToList();
                 // Add <Enter IP> as last field to let user connect through wifi.
-                names.Add("<Enter IP>");
-                enabled.Add(true);
+                names.Add(new GUIContent("<Enter IP>"));
 
                 // Store the screen-space place that we should show the AndroidLogcatIPWindow.
                 m_IPWindowScreenRect = GUIUtility.GUIToScreenRect(rect);
 
-                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names.ToArray(), enabled.ToArray(), new[] { m_SelectedDeviceIndex }, DeviceSelection, null);
+                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names.ToArray(), CheckDeviceEnabled, m_SelectedDeviceIndex, DeviceSelection, null);
             }
 
             GUILayout.Space(kSpace);
+        }
+
+        private bool CheckDeviceEnabled(int index)
+        {
+            return true;
         }
 
         private void SelectPackage(PackageInformation newPackage)
