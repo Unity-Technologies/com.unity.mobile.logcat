@@ -3,7 +3,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
-namespace UnityEditor.Android
+namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatCallbacks : IPostprocessBuildWithReport
     {
