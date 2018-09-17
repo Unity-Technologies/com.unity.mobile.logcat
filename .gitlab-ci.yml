@@ -22,7 +22,6 @@ build:
       - TestProjects\SampleProject1\TestResultEditmode.xml
 #     - TestProjects\SampleProject1\TestResultPlaymode.xml
     expire_in: 1 week
-
   # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
   after_script:
       - C:\Users\builduser\post_build_script.bat
