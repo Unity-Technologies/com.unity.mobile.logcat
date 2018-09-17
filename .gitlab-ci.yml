@@ -1,6 +1,6 @@
 variables:
   UNITY_BRANCH: "trunk"
-  UNITY_TEST_PROJECT: ".\TestProjects\SampleProject1"
+  UNITY_TEST_PROJECT: ".\\TestProjects\\SampleProject1"
 
 stages:
  - build
