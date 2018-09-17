@@ -74,7 +74,7 @@ def main():
 
     print("Unity at %s" % unityPath);
     editModeExitCode = runTestsInUnity(unityPath, "Editmode");
-    #playModeExitCode = runTestsInUnity(unityPath, "Playmode");
+    playModeExitCode = 0;#runTestsInUnity(unityPath, "Playmode");
     if (editModeExitCode != 0 or playModeExitCode != 0):
        raise Exception("Tests failed. Exit code: " + str(editModeExitCode) + " and " + str(playModeExitCode));
 
