@@ -1,0 +1,18 @@
+variables:
+  UNITY_BRANCH: "trunk"
+
+stages:
+ - build
+ - publish
+
+build:
+  stage: build
+  tags:
+      - windows
+  only:
+      - master
+  script:
+      - python .\GitlabCI\gitlabCI.py -u
+
+
+  
