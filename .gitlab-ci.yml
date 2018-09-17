@@ -8,19 +8,19 @@ stages:
 build:
   stage: build
   tags:
-      - windows
-      - buildfarm
+    - windows
+    - buildfarm
   only:
       - master
   script:
       - python .\GitlabCI\gitlabCI.py -u
   artifacts:
-      when: always
-      paths:
-      - UnityLogEditmode.txt
-#     - UnityLogPlaymode.txt
-      - TestProjects\SampleProject1\TestResultEditmode.xml
-#     - TestProjects\SampleProject1\TestResultPlaymode.xml
+    when: always
+    paths:
+    - UnityLogEditmode.txt
+    #- UnityLogPlaymode.txt
+    - TestProjects\TestFramework\TestResultEditmode.xml
+    #- TestProjects\TestFramework\TestResultPlaymode.xml
     expire_in: 1 week
   # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
   after_script:
