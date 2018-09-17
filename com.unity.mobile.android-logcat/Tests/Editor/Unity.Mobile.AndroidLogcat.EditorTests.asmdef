@@ -1,0 +1,14 @@
+{
+    "name": "Unity.Mobile.AndroidLogcat.EditorTests",
+    "references": [
+        "Unity.Mobile.AndroidLogcat.Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
