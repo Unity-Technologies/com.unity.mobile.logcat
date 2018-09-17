@@ -1,4 +1,9 @@
-from urllib2 import urlopen
+try:
+    # For Python 3.0 and later
+    from urllib.request import urlopen
+except ImportError:
+    # Fall back to Python 2's urllib2
+    from urllib2 import urlopen
 import urllib
 import json
 import os
@@ -53,19 +58,25 @@ def runWithTimeout(exePath, args, timeout):
     
 def runTestsInUnity(unityPath, platform):
     print("Running " + platform + " tests in unity");
-    exitCode = runWithTimeout(unityPath, " -projectpath .\\TestProjects\\TestFramework -runTests -batchmode -testPlatform " + platform + " -accept-apiupdate -automated -testResults .\\TestResult" + platform + ".xml -logFile .\\UnityLog"+ platform + ".txt", 60*15);
+    exitCode = runWithTimeout(unityPath, " -projectpath " + os.environ['UNITY_TEST_PROJECT'] + " -runTests -batchmode -testPlatform " + platform + " -accept-apiupdate -automated -testResults .\\TestResult" + platform + ".xml -logFile .\\UnityLog"+ platform + ".txt", 60*15);
     print("ExitCode: " + str(exitCode));
     return exitCode;
     
 def main():
     print("Unity test runner CI script.");
-    url = getUnityBuildZipUrl(os.environ['UNITY_BRANCH']);
-    unityPath = downloadUnity(url);
+    unityPath = "";
+    if os.environ.get('UNITY_BRANCH') is None:
+        unityPath = os.getcwd() + "\\build\\WindowsEditor\\Unity.exe";
+    else:
+       # Figure out a smarter way to get local build instead
+       url = getUnityBuildZipUrl(os.environ['UNITY_BRANCH']);
+       unityPath = downloadUnity(url);
+
     print("Unity at %s" % unityPath);
-    #editModeExitCode = runTestsInUnity(unityPath, "Editmode");
+    editModeExitCode = runTestsInUnity(unityPath, "Editmode");
     #playModeExitCode = runTestsInUnity(unityPath, "Playmode");
-    #if (editModeExitCode != 0 or playModeExitCode != 0):
-     #   raise Exception("Tests failed. Exit code: " + str(editModeExitCode) + " and " + str(playModeExitCode));
+    if (editModeExitCode != 0 or playModeExitCode != 0):
+       raise Exception("Tests failed. Exit code: " + str(editModeExitCode) + " and " + str(playModeExitCode));
 
 if __name__ == "__main__":
     main();
