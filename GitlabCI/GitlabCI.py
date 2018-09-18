@@ -40,6 +40,7 @@ def downloadUnity(url):
     return "c:\\UnityBuild\\Unity.exe";
 
 def runWithTimeout(exePath, args, timeout):
+    print(exePath + " " + args);
     s = subprocess.Popen(exePath + args )
     poll_period = 0.1
     s.poll()
@@ -65,8 +66,8 @@ def runTestsInUnity(unityPath, platform):
 def main():
     print("Unity test runner CI script.");
     unityPath = "";
-    if os.environ.get('UNITY_BRANCH') is None:
-        unityPath = os.getcwd() + "\\build\\WindowsEditor\\Unity.exe";
+    if os.environ.get('UNITY_LOCAL_BUILD') is not None:
+        unityPath = os.environ['UNITY_LOCAL_BUILD'] + "\\build\\WindowsEditor\\Unity.exe";
     else:
        # Figure out a smarter way to get local build instead
        url = getUnityBuildZipUrl(os.environ['UNITY_BRANCH']);
