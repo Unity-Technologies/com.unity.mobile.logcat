@@ -13,6 +13,7 @@ build:
   only:
       - master
   script:
+      - ipconfig
       - python .\GitlabCI\gitlabCI.py -u
   artifacts:
     when: always
