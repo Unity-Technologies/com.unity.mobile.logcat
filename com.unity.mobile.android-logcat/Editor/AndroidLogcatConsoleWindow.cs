@@ -815,11 +815,7 @@ namespace Unity.Android.Logcat
         private ADB GetCachedAdb()
         {
             if (m_Adb == null)
-            {
-                AndroidJavaTools javaTools = AndroidJavaTools.GetInstance();
-                AndroidSDKTools sdkTools = AndroidSDKTools.GetInstance(javaTools);
-                m_Adb = new ADB(sdkTools);
-            }
+                m_Adb = ADB.GetInstance();
 
             return m_Adb;
         }
