@@ -2,7 +2,7 @@
   "dependencies": {
     "com.unity.mobile.android-logcat": "file:../../../com.unity.mobile.android-logcat"
   },
-  "registry": "https://staging-packages.unity.com",
+  "registry": "https://bfartifactory.bf.unity3d.com/artifactory/api/npm/unity-upm-staging/",
   "testables": [
     "com.unity.mobile.android-logcat"
   ]
