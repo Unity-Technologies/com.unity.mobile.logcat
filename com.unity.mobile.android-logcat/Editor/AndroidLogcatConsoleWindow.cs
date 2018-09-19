@@ -459,11 +459,11 @@ namespace Unity.Android.Logcat
                     return 0;
                 });
 
-                var names = new string[packages.Count];
+                var names = new GUIContent[packages.Count];
                 int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
-                    names[i] = i == 0 ? "No Filter" : packages[i].displayName;
+                    names[i] = new GUIContent(i == 0 ? "No Filter" : packages[i].displayName);
 
                     if (packages[i] != null && m_SelectedPackage != null && m_SelectedPackage.name == packages[i].name && m_SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
@@ -472,7 +472,7 @@ namespace Unity.Android.Logcat
                 EditorUtility.DisplayCustomMenu(
                     new Rect(rect.x, rect.yMax, 0, 0),
                     names,
-                    new[] { selectedPackagedId },
+                    selectedPackagedId,
                     PackageSelection, packages.ToArray());
             }
 

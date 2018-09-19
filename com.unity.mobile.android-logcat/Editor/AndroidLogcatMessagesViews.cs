@@ -202,7 +202,16 @@ namespace Unity.Android.Logcat
                         menuTexts.Add("Clear All");
                         menuTexts.Add("Select All");
                         e.Use();
-                        EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), menuTexts.ToArray(), menuSelected.ToArray(), MenuSelectionColumns, null);
+
+                        var enabled = Enumerable.Repeat(true, menuTexts.Count).ToArray();
+                        var separator = new bool[menuTexts.Count];
+                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), 
+                            menuTexts.ToArray(), 
+                            enabled, 
+                            separator, 
+                            menuSelected.ToArray(), 
+                            MenuSelectionColumns, 
+                            null);
                         break;
                 }
             }
@@ -358,7 +367,15 @@ namespace Unity.Android.Logcat
                             menuItems.Add("Remove tag '" + entries[0].tag + "'");
                         }
 
-                        EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), menuItems.ToArray(), null, MenuSelection, entries.ToArray());
+                        var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
+                        var separator = new bool[menuItems.Count];
+                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), 
+                            menuItems.ToArray(),
+                            enabled,
+                            separator,
+                            null, 
+                            MenuSelection, 
+                            entries.ToArray());
                         break;
                 }
             }
