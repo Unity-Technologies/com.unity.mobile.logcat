@@ -90,8 +90,8 @@ namespace Unity.Android.Logcat
         public void DoGUI(Rect rect)
         {
             var separators = m_TagNames.Select(t => t == null).ToArray();
-            var enabled = new bool[m_TagNames.Count];
-   
+            var enabled = Enumerable.Repeat(true, m_TagNames.Count).ToArray();
+
             EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_TagNames.ToArray(), enabled, separators, m_SelectedTags.ToArray(), TagSelected, null);
         }
 
