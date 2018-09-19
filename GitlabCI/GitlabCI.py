@@ -67,7 +67,7 @@ def main():
     print("Unity test runner CI script.");
     unityPath = "";
     if os.environ.get('UNITY_LOCAL_BUILD') is not None:
-        unityPath = os.environ['UNITY_LOCAL_BUILD'] + "\\build\\WindowsEditor\\Unity.exe";
+        unityPath = os.environ['UNITY_LOCAL_BUILD'] + "\\Unity.exe";
     else:
        # Figure out a smarter way to get local build instead
        url = getUnityBuildZipUrl(os.environ['UNITY_BRANCH']);
