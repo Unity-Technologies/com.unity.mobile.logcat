@@ -41,7 +41,7 @@ def downloadUnity(url):
 
 def runWithTimeout(exePath, args, timeout):
     print(exePath + " " + args);
-    s = subprocess.Popen(exePath + args )
+    s = subprocess.Popen(exePath + args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     poll_period = 0.1
     s.poll()
     timeoutPrinted = False;
