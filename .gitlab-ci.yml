@@ -14,7 +14,7 @@ build:
       - master
   script:
       - ipconfig
-      - C:\Python37\python.exe .\GitlabCI\gitlabCI.py -u
+      - python -u .\GitlabCI\gitlabCI.py
   artifacts:
     when: always
     paths:
