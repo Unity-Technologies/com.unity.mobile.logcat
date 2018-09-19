@@ -59,7 +59,7 @@ def runWithTimeout(exePath, args, timeout):
     
 def runTestsInUnity(unityPath, platform):
     print("Running " + platform + " tests in unity");
-    exitCode = runWithTimeout(unityPath, " -projectpath " + os.environ['UNITY_TEST_PROJECT'] + " -runTests -batchmode -testPlatform " + platform + " -accept-apiupdate -automated -testResults .\\TestResult" + platform + ".xml -logFile .\\UnityLog"+ platform + ".txt", 60*15);
+    exitCode = runWithTimeout(unityPath, " -projectpath " + os.environ['UNITY_TEST_PROJECT'] + " -runTests -testPlatform " + platform + " -accept-apiupdate -automated -testResults .\\TestResult" + platform + ".xml -logFile .\\UnityLog"+ platform + ".txt", 60*15);
     print("ExitCode: " + str(exitCode));
     return exitCode;
     
