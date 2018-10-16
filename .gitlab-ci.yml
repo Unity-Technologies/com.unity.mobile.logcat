@@ -1,9 +1,12 @@
+
 variables:
-  UNITY_BRANCH: "trunk"
-  UNITY_TEST_PROJECT: ".\\TestProjects\\SampleProject1"
+  #UNITY_BRANCH: "trunk"
+  #UNITY_TEST_PROJECT: ".\\TestProjects\\SampleProject1"
+  BINTRAY_STAGING: "https://staging-packages.unity.com"
 
 stages:
- - build
+ #- build
+ - publish
 
 build:
   stage: build
@@ -26,6 +29,15 @@ build:
   # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
   after_script:
       - C:\Users\builduser\post_build_script.bat
+
+publish:
+  stage: publish
+  only:
+  - master
+  - tags
+  script:
+    - ./build.sh npm auth "$BINTRAY_STAGING" "$USER_NAME" "$API_KEY"
+    - ./build.sh package-ci publish --git-head $CI_COMMIT_SHA --git-url $CI_REPOSITORY_URL
 
 
 
