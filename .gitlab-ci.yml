@@ -8,27 +8,27 @@ stages:
  #- build
  - publish
 
-build:
-  stage: build
-  tags:
-    - windows
-    - buildfarm
-  only:
-      - master
-  script:
-      - ipconfig
-      - python -u .\GitlabCI\gitlabCI.py
-  artifacts:
-    when: always
-    paths:
-    - UnityLogEditmode.txt
-    #- UnityLogPlaymode.txt
-    - TestProjects\TestFramework\TestResultEditmode.xml
-    #- TestProjects\TestFramework\TestResultPlaymode.xml
-    expire_in: 1 week
-  # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
-  after_script:
-      - C:\Users\builduser\post_build_script.bat
+# build:
+#   stage: build
+#   tags:
+#     - windows
+#     - buildfarm
+#   only:
+#       - master
+#   script:
+#       - ipconfig
+#       - python -u .\GitlabCI\gitlabCI.py
+#   artifacts:
+#     when: always
+#     paths:
+#     - UnityLogEditmode.txt
+#     #- UnityLogPlaymode.txt
+#     - TestProjects\TestFramework\TestResultEditmode.xml
+#     #- TestProjects\TestFramework\TestResultPlaymode.xml
+#     expire_in: 1 week
+#   # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
+#   after_script:
+#       - C:\Users\builduser\post_build_script.bat
 
 publish:
   stage: publish
