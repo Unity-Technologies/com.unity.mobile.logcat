@@ -1,4 +1,6 @@
 
+image: node:6.10.0
+
 variables:
   #UNITY_BRANCH: "trunk"
   #UNITY_TEST_PROJECT: ".\\TestProjects\\SampleProject1"
