@@ -4,6 +4,9 @@ variables:
   #UNITY_TEST_PROJECT: ".\\TestProjects\\SampleProject1"
   BINTRAY_STAGING: "https://staging-packages.unity.com"
 
+before_script:
+  - chmod +x build.sh
+
 stages:
  #- build
  - publish
