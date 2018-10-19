@@ -438,19 +438,14 @@ namespace Unity.Android.Logcat
             {
                 UpdateDebuggablePackages();
 
-                List<PackageInformation> packages = new List<PackageInformation>();
-
-                // Add No Filter "package"
-                packages.Add(null);
-
-                packages.AddRange(m_Packages);
+                List<PackageInformation> packages = new List<PackageInformation>(m_Packages);
 
                 var appName = PlayerSettings.applicationIdentifier;
                 packages.Sort(delegate(PackageInformation x, PackageInformation y)
                 {
-                    if (x == null || (x.name == appName && !x.exited))
+                    if (x.name == appName && !x.exited)
                         return -1;
-                    if (y == null || (y.name == appName && !y.exited))
+                    if (y.name == appName && !y.exited)
                         return 1;
                     if (x.exited && !y.exited)
                         return 1;
@@ -458,6 +453,9 @@ namespace Unity.Android.Logcat
                         return -1;
                     return 0;
                 });
+
+                // Add No Filter "package"
+                packages.Insert(0, null);
 
                 var names = new GUIContent[packages.Count];
                 int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
