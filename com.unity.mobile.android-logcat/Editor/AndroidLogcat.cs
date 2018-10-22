@@ -75,15 +75,15 @@ namespace Unity.Android.Logcat
 
         private ADB adb;
 
-        public AndroidDevice device { get; }
+        public AndroidDevice Device { get; }
 
-        public int packagePID { get; }
+        public int PackagePID { get; }
 
-        public Priority priority { get; }
+        public Priority MessagePriority { get; }
 
-        public string filter { get; }
+        public string Filter { get; }
 
-        public string[] tags { get; }
+        public string[] Tags { get; }
 
         public event Action<List<LogEntry>> LogEntriesAdded;
 
@@ -118,11 +118,11 @@ namespace Unity.Android.Logcat
         public AndroidLogcat(ADB adb, AndroidDevice device, int packagePID, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.adb = adb;
-            this.device = device;
-            this.packagePID = packagePID;
-            this.priority = priority;
-            this.filter =  filterIsRegex  ? filter : Regex.Escape(filter);
-            this.tags = tags;
+            this.Device = device;
+            this.PackagePID = packagePID;
+            this.MessagePriority = priority;
+            this.Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
+            this.Tags = tags;
         }
 
         internal void Start()
@@ -136,24 +136,24 @@ namespace Unity.Android.Logcat
             m_LogcatProcess.BeginOutputReadLine();
             m_LogcatProcess.BeginErrorReadLine();
 
-            DeviceConnected?.Invoke(device.Id);
+            DeviceConnected?.Invoke(Device.Id);
         }
 
         private string LogcatArguments()
         {
             var filterArg = string.Empty;
-            if (!string.IsNullOrEmpty(filter))
+            if (!string.IsNullOrEmpty(Filter))
             {
-                filterArg = $@" --regex ""{filter}""";
+                filterArg = $@" --regex ""{Filter}""";
             }
 
-            var p = PriorityEnumToString(priority);
-            var tagLine = tags.Length > 0 ? string.Join(" ", tags.Select(m => m + ":" + p + " ").ToArray()) : $"*:{p} ";
+            var p = PriorityEnumToString(MessagePriority);
+            var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : $"*:{p} ";
 
-            if (packagePID <= 0)
-                return $"-s {device.Id} logcat -s -v year {tagLine}{filterArg}";
+            if (PackagePID <= 0)
+                return $"-s {Device.Id} logcat -s -v year {tagLine}{filterArg}";
             else
-                return $"-s {device.Id} logcat --pid={packagePID} -s -v year {tagLine}{filterArg}";
+                return $"-s {Device.Id} logcat --pid={PackagePID} -s -v year {tagLine}{filterArg}";
         }
 
         internal void Stop()
@@ -176,8 +176,8 @@ namespace Unity.Android.Logcat
             if (m_LogcatProcess != null)
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
-            AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} -s {device.Id} logcat -c");
-            var adbOutput = adb.Run(new[] { "-s", device.Id, "logcat", "-c" }, "Failed to clear logcat.");
+            AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} -s {Device.Id} logcat -c");
+            var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
             AndroidLogcatInternalLog.Log(adbOutput);
         }
 
@@ -206,7 +206,7 @@ namespace Unity.Android.Logcat
             if (m_LogcatProcess.HasExited)
             {
                 Stop();
-                DeviceDisconnected?.Invoke(device.Id);
+                DeviceDisconnected?.Invoke(Device.Id);
 
                 return;
             }
