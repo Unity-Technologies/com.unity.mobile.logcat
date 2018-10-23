@@ -8,25 +8,26 @@ The window can be accessed via 'Window->Analysis->Android Logcat', or simply by 
 **Requirements**
 
 - Compatible with Unity 2019.1 or above.
-- Require having Android module loaded and switching to Android build target in BuildSettings.
+- Requires Unity's Android support module.
+- Active platform in Unity has to be set to Android.
 
 **Supported features**
 
 - Device connnection
-	* Via USB cable
-	* Via Wifi
-	* Reconnect
+	- Via USB cable
+	- Via Wifi
+	- Reconnect
 - Device selection
 - Package selection
 - Log 
-	* Clear
-	* Copy
-	* Save
-	* Filter by
-		* Priority
-		* Tag
-		* Search field
-		* Serach as regex
+	- Copy
+	- Save
+	- Clear
+	- Filter by
+		- Priority
+		- Tag
+		- Search field
+		- Search as regex
 - Auto run
 - Screen capture
 - Stacktrace resolving
