@@ -461,7 +461,7 @@ namespace Unity.Android.Logcat
                 int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
-                    names[i] = new GUIContent(i == 0 ? "No Filter" : packages[i].displayName);
+                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].displayName);
 
                     if (packages[i] != null && m_SelectedPackage != null && m_SelectedPackage.name == packages[i].name && m_SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
