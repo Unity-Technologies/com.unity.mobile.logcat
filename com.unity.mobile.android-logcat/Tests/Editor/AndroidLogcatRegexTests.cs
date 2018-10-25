@@ -59,7 +59,7 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithYearFormat)
         {
-            Assert.IsFalse(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l));
+            Assert.IsTrue(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l));
         }
     }
 }

@@ -89,7 +89,7 @@ for platform in runtimePlatforms:
     runOptions["testResults"] = os.path.join(kTestArtifactPath, "%s_TestResults.txt" % platform)
     runOptions["logFile"] = os.path.join(kTestArtifactPath, "%s_EditorLog.txt" % platform)
 
-    runOptions["testPlatform"] = "playmode"
+    runOptions["testPlatform"] = "editmode"
     runOptions["buildTarget"] = platform;
 
     allArgs = [kEditorPath] + flags
