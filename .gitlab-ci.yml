@@ -10,30 +10,27 @@ before_script:
   - chmod +x build.sh
 
 stages:
- #- build
+ - test
  - publish
 
-# build:
-#   stage: build
-#   tags:
-#     - windows
-#     - buildfarm
-#   only:
-#       - master
-#   script:
-#       - ipconfig
-#       - python -u .\GitlabCI\gitlabCI.py
-#   artifacts:
-#     when: always
-#     paths:
-#     - UnityLogEditmode.txt
-#     #- UnityLogPlaymode.txt
-#     - TestProjects\TestFramework\TestResultEditmode.xml
-#     #- TestProjects\TestFramework\TestResultPlaymode.xml
-#     expire_in: 1 week
-#   # Important! Do not remove this after_script as the VM will live for 12 hours before being destroyed! https://gitlab.internal.unity3d.com/CDS_Ops/buildfarm-runners
-#   after_script:
-#       - C:\Users\builduser\post_build_script.bat
+test:windows:2019-1:
+  stage: test
+  image: 'build-pipeline/addressables_win:stable'
+  dependencies:
+    - create_package:windows
+  artifacts:
+    paths:
+      - "TestArtifacts"
+    expire_in: 1 week
+    when: always
+  tags:
+   - bokken-runner
+  script:
+    - echo "Running Android Playmode Tests"
+    - python.exe -u testrunner.py Android --version=2019.1
+  before_script:
+    - mkdir C:\ProgramData\Unity
+    - wget -P C:\ProgramData\Unity\ http://172.28.214.140/upload/licence/Unity_lic.ulf
 
 publish:
   stage: publish
