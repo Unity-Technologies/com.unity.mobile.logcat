@@ -15,20 +15,7 @@ stages:
 
 test:windows:2019-1:
   stage: test
-  variables:
-    BOKKEN_VM: my_vm
-    BOKKEN_JOB: |
-      resources:
-        - name: my_vm
-          image: toolsmith/katana-bokken-image:stable
-          flavor: m1.large
-          type: Unity::VM
-          num_instances: 1
-          metadata:
-          - key: bokken.interactive
-            value: "true"
-          - key: runtime.os
-            value: windows
+  image: 'toolsmith/katana-bokken-image:stable'
   artifacts:
     paths:
       - "TestArtifacts/*"
@@ -41,6 +28,10 @@ test:windows:2019-1:
     - ipconfig
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
+    - echo "Ping hack"
+    - ping 127.0.0.1 -n 300 > nul
+    - echo "Ping hack2"
+    - ping 127.0.0.1 -n 300 > nul
 
 publish:
   stage: publish
