@@ -16,8 +16,6 @@ stages:
 test:windows:2019-1:
   stage: test
   image: 'build-pipeline/addressables_win:stable'
-  dependencies:
-    - create_package:windows
   artifacts:
     paths:
       - "TestArtifacts"
