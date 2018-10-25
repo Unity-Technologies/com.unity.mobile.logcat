@@ -31,7 +31,6 @@ def RunProcess(args):
 
     desc = ' '.join(args)
     print("[%s]" % desc)
-    return;
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)#shell=True)
     for stdout_line in iter(process.stdout.readline, ""):
         sys.stdout.write(stdout_line)

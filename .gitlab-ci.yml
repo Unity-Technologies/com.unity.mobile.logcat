@@ -19,20 +19,14 @@ test:windows:2019-1:
   artifacts:
     paths:
       - "TestArtifacts/*"
-      - "UnityInstall/*"
     expire_in: 1 week
     when: always
   tags:
    - bokken-runner
   script:
-    - ipconfig
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
-    - echo "Ping hack"
-    - ping 127.0.0.1 -n 300 > nul
-    - echo "Ping hack2"
-    - ping 127.0.0.1 -n 300 > nul
-
+    
 publish:
   stage: publish
   only:
