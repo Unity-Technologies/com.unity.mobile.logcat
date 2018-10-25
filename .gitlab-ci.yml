@@ -19,7 +19,7 @@ test:windows:2019-1:
   artifacts:
     paths:
       - "TestArtifacts"
-	  - "UnityInstall"
+      - "UnityInstall"
     expire_in: 1 week
     when: always
   tags:
