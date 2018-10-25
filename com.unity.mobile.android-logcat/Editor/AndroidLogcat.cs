@@ -3,9 +3,12 @@ using System.Diagnostics;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.Android;
 using System.Text;
+
+[assembly: InternalsVisibleTo("Unity.Mobile.AndroidLogcat.EditorTests")]
 
 namespace Unity.Android.Logcat
 {
@@ -149,11 +152,10 @@ namespace Unity.Android.Logcat
 
             var p = PriorityEnumToString(MessagePriority);
             var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : $"*:{p} ";
-
             if (PackagePID <= 0)
-                return $"-s {Device.Id} logcat -s -v year {tagLine}{filterArg}";
-            else
-                return $"-s {Device.Id} logcat --pid={PackagePID} -s -v year {tagLine}{filterArg}";
+                return $"-s {Device.Id} logcat -s -v {LogPrintFormat} {tagLine}{filterArg}";
+
+            return $"-s {Device.Id} logcat --pid={PackagePID} -s -v {LogPrintFormat} {tagLine}{filterArg}";
         }
 
         internal void Stop()
@@ -218,7 +220,7 @@ namespace Unity.Android.Logcat
                     return;
                 entries = m_CachedLogLines.Select(e =>
                 {
-                    var m = m_LogCatEntryRegex.Match(e);
+                    var m = m_LogCatEntryThreadTimeRegex.Match(e);
                     return m.Success ? ParseLogEntry(m) : LogEntryParserErrorFor(e);
                 }).ToList();
                 m_CachedLogLines.Clear();
@@ -238,8 +240,20 @@ namespace Unity.Android.Logcat
 
         private LogEntry ParseLogEntry(Match m)
         {
+            DateTime dateTime;
+            switch (LogPrintFormat)
+            {
+                case kThreadTime:
+                    dateTime = DateTime.Parse("1999-" + m.Groups["date"].Value);
+                    break;
+                case kYearTime:
+                    dateTime = DateTime.Parse(m.Groups["date"].Value);
+                    break;
+                default:
+                    throw new NotImplementedException("Please implement date parsing for log format: " + LogPrintFormat);
+            }   
             var entry = new LogEntry(
-                DateTime.Parse(m.Groups["date"].Value),
+                dateTime,
                 Int32.Parse(m.Groups["pid"].Value),
                 Int32.Parse(m.Groups["tid"].Value),
                 PriorityStringToEnum(m.Groups["priority"].Value),
@@ -442,7 +456,7 @@ namespace Unity.Android.Logcat
         private void OutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (e.Data == null)
+            if (string.IsNullOrEmpty(e.Data))
                 return;
 
             lock (m_CachedLogLines)
@@ -451,13 +465,33 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Returns log print format used with adb logcat -v LogPrintFormat
+        /// Note: Old android devices don't support all -v formats 
+        /// For ex., on Android 5.1.1 only these -v are available [brief process tag thread raw time threadtime long]
+        /// While on Android 7.0, -v can have [brief color epoch long monotonic printable process raw tag thread threadtime time uid usec UTC year zone]
+        /// </summary>
+        internal string LogPrintFormat
+        {
+            get { return kThreadTime; }
+        }
+
         private Dictionary<int, BuildInfo> m_BuildInfos = new Dictionary<int, BuildInfo>();
 
-        private static Regex m_CrashMessageRegex = new Regex(@"^\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)", RegexOptions.Compiled);
-        private static Regex m_LogCatEntryRegex = new Regex(@"(?<date>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>[^:\s]+)?\s*:\s(?<msg>.*)", RegexOptions.Compiled);
+        internal static Regex m_CrashMessageRegex = new Regex(@"^\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)", RegexOptions.Compiled);
+        // Regex for messages produced via 'adb logcat -s -v year *:V'
+        internal static Regex m_LogCatEntryYearRegex = new Regex(@"(?<date>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>[^:\s]+)?\s*:\s(?<msg>.*)", RegexOptions.Compiled);
 
-        private static readonly int kUnityHashCode = "Unity".GetHashCode();
-        private static readonly int kCrashHashCode = "CRASH".GetHashCode();
-        private static readonly int kDebugHashCode = "DEBUG".GetHashCode();
+        // Regex for messages produced via 'adb logcat -s -v threadtime *:V'
+        internal static Regex m_LogCatEntryThreadTimeRegex = new Regex(@"(?<date>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>[^:\s]+)?\s*:\s(?<msg>.*)", RegexOptions.Compiled);
+
+
+        internal static readonly int kUnityHashCode = "Unity".GetHashCode();
+        internal static readonly int kCrashHashCode = "CRASH".GetHashCode();
+        internal static readonly int kDebugHashCode = "DEBUG".GetHashCode();
+
+        // Log PrintFormats
+        internal const string kThreadTime = "threadtime";
+        internal const string kYearTime = "year";
     }
 }
