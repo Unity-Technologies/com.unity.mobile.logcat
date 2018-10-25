@@ -11,9 +11,7 @@ kPIPDownloadName = "http://172.28.214.140/tools/unity-downloader/unity-downloade
 allPlatforms = ["Editor", "StandaloneLinux", "StandaloneLinux64", "StandaloneOSX", "StandaloneWindows", "StandaloneWindows64", "Android", "iOS"]
 
 editorRevisions = {
-    "2018.2": "5c716fc4faab59de610b4b74b9dad7c9f7ae60b0",
-    "2018.3": "a92967dc9cef35097913700341cac00023cf4810",
-    "2019.1": "f5b7b61dc93ab9b7e65257218be5487d6e201a2e"
+    "2019.1": "370df4c90d4b"
 }
 
 def GetDownloadComponentsArgs(platforms):
