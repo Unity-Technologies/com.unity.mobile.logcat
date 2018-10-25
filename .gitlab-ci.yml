@@ -15,7 +15,7 @@ stages:
 
 test:windows:2019-1:
   stage: test
-  image: 'build-pipeline/addressables_win:stable'
+  image: 'toolsmith/katana-bokken-image:stable'
   artifacts:
     paths:
       - "TestArtifacts"
@@ -26,10 +26,7 @@ test:windows:2019-1:
   script:
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
-  before_script:
-    - mkdir C:\ProgramData\Unity
-    - wget -P C:\ProgramData\Unity\ http://172.28.214.140/upload/licence/Unity_lic.ulf
-
+	
 publish:
   stage: publish
   only:
