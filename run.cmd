@@ -1,2 +1,2 @@
-python -u testrunner.py Editor Android --version=2019.1
+python -u testrunner.py Android --version=2019.1
 pause
