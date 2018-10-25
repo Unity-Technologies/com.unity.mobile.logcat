@@ -19,6 +19,8 @@ def GetDownloadComponentsArgs(platforms):
     for platform in platforms:
         if "Standalone" in platform:
             components.add("StandaloneSupport-Mono")
+        if "Android" in platforms:
+            components.add("Android")
     ret = []
     for c in components:
         ret.append("-c")
@@ -29,6 +31,7 @@ def RunProcess(args):
 
     desc = ' '.join(args)
     print("[%s]" % desc)
+    return;
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)#shell=True)
     for stdout_line in iter(process.stdout.readline, ""):
         sys.stdout.write(stdout_line)
