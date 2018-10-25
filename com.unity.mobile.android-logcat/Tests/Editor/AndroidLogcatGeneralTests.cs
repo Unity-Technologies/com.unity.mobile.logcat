@@ -3,8 +3,9 @@ using UnityEditor;
 using UnityEngine.TestTools;
 using NUnit.Framework;
 using System.Collections;
+using Unity.Android.Logcat;
 
-class LogcatTests
+class AndroidLogcatGeneralTests
 {
 
     [Test]
@@ -22,4 +23,5 @@ class LogcatTests
         // yield to skip a frame
         yield return null;
     }
+
 }
