@@ -18,8 +18,8 @@ test:windows:2019-1:
   image: 'toolsmith/katana-bokken-image:stable'
   artifacts:
     paths:
-      - "TestArtifacts"
-      - "UnityInstall"
+      - "TestArtifacts/*"
+      - "UnityInstall/*"
     expire_in: 1 week
     when: always
   tags:
