@@ -46,12 +46,10 @@ The toolbar is on the top of the window. Most Android Logcat controls can be fou
 ### Device Connection
 Connecting devices through USB and Wifi are both supported.
 
-**Connect via USB**
+**Connect via USB**  
+The devices connected through USB will be added to the device list automatically when starting Android logcat window. 
 
-The devices connected through USB will be added to the device list automatically when starting Android logcat window. Multi-devices is supported. 
-
-**Connect via Wifi**
-
+**Connect via Wifi**  
 Go to the devices list and click **\<Enter IP>** as below.  
 ![Connect via Wifi](images/connect_via_wifi.png)
 
@@ -59,14 +57,14 @@ And a window to enter an ip address will be popped up as below. Only IPv4 is sup
 ![Enter IP](images/enter_ip_window.png)
 
 **Device Selection**  
-Multiple devices are supported, but you can only select one device at a time from the device list.
+The device list contains all the connnected devices, but you can only select one device at a time from the list.
 
 ### Package Selection
 The package selection list contains:
 - Package of the top activity which is currently running on the selected device.
-- Package from the player settings if it's running on the selected device (Doesn't have to be the on the top).
+- Package from the player settings if it's running on the selected device (Doesn't have to be the the top running activity).
 
-You can only select one package at a time, only the log messages come from the selected package will be shown in the logcat console window.
+You can only select one package at a time, only the log messages come from the selected package will be shown in the logcat console window. Alternatively you can select **No Filter**, messages coming from all package will be shown.
 
 ### Log Controls
 
@@ -83,7 +81,7 @@ The selected logs can be saved to file. You can right click on the messages and 
 You can clear all the logs by click the **Clear** button on the toolbar.
 
 **Search**  
-You can input text in the text field on the toolbar to search logs by text. You can also toggle **Regex** on to treat content in the text field as regex expression.
+You can input text in the text field on the toolbar to search logs by text. You can also toggle **Regex** on to treat contents in the text field as regex expression.
 
 #### Filter
 - By Priority  
@@ -100,7 +98,7 @@ You can use **Capture Screen** button on the toolbar to capture a screenshot of 
 ![Device Screen Capture](images/device_screen_capture.png)
 
 ### Auto Run
-When **Auto Run** is toggled, Android Logcat window will be launched automatically if you start **Build And Run** in **Build Settings** window.
+When **Auto Run** is toggled, Android Logcat window will be launched automatically if you do **Build And Run** in **Build Settings** window.
 
 ### Stacktrace Resolving
 One benefit of using Android Logcat package is automatic stacktrace resolving. The **addr2line** tool in Android NDK is used to convert the addresses in the crash logs to the file names and line numbers. Below is an example of what's added to log.
