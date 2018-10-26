@@ -48,9 +48,11 @@ def RunProcess(args):
         raise subprocess.CalledProcessError(exitCode, args)
     return (stdOut, stdErr)
 
-parser = argparse.ArgumentParser(description="Run the trace event profiler tests")
+parser = argparse.ArgumentParser(description="Run logcat tests")
 parser.add_argument('runtimePlatform', nargs='*', choices=allPlatforms)
 parser.add_argument('--version', choices=editorRevisions.keys())
+parser.add_argument('--uselocalversion', dest='uselocalversion', action='store_true')
+parser.set_defaults(uselocalversion=False)
 args = parser.parse_args(sys.argv[1:])
 
 runtimePlatforms = args.runtimePlatform
@@ -59,7 +61,7 @@ unityVersion = args.version
 kRootRepoDirectory = os.path.dirname(os.path.realpath(__file__))
 kProjectPath = os.path.join(kRootRepoDirectory, "TestProjects/SampleProject1")
 kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
-kInstallPath = os.path.join(kRootRepoDirectory, "UnityInstall")
+kInstallPath = os.path.join(kRootRepoDirectory, "Editor")
 kEditorPath = os.path.join(kInstallPath, "Unity")
 if os.name is not "nt":
     kEditorPath = os.path.join(kInstallPath, "Unity.app/Contents/MacOS/Unity")
@@ -75,11 +77,12 @@ print("kProjectPath = %s" % kProjectPath)
 if not os.path.isdir(kTestArtifactPath):
     os.makedirs(kTestArtifactPath)
 
-RunProcess(["pip", "install", kPIPDownloadName])
-
-componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
-revision = editorRevisions[unityVersion]
-RunProcess(["unity-downloader-cli", "-r", revision, "-p", kInstallPath] + componentsArgs)
+if not args.uselocalversion:
+	RunProcess(["pip", "install", kPIPDownloadName])
+	componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
+	RunProcess(["unity-downloader-cli", "--unity-version", unityVersion, "-p", kInstallPath] + componentsArgs)
+else:
+	print("Using local Unity version, ensure Editor folder with AndroidSupport exists")
 
 for platform in runtimePlatforms:
 
