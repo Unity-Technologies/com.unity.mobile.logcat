@@ -47,7 +47,7 @@ def RunProcess(args):
 def main():
     parser = argparse.ArgumentParser(description="Run logcat tests")
     parser.add_argument('runtimePlatform', nargs='*', choices=allPlatforms)
-    parser.add_argument('--version', choices=editorRevisions.keys())
+    parser.add_argument('--version')
     parser.add_argument('--uselocalversion', dest='uselocalversion', action='store_true')
     parser.set_defaults(uselocalversion=False)
     args = parser.parse_args(sys.argv[1:])
