@@ -77,7 +77,7 @@ def main():
     if not args.uselocalversion:
         RunProcess(["pip", "install", kPIPDownloadName])
         componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
-        RunProcess(["unity-downloader-cli", "--unity-version", unityVersion, "-p", kInstallPath] + componentsArgs)
+        RunProcess(["unity-downloader-cli", "--wait", "--unity-version", unityVersion, "-p", kInstallPath] + componentsArgs)
     else:
         print("Using local Unity version, ensure Editor folder with AndroidSupport exists")
 
