@@ -1,0 +1,2 @@
+%~dp0\Editor\\Unity -batchmode -cleanTestPrefs -automated -upmNoDefaultPackages -enableAllModules -runTests -buildTarget Android -projectPath %~dp0\TestProjects\\SampleProject1 -logFile %~dp0\TestArtifacts\Editor_EditorLog.txt -testResults %~dp0\TestArtifacts\Editor_TestResults.txt -testPlatform editmode
+pause
