@@ -16,4 +16,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.1.0-preview] - 2018-10-15
 
-### This is the first release of *Unity Package Android Logcat*.
+### This is the first release of *Android Logcat Package*.
