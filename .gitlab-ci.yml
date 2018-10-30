@@ -30,7 +30,6 @@ test:windows:2019-1:
 publish:
   stage: publish
   only:
-  - master
   - tags
   script:
     - ./build.sh npm auth "$BINTRAY_STAGING" "$USER_NAME" "$API_KEY"
