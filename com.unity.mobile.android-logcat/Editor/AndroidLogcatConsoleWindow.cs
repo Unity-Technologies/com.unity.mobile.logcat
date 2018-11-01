@@ -358,20 +358,6 @@ namespace Unity.Android.Logcat
 
         public void ConnectDeviceByIPAddress(string ip)
         {
-            IPAddress address;
-            if (!IPAddress.TryParse(ip, out address))
-            {
-                Debug.LogError($"Invalid input ip address {ip}.");
-                return;
-            }
-
-            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-            {
-                // TODO: do we need to support IPV6?
-                Debug.LogWarning("IPV6 is not supported for now");
-                return;
-            }
-
             var cmd = $"connect {ip}";
             var errorMsg = $"Unable to connect to {ip}.";
             var outputMsg = GetCachedAdb().Run(new[] { cmd }, errorMsg);
