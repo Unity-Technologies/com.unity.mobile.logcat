@@ -19,7 +19,11 @@ namespace Unity.Android.Logcat
         public static void Show(string imagePath)
         {
             AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
-            win.m_ImagePath = imagePath;
+            if (win.m_ImagePath != imagePath)
+            {
+                win.m_ImagePath = imagePath;
+                win.didLoad = false;
+            }
         }
 
         void OnGUI()
