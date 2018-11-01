@@ -42,11 +42,11 @@ namespace Unity.Android.Logcat
                 {
                     try
                     {
-                        File.Copy(m_ImagePath, path);
+                        File.Copy(m_ImagePath, path, true);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        Debug.LogError($"Failed to save to '{path}'.");
+                        Debug.LogError($"Failed to save to '{path}' as '{ex.Message}'.");
                     }
                 }
             }
