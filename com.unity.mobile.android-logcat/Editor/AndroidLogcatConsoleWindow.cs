@@ -411,6 +411,13 @@ namespace Unity.Android.Logcat
             SelectPackage(packages[selected]);
         }
 
+        private void ResetPackages()
+        {
+            m_AutoSelectPackage = false;
+            m_SelectedPackage = null;
+            m_Packages.Clear();
+        }
+
         private void HandleSelectedPackage()
         {
             // We always keep track the list of following packages:
@@ -483,6 +490,7 @@ namespace Unity.Android.Logcat
             {
                 m_SelectedDeviceIndex = newDeviceIndex;
                 m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
+                ResetPackages();
                 UpdateDebuggablePackages();
                 RestartLogCat();
             }
