@@ -57,10 +57,11 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private PackageInformation m_SelectedPackage = null;
+    
+        private List<PackageInformation> m_PackagesForSelectedDevice = null;
 
-        // Note: Using List, so Unity can serialize it
         [SerializeField]
-        private List<PackageInformation> m_Packages = new List<PackageInformation>();
+        private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
 
         [SerializeField]
         private AndroidLogcat.Priority m_SelectedPriority;
@@ -183,8 +184,9 @@ namespace Unity.Android.Logcat
                     return;
                 m_TimeOfLastAutoConnectUpdate = DateTime.Now;
 
-                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
+                ResetPackages(m_DeviceIds[0]);
 
+                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid);
                 if (package != null)
                 {
@@ -411,11 +413,17 @@ namespace Unity.Android.Logcat
             SelectPackage(packages[selected]);
         }
 
-        private void ResetPackages()
+        private void ResetPackages(string deviceId)
         {
-            m_AutoSelectPackage = false;
             m_SelectedPackage = null;
-            m_Packages.Clear();
+
+            List<PackageInformation> packages = null;
+            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out packages))
+            {
+                packages = new List<PackageInformation>();
+                m_PackagesForAllDevices.Add(deviceId, packages);
+            }
+            m_PackagesForSelectedDevice = packages;
         }
 
         private void HandleSelectedPackage()
@@ -431,7 +439,7 @@ namespace Unity.Android.Logcat
             {
                 UpdateDebuggablePackages();
 
-                List<PackageInformation> packages = new List<PackageInformation>(m_Packages);
+                List<PackageInformation> packages = new List<PackageInformation>(m_PackagesForSelectedDevice);
 
                 var appName = PlayerSettings.applicationIdentifier;
                 packages.Sort(delegate(PackageInformation x, PackageInformation y)
@@ -490,7 +498,7 @@ namespace Unity.Android.Logcat
             {
                 m_SelectedDeviceIndex = newDeviceIndex;
                 m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
-                ResetPackages();
+                ResetPackages(m_SelectedDeviceId);
                 UpdateDebuggablePackages();
                 RestartLogCat();
             }
@@ -581,7 +589,7 @@ namespace Unity.Android.Logcat
                 return null;
 
             PackageInformation info;
-            info = m_Packages.Where(p => p.processId == pid).FirstOrDefault();
+            info = m_PackagesForSelectedDevice.Where(p => p.processId == pid).FirstOrDefault();
 
             if (info != null)
                 return info;
@@ -592,7 +600,7 @@ namespace Unity.Android.Logcat
                 processId = pid
             };
 
-            m_Packages.Add(newPackage);
+            m_PackagesForSelectedDevice.Add(newPackage);
             return newPackage;
         }
 
