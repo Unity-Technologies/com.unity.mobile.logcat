@@ -58,7 +58,10 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private PackageInformation m_SelectedPackage = null;
     
-        private List<PackageInformation> m_PackagesForSelectedDevice = null;
+        private List<PackageInformation> PackagesForSelectedDevice
+        {
+            get { return m_PackagesForAllDevices[m_SelectedDeviceId]; }
+        }
 
         [SerializeField]
         private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
@@ -417,13 +420,11 @@ namespace Unity.Android.Logcat
         {
             m_SelectedPackage = null;
 
-            List<PackageInformation> packages = null;
-            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out packages))
+            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out List<PackageInformation> packages))
             {
                 packages = new List<PackageInformation>();
                 m_PackagesForAllDevices.Add(deviceId, packages);
             }
-            m_PackagesForSelectedDevice = packages;
         }
 
         private void HandleSelectedPackage()
@@ -439,7 +440,7 @@ namespace Unity.Android.Logcat
             {
                 UpdateDebuggablePackages();
 
-                List<PackageInformation> packages = new List<PackageInformation>(m_PackagesForSelectedDevice);
+                List<PackageInformation> packages = new List<PackageInformation>(PackagesForSelectedDevice);
 
                 var appName = PlayerSettings.applicationIdentifier;
                 packages.Sort(delegate(PackageInformation x, PackageInformation y)
@@ -588,11 +589,10 @@ namespace Unity.Android.Logcat
             if (pid <= 0)
                 return null;
 
-            PackageInformation info;
-            info = m_PackagesForSelectedDevice.Where(p => p.processId == pid).FirstOrDefault();
-
+            PackageInformation info = PackagesForSelectedDevice.FirstOrDefault(package => package.processId == pid);
             if (info != null)
                 return info;
+
             var newPackage = new PackageInformation()
             {
                 name = packageName,
@@ -600,7 +600,7 @@ namespace Unity.Android.Logcat
                 processId = pid
             };
 
-            m_PackagesForSelectedDevice.Add(newPackage);
+            PackagesForSelectedDevice.Add(newPackage);
             return newPackage;
         }
 
