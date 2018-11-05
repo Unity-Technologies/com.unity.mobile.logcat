@@ -15,7 +15,7 @@ stages:
 
 test:windows:2019-1:
   stage: test
-  image: 'toolsmith/katana-bokken-image:stable'
+  image: 'core-meta/harisen-win10-image:stable'
   artifacts:
     paths:
       - "TestArtifacts/*"
