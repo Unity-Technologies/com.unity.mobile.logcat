@@ -117,5 +117,5 @@ To use this feature, you need to
 
 ## **Document Revision History**
 |Date|Reason|
-|---|---|
+|:---|---:|
 |Oct 23, 2018|Document created. Matches package version 0.1.1.|
