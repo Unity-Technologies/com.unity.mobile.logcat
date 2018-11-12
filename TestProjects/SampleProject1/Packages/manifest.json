@@ -1,7 +1,9 @@
 {
   "dependencies": {
+    "com.unity.package-manager-ui": "2.1.0-preview.2",
     "com.unity.mobile.android-logcat": "file:../../../com.unity.mobile.android-logcat"
   },
+  "registry": "https://staging-packages.unity.com",
   "registry": "https://bfartifactory.bf.unity3d.com/artifactory/api/npm/unity-upm-staging/",
   "testables": [
     "com.unity.mobile.android-logcat"

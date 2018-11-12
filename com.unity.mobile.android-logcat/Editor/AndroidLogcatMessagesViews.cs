@@ -407,8 +407,9 @@ namespace Unity.Android.Logcat
                     break;
                 // Save to File
                 case 3:
-                    var allContents = new StringBuilder();
-                    foreach (var l in m_LogEntries)
+                    selectedLogEntries = (AndroidLogcat.LogEntry[])userData;
+                    var contents = new StringBuilder();
+                    foreach (var l in selectedLogEntries)
                     {
                         var entry = string.Empty;
                         for (int i = 0; i < m_Columns.Length; i++)
@@ -427,11 +428,11 @@ namespace Unity.Android.Logcat
                                 case Column.Message: entry += l.message; break;
                             }
                         }
-                        allContents.AppendLine(entry);
+                        contents.AppendLine(entry);
                     }
-                    var filePath = EditorUtility.SaveFilePanel("Save logcat", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
+                    var filePath = EditorUtility.SaveFilePanel("Save selected logs", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
                     if (!string.IsNullOrEmpty(filePath))
-                        File.WriteAllText(filePath, allContents.ToString());
+                        File.WriteAllText(filePath, contents.ToString());
                     break;
                 // Clear tags
                 case 5:
