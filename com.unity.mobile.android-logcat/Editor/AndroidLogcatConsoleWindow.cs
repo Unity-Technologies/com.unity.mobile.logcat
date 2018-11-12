@@ -57,10 +57,14 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private PackageInformation m_SelectedPackage = null;
+    
+        private List<PackageInformation> PackagesForSelectedDevice
+        {
+            get { return m_PackagesForAllDevices[m_SelectedDeviceId]; }
+        }
 
-        // Note: Using List, so Unity can serialize it
         [SerializeField]
-        private List<PackageInformation> m_Packages = new List<PackageInformation>();
+        private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
 
         [SerializeField]
         private AndroidLogcat.Priority m_SelectedPriority;
@@ -183,8 +187,9 @@ namespace Unity.Android.Logcat
                     return;
                 m_TimeOfLastAutoConnectUpdate = DateTime.Now;
 
-                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
+                ResetPackages(m_DeviceIds[0]);
 
+                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid);
                 if (package != null)
                 {
@@ -358,20 +363,6 @@ namespace Unity.Android.Logcat
 
         public void ConnectDeviceByIPAddress(string ip)
         {
-            IPAddress address;
-            if (!IPAddress.TryParse(ip, out address))
-            {
-                Debug.LogError($"Invalid input ip address {ip}.");
-                return;
-            }
-
-            if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-            {
-                // TODO: do we need to support IPV6?
-                Debug.LogWarning("IPV6 is not supported for now");
-                return;
-            }
-
             var cmd = $"connect {ip}";
             var errorMsg = $"Unable to connect to {ip}.";
             var outputMsg = GetCachedAdb().Run(new[] { cmd }, errorMsg);
@@ -425,6 +416,17 @@ namespace Unity.Android.Logcat
             SelectPackage(packages[selected]);
         }
 
+        private void ResetPackages(string deviceId)
+        {
+            m_SelectedPackage = null;
+
+            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out List<PackageInformation> packages))
+            {
+                packages = new List<PackageInformation>();
+                m_PackagesForAllDevices.Add(deviceId, packages);
+            }
+        }
+
         private void HandleSelectedPackage()
         {
             // We always keep track the list of following packages:
@@ -438,7 +440,7 @@ namespace Unity.Android.Logcat
             {
                 UpdateDebuggablePackages();
 
-                List<PackageInformation> packages = new List<PackageInformation>(m_Packages);
+                List<PackageInformation> packages = new List<PackageInformation>(PackagesForSelectedDevice);
 
                 var appName = PlayerSettings.applicationIdentifier;
                 packages.Sort(delegate(PackageInformation x, PackageInformation y)
@@ -497,6 +499,7 @@ namespace Unity.Android.Logcat
             {
                 m_SelectedDeviceIndex = newDeviceIndex;
                 m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
+                ResetPackages(m_SelectedDeviceId);
                 UpdateDebuggablePackages();
                 RestartLogCat();
             }
@@ -586,11 +589,10 @@ namespace Unity.Android.Logcat
             if (pid <= 0)
                 return null;
 
-            PackageInformation info;
-            info = m_Packages.Where(p => p.processId == pid).FirstOrDefault();
-
+            PackageInformation info = PackagesForSelectedDevice.FirstOrDefault(package => package.processId == pid);
             if (info != null)
                 return info;
+
             var newPackage = new PackageInformation()
             {
                 name = packageName,
@@ -598,7 +600,7 @@ namespace Unity.Android.Logcat
                 processId = pid
             };
 
-            m_Packages.Add(newPackage);
+            PackagesForSelectedDevice.Add(newPackage);
             return newPackage;
         }
 

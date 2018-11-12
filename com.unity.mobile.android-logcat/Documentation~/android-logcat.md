@@ -53,7 +53,7 @@ The devices connected through USB will be added to the device list automatically
 Go to the devices list and click **\<Enter IP>** as below.  
 ![Connect via Wifi](images/connect_via_wifi.png)
 
-And a window to enter an ip address will be popped up as below. Only IPv4 is supported for now.  
+And a window to enter an ip address will be popped up as below.  
 ![Enter IP](images/enter_ip_window.png)
 
 **Device Selection**  
