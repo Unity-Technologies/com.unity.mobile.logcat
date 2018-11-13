@@ -64,10 +64,9 @@ namespace Unity.Android.Logcat
         private bool m_Autoscroll = true;
         private float doubleClickStart = -1;
 
-        private bool DoSplitter(ColumnData data)
+        private bool DoSplitter(ColumnData data, Rect splitterRect)
         {
             const float kSplitterWidth = 3.0f;
-            var splitterRect = GUILayoutUtility.GetLastRect();
             splitterRect.x = splitterRect.x + splitterRect.width - kSplitterWidth * 0.5f;
             splitterRect.width = kSplitterWidth;
 
@@ -108,55 +107,66 @@ namespace Unity.Android.Logcat
         private bool DoGUIHeader()
         {
             bool requestRepaint = false;
-            EditorGUILayout.BeginHorizontal();
+            var fullHeaderRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.columnHeader, GUILayout.ExpandWidth(true));
             bool headerDrawn = false;
             bool lastHeaderDrawn = false;
+            var offset = 0.0f;
             foreach (var c in Enum.GetValues(typeof(Column)))
             {
                 var d = m_Columns[(int)c];
                 if (!d.enabled)
                     continue;
+
+                d.itemSize = new Rect(offset, fullHeaderRect.y, d.width, fullHeaderRect.height);
+                offset += d.width;
+
                 if (d.width > 0.0f)
                 {
+                    var buttonRect = d.itemSize;
+                    buttonRect.x -= m_ScrollPosition.x;
+
                     switch ((Column)c)
                     {
                         case Column.Priority:
-                            if (GUILayout.Button(d.content, AndroidLogcatStyles.columnHeader, GUILayout.Width(d.width)))
+                            if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
                                 var priorities = (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority));
                                 EditorUtility.DisplayCustomMenu(new Rect(Event.current.mousePosition, Vector2.zero), priorities.Select(m => new GUIContent(m.ToString())).ToArray(), (int)m_SelectedPriority, PrioritySelection, null);
                             }
                             break;
                         case Column.Tag:
-                            if (GUILayout.Button(d.content, AndroidLogcatStyles.columnHeader, GUILayout.Width(d.width)))
+                            if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
                                 m_TagControl.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero));
                             }
                             break;
                         default:
-                            GUILayout.Label(d.content, AndroidLogcatStyles.columnHeader, GUILayout.Width(d.width));
+                            GUI.Label(buttonRect, d.content, AndroidLogcatStyles.columnHeader);
                             break;
                     }
-                    d.itemSize = GUILayoutUtility.GetLastRect();
-                    requestRepaint |= DoSplitter(d);
+
+                    requestRepaint |= DoSplitter(d, buttonRect);
                 }
                 else
                 {
-                    GUILayout.Label(d.content, AndroidLogcatStyles.columnHeader);
-                    m_Columns[(int)c].itemSize = GUILayoutUtility.GetLastRect();
+                    var buttonRect = d.itemSize;
+                    buttonRect.x -= m_ScrollPosition.x;
+                    buttonRect.width = fullHeaderRect.width - offset + m_ScrollPosition.x;
+
+                    GUI.Label(buttonRect, d.content, AndroidLogcatStyles.columnHeader);
                     // For last entry have a really big width, so all the message can fit
-                    m_Columns[(int)c].itemSize.width = 10000.0f;
+                    d.itemSize.width = 10000.0f;
                     lastHeaderDrawn = true;
                 }
 
+                // Don't allow splitter to make item small than 4px
                 d.itemSize.x = Mathf.Max(4.0f, d.itemSize.x);
                 headerDrawn = true;
             }
-
+            
             if (!headerDrawn || !lastHeaderDrawn)
-                GUILayout.Label(GUIContent.none, AndroidLogcatStyles.columnHeader);
-            EditorGUILayout.EndHorizontal();
-            DoMouseEventsForHeaderToolbar(GUILayoutUtility.GetLastRect());
+               GUI.Label(fullHeaderRect, GUIContent.none, AndroidLogcatStyles.columnHeader);
+            DoMouseEventsForHeaderToolbar(fullHeaderRect);
             return requestRepaint;
         }
 
