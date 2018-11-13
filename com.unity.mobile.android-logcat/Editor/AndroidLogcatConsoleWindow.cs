@@ -346,11 +346,12 @@ namespace Unity.Android.Logcat
                 }
 
                 // Don't erase, used for debugging purposes
+                /*
                 if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
                 {
                     UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
                 }
-                /*
+               
                 if (GUILayout.Button("AutoSelect " + m_AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
                 {
                     m_AutoSelectPackage = true;
