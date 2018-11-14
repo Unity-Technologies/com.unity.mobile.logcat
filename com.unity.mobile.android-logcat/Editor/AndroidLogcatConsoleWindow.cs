@@ -805,7 +805,11 @@ namespace Unity.Android.Logcat
         private void ClearLogCat()
         {
             if (m_LogCat == null)
+            {
+                m_LogEntries.Clear();
+                m_SelectedIndices.Clear();
                 return;
+            }
 
             m_LogCat.Stop();
             m_LogEntries.Clear();

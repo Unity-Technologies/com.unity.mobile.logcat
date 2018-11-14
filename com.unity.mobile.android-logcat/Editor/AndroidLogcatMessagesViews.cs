@@ -367,7 +367,7 @@ namespace Unity.Android.Logcat
                             entries.Add(m_LogEntries[si]);
                         }
                         var menuItems = new List<string>();
-                        menuItems.AddRange(new[] { "Copy", "Select All", "", "Save Selection" });
+                        menuItems.AddRange(new[] { "Copy", "Select All", "", "Save Selection..." });
 
                         if (entries.Count > 0)
                         {
