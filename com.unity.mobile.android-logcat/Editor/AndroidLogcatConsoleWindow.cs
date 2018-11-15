@@ -671,7 +671,7 @@ namespace Unity.Android.Logcat
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {deviceId} shell pidof {packageName}";
+                var cmd = $"-s {deviceId} shell pidof -s {packageName}";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
                 AndroidLogcatInternalLog.Log(output);

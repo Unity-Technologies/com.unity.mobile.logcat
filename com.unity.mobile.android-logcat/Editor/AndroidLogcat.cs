@@ -226,7 +226,10 @@ namespace Unity.Android.Logcat
                 {
                     var m = m_LogCatEntryThreadTimeRegex.Match(logLine);
                     if (!m.Success)
+                    {
                         entries.Add(LogEntryParserErrorFor(logLine));
+                        continue;
+                    }
 
                     if (checkPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
                         continue;
