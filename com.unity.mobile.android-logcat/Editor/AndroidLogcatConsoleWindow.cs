@@ -679,7 +679,7 @@ namespace Unity.Android.Logcat
                 if (pidofOptionAvailable)
                     cmd = $"-s {deviceId} shell pidof -s {packageName}";
                 else
-                    cmd = $"-s {deviceId} shell ps | grep {packageName}$";
+                    cmd = $"-s {deviceId} shell \"ps | grep {packageName}$\"";
 
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
