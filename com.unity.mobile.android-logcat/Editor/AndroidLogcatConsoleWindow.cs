@@ -668,17 +668,39 @@ namespace Unity.Android.Logcat
         {
             if (string.IsNullOrEmpty(deviceId))
                 return -1;
+
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {deviceId} shell pidof {packageName}";
+                var device = GetAndroidDeviceFromCache(adb, deviceId);
+                var pidofOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // pidof option is only available in Android 7 or above.
+
+                string cmd = null;
+                if (pidofOptionAvailable)
+                    cmd = $"-s {deviceId} shell pidof -s {packageName}";
+                else
+                    cmd = $"-s {deviceId} shell \"ps | grep {packageName}$\"";
+
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
+                if (string.IsNullOrEmpty(output))
+                    return -1;
+
                 AndroidLogcatInternalLog.Log(output);
-                return int.Parse(output);
+                if (!pidofOptionAvailable)
+                {
+                    var regex = new Regex(@"\b\d+");
+                    Match match = regex.Match(output);
+                    if (!match.Success)
+                        throw new Exception("Failed to parse pid");
+                    output = match.Groups[0].Value;
+                }
+
+                return Int32.Parse(output);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                AndroidLogcatInternalLog.Log(ex.Message);
                 return -1;
             }
         }
