@@ -221,7 +221,7 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var checkPID = PackagePID > 0 && !PIDOptionAvailable;
+                var needFilterByPID = PackagePID > 0 && !PIDOptionAvailable;
                 foreach (var logLine in m_CachedLogLines)
                 {
                     var m = m_LogCatEntryThreadTimeRegex.Match(logLine);
@@ -231,7 +231,7 @@ namespace Unity.Android.Logcat
                         continue;
                     }
 
-                    if (checkPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
+                    if (needFilterByPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
                         continue;
 
                     entries.Add(ParseLogEntry(m));
