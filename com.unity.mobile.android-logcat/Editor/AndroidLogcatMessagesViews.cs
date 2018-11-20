@@ -321,19 +321,28 @@ namespace Unity.Android.Logcat
                         }
                         else if ((e.modifiers & EventModifiers.Shift) != 0)
                         {
-                            int minValue = 0;
-                            foreach (var si in m_SelectedIndices)
+                            if (m_SelectedIndices.Count == 0)
                             {
-                                if (si > logEntryIndex)
-                                    break;
-                                minValue = si;
+                                m_SelectedIndices.Add(logEntryIndex);
                             }
-
-                            for (int si = minValue; si <= logEntryIndex; si++)
+                            else
                             {
-                                if (m_SelectedIndices.Contains(si))
-                                    continue;
-                                m_SelectedIndices.Add(si);
+                                int minValue = logEntryIndex;
+                                int maxValue = logEntryIndex;
+                                foreach (var si in m_SelectedIndices)
+                                {
+                                    if (si > maxValue)
+                                        maxValue = si;
+                                    else if (si < minValue)
+                                        minValue = si;
+                                }
+
+                                for (int si = minValue; si <= maxValue; si++)
+                                {
+                                    if (m_SelectedIndices.Contains(si))
+                                        continue;
+                                    m_SelectedIndices.Add(si);
+                                }
                             }
                         }
                         else
