@@ -1,15 +1,13 @@
-# Quality Report For Unity Android Logcat
+## Quality Report For Unity Android Logcat
 
-## Version tested: 0.1.3
+### Version tested: 0.1.3
 
-## QA Owner: Mykolas Mankevicius @mykolas
-## UX Owner: No one, we tried looking at this [Link to Unity HIG page](https://unitytech.github.io/unityeditor-hig/)
+#### QA Owner: Mykolas Mankevicius @mykolas
 
 ## Test strategy
-* Results from the package's editor and runtime test suite.
-* Link to automated test results (if any)0189
-
+* [Editor test suite](https://gitlab.cds.internal.unity3d.com/upm-packages/mobile/mobile-android-logcat/pipelines)
 * Manual test Results, [Link to doc](https://docs.google.com/document/d/13_U3Xe214KWFOzJLOVN9bm3-FVVUocysuNH1xIRlRbQ/edit#)
+* [Test Project](https://gitlab.cds.internal.unity3d.com/upm-packages/mobile/mobile-android-logcat/tree/master/TestProjects/SampleProject1)
 
 ## Package Status
 * UX status: good for preview release, will fix issues when feedback is received
