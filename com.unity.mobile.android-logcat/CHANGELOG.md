@@ -4,13 +4,19 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.1.5-preview] - 2018-11-26
+
+### Minor fixes.
+- Fixed the issue during publishing the package.
+
 ## [0.1.4-preview] - 2018-11-26
 
 ### Minor fixes.
+- Fixed the issue that "shift" selecting log messages doesn't work correctly.
 
 ## [0.1.3-preview] - 2018-11-16
 
-### Minor fixes & Improvements.
+### Fixes & Improvements.
 - Fixed the issue that package filter doesn't work correctly on devices below Android 7.
 - Fixed some issues at UI side.
 
