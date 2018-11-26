@@ -11,7 +11,7 @@ using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
-    internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu
+    internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu, ISerializationCallbackReceiver
     {
         private int m_SelectedDeviceIndex;
         private string m_SelectedDeviceId;
@@ -36,6 +36,7 @@ namespace Unity.Android.Logcat
         [Serializable]
         private class PackageInformation
         {
+            public string deviceId;
             public string name;
             public string displayName;
             public int processId;
@@ -48,6 +49,7 @@ namespace Unity.Android.Logcat
 
             public void Reset()
             {
+                deviceId = string.Empty;
                 name = string.Empty;
                 displayName = string.Empty;
                 processId = 0;
@@ -60,11 +62,19 @@ namespace Unity.Android.Logcat
     
         private List<PackageInformation> PackagesForSelectedDevice
         {
-            get { return m_PackagesForAllDevices[m_SelectedDeviceId]; }
+            get { return GetPackagesForDevice(m_SelectedDeviceId); }
         }
 
-        [SerializeField]
+        private List<PackageInformation> GetPackagesForDevice(string deviceId)
+        {
+            return m_PackagesForAllDevices[deviceId];
+        }
+
         private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
+
+        [SerializeField]
+        private List<PackageInformation> m_PackagesForSerialization = new List<PackageInformation> ();
+
 
         [SerializeField]
         private AndroidLogcat.Priority m_SelectedPriority;
@@ -138,6 +148,32 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
 
+        public void OnBeforeSerialize()
+        {
+            m_PackagesForSerialization.Clear();
+
+            foreach (var p in m_PackagesForAllDevices)
+            {
+                m_PackagesForSerialization.AddRange(p.Value);
+            }
+        }
+
+        public void OnAfterDeserialize()
+        {
+            m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
+
+            foreach (var p in m_PackagesForSerialization)
+            {
+                List<PackageInformation> packages;
+                if (!m_PackagesForAllDevices.TryGetValue(p.deviceId, out packages))
+                {
+                    packages = new List<PackageInformation>();
+                    m_PackagesForAllDevices[p.deviceId] = packages;
+                }
+                packages.Add(p);
+            }
+        }
+
         private void RemoveTag(string tag)
         {
             if (!m_TagControl.Remove(tag, true))
@@ -190,7 +226,7 @@ namespace Unity.Android.Logcat
                 ResetPackages(m_DeviceIds[0]);
 
                 int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
-                var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid);
+                var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_DeviceIds[0]);
                 if (package != null)
                 {
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
@@ -310,11 +346,12 @@ namespace Unity.Android.Logcat
                 }
 
                 // Don't erase, used for debugging purposes
+                /*
                 if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
                 {
                     UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
                 }
-                /*
+               
                 if (GUILayout.Button("AutoSelect " + m_AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
                 {
                     m_AutoSelectPackage = true;
@@ -584,12 +621,13 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private PackageInformation CreatePackageInformation(string packageName, int pid)
+        private PackageInformation CreatePackageInformation(string packageName, int pid, string deviceId)
         {
             if (pid <= 0)
                 return null;
 
-            PackageInformation info = PackagesForSelectedDevice.FirstOrDefault(package => package.processId == pid);
+            var packages = GetPackagesForDevice(deviceId);
+            PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
             if (info != null)
                 return info;
 
@@ -597,10 +635,11 @@ namespace Unity.Android.Logcat
             {
                 name = packageName,
                 displayName = $"{packageName} ({pid})",
-                processId = pid
+                processId = pid,
+                deviceId = deviceId
             };
 
-            PackagesForSelectedDevice.Add(newPackage);
+            packages.Add(newPackage);
             return newPackage;
         }
 
@@ -613,7 +652,7 @@ namespace Unity.Android.Logcat
             bool checkProjectPackage = true;
             if (GetCurrentPackage(ref topActivityPackageName, ref topActivityPid) && topActivityPid > 0)
             {
-                CreatePackageInformation(topActivityPackageName, topActivityPid);
+                CreatePackageInformation(topActivityPackageName, topActivityPid, m_SelectedDeviceId);
 
                 checkProjectPackage = topActivityPackageName != PlayerSettings.applicationIdentifier;
             }
@@ -621,7 +660,7 @@ namespace Unity.Android.Logcat
             if (checkProjectPackage)
             {
                 int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier);
-                CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid);
+                CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
         }
 
@@ -629,17 +668,39 @@ namespace Unity.Android.Logcat
         {
             if (string.IsNullOrEmpty(deviceId))
                 return -1;
+
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {deviceId} shell pidof {packageName}";
+                var device = GetAndroidDeviceFromCache(adb, deviceId);
+                var pidofOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // pidof option is only available in Android 7 or above.
+
+                string cmd = null;
+                if (pidofOptionAvailable)
+                    cmd = $"-s {deviceId} shell pidof -s {packageName}";
+                else
+                    cmd = $"-s {deviceId} shell \"ps | grep {packageName}$\"";
+
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
+                if (string.IsNullOrEmpty(output))
+                    return -1;
+
                 AndroidLogcatInternalLog.Log(output);
-                return int.Parse(output);
+                if (!pidofOptionAvailable)
+                {
+                    var regex = new Regex(@"\b\d+");
+                    Match match = regex.Match(output);
+                    if (!match.Success)
+                        throw new Exception("Failed to parse pid");
+                    output = match.Groups[0].Value;
+                }
+
+                return Int32.Parse(output);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                AndroidLogcatInternalLog.Log(ex.Message);
                 return -1;
             }
         }
@@ -766,7 +827,11 @@ namespace Unity.Android.Logcat
         private void ClearLogCat()
         {
             if (m_LogCat == null)
+            {
+                m_LogEntries.Clear();
+                m_SelectedIndices.Clear();
                 return;
+            }
 
             m_LogCat.Stop();
             m_LogEntries.Clear();

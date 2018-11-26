@@ -39,7 +39,7 @@ namespace Unity.Android.Logcat
 
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Save", GUILayout.Width(saveButtonWidth)))
+            if (GUILayout.Button("Save...", GUILayout.Width(saveButtonWidth)))
             {
                 var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
                 if (!string.IsNullOrEmpty(path))

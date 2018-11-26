@@ -15,7 +15,7 @@ stages:
 
 test:windows:2019-1:
   stage: test
-  image: 'core-meta/harisen-win10-image:stable'
+  image: 'core-meta/harisen-base-image:stable'
   artifacts:
     paths:
       - "TestArtifacts/*"

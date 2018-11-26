@@ -81,6 +81,7 @@ namespace Unity.Android.Logcat
         public AndroidDevice Device { get; }
 
         public int PackagePID { get; }
+        public bool PIDOptionAvailable { get; }
 
         public Priority MessagePriority { get; }
 
@@ -123,6 +124,7 @@ namespace Unity.Android.Logcat
             this.adb = adb;
             this.Device = device;
             this.PackagePID = packagePID;
+            this.PIDOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // --pid option is only available in Android 7 or above.
             this.MessagePriority = priority;
             this.Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
             this.Tags = tags;
@@ -152,10 +154,10 @@ namespace Unity.Android.Logcat
 
             var p = PriorityEnumToString(MessagePriority);
             var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : $"*:{p} ";
-            if (PackagePID <= 0)
-                return $"-s {Device.Id} logcat -s -v {LogPrintFormat} {tagLine}{filterArg}";
+            if (PackagePID > 0 && PIDOptionAvailable)
+                return $"-s {Device.Id} logcat --pid={PackagePID} -s -v {LogPrintFormat} {tagLine}{filterArg}";
 
-            return $"-s {Device.Id} logcat --pid={PackagePID} -s -v {LogPrintFormat} {tagLine}{filterArg}";
+            return $"-s {Device.Id} logcat -s -v {LogPrintFormat} {tagLine}{filterArg}";
         }
 
         internal void Stop()
@@ -213,20 +215,31 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            List<LogEntry> entries = null;
+            List<LogEntry> entries = new List<LogEntry>();
             lock (m_CachedLogLines)
             {
                 if (m_CachedLogLines.Count == 0)
                     return;
-                entries = m_CachedLogLines.Select(e =>
+
+                var needFilterByPID = PackagePID > 0 && !PIDOptionAvailable;
+                foreach (var logLine in m_CachedLogLines)
                 {
-                    var m = m_LogCatEntryThreadTimeRegex.Match(e);
-                    return m.Success ? ParseLogEntry(m) : LogEntryParserErrorFor(e);
-                }).ToList();
+                    var m = m_LogCatEntryThreadTimeRegex.Match(logLine);
+                    if (!m.Success)
+                    {
+                        entries.Add(LogEntryParserErrorFor(logLine));
+                        continue;
+                    }
+
+                    if (needFilterByPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
+                        continue;
+
+                    entries.Add(ParseLogEntry(m));
+                }
                 m_CachedLogLines.Clear();
             }
 
-            if (entries == null)
+            if (entries.Count == 0)
                 return;
 
             ResolveStackTrace(entries);
