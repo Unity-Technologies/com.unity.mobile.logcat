@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID && NET_4_6
 using System.Collections.Generic;
 using System.Diagnostics;
 using System;
@@ -40,3 +41,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif

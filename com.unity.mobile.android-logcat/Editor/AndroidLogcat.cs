@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID && NET_4_6
 using System.Collections.Generic;
 using System.Diagnostics;
 using System;
@@ -264,7 +265,7 @@ namespace Unity.Android.Logcat
                     break;
                 default:
                     throw new NotImplementedException("Please implement date parsing for log format: " + LogPrintFormat);
-            }   
+            }
             var entry = new LogEntry(
                 dateTime,
                 Int32.Parse(m.Groups["pid"].Value),
@@ -480,7 +481,7 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Returns log print format used with adb logcat -v LogPrintFormat
-        /// Note: Old android devices don't support all -v formats 
+        /// Note: Old android devices don't support all -v formats
         /// For ex., on Android 5.1.1 only these -v are available [brief process tag thread raw time threadtime long]
         /// While on Android 7.0, -v can have [brief color epoch long monotonic printable process raw tag thread threadtime time uid usec UTC year zone]
         /// </summary>
@@ -508,3 +509,4 @@ namespace Unity.Android.Logcat
         internal const string kYearTime = "year";
     }
 }
+#endif

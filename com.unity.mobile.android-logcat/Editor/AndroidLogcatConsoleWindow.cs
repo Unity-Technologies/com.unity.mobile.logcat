@@ -7,11 +7,16 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEditor;
+
+#if PLATFORM_ANDROID && NET_4_6
 using UnityEditor.Android;
+#endif
 
 namespace Unity.Android.Logcat
 {
-    internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu, ISerializationCallbackReceiver
+    internal partial class AndroidLogcatConsoleWindow : EditorWindow
+#if PLATFORM_ANDROID && NET_4_6
+        , IHasCustomMenu, ISerializationCallbackReceiver
     {
         private int m_SelectedDeviceIndex;
         private string m_SelectedDeviceId;
@@ -59,7 +64,7 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private PackageInformation m_SelectedPackage = null;
-    
+
         private List<PackageInformation> PackagesForSelectedDevice
         {
             get { return GetPackagesForDevice(m_SelectedDeviceId); }
@@ -73,7 +78,7 @@ namespace Unity.Android.Logcat
         private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
 
         [SerializeField]
-        private List<PackageInformation> m_PackagesForSerialization = new List<PackageInformation> ();
+        private List<PackageInformation> m_PackagesForSerialization = new List<PackageInformation>();
 
 
         [SerializeField]
@@ -281,25 +286,6 @@ namespace Unity.Android.Logcat
             Repaint();
         }
 
-        [MenuItem("Window/Analysis/Android Logcat &6")]
-        internal static AndroidLogcatConsoleWindow ShowWindow()
-        {
-            return ShowNewOrExisting(false);
-        }
-
-        internal static AndroidLogcatConsoleWindow ShowNewOrExisting(bool autoSelectPackage)
-        {
-            var wnd = GetWindow<AndroidLogcatConsoleWindow>();
-            if (wnd == null)
-                wnd = ScriptableObject.CreateInstance<AndroidLogcatConsoleWindow>();
-            wnd.titleContent = new GUIContent("Android Logcat");
-            wnd.AutoSelectPackage = autoSelectPackage;
-            wnd.Show();
-            wnd.Focus();
-
-            return wnd;
-        }
-
         internal static bool ShowDuringBuildRun
         {
             get
@@ -351,7 +337,7 @@ namespace Unity.Android.Logcat
                 {
                     UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
                 }
-               
+
                 if (GUILayout.Button("AutoSelect " + m_AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
                 {
                     m_AutoSelectPackage = true;
@@ -909,6 +895,40 @@ namespace Unity.Android.Logcat
             m_StatusBar.Message = message;
 
             Repaint();
+        }
+
+        [MenuItem("Window/Analysis/Android Logcat &6")]
+        internal static AndroidLogcatConsoleWindow ShowWindow()
+        {
+            return ShowNewOrExisting(false);
+        }
+
+#else
+    {
+        internal void OnGUI()
+        {
+        #if !PLATFORM_ANDROID
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+        #elif !NET_4_6
+            EditorGUILayout.HelpBox("Please select Scripting Runtime Version to be .NET 4.x in PlayerSettings.", MessageType.Info);
+        #endif
+        }
+
+#endif
+
+        internal static AndroidLogcatConsoleWindow ShowNewOrExisting(bool autoSelectPackage)
+        {
+            var wnd = GetWindow<AndroidLogcatConsoleWindow>();
+            if (wnd == null)
+                wnd = ScriptableObject.CreateInstance<AndroidLogcatConsoleWindow>();
+            wnd.titleContent = new GUIContent("Android Logcat");
+            #if PLATFORM_ANDROID && NET_4_6
+            wnd.AutoSelectPackage = autoSelectPackage;
+            #endif
+            wnd.Show();
+            wnd.Focus();
+
+            return wnd;
         }
     }
 }

@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID && NET_4_6
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -16,3 +17,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif
