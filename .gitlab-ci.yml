@@ -14,7 +14,7 @@ stages:
  - test
  - publish
  
- verify:format:
+verify:format:
  image: ubuntu:18.10
  stage: verify
  script:
