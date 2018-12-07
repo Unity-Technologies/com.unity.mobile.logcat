@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID && NET_4_6
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -163,9 +164,9 @@ namespace Unity.Android.Logcat
                 d.itemSize.x = Mathf.Max(4.0f, d.itemSize.x);
                 headerDrawn = true;
             }
-            
+
             if (!headerDrawn || !lastHeaderDrawn)
-               GUI.Label(fullHeaderRect, GUIContent.none, AndroidLogcatStyles.columnHeader);
+                GUI.Label(fullHeaderRect, GUIContent.none, AndroidLogcatStyles.columnHeader);
             DoMouseEventsForHeaderToolbar(fullHeaderRect);
             return requestRepaint;
         }
@@ -215,12 +216,12 @@ namespace Unity.Android.Logcat
 
                         var enabled = Enumerable.Repeat(true, menuTexts.Count).ToArray();
                         var separator = new bool[menuTexts.Count];
-                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), 
-                            menuTexts.ToArray(), 
-                            enabled, 
-                            separator, 
-                            menuSelected.ToArray(), 
-                            MenuSelectionColumns, 
+                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
+                            menuTexts.ToArray(),
+                            enabled,
+                            separator,
+                            menuSelected.ToArray(),
+                            MenuSelectionColumns,
                             null);
                         break;
                 }
@@ -390,12 +391,12 @@ namespace Unity.Android.Logcat
 
                         var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
                         var separator = new bool[menuItems.Count];
-                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), 
+                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
                             menuItems.ToArray(),
                             enabled,
                             separator,
-                            null, 
-                            MenuSelection, 
+                            null,
+                            MenuSelection,
                             entries.ToArray());
                         break;
                 }
@@ -540,3 +541,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif
