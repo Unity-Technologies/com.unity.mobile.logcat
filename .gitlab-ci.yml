@@ -10,8 +10,23 @@ before_script:
   - chmod +x build.sh
 
 stages:
+ - verify
  - test
  - publish
+ 
+ verify:format:
+ image: ubuntu:18.10
+ stage: verify
+ script:
+ - apt-get update && apt-get install -y perl mercurial
+ - echo -e "[extensions]\nlargefiles=\n" > ~/.hgrc
+ - echo -e "[auth]\nono.schemes=https\nono.prefix=ono.unity3d.com\nono.username=$GITLAB_UNITY_META_ONO_USER\nono.password=$GITLAB_UNITY_META_ONO_PASS\n" >> ~/.hgrc
+ - hg clone -u stable https://$GITLAB_UNITY_META_ONO_USER@ono.unity3d.com/unity-extra/unity-meta ~/unity-meta
+ # for optimization purposes we can do a first optional pass with the generic formatter which will fail faster if code is not compliant with generic format rules
+ - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run --generic-only .
+ # full format (will invoke dedicated formatters)
+ - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run .
+
 
 test:windows:2019-1:
   stage: test
