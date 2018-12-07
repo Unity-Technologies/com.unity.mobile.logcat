@@ -32,11 +32,11 @@ def RunProcess(args):
     (stdOut, stdErr) = process.communicate()
     exitCode = process.wait()
     stdErr = stdErr.decode('ascii')
-    
+
     if len(stdErr) > 0:
         print("Standard Error Output")
         print(stdErr)
-    
+
     print("[Process completed with Exit Code: %d]" % exitCode)
     if exitCode:
         raise subprocess.CalledProcessError(exitCode, args)
@@ -60,7 +60,7 @@ def main():
     kEditorPath = os.path.join(kInstallPath, "Unity")
     if os.name is not "nt":
         kEditorPath = os.path.join(kInstallPath, "Unity.app/Contents/MacOS/Unity")
-        
+
 
     print("__file__=%s" % __file__)
     print("os.path.realpath(__file__)=%s" % os.path.realpath(__file__))
@@ -94,10 +94,9 @@ def main():
         for k in runOptions:
             allArgs.append('-%s' % k)
             allArgs.append(runOptions[k])
-        
+
         print("Running tests for platform %s" % platform)
         RunProcess(allArgs)
-      
+
 if __name__ == '__main__':
     main()
-
