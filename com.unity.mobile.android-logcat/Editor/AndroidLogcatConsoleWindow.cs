@@ -459,6 +459,9 @@ namespace Unity.Android.Logcat
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
+                if (string.IsNullOrEmpty(m_SelectedDeviceId))
+                    return;
+
                 UpdateDebuggablePackages();
 
                 List<PackageInformation> packages = new List<PackageInformation>(PackagesForSelectedDevice);
