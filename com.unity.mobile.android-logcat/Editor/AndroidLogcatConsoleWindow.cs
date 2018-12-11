@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEditor;
@@ -461,6 +459,9 @@ namespace Unity.Android.Logcat
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
+                if (string.IsNullOrEmpty(m_SelectedDeviceId))
+                    return;
+
                 UpdateDebuggablePackages();
 
                 List<PackageInformation> packages = new List<PackageInformation>(PackagesForSelectedDevice);
@@ -897,24 +898,25 @@ namespace Unity.Android.Logcat
             Repaint();
         }
 
-        [MenuItem("Window/Analysis/Android Logcat &6")]
-        internal static AndroidLogcatConsoleWindow ShowWindow()
-        {
-            return ShowNewOrExisting(false);
-        }
-
 #else
     {
         internal void OnGUI()
         {
         #if !PLATFORM_ANDROID
             EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
-        #elif !NET_4_6
+        #endif
+        #if !NET_4_6
             EditorGUILayout.HelpBox("Please select Scripting Runtime Version to be .NET 4.x in PlayerSettings.", MessageType.Info);
         #endif
         }
 
 #endif
+
+        [MenuItem("Window/Analysis/Android Logcat &6")]
+        internal static AndroidLogcatConsoleWindow ShowWindow()
+        {
+            return ShowNewOrExisting(false);
+        }
 
         internal static AndroidLogcatConsoleWindow ShowNewOrExisting(bool autoSelectPackage)
         {
