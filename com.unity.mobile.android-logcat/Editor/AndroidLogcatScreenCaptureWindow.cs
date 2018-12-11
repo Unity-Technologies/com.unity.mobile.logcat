@@ -1,9 +1,6 @@
 #if PLATFORM_ANDROID && NET_4_6
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 using UnityEditor;
 

@@ -1,10 +1,6 @@
 #if PLATFORM_ANDROID && NET_4_6
-using System;
-using System.IO;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using System.Text;
 
 namespace Unity.Android.Logcat
 {
