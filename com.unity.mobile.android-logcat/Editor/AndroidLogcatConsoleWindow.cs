@@ -897,24 +897,25 @@ namespace Unity.Android.Logcat
             Repaint();
         }
 
-        [MenuItem("Window/Analysis/Android Logcat &6")]
-        internal static AndroidLogcatConsoleWindow ShowWindow()
-        {
-            return ShowNewOrExisting(false);
-        }
-
 #else
     {
         internal void OnGUI()
         {
         #if !PLATFORM_ANDROID
             EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
-        #elif !NET_4_6
+        #endif
+        #if !NET_4_6
             EditorGUILayout.HelpBox("Please select Scripting Runtime Version to be .NET 4.x in PlayerSettings.", MessageType.Info);
         #endif
         }
 
 #endif
+
+        [MenuItem("Window/Analysis/Android Logcat &6")]
+        internal static AndroidLogcatConsoleWindow ShowWindow()
+        {
+            return ShowNewOrExisting(false);
+        }
 
         internal static AndroidLogcatConsoleWindow ShowNewOrExisting(bool autoSelectPackage)
         {
