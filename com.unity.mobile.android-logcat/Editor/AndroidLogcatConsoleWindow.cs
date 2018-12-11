@@ -697,6 +697,42 @@ namespace Unity.Android.Logcat
             return GetPIDFromPackageName(packageName, m_SelectedDeviceId);
         }
 
+        private bool ParseCurrentPackageInfo(string commandOutput, ref string packageName, ref int packagePID)
+        {
+            if (string.IsNullOrEmpty(commandOutput))
+                return false;
+
+            string line = null;
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains("top-activity"))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log("Cannot find top activity.");
+                return false;
+            }
+            AndroidLogcatInternalLog.Log(line);
+
+            var reg = new Regex(@"(\d{2,})\:([^/]*)");
+            var match = reg.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
+                return false;
+            }
+
+            packagePID = int.Parse(match.Groups[1].Value);
+            packageName = match.Groups[2].Value;
+
+            return true;
+        }
+
         private bool GetCurrentPackage(ref string packageName, ref int packagePID)
         {
             if (string.IsNullOrEmpty(m_SelectedDeviceId))
@@ -704,25 +740,11 @@ namespace Unity.Android.Logcat
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity | grep top-activity\" ";
+                var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
-                AndroidLogcatInternalLog.Log(output);
-                if (output.Length == 0)
-                    return false;
 
-                var reg = new Regex(@"(\d{2,})\:([^/]*)");
-                Match match = reg.Match(output);
-                if (!match.Success)
-                {
-                    UnityEngine.Debug.Log("Match failed.");
-                    return false;
-                }
-
-                packagePID = int.Parse(match.Groups[1].Value);
-                packageName = match.Groups[2].Value;
-
-                return true;
+                return ParseCurrentPackageInfo(output, ref packageName, ref packagePID);
             }
             catch (Exception)
             {
