@@ -651,6 +651,35 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private static int ParsePIDInfo(string packageName, string commandOutput)
+        {
+            string line = null;
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains(packageName))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
+                return -1;
+            }
+
+            var regex = new Regex(@"\b\d+");
+            Match match = regex.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
+                return -1;
+            }
+
+            return int.Parse(match.Groups[0].Value);
+        }
+
         private int GetPIDFromPackageName(string packageName, string deviceId)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -666,24 +695,20 @@ namespace Unity.Android.Logcat
                 if (pidofOptionAvailable)
                     cmd = $"-s {deviceId} shell pidof -s {packageName}";
                 else
-                    cmd = $"-s {deviceId} shell \"ps | grep {packageName}$\"";
+                    cmd = $"-s {deviceId} shell ps";
 
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
                 if (string.IsNullOrEmpty(output))
                     return -1;
 
-                AndroidLogcatInternalLog.Log(output);
-                if (!pidofOptionAvailable)
+                if (pidofOptionAvailable)
                 {
-                    var regex = new Regex(@"\b\d+");
-                    Match match = regex.Match(output);
-                    if (!match.Success)
-                        throw new Exception("Failed to parse pid");
-                    output = match.Groups[0].Value;
+                    AndroidLogcatInternalLog.Log(output);
+                    return int.Parse(output);
                 }
 
-                return Int32.Parse(output);
+                return ParsePIDInfo(packageName, output);
             }
             catch (Exception ex)
             {
@@ -697,7 +722,7 @@ namespace Unity.Android.Logcat
             return GetPIDFromPackageName(packageName, m_SelectedDeviceId);
         }
 
-        private bool ParseCurrentPackageInfo(string commandOutput, ref string packageName, ref int packagePID)
+        private static bool ParseCurrentPackageInfo(string commandOutput, ref string packageName, ref int packagePID)
         {
             if (string.IsNullOrEmpty(commandOutput))
                 return false;
