@@ -653,12 +653,32 @@ namespace Unity.Android.Logcat
 
         internal static int ParsePIDInfo(string packageName, string commandOutput)
         {
-            var packageNameForRegex = packageName.Replace(".", "\\.");
-            var regex = new Regex(@"\S*\s*(?<pid>\d+).*" + packageNameForRegex + "[\r\n]");
-            Match match = regex.Match(commandOutput);
-            if (!match.Success)
+            string line = null;
+            // Note: Regex is very slow, looping through string is much faster
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.EndsWith(packageName))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
                 return -1;
-            return int.Parse(match.Groups["pid"].Value);
+            }
+
+            var regex = new Regex(@"\b\d+");
+            Match match = regex.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
+                return -1;
+            }
+
+            return int.Parse(match.Groups[0].Value);
         }
 
         private int GetPIDFromPackageName(string packageName, string deviceId)
@@ -705,11 +725,33 @@ namespace Unity.Android.Logcat
 
         internal static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
         {
-            var reg = new Regex(@".*\s+(?<pid>\d+):(?<package>.*)\/.*\(top-activity\)");
-            var match = reg.Match(commandOutput);
+            packageName = "";
+            if (string.IsNullOrEmpty(commandOutput))
+                return -1;
+
+            // Note: Regex is very slow, looping through string is much faster
+            string line = null;
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains("top-activity"))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log("Cannot find top activity.");
+                return -1;
+            }
+            AndroidLogcatInternalLog.Log(line);
+
+            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
+            var match = reg.Match(line);
             if (!match.Success)
             {
-                packageName = "";
+                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
                 return -1;
             }
 
