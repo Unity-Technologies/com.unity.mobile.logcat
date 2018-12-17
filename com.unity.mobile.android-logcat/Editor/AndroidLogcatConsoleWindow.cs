@@ -703,40 +703,18 @@ namespace Unity.Android.Logcat
             return GetPIDFromPackageName(packageName, m_SelectedDeviceId);
         }
 
-        private static bool ParseCurrentPackageInfo(string commandOutput, ref string packageName, ref int packagePID)
+        internal static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
         {
-            if (string.IsNullOrEmpty(commandOutput))
-                return false;
-
-            string line = null;
-            using (var sr = new StringReader(commandOutput))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    if (line.Contains("top-activity"))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log("Cannot find top activity.");
-                return false;
-            }
-            AndroidLogcatInternalLog.Log(line);
-
-            var reg = new Regex(@"(\d{2,})\:([^/]*)");
-            var match = reg.Match(line);
+            var reg = new Regex(@".*\s+(?<pid>\d+):(?<package>.*)\/.*\(top-activity\)");
+            var match = reg.Match(commandOutput);
             if (!match.Success)
             {
-                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
-                return false;
+                packageName = "";
+                return -1;
             }
 
-            packagePID = int.Parse(match.Groups[1].Value);
-            packageName = match.Groups[2].Value;
-
-            return true;
+            packageName = match.Groups["package"].Value;
+            return int.Parse(match.Groups["pid"].Value);
         }
 
         private bool GetCurrentPackage(ref string packageName, ref int packagePID)
@@ -749,8 +727,8 @@ namespace Unity.Android.Logcat
                 var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
-
-                return ParseCurrentPackageInfo(output, ref packageName, ref packagePID);
+                packagePID = ParseTopActivityPackageInfo(output, out packageName);
+                return packagePID != -1;
             }
             catch (Exception)
             {

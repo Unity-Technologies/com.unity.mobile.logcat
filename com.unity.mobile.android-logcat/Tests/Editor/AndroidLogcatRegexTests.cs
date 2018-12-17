@@ -63,8 +63,6 @@ class AndroidLogcatRegexTests
         }
     }
 
-
-
     [Test]
     public void CorrectlyParsePIDsWithWindowsEndlines()
     {
@@ -80,6 +78,7 @@ class AndroidLogcatRegexTests
     private void CorrectlyParsePIDs(string separator)
     {
         var expectedPid = 2909;
+        // Produced by adb shell ps
         var adbContents = string.Join(separator, new[]
         {
             "USER      PID   PPID  VSIZE  RSS   WCHAN              PC  NAME",
@@ -110,4 +109,67 @@ class AndroidLogcatRegexTests
         pid = AndroidLogcatConsoleWindow.ParsePIDInfo("com.I.DontExist", invalidAdbContents);
         Assert.IsTrue(pid == -1, "Process Id has to be -1 , but was " + pid);
     }
+
+
+    [Test]
+    public void CorrectlyParseTopActivityWithWindowsEndlines()
+    {
+        CorrectlyParseTopActivit("\r\n");
+    }
+
+    [Test]
+    public void CorrectlyParseTopActivityWithUnixEndlines()
+    {
+        CorrectlyParseTopActivit("\n");
+    }
+
+    private void CorrectlyParseTopActivit(string separator)
+    {
+        // Produced by adb shell dumpsys activity
+        var adbContents = string.Join(separator, new[]
+        {
+"ACTIVITY MANAGER PENDING INTENTS (dumpsys activity intents)",
+"  * PendingIntentRecord{28bcd62 com.google.android.partnersetup startService}",
+"",
+"  Process LRU list (sorted by oom_adj, 84 total, non-act at 2, non-svc at 2):",
+"    PERS #83: sys   F/ /P  trm: 0 1672:system/1000 (fixed)",
+"    PERS #82: pers  F/ /P  trm: 0 2560:com.android.phone/1001 (fixed)",
+"    PERS #81: pers  F/ /P  trm: 0 2589:com.android.systemui/u0a62 (fixed)",
+"    PERS #80: pers  F/ /P  trm: 0 2801:com.sec.imsservice/1000 (fixed)",
+"    PERS #79: pers  F/ /P  trm: 0 3092:com.sec.epdg/1000 (fixed)",
+"    PERS #77: pers  F/ /P  trm: 0 3160:com.sec.sve/1000 (fixed)",
+"    PERS #75: pers  F/ /P  trm: 0 3540:com.sec.android.app.wfdbroker/1000 (fixed)",
+"    PERS #74: pers  F/ /P  trm: 0 3553:com.samsung.android.radiobasedlocation/1000 (fixed)",
+"    PERS #73: pers  F/ /P  trm: 0 3577:com.android.nfc/1027 (fixed)",
+"    PERS #72: pers  F/ /P  trm: 0 3588:com.samsung.android.providers.context/u0a8 (fixed)",
+"    PERS #71: pers  F/ /P  trm: 0 3610:system/u0a82 (fixed)",
+"    PERS #70: pers  F/ /P  trm: 0 3618:com.samsung.vzwapiservice/1000 (fixed)",
+"    PERS #69: pers  F/ /P  trm: 0 3636:com.qualcomm.qti.services.secureui:sui_service/1000 (fixed)",
+"    PERS #68: pers  F/ /P  trm: 0 3658:com.sec.enterprise.knox.shareddevice.keyguard/1000 (fixed)",
+"    Proc #55: psvc  F/ /IF trm: 0 2573:com.android.bluetooth/1002 (service)",
+"        com.android.bluetooth/.pbap.BluetoothPbapService<=Proc{2589:com.android.systemui/u0a62}",
+"    Proc # 0: fore  R/A/T  trm: 0 3766:com.sec.android.app.launcher/u0a65 (top-activity)",
+"    Proc #76: vis   F/ /SB trm: 0 3239:com.google.android.ext.services/u0a194 (service)",
+"        com.google.android.ext.services/android.ext.services.notification.Ranker<=Proc{1672:system/1000}",
+"    Proc #67: vis   F/ /SB trm: 0 3532:com.google.android.googlequicksearchbox:interactor/u0a70 (service)",
+"        {null}<=android.os.BinderProxy@9243680",
+"    Proc #59: prcp  F/ /IF trm: 0 7295:com.samsung.android.oneconnect:QcService/u0a212 (force-fg)",
+"ACTIVITY MANAGER LOCALE CHANGED HISTORY",
+" (nothing) "
+        });
+
+        string packageName;
+        var pid = AndroidLogcatConsoleWindow.ParseTopActivityPackageInfo(adbContents, out packageName);
+
+        var expectedPid = 3766;
+        var expectedPackage = "com.sec.android.app.launcher";
+        Assert.IsTrue(pid == 3766, "Expected top activity process id to be " + expectedPid + ", but was " + pid);
+        Assert.IsTrue(packageName == expectedPackage, "Expected top activity package to be " + expectedPackage + ", but was " + packageName);
+
+        var invalidAdbContents = "blabla";
+        pid = AndroidLogcatConsoleWindow.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
+        Assert.IsTrue(pid == -1, "Expected top activity process id to be -1 but was " + pid);
+        Assert.IsTrue(packageName == "", "Expected top activity package to be empty, but was " + packageName);
+    }
+
 }
