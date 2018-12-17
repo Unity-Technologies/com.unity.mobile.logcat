@@ -651,33 +651,14 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private static int ParsePIDInfo(string packageName, string commandOutput)
+        internal static int ParsePIDInfo(string packageName, string commandOutput)
         {
-            string line = null;
-            using (var sr = new StringReader(commandOutput))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    if (line.Contains(packageName))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
-                return -1;
-            }
-
-            var regex = new Regex(@"\b\d+");
-            Match match = regex.Match(line);
+            var packageNameForRegex = packageName.Replace(".", "\\.");
+            var regex = new Regex(@"\S*\s*(?<pid>\d+).*" + packageNameForRegex + "[\r\n]");
+            Match match = regex.Match(commandOutput);
             if (!match.Success)
-            {
-                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
                 return -1;
-            }
-
-            return int.Parse(match.Groups[0].Value);
+            return int.Parse(match.Groups["pid"].Value);
         }
 
         private int GetPIDFromPackageName(string packageName, string deviceId)
