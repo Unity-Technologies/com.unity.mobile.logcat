@@ -23,9 +23,9 @@ verify:format:
  - echo -e "[auth]\nono.schemes=https\nono.prefix=ono.unity3d.com\nono.username=$GITLAB_UNITY_META_ONO_USER\nono.password=$GITLAB_UNITY_META_ONO_PASS\n" >> ~/.hgrc
  - hg clone -u stable https://$GITLAB_UNITY_META_ONO_USER@ono.unity3d.com/unity-extra/unity-meta ~/unity-meta
  # for optimization purposes we can do a first optional pass with the generic formatter which will fail faster if code is not compliant with generic format rules
- - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run --generic-only com.unity.mobile.android-logcat/Editor TestProjects
+ - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run --generic-only com.unity.mobile.android-logcat/Editor com.unity.mobile.android-logcat/Tests/Editor TestProjects
  # full format (will invoke dedicated formatters)
- - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run com.unity.mobile.android-logcat/Editor TestProjects
+ - perl ~/unity-meta/Tools/Format/format.pl --hgroot $(pwd) --dry-run com.unity.mobile.android-logcat/Editor com.unity.mobile.android-logcat/Tests/Editor TestProjects
 
 
 test:windows:2019-1:
