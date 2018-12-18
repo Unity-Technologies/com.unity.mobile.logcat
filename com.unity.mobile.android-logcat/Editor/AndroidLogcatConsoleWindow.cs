@@ -651,6 +651,36 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal static int ParsePIDInfo(string packageName, string commandOutput)
+        {
+            string line = null;
+            // Note: Regex is very slow, looping through string is much faster
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.EndsWith(packageName))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
+                return -1;
+            }
+
+            var regex = new Regex(@"\b\d+");
+            Match match = regex.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
+                return -1;
+            }
+
+            return int.Parse(match.Groups[0].Value);
+        }
+
         private int GetPIDFromPackageName(string packageName, string deviceId)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -666,24 +696,20 @@ namespace Unity.Android.Logcat
                 if (pidofOptionAvailable)
                     cmd = $"-s {deviceId} shell pidof -s {packageName}";
                 else
-                    cmd = $"-s {deviceId} shell \"ps | grep {packageName}$\"";
+                    cmd = $"-s {deviceId} shell ps";
 
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
                 if (string.IsNullOrEmpty(output))
                     return -1;
 
-                AndroidLogcatInternalLog.Log(output);
-                if (!pidofOptionAvailable)
+                if (pidofOptionAvailable)
                 {
-                    var regex = new Regex(@"\b\d+");
-                    Match match = regex.Match(output);
-                    if (!match.Success)
-                        throw new Exception("Failed to parse pid");
-                    output = match.Groups[0].Value;
+                    AndroidLogcatInternalLog.Log(output);
+                    return int.Parse(output);
                 }
 
-                return Int32.Parse(output);
+                return ParsePIDInfo(packageName, output);
             }
             catch (Exception ex)
             {
@@ -697,6 +723,42 @@ namespace Unity.Android.Logcat
             return GetPIDFromPackageName(packageName, m_SelectedDeviceId);
         }
 
+        internal static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
+        {
+            packageName = "";
+            if (string.IsNullOrEmpty(commandOutput))
+                return -1;
+
+            // Note: Regex is very slow, looping through string is much faster
+            string line = null;
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains("top-activity"))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log("Cannot find top activity.");
+                return -1;
+            }
+            AndroidLogcatInternalLog.Log(line);
+
+            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
+            var match = reg.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
+                return -1;
+            }
+
+            packageName = match.Groups["package"].Value;
+            return int.Parse(match.Groups["pid"].Value);
+        }
+
         private bool GetCurrentPackage(ref string packageName, ref int packagePID)
         {
             if (string.IsNullOrEmpty(m_SelectedDeviceId))
@@ -704,25 +766,11 @@ namespace Unity.Android.Logcat
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity | grep top-activity\" ";
+                var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
-                AndroidLogcatInternalLog.Log(output);
-                if (output.Length == 0)
-                    return false;
-
-                var reg = new Regex(@"(\d{2,})\:([^/]*)");
-                Match match = reg.Match(output);
-                if (!match.Success)
-                {
-                    UnityEngine.Debug.Log("Match failed.");
-                    return false;
-                }
-
-                packagePID = int.Parse(match.Groups[1].Value);
-                packageName = match.Groups[2].Value;
-
-                return true;
+                packagePID = ParseTopActivityPackageInfo(output, out packageName);
+                return packagePID != -1;
             }
             catch (Exception)
             {
