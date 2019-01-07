@@ -1,7 +1,5 @@
 #if PLATFORM_ANDROID
-using System.Collections.Generic;
 using System;
-using System.Text.RegularExpressions;
 using System.Linq;
 using UnityEngine;
 using System.Text;

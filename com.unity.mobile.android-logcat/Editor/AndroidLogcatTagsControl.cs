@@ -11,7 +11,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatTagsControl
     {
         [SerializeField]
-        private List<string> m_TagNames = new List<string>(new[] { "Filter by all tags", "Show logs with any tag", null });
+        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null });
 
         [SerializeField]
         private List<int> m_SelectedTags = new List<int>(new[] { kInvalidTagIndex, kAnyTagIndex, kInvalidTagIndex });
