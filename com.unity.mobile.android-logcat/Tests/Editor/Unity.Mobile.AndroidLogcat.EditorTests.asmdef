@@ -15,8 +15,7 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "PLATFORM_ANDROID",
-        "NET_4_6"
+        "PLATFORM_ANDROID"
     ],
     "versionDefines": []
 }
