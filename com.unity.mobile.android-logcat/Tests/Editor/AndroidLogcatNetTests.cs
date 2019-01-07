@@ -6,7 +6,7 @@ using System.Collections;
 using Unity.Android.Logcat;
 
 public class AndroidLogcatNetTests
-{ 
+{
     // Ensure we're running tests with .NET 3.5, because Unity 2018.3 and older don't have .NET 3.5 deprecated
     [Test]
     public void EnsureNET35IsUsed()

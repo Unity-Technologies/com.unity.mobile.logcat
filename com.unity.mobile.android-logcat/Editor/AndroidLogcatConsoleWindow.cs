@@ -667,7 +667,7 @@ namespace Unity.Android.Logcat
 
             if (string.IsNullOrEmpty(line))
             {
-                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
+                AndroidLogcatInternalLog.Log("Cannot get process status for '{0}'.", packageName);
                 return -1;
             }
 
@@ -675,7 +675,7 @@ namespace Unity.Android.Logcat
             Match match = regex.Match(line);
             if (!match.Success)
             {
-                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
+                AndroidLogcatInternalLog.Log("Failed to parse pid of '{0}'from '{1}'.", packageName, line);
                 return -1;
             }
 
@@ -752,7 +752,7 @@ namespace Unity.Android.Logcat
             var match = reg.Match(line);
             if (!match.Success)
             {
-                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
+                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
                 return -1;
             }
 
@@ -953,7 +953,8 @@ namespace Unity.Android.Logcat
         internal void OnGUI()
         {
         #if !PLATFORM_ANDROID
-            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);        #endif
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+        #endif
         }
 
 #endif
