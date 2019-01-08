@@ -1,4 +1,4 @@
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using UnityEngine;
@@ -48,7 +48,7 @@ namespace Unity.Android.Logcat
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Failed to save to '{path}' as '{ex.Message}'.");
+                        Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
                     }
                 }
             }

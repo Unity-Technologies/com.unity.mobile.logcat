@@ -1,4 +1,4 @@
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
 using System;
 using UnityEngine;
 

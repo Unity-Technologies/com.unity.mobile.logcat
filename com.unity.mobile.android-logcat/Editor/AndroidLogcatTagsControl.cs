@@ -1,4 +1,4 @@
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -122,7 +122,8 @@ namespace Unity.Android.Logcat
                 m_SelectedTags[kAnyTagIndex] = kInvalidTagIndex;
             }
 
-            TagSelectionChanged?.Invoke();
+            if (TagSelectionChanged != null)
+                TagSelectionChanged.Invoke();
         }
 
         private void UpdateTagFilterBasedOnAnyTagOption(bool selectAnyTagEntry)

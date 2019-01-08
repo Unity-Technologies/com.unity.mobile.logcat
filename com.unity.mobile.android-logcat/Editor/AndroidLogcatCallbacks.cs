@@ -1,4 +1,4 @@
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -11,7 +11,7 @@ namespace Unity.Android.Logcat
 
         public void OnPostprocessBuild(BuildReport report)
         {
-            if (report.summary.options.HasFlag(BuildOptions.AutoRunPlayer) && AndroidLogcatConsoleWindow.ShowDuringBuildRun)
+            if ((report.summary.options & BuildOptions.AutoRunPlayer) != 0 && AndroidLogcatConsoleWindow.ShowDuringBuildRun)
                 AndroidLogcatConsoleWindow.ShowNewOrExisting(true);
         }
     }

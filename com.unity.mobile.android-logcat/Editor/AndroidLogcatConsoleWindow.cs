@@ -6,14 +6,14 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEditor;
 
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
 using UnityEditor.Android;
 #endif
 
 namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow : EditorWindow
-#if PLATFORM_ANDROID && NET_4_6
+#if PLATFORM_ANDROID
         , IHasCustomMenu, ISerializationCallbackReceiver
     {
         private int m_SelectedDeviceIndex;
@@ -214,7 +214,7 @@ namespace Unity.Android.Logcat
 
         private void Update()
         {
-            if (m_DeviceIds?.Count == 0)
+            if (m_DeviceIds != null && m_DeviceIds.Count == 0)
                 UpdateConnectedDevicesList(false);
 
             if (m_DeviceIds.Count == 0)
@@ -262,7 +262,7 @@ namespace Unity.Android.Logcat
         private void OnDeviceDisconnected(string deviceId)
         {
             StopLogCat();
-            var msg = $"Either adb.exe crashed or device disconnected (device id: {GetDeviceDetailsFor(deviceId)})";
+            var msg = "Either adb.exe crashed or device disconnected (device id: " + GetDeviceDetailsFor(deviceId) + ")";
             AndroidLogcatInternalLog.Log(msg);
             UpdateStatusBar(msg);
             var index = m_DeviceIds.IndexOf(deviceId);
@@ -366,7 +366,8 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            m_StatusBar?.DoGUI();
+            if (m_StatusBar != null)
+                m_StatusBar.DoGUI();
 
             EditorGUILayout.EndVertical();
         }
@@ -384,8 +385,8 @@ namespace Unity.Android.Logcat
 
         public void ConnectDeviceByIPAddress(string ip)
         {
-            var cmd = $"connect {ip}";
-            var errorMsg = $"Unable to connect to {ip}.";
+            var cmd = "connect " + ip;
+            var errorMsg = "Unable to connect to " + ip;
             var outputMsg = GetCachedAdb().Run(new[] { cmd }, errorMsg);
             if (outputMsg.StartsWith(errorMsg))
                 Debug.LogError(outputMsg);
@@ -440,8 +441,8 @@ namespace Unity.Android.Logcat
         private void ResetPackages(string deviceId)
         {
             m_SelectedPackage = null;
-
-            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out List<PackageInformation> packages))
+            List<PackageInformation> packages;
+            if (!m_PackagesForAllDevices.TryGetValue(deviceId, out packages))
             {
                 packages = new List<PackageInformation>();
                 m_PackagesForAllDevices.Add(deviceId, packages);
@@ -621,7 +622,7 @@ namespace Unity.Android.Logcat
             var newPackage = new PackageInformation()
             {
                 name = packageName,
-                displayName = $"{packageName} ({pid})",
+                displayName = packageName + " (" + pid + ")",
                 processId = pid,
                 deviceId = deviceId
             };
@@ -666,7 +667,7 @@ namespace Unity.Android.Logcat
 
             if (string.IsNullOrEmpty(line))
             {
-                AndroidLogcatInternalLog.Log($"Cannot get process status for '{packageName}'.");
+                AndroidLogcatInternalLog.Log("Cannot get process status for '{0}'.", packageName);
                 return -1;
             }
 
@@ -674,7 +675,7 @@ namespace Unity.Android.Logcat
             Match match = regex.Match(line);
             if (!match.Success)
             {
-                AndroidLogcatInternalLog.Log($"Failed to parse pid of '{packageName}'from '{line}'.");
+                AndroidLogcatInternalLog.Log("Failed to parse pid of '{0}'from '{1}'.", packageName, line);
                 return -1;
             }
 
@@ -694,11 +695,11 @@ namespace Unity.Android.Logcat
 
                 string cmd = null;
                 if (pidofOptionAvailable)
-                    cmd = $"-s {deviceId} shell pidof -s {packageName}";
+                    cmd = string.Format("-s {0} shell pidof -s {1}", deviceId, packageName);
                 else
-                    cmd = $"-s {deviceId} shell ps";
+                    cmd = string.Format("-s {0} shell ps", deviceId);
 
-                AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
                 if (string.IsNullOrEmpty(output))
                     return -1;
@@ -751,7 +752,7 @@ namespace Unity.Android.Logcat
             var match = reg.Match(line);
             if (!match.Success)
             {
-                AndroidLogcatInternalLog.Log($"Match '{line}' failed.");
+                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
                 return -1;
             }
 
@@ -766,8 +767,8 @@ namespace Unity.Android.Logcat
             try
             {
                 var adb = GetCachedAdb();
-                var cmd = $"-s {m_SelectedDeviceId} shell \"dumpsys activity\" ";
-                AndroidLogcatInternalLog.Log($"{adb.GetADBPath()} {cmd}");
+                var cmd = "-s " + m_SelectedDeviceId + " shell \"dumpsys activity\" ";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
                 packagePID = ParseTopActivityPackageInfo(output, out packageName);
                 return packagePID != -1;
@@ -818,7 +819,7 @@ namespace Unity.Android.Logcat
             var release = device.Properties["ro.build.version.release"];
             var sdkVersion = device.Properties["ro.build.version.sdk"];
 
-            return $"{manufacturer} {model} (version: {release}, sdk: {sdkVersion}, id: {deviceId})";
+            return string.Format("{0} {1} (version: {2}, sdk: {3}, id: {4})", manufacturer, model, release, sdkVersion, deviceId);
         }
 
         private AndroidDevice GetAndroidDeviceFromCache(ADB adb, string deviceId)
@@ -836,7 +837,7 @@ namespace Unity.Android.Logcat
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log($"Exception caugth while trying to retrieve device details for device {deviceId}. This is harmless and device id will be used. Details\r\n:{ex}");
+                AndroidLogcatInternalLog.Log("Exception caugth while trying to retrieve device details for device {0}. This is harmless and device id will be used. Details\r\n:{1}", deviceId, ex);
                 // device will be null in this case (and it will not be added to the cache)
             }
 
@@ -854,7 +855,8 @@ namespace Unity.Android.Logcat
 
         private void StopLogCat()
         {
-            m_LogCat?.Stop();
+            if (m_LogCat != null)
+                m_LogCat.Stop();
             m_LogCat = null;
             UpdateStatusBar();
         }
@@ -886,8 +888,8 @@ namespace Unity.Android.Logcat
                 var adb = GetCachedAdb();
 
                 // Capture the screen on the device.
-                var cmd = $"-s {m_SelectedDeviceId} shell screencap {screenshotPathOnDevice}";
-                var output = adb.Run(new[] {cmd}, $"Unable to capture the screen for device {m_SelectedDeviceId}.");
+                var cmd = string.Format("-s {0} shell screencap {1}", m_SelectedDeviceId, screenshotPathOnDevice);
+                var output = adb.Run(new[] {cmd}, "Unable to capture the screen for device " + m_SelectedDeviceId);
                 if (output.StartsWith("Unable to capture the screen for device"))
                 {
                     Debug.LogError(output);
@@ -896,8 +898,8 @@ namespace Unity.Android.Logcat
 
                 // Pull screenshot from the device to temp folder.
                 var filePath = Path.Combine(Path.GetTempPath(), "screen_" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".png");
-                cmd = $"-s {m_SelectedDeviceId} pull {screenshotPathOnDevice} {filePath}";
-                output = adb.Run(new[] { cmd }, $"Unable to pull the screenshot from device {m_SelectedDeviceId}.");
+                cmd =  string.Format("-s {0} pull {1} {2}", m_SelectedDeviceId, screenshotPathOnDevice, filePath);
+                output = adb.Run(new[] { cmd }, "Unable to pull the screenshot from device " + m_SelectedDeviceId);
                 if (output.StartsWith("Unable to pull the screenshot from device"))
                 {
                     Debug.LogError(output);
@@ -908,7 +910,7 @@ namespace Unity.Android.Logcat
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log($"Exception caugth while capturing screen on device {m_SelectedDeviceId}. Details\r\n:{ex}");
+                AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", m_SelectedDeviceId, ex);
             }
         }
 
@@ -953,9 +955,6 @@ namespace Unity.Android.Logcat
         #if !PLATFORM_ANDROID
             EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
         #endif
-        #if !NET_4_6
-            EditorGUILayout.HelpBox("Please select Scripting Runtime Version to be .NET 4.x in PlayerSettings.", MessageType.Info);
-        #endif
         }
 
 #endif
@@ -972,7 +971,7 @@ namespace Unity.Android.Logcat
             if (wnd == null)
                 wnd = ScriptableObject.CreateInstance<AndroidLogcatConsoleWindow>();
             wnd.titleContent = new GUIContent("Android Logcat");
-            #if PLATFORM_ANDROID && NET_4_6
+            #if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
             #endif
             wnd.Show();
