@@ -314,7 +314,7 @@ namespace Unity.Android.Logcat
                 switch (e.button)
                 {
                     case 0:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if ((e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0)
                         {
                             if (m_SelectedIndices.Contains(logEntryIndex))
                                 m_SelectedIndices.Remove(logEntryIndex);
@@ -409,10 +409,11 @@ namespace Unity.Android.Logcat
             var e = Event.current;
             if (e.type == EventType.KeyDown)
             {
+                bool hasCtrlOrCmd = (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
                 switch (e.keyCode)
                 {
                     case KeyCode.A:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             SelectAll();
                             e.Use();
@@ -420,7 +421,7 @@ namespace Unity.Android.Logcat
                         }
                         break;
                     case KeyCode.C:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             var copyText = new StringBuilder();
                             foreach (var si in m_SelectedIndices)
@@ -434,7 +435,7 @@ namespace Unity.Android.Logcat
                         }
                         break;
                     case KeyCode.S:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             var logEntries = new List<AndroidLogcat.LogEntry>();
                             foreach (var si in m_SelectedIndices)
