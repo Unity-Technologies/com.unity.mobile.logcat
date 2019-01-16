@@ -305,6 +305,11 @@ namespace Unity.Android.Logcat
             return requestRepaint;
         }
 
+        private static bool HasCtrlOrCmdModifier(Event e)
+        {
+            return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
+        }
+
         private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected)
         {
             bool requestRepaint = false;
@@ -314,7 +319,7 @@ namespace Unity.Android.Logcat
                 switch (e.button)
                 {
                     case 0:
-                        if ((e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0)
+                        if (HasCtrlOrCmdModifier(e))
                         {
                             if (m_SelectedIndices.Contains(logEntryIndex))
                                 m_SelectedIndices.Remove(logEntryIndex);
@@ -409,7 +414,7 @@ namespace Unity.Android.Logcat
             var e = Event.current;
             if (e.type == EventType.KeyDown)
             {
-                bool hasCtrlOrCmd = (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
+                bool hasCtrlOrCmd = HasCtrlOrCmdModifier(e);
                 switch (e.keyCode)
                 {
                     case KeyCode.A:
