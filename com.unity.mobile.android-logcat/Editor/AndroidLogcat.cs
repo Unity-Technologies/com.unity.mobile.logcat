@@ -84,7 +84,7 @@ namespace Unity.Android.Logcat
 
         private readonly AndroidDevice m_Device;
         private readonly int m_PackagePID;
-        private readonly bool m_PIDOptionAvailable;
+        private readonly bool m_IsAndroid7orAbove;
         private readonly Priority m_MessagePriority;
         private readonly string m_Filter;
         private readonly string[] m_Tags;
@@ -92,7 +92,7 @@ namespace Unity.Android.Logcat
         public AndroidDevice Device { get { return m_Device; } }
 
         public int PackagePID { get { return m_PackagePID; } }
-        public bool PIDOptionAvailable { get { return m_PIDOptionAvailable; } }
+        public bool IsAndroid7orAbove { get { return m_IsAndroid7orAbove; } }
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
@@ -135,7 +135,8 @@ namespace Unity.Android.Logcat
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePID = packagePID;
-            this.m_PIDOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // --pid option is only available in Android 7 or above.
+            // Check if it is Android 7 or above due to 1) '--pid' option and 2) 'logcat -v year' are only available on these devices.
+            this.m_IsAndroid7orAbove = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24;
             this.m_MessagePriority = priority;
             this.m_Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
             this.m_Tags = tags;
@@ -166,7 +167,7 @@ namespace Unity.Android.Logcat
 
             var p = PriorityEnumToString(MessagePriority);
             var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : "*:" + p + " ";
-            if (PackagePID > 0 && PIDOptionAvailable)
+            if (PackagePID > 0 && IsAndroid7orAbove)
                 return string.Format("-s {0} logcat --pid={1} -s -v {2} {3}{4}", Device.Id, PackagePID, LogPrintFormat, tagLine, filterArg);
 
             return string.Format("-s {0} logcat -s -v {1} {2}{3}", Device.Id, LogPrintFormat, tagLine, filterArg);
@@ -234,7 +235,7 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var needFilterByPID = PackagePID > 0 && !PIDOptionAvailable;
+                var needFilterByPID = PackagePID > 0 && !IsAndroid7orAbove;
                 foreach (var logLine in m_CachedLogLines)
                 {
                     var m = m_LogCatEntryThreadTimeRegex.Match(logLine);
