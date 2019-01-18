@@ -282,7 +282,7 @@ namespace Unity.Android.Logcat
                     if (selected)
                         AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
-                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.kTimeFormat), style);
+                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.Priority, le.priority.ToString(), style);
@@ -487,7 +487,7 @@ namespace Unity.Android.Logcat
                         entry += " ";
                     switch ((Column)i)
                     {
-                        case Column.Time: entry += l.dateTime.ToString(AndroidLogcat.LogEntry.kTimeFormat); break;
+                        case Column.Time: entry += l.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat); break;
                         case Column.ProcessId: entry += l.processId; break;
                         case Column.ThreadId: entry += l.threadId; break;
                         case Column.Priority: entry += l.priority; break;

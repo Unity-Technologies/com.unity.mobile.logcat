@@ -27,7 +27,9 @@ namespace Unity.Android.Logcat
 
         public struct LogEntry
         {
-            public const string kTimeFormat = "yyyy/MM/dd HH:mm:ss.fff";
+            public const string kTimeFormatWithYear = "yyyy/MM/dd HH:mm:ss.fff";
+            public const string kTimeFormatWithoutYear = "MM/dd HH:mm:ss.fff";
+            public static string s_TimeFormat = kTimeFormatWithYear;
             public LogEntry(string msg)
             {
                 message =  msg;
@@ -69,7 +71,12 @@ namespace Unity.Android.Logcat
 
             public override string ToString()
             {
-                return string.Format("{0} {1} {2} {3} {4}: {5}", dateTime.ToString(kTimeFormat), processId, threadId, priority, tag, message);
+                return string.Format("{0} {1} {2} {3} {4}: {5}", dateTime.ToString(s_TimeFormat), processId, threadId, priority, tag, message);
+            }
+
+            public static void SetTimeFormat(bool isAndroid7orAbove)
+            {
+                s_TimeFormat = isAndroid7orAbove ? kTimeFormatWithYear : kTimeFormatWithoutYear;
             }
         }
 
@@ -140,6 +147,8 @@ namespace Unity.Android.Logcat
             this.m_MessagePriority = priority;
             this.m_Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
             this.m_Tags = tags;
+
+            LogEntry.SetTimeFormat(this.m_IsAndroid7orAbove);
         }
 
         internal void Start()
@@ -236,9 +245,10 @@ namespace Unity.Android.Logcat
                     return;
 
                 var needFilterByPID = PackagePID > 0 && !IsAndroid7orAbove;
+                Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
-                    var m = m_LogCatEntryThreadTimeRegex.Match(logLine);
+                    var m = regex.Match(logLine);
                     if (!m.Success)
                     {
                         entries.Add(LogEntryParserErrorFor(logLine));
@@ -492,6 +502,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal Regex LogParseRegex
+        {
+            get { return IsAndroid7orAbove ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+        }
+
         /// <summary>
         /// Returns log print format used with adb logcat -v LogPrintFormat
         /// Note: Old android devices don't support all -v formats
@@ -500,7 +515,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal string LogPrintFormat
         {
-            get { return kThreadTime; }
+            get { return IsAndroid7orAbove ? kYearTime : kThreadTime; }
         }
 
         private Dictionary<int, BuildInfo> m_BuildInfos = new Dictionary<int, BuildInfo>();
