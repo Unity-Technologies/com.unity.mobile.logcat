@@ -73,11 +73,6 @@ namespace Unity.Android.Logcat
             {
                 return string.Format("{0} {1} {2} {3} {4}: {5}", dateTime.ToString(s_TimeFormat), processId, threadId, priority, tag, message);
             }
-
-            public static void SetTimeFormat(bool isAndroid7orAbove)
-            {
-                s_TimeFormat = isAndroid7orAbove ? kTimeFormatWithYear : kTimeFormatWithoutYear;
-            }
         }
 
         protected struct BuildInfo
@@ -91,7 +86,7 @@ namespace Unity.Android.Logcat
 
         private readonly AndroidDevice m_Device;
         private readonly int m_PackagePID;
-        private readonly bool m_IsAndroid7orAbove;
+        private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
         private readonly string m_Filter;
         private readonly string[] m_Tags;
@@ -99,7 +94,9 @@ namespace Unity.Android.Logcat
         public AndroidDevice Device { get { return m_Device; } }
 
         public int PackagePID { get { return m_PackagePID; } }
-        public bool IsAndroid7orAbove { get { return m_IsAndroid7orAbove; } }
+
+        // Check if it is Android 7 or above due to 1) '--pid' option and 2) 'logcat -v year' are only available on these devices.
+        public bool IsAndroid7orAbove { get { return m_AndroidSDKVersion >= 24; } }
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
@@ -142,13 +139,12 @@ namespace Unity.Android.Logcat
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePID = packagePID;
-            // Check if it is Android 7 or above due to 1) '--pid' option and 2) 'logcat -v year' are only available on these devices.
-            this.m_IsAndroid7orAbove = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24;
+            this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
             this.m_MessagePriority = priority;
             this.m_Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
             this.m_Tags = tags;
 
-            LogEntry.SetTimeFormat(this.m_IsAndroid7orAbove);
+            LogEntry.s_TimeFormat = IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear;
         }
 
         internal void Start()
