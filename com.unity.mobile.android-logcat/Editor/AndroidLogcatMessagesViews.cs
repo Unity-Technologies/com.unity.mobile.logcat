@@ -282,7 +282,7 @@ namespace Unity.Android.Logcat
                     if (selected)
                         AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
-                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.kTimeFormat), style);
+                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.Priority, le.priority.ToString(), style);
@@ -305,6 +305,11 @@ namespace Unity.Android.Logcat
             return requestRepaint;
         }
 
+        private static bool HasCtrlOrCmdModifier(Event e)
+        {
+            return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
+        }
+
         private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected)
         {
             bool requestRepaint = false;
@@ -314,7 +319,7 @@ namespace Unity.Android.Logcat
                 switch (e.button)
                 {
                     case 0:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (HasCtrlOrCmdModifier(e))
                         {
                             if (m_SelectedIndices.Contains(logEntryIndex))
                                 m_SelectedIndices.Remove(logEntryIndex);
@@ -409,10 +414,11 @@ namespace Unity.Android.Logcat
             var e = Event.current;
             if (e.type == EventType.KeyDown)
             {
+                bool hasCtrlOrCmd = HasCtrlOrCmdModifier(e);
                 switch (e.keyCode)
                 {
                     case KeyCode.A:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             SelectAll();
                             e.Use();
@@ -420,7 +426,7 @@ namespace Unity.Android.Logcat
                         }
                         break;
                     case KeyCode.C:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             var copyText = new StringBuilder();
                             foreach (var si in m_SelectedIndices)
@@ -434,7 +440,7 @@ namespace Unity.Android.Logcat
                         }
                         break;
                     case KeyCode.S:
-                        if ((e.modifiers & EventModifiers.Control) != 0)
+                        if (hasCtrlOrCmd)
                         {
                             var logEntries = new List<AndroidLogcat.LogEntry>();
                             foreach (var si in m_SelectedIndices)
@@ -481,7 +487,7 @@ namespace Unity.Android.Logcat
                         entry += " ";
                     switch ((Column)i)
                     {
-                        case Column.Time: entry += l.dateTime.ToString(AndroidLogcat.LogEntry.kTimeFormat); break;
+                        case Column.Time: entry += l.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat); break;
                         case Column.ProcessId: entry += l.processId; break;
                         case Column.ThreadId: entry += l.threadId; break;
                         case Column.Priority: entry += l.priority; break;

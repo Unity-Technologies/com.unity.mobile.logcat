@@ -23,6 +23,9 @@ class AndroidLogcatRegexTests
         "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
         "10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
         "10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
+        "01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
+        "01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
+        "01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
         // Add more as needed
     };
 
@@ -43,6 +46,9 @@ class AndroidLogcatRegexTests
         "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
         "2018-10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
         "2018-10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
+        "2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
+        "2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
+        "2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
         // Add more as needed
     };
     [Test]
