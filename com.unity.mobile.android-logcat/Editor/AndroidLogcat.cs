@@ -73,6 +73,11 @@ namespace Unity.Android.Logcat
             {
                 return string.Format("{0} {1} {2} {3} {4}: {5}", dateTime.ToString(s_TimeFormat), processId, threadId, priority, tag, message);
             }
+
+            public static void SetTimeFormat(string timeFormat)
+            {
+                s_TimeFormat = timeFormat;
+            }
         }
 
         protected struct BuildInfo
@@ -144,7 +149,7 @@ namespace Unity.Android.Logcat
             this.m_Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
             this.m_Tags = tags;
 
-            LogEntry.s_TimeFormat = IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear;
+            LogEntry.SetTimeFormat(IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
         }
 
         internal void Start()
