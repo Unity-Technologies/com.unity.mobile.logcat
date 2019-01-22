@@ -4,9 +4,13 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.X.X-preview] - 2019-XX-XX
+## [0.2.1-preview] - 2019-01-22
 
-### Make package compatible with .NET 3.5
+### Fixes & Improvements.
+- Made package compatible with .NET 3.5.
+- Fixed the wrong year issue in the log message.
+- Use "Cmd" instead of "Ctrl" for shortcuts on macOS.
+- Fixed the issue that some log messages can't be parsed correctly.
 
 ## [0.2.0-preview] - 2018-12-18
 
