@@ -1,7 +1,8 @@
 {
     "name": "Unity.Mobile.AndroidLogcat.EditorTests",
     "references": [
-        "Unity.Mobile.AndroidLogcat.Editor"
+        "Unity.Mobile.AndroidLogcat.Editor",
+        "Unity.PerformanceTesting"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
