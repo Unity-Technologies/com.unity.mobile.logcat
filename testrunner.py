@@ -55,7 +55,7 @@ def main():
 
     kRootRepoDirectory = os.path.dirname(os.path.realpath(__file__))
     kProjectPath = os.path.join(kRootRepoDirectory, "TestProjects/SampleProject1")
-    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts_%s" % unityVersion)
+    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
     kInstallPath = os.path.join(kRootRepoDirectory, "Editor_%s" % unityVersion)
     kEditorPath = os.path.join(kInstallPath, "Unity")
     if os.name is not "nt":
@@ -87,8 +87,8 @@ def main():
         flags = ["-batchmode", "-cleanTestPrefs", "-automated", "-upmNoDefaultPackages", "-enableAllModules", "-runTests" ]
         runOptions = {
             'projectPath': kProjectPath,
-            'testResults': os.path.join(kTestArtifactPath, "%s_TestResults.txt" % platform),
-            'logFile': os.path.join(kTestArtifactPath, "%s_EditorLog.txt" % platform),
+            'testResults': os.path.join(kTestArtifactPath, "%s_TestResults_%s.txt" % (platform, unityVersion) ),
+            'logFile': os.path.join(kTestArtifactPath, "%s_EditorLog_%s.txt" % (platform, unityVersion) ),
             'testPlatform': "editmode",
             'buildTarget': platform
         }
