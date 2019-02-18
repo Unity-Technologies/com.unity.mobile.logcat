@@ -56,7 +56,7 @@ def main():
     kRootRepoDirectory = os.path.dirname(os.path.realpath(__file__))
     kProjectPath = os.path.join(kRootRepoDirectory, "TestProjects/SampleProject1")
     kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
-    kInstallPath = os.path.join(kRootRepoDirectory, "Editor")
+    kInstallPath = os.path.join(kRootRepoDirectory, "Editor_%s" % unityVersion)
     kEditorPath = os.path.join(kInstallPath, "Unity")
     if os.name is not "nt":
         kEditorPath = os.path.join(kInstallPath, "Unity.app/Contents/MacOS/Unity")
@@ -75,7 +75,10 @@ def main():
     if not args.uselocalversion:
         RunProcess(["pip", "install", "unity-downloader-cli", "--extra-index-url", "https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple"])
         componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
-        RunProcess(["unity-downloader-cli", "--wait", "--unity-version", unityVersion, "-p", kInstallPath] + componentsArgs)
+        if unityVersion == "trunk":
+            RunProcess(["unity-downloader-cli", "--wait", "-b", unityVersion, "-p", kInstallPath] + componentsArgs)
+        else:
+            RunProcess(["unity-downloader-cli", "--wait", "--unity-version", unityVersion, "-p", kInstallPath] + componentsArgs)
     else:
         print("Using local Unity version, ensure Editor folder with AndroidSupport exists")
 
@@ -84,8 +87,8 @@ def main():
         flags = ["-batchmode", "-cleanTestPrefs", "-automated", "-upmNoDefaultPackages", "-enableAllModules", "-runTests" ]
         runOptions = {
             'projectPath': kProjectPath,
-            'testResults': os.path.join(kTestArtifactPath, "%s_TestResults.txt" % platform),
-            'logFile': os.path.join(kTestArtifactPath, "%s_EditorLog.txt" % platform),
+            'testResults': os.path.join(kTestArtifactPath, "%s_TestResults_%s.txt" % (platform, unityVersion) ),
+            'logFile': os.path.join(kTestArtifactPath, "%s_EditorLog_%s.txt" % (platform, unityVersion) ),
             'testPlatform': "editmode",
             'buildTarget': platform
         }
