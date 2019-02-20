@@ -164,8 +164,19 @@ namespace Unity.Android.Logcat
                 headerDrawn = true;
             }
 
-            if (!headerDrawn || !lastHeaderDrawn)
+            if (!headerDrawn)
+            {
+                // If no header drawn, draw a empty label to the full header rect.
                 GUI.Label(fullHeaderRect, GUIContent.none, AndroidLogcatStyles.columnHeader);
+            }
+            else if (!lastHeaderDrawn)
+            {
+                // If no last header drawn, draw an empty label to the remained header rect.
+                float x = offset - m_ScrollPosition.x;
+                var buttonRect = new Rect(x, fullHeaderRect.y, fullHeaderRect.width - x, fullHeaderRect.height);
+                GUI.Label(buttonRect, GUIContent.none, AndroidLogcatStyles.columnHeader);
+            }
+
             DoMouseEventsForHeaderToolbar(fullHeaderRect);
             return requestRepaint;
         }
