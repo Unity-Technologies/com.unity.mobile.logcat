@@ -41,7 +41,7 @@ test:windows:2019-1:
   script:
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
-    - python.exe -u testrunner.py Android --version=trunk
+    #- python.exe -u testrunner.py Android --version=trunk
     
 publish:
   stage: publish
