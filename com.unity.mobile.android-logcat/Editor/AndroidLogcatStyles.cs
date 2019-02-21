@@ -11,7 +11,7 @@ namespace Unity.Android.Logcat
         public static GUIStyle toolbar = new GUIStyle(EditorStyles.toolbar) { fontSize = kFontSize, fixedHeight = kFixedHeight};
         public static GUIStyle toolbarButton = new GUIStyle(EditorStyles.toolbarButton) { fontSize = kFontSize, fixedHeight = kFixedHeight };
         public static GUIStyle toolbarPopup = new GUIStyle(EditorStyles.toolbarPopup) { fontSize = kFontSize, fixedHeight = kFixedHeight };
-        public static GUIStyle toolbarSearchField = new GUIStyle(EditorStyles.toolbarSearchField) { fontSize = kFontSize, fixedHeight = kFixedHeight };
+        public static GUIStyle toolbarSearchField = new GUIStyle(EditorStyles.toolbarSearchField) { fontSize = kFontSize, fixedHeight = kFixedHeight-5 };
 
         public static GUIStyle toolbarLabel = new GUIStyle(EditorStyles.miniLabel) { fontSize = kFontSize, padding = new RectOffset(5, 5, 0, 0) };
         public static GUIStyle button = new GUIStyle(EditorStyles.miniButton) { fontSize = kFontSize};
