@@ -271,7 +271,6 @@ namespace Unity.Android.Logcat
             m_DeviceIds.RemoveAt(index);
             ArrayUtility.RemoveAt(ref m_DeviceDetails, index);
 
-            ClearLogCat();
             m_SelectedDeviceIndex = -1;
             m_SelectedDeviceId = null;
 
