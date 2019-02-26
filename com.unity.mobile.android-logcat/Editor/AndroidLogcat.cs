@@ -172,12 +172,12 @@ namespace Unity.Android.Logcat
             {
                 m_FilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 var error = string.Format("Input search filter '{0}' is not a valid regular expression.", Regex.Escape(m_Filter));
                 AndroidLogcatInternalLog.Log(error);
 
-                throw new ArgumentException(error);
+                throw new ArgumentException(error, ex);
             }
         }
 
