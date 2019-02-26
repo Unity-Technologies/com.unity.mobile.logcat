@@ -33,7 +33,7 @@ test:windows:2019-1:
   image: 'core-meta/harisen-base-image:stable'
   artifacts:
     paths:
-      - "TestArtifacts_2019_1/*"
+      - "TestArtifacts/*"
     expire_in: 2 weeks
     when: always
   tags:
@@ -47,7 +47,7 @@ test:windows:trunk:
   image: 'core-meta/harisen-base-image:stable'
   artifacts:
     paths:
-      - "TestArtifacts_Trunk/*"
+      - "TestArtifacts/*"
     expire_in: 2 weeks
     when: always
   tags:

@@ -56,22 +56,21 @@ def main():
 
     kRootRepoDirectory = os.path.dirname(os.path.realpath(__file__))
     kProjectPath = os.path.join(kRootRepoDirectory, "TestProjects/SampleProject1")
-    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
     kInstallPath = os.path.join(kRootRepoDirectory, "Editor_%s" % unityVersion)
     kEditorPath = os.path.join(kInstallPath, "Unity")
     if os.name is not "nt":
         kEditorPath = os.path.join(kInstallPath, "Unity.app/Contents/MacOS/Unity")
+    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
+    if not os.path.isdir(kTestArtifactPath):
+        os.makedirs(kTestArtifactPath)
         
-
     print("__file__=%s" % __file__)
     print("os.path.realpath(__file__)=%s" % os.path.realpath(__file__))
     print("Testing Platforms: %s" % ', '.join(runtimePlatforms))
     print("Unity Version: %s" % unityVersion)
     print("kRootRepoDirectory = %s" % kRootRepoDirectory)
     print("kProjectPath = %s" % kProjectPath)
-
-    if not os.path.isdir(kTestArtifactPath):
-        os.makedirs(kTestArtifactPath)
+    print("kTestArtifactPath = %s" % kTestArtifactPath)
 
     # Download Unity with the right version.
     if not args.uselocalversion:
@@ -87,6 +86,7 @@ def main():
     # The performance testing package 0.1.50-preview which we're using for Unity 2019.1 is not compatible with trunk.
     # We have to use the manifest with the version 1.0.4-preview when we're testing against trunk.
     if unityVersion == "trunk":
+        print("Copying package manifest file for trunk")
         copyfile("TestProjects/package_manifest_for_trunk.json", "TestProjects/SampleProject1/Packages/manifest.json")
 
     # Run tests.
