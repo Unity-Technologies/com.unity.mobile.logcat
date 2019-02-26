@@ -3,6 +3,7 @@ import os
 import string
 import subprocess
 import argparse
+from shutil import copyfile
 
 print(sys.version)
 
@@ -72,6 +73,7 @@ def main():
     if not os.path.isdir(kTestArtifactPath):
         os.makedirs(kTestArtifactPath)
 
+    # Download Unity with the right version.
     if not args.uselocalversion:
         RunProcess(["pip", "install", "unity-downloader-cli", "--extra-index-url", "https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple"])
         componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
@@ -82,6 +84,12 @@ def main():
     else:
         print("Using local Unity version, ensure Editor folder with AndroidSupport exists")
 
+    # The performance testing package 0.1.50-preview which we're using for Unity 2019.1 is not compatible with trunk.
+    # We have to use the manifest with the version 1.0.4-preview when we're testing against trunk.
+    if unityVersion == "trunk":
+        copyfile("TestProjects/package_manifest_for_trunk.json", "TestProjects/SampleProject1/Packages/manifest.json")
+
+    # Run tests.
     for platform in runtimePlatforms:
 
         flags = ["-batchmode", "-cleanTestPrefs", "-automated", "-upmNoDefaultPackages", "-enableAllModules", "-runTests" ]

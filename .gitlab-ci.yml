@@ -33,16 +33,30 @@ test:windows:2019-1:
   image: 'core-meta/harisen-base-image:stable'
   artifacts:
     paths:
-      - "TestArtifacts/*"
-    expire_in: 1 week
+      - "TestArtifacts_2019_1/*"
+    expire_in: 2 weeks
     when: always
   tags:
    - bokken-runner
   script:
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
-    #- python.exe -u testrunner.py Android --version=trunk
-    
+
+test:windows:trunk:
+  stage: test
+  image: 'core-meta/harisen-base-image:stable'
+  artifacts:
+    paths:
+      - "TestArtifacts_Trunk/*"
+    expire_in: 2 weeks
+    when: always
+  tags:
+   - bokken-runner
+  script:
+    - echo "Running Android Playmode Tests"
+    - python.exe -u testrunner.py Android --version=trunk
+
+
 publish:
   stage: publish
   only:
