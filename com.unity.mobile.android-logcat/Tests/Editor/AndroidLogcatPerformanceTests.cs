@@ -16,10 +16,10 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell ps".
-#if (UNITY_2019_1 || UNITY_2018_3)
-    [PerformanceTest]
-#else
+#if UNITY_2019_2_OR_NEWER
     [Test, Performance]
+#else
+    [PerformanceTest]
 #endif
     public void ParsePIDByPackageName()
     {
@@ -34,10 +34,10 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell "dumpsys activity"".
-#if (UNITY_2019_1 || UNITY_2018_3)
-    [PerformanceTest]
-#else
+#if UNITY_2019_2_OR_NEWER
     [Test, Performance]
+#else
+    [PerformanceTest]
 #endif
     public void ParseTopActivity()
     {

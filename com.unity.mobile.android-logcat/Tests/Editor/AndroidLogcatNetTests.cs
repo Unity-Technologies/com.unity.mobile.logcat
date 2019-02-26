@@ -1,9 +1,4 @@
-using UnityEngine;
-using UnityEditor;
-using UnityEngine.TestTools;
 using NUnit.Framework;
-using System.Collections;
-using Unity.Android.Logcat;
 
 public class AndroidLogcatNetTests
 {
@@ -11,7 +6,7 @@ public class AndroidLogcatNetTests
     [Test]
     public void EnsureNET35IsUsed()
     {
-#if !NET_2_0 && !UNITY_2019_3_OR_NEWER
+#if !NET_2_0 && !UNITY_2019_2_OR_NEWER
         Assert.Fail("Tests project should be using .NET 3.5, did you modify Scripting Runtime Version?");
 #endif
     }
