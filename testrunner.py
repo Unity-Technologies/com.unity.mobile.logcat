@@ -3,6 +3,7 @@ import os
 import string
 import subprocess
 import argparse
+from shutil import copyfile
 
 print(sys.version)
 
@@ -55,23 +56,23 @@ def main():
 
     kRootRepoDirectory = os.path.dirname(os.path.realpath(__file__))
     kProjectPath = os.path.join(kRootRepoDirectory, "TestProjects/SampleProject1")
-    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
     kInstallPath = os.path.join(kRootRepoDirectory, "Editor_%s" % unityVersion)
     kEditorPath = os.path.join(kInstallPath, "Unity")
     if os.name is not "nt":
         kEditorPath = os.path.join(kInstallPath, "Unity.app/Contents/MacOS/Unity")
+    kTestArtifactPath = os.path.join(kRootRepoDirectory, "TestArtifacts")
+    if not os.path.isdir(kTestArtifactPath):
+        os.makedirs(kTestArtifactPath)
         
-
     print("__file__=%s" % __file__)
     print("os.path.realpath(__file__)=%s" % os.path.realpath(__file__))
     print("Testing Platforms: %s" % ', '.join(runtimePlatforms))
     print("Unity Version: %s" % unityVersion)
     print("kRootRepoDirectory = %s" % kRootRepoDirectory)
     print("kProjectPath = %s" % kProjectPath)
+    print("kTestArtifactPath = %s" % kTestArtifactPath)
 
-    if not os.path.isdir(kTestArtifactPath):
-        os.makedirs(kTestArtifactPath)
-
+    # Download Unity with the right version.
     if not args.uselocalversion:
         RunProcess(["pip", "install", "unity-downloader-cli", "--extra-index-url", "https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple"])
         componentsArgs = GetDownloadComponentsArgs(runtimePlatforms)
@@ -82,6 +83,13 @@ def main():
     else:
         print("Using local Unity version, ensure Editor folder with AndroidSupport exists")
 
+    # The performance testing package 0.1.50-preview which we're using for Unity 2019.1 is not compatible with trunk.
+    # We have to use the manifest with the version 1.0.4-preview when we're testing against trunk.
+    if unityVersion == "trunk":
+        print("Copying package manifest file for trunk")
+        copyfile("TestProjects/package_manifest_for_trunk.json", "TestProjects/SampleProject1/Packages/manifest.json")
+
+    # Run tests.
     for platform in runtimePlatforms:
 
         flags = ["-batchmode", "-cleanTestPrefs", "-automated", "-upmNoDefaultPackages", "-enableAllModules", "-runTests" ]

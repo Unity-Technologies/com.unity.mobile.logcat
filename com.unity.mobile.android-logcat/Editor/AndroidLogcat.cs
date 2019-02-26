@@ -94,18 +94,27 @@ namespace Unity.Android.Logcat
         private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
         private readonly string m_Filter;
+        private readonly bool m_FilterIsRegex;
+        private Regex m_FilterRegex;
         private readonly string[] m_Tags;
 
         public AndroidDevice Device { get { return m_Device; } }
 
         public int PackagePID { get { return m_PackagePID; } }
 
-        // Check if it is Android 7 or above due to 1) '--pid' option and 2) 'logcat -v year' are only available on these devices.
+        // Check if it is Android 7 or above due to the below options are only available on these devices:
+        // 1) '--pid'
+        // 2) 'logcat -v year'
+        // 3) '--regex'
         public bool IsAndroid7orAbove { get { return m_AndroidSDKVersion >= 24; } }
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
         public string Filter { get { return m_Filter; } }
+
+        public bool FilterIsRegex { get { return m_FilterIsRegex; } }
+
+        public Regex FilterRegex { get { return m_FilterRegex; } }
 
         public string[] Tags { get { return m_Tags; } }
 
@@ -146,10 +155,30 @@ namespace Unity.Android.Logcat
             this.m_PackagePID = packagePID;
             this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
             this.m_MessagePriority = priority;
-            this.m_Filter =  filterIsRegex  ? filter : Regex.Escape(filter);
+            this.m_Filter = filterIsRegex  ? filter : Regex.Escape(filter);
+            this.m_FilterIsRegex = filterIsRegex;
+            InitFilterRegex();
             this.m_Tags = tags;
 
             LogEntry.SetTimeFormat(IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
+        }
+
+        private void InitFilterRegex()
+        {
+            if (IsAndroid7orAbove || !m_FilterIsRegex || string.IsNullOrEmpty(m_Filter))
+                return;
+
+            try
+            {
+                m_FilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
+            }
+            catch (Exception ex)
+            {
+                var error = string.Format("Input search filter '{0}' is not a valid regular expression.", Regex.Escape(m_Filter));
+                AndroidLogcatInternalLog.Log(error);
+
+                throw new ArgumentException(error, ex);
+            }
         }
 
         internal void Start()
@@ -170,7 +199,7 @@ namespace Unity.Android.Logcat
         private string LogcatArguments()
         {
             var filterArg = string.Empty;
-            if (!string.IsNullOrEmpty(Filter))
+            if (IsAndroid7orAbove && !string.IsNullOrEmpty(Filter))
             {
                 filterArg = " --regex \"" + Filter + "\"";
             }
@@ -245,7 +274,8 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var needFilterByPID = PackagePID > 0 && !IsAndroid7orAbove;
+                var needFilterByPID = !IsAndroid7orAbove && PackagePID > 0;
+                var needFilterBySearch = !IsAndroid7orAbove && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -257,6 +287,9 @@ namespace Unity.Android.Logcat
                     }
 
                     if (needFilterByPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
+                        continue;
+
+                    if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
                         continue;
 
                     entries.Add(ParseLogEntry(m));
@@ -274,6 +307,11 @@ namespace Unity.Android.Logcat
         private LogEntry LogEntryParserErrorFor(string msg)
         {
             return new LogEntry(msg);
+        }
+
+        private bool MatchSearchFilter(string msg)
+        {
+            return FilterIsRegex ? FilterRegex.Match(msg).Success : msg.Contains(Filter);
         }
 
         private LogEntry ParseLogEntry(Match m)

@@ -1,15 +1,12 @@
-using System;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
 using NUnit.Framework;
 using Unity.Android.Logcat;
 using Unity.PerformanceTesting;
 
 class AndroidLogcatPerformanceTests
 {
-    private string m_LogMessageByPs = String.Empty;
-    private string m_LogMessageByDumpsys = String.Empty;
+    private string m_LogMessageByPs = string.Empty;
+    private string m_LogMessageByDumpsys = string.Empty;
 
     [SetUp]
     public void SetupLogMessages()
@@ -19,11 +16,15 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell ps".
+#if UNITY_2019_2_OR_NEWER
+    [Test, Performance]
+#else
     [PerformanceTest]
+#endif
     public void ParsePIDByPackageName()
     {
         const int kLoopTime = 20;
-        var expectedPid = 26812;
+        const int expectedPid = 26812;
 
         for (int i = 0; i < kLoopTime; ++i)
         {
@@ -33,12 +34,16 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell "dumpsys activity"".
+#if UNITY_2019_2_OR_NEWER
+    [Test, Performance]
+#else
     [PerformanceTest]
+#endif
     public void ParseTopActivity()
     {
         const int kLoopTime = 20;
-        var expectedPid = 4332;
-        var expectedPackageName = "com.sec.android.app.launcher";
+        const int expectedPid = 4332;
+        const string expectedPackageName = "com.sec.android.app.launcher";
 
         for (int i = 0; i < kLoopTime; ++i)
         {
