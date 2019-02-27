@@ -332,7 +332,9 @@ namespace Unity.Android.Logcat
                 GUILayout.Space(kSpace);
                 if (GUILayout.Button(kCaptureScreenText, AndroidLogcatStyles.toolbarButton))
                 {
-                    CaptureScreen();
+                    var screenFilePath = AndroidLogcatUtilities.CaptureScreen(GetCachedAdb(), m_SelectedDeviceId);
+                    if (!string.IsNullOrEmpty(screenFilePath))
+                        AndroidLogcatScreenCaptureWindow.Show(screenFilePath);
                     Repaint();
                 }
 
@@ -609,7 +611,7 @@ namespace Unity.Android.Logcat
             if (package != null &&
                 package.processId > 0 &&
                 !package.exited &&
-                GetPIDFromPackageName(package.name) != package.processId)
+                GetPIDFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
             {
                 m_SelectedPackage.exited = true;
                 m_SelectedPackage.displayName += " [Exited]";
@@ -654,117 +656,17 @@ namespace Unity.Android.Logcat
 
             if (checkProjectPackage)
             {
-                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier);
+                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
         }
 
-        internal static int ParsePIDInfo(string packageName, string commandOutput)
-        {
-            string line = null;
-            // Note: Regex is very slow, looping through string is much faster
-            using (var sr = new StringReader(commandOutput))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    if (line.EndsWith(packageName))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log("Cannot get process status for '{0}'.", packageName);
-                return -1;
-            }
-
-            var regex = new Regex(@"\b\d+");
-            Match match = regex.Match(line);
-            if (!match.Success)
-            {
-                AndroidLogcatInternalLog.Log("Failed to parse pid of '{0}'from '{1}'.", packageName, line);
-                return -1;
-            }
-
-            return int.Parse(match.Groups[0].Value);
-        }
-
         private int GetPIDFromPackageName(string packageName, string deviceId)
         {
-            if (string.IsNullOrEmpty(deviceId))
-                return -1;
+            var adb = GetCachedAdb();
+            var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            try
-            {
-                var adb = GetCachedAdb();
-                var device = GetAndroidDeviceFromCache(adb, deviceId);
-                var pidofOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // pidof option is only available in Android 7 or above.
-
-                string cmd = null;
-                if (pidofOptionAvailable)
-                    cmd = string.Format("-s {0} shell pidof -s {1}", deviceId, packageName);
-                else
-                    cmd = string.Format("-s {0} shell ps", deviceId);
-
-                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-                var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
-                if (string.IsNullOrEmpty(output))
-                    return -1;
-
-                if (pidofOptionAvailable)
-                {
-                    AndroidLogcatInternalLog.Log(output);
-                    return int.Parse(output);
-                }
-
-                return ParsePIDInfo(packageName, output);
-            }
-            catch (Exception ex)
-            {
-                AndroidLogcatInternalLog.Log(ex.Message);
-                return -1;
-            }
-        }
-
-        private int GetPIDFromPackageName(string packageName)
-        {
-            return GetPIDFromPackageName(packageName, m_SelectedDeviceId);
-        }
-
-        internal static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
-        {
-            packageName = "";
-            if (string.IsNullOrEmpty(commandOutput))
-                return -1;
-
-            // Note: Regex is very slow, looping through string is much faster
-            string line = null;
-            using (var sr = new StringReader(commandOutput))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    if (line.Contains("top-activity"))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log("Cannot find top activity.");
-                return -1;
-            }
-            AndroidLogcatInternalLog.Log(line);
-
-            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
-            var match = reg.Match(line);
-            if (!match.Success)
-            {
-                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
-                return -1;
-            }
-
-            packageName = match.Groups["package"].Value;
-            return int.Parse(match.Groups["pid"].Value);
+            return AndroidLogcatUtilities.GetPIDFromPackageName(adb, device, m_SelectedDeviceId, packageName);
         }
 
         private bool GetCurrentPackage(ref string packageName, ref int packagePID)
@@ -777,7 +679,7 @@ namespace Unity.Android.Logcat
                 var cmd = "-s " + m_SelectedDeviceId + " shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
-                packagePID = ParseTopActivityPackageInfo(output, out packageName);
+                packagePID = AndroidLogcatUtilities.ParseTopActivityPackageInfo(output, out packageName);
                 return packagePID != -1;
             }
             catch (Exception)
@@ -882,43 +784,6 @@ namespace Unity.Android.Logcat
             m_SelectedIndices.Clear();
             m_LogCat.Clear();
             m_LogCat.Start();
-        }
-
-        private void CaptureScreen()
-        {
-            if (string.IsNullOrEmpty(m_SelectedDeviceId))
-                return;
-
-            try
-            {
-                const string screenshotPathOnDevice = "/sdcard/screen.png";
-                var adb = GetCachedAdb();
-
-                // Capture the screen on the device.
-                var cmd = string.Format("-s {0} shell screencap {1}", m_SelectedDeviceId, screenshotPathOnDevice);
-                var output = adb.Run(new[] {cmd}, "Unable to capture the screen for device " + m_SelectedDeviceId);
-                if (output.StartsWith("Unable to capture the screen for device"))
-                {
-                    Debug.LogError(output);
-                    return;
-                }
-
-                // Pull screenshot from the device to temp folder.
-                var filePath = Path.Combine(Path.GetTempPath(), "screen_" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".png");
-                cmd =  string.Format("-s {0} pull {1} {2}", m_SelectedDeviceId, screenshotPathOnDevice, filePath);
-                output = adb.Run(new[] { cmd }, "Unable to pull the screenshot from device " + m_SelectedDeviceId);
-                if (output.StartsWith("Unable to pull the screenshot from device"))
-                {
-                    Debug.LogError(output);
-                    return;
-                }
-
-                AndroidLogcatScreenCaptureWindow.Show(filePath);
-            }
-            catch (Exception ex)
-            {
-                AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", m_SelectedDeviceId, ex);
-            }
         }
 
         private ADB GetCachedAdb()

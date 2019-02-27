@@ -103,16 +103,16 @@ class AndroidLogcatRegexTests
             "shell     7045  5404  9864   4124           0 7f7aa45738 R ps"
         });
 
-        var pid = AndroidLogcatConsoleWindow.ParsePIDInfo("com.android.settings", adbContents);
+        var pid = AndroidLogcatUtilities.ParsePIDInfo("com.android.settings", adbContents);
 
         Assert.IsTrue(pid == expectedPid, "Process Id has to be " + expectedPid + ", but was " + pid);
 
-        pid = AndroidLogcatConsoleWindow.ParsePIDInfo("com.I.DontExist", adbContents);
+        pid = AndroidLogcatUtilities.ParsePIDInfo("com.I.DontExist", adbContents);
         Assert.IsTrue(pid == -1, "Process Id has to be -1 , but was " + pid);
 
 
         var invalidAdbContents = "blabla";
-        pid = AndroidLogcatConsoleWindow.ParsePIDInfo("com.I.DontExist", invalidAdbContents);
+        pid = AndroidLogcatUtilities.ParsePIDInfo("com.I.DontExist", invalidAdbContents);
         Assert.IsTrue(pid == -1, "Process Id has to be -1 , but was " + pid);
     }
 
@@ -164,7 +164,7 @@ class AndroidLogcatRegexTests
         });
 
         string packageName;
-        var pid = AndroidLogcatConsoleWindow.ParseTopActivityPackageInfo(adbContents, out packageName);
+        var pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(adbContents, out packageName);
 
         var expectedPid = 3766;
         var expectedPackage = "com.sec.android.app.launcher";
@@ -172,7 +172,7 @@ class AndroidLogcatRegexTests
         Assert.IsTrue(packageName == expectedPackage, "Expected top activity package to be " + expectedPackage + ", but was " + packageName);
 
         var invalidAdbContents = "blabla";
-        pid = AndroidLogcatConsoleWindow.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
+        pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
         Assert.IsTrue(pid == -1, "Expected top activity process id to be -1 but was " + pid);
         Assert.IsTrue(packageName == "", "Expected top activity package to be empty, but was " + packageName);
     }
