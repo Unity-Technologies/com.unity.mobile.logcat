@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEditor;
 
@@ -581,7 +579,7 @@ namespace Unity.Android.Logcat
 
             var adb = GetCachedAdb();
 
-            m_DeviceIds = RetrieveConnectDevicesIDs(adb);
+            m_DeviceIds = AndroidLogcatUtilities.RetrieveConnectDevicesIDs(adb);
 
             // Ensure selected device does not change (due to a new device name taking the same index)
             if (m_SelectedDeviceId != null)
@@ -592,7 +590,7 @@ namespace Unity.Android.Logcat
             var devicesDetails = new List<string>();
             foreach (var deviceId in m_DeviceIds)
             {
-                devicesDetails.Add(RetrieveDeviceDetailsFor(adb, deviceId));
+                devicesDetails.Add(AndroidLogcatUtilities.RetrieveDeviceDetails(GetAndroidDeviceFromCache(adb, deviceId), deviceId));
             }
             m_DeviceDetails = devicesDetails.ToArray();
         }
@@ -661,47 +659,12 @@ namespace Unity.Android.Logcat
             return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, m_SelectedDeviceId, packageName);
         }
 
-        private static List<string> RetrieveConnectDevicesIDs(ADB adb)
-        {
-            var deviceIds = new List<string>();
-
-            AndroidLogcatInternalLog.Log("{0} devices", adb.GetADBPath());
-            var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
-            foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
-            {
-                AndroidLogcatInternalLog.Log(" " + line);
-                if (line.EndsWith("device"))
-                {
-                    var deviceId = line.Substring(0, line.IndexOf('\t'));
-                    deviceIds.Add(deviceId);
-                }
-            }
-
-            return deviceIds;
-        }
-
         private string GetDeviceDetailsFor(string deviceId)
         {
             var deviceIndex = m_DeviceIds.IndexOf(deviceId);
             System.Diagnostics.Debug.Assert(deviceIndex >= 0);
 
             return m_DeviceDetails[deviceIndex];
-        }
-
-        private string RetrieveDeviceDetailsFor(ADB adb, string deviceId)
-        {
-            var device = GetAndroidDeviceFromCache(adb, deviceId);
-            if (device == null)
-            {
-                return deviceId;
-            }
-
-            var manufacturer = device.Properties["ro.product.manufacturer"];
-            var model = device.Properties["ro.product.model"];
-            var release = device.Properties["ro.build.version.release"];
-            var sdkVersion = device.Properties["ro.build.version.sdk"];
-
-            return string.Format("{0} {1} (version: {2}, sdk: {3}, id: {4})", manufacturer, model, release, sdkVersion, deviceId);
         }
 
         private AndroidDevice GetAndroidDeviceFromCache(ADB adb, string deviceId)

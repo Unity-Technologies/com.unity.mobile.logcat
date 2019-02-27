@@ -4,6 +4,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEditor.Android;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Unity.Android.Logcat
 {
@@ -86,42 +88,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
-        {
-            packageName = "";
-            if (string.IsNullOrEmpty(commandOutput))
-                return -1;
-
-            // Note: Regex is very slow, looping through string is much faster
-            string line = null;
-            using (var sr = new StringReader(commandOutput))
-            {
-                while ((line = sr.ReadLine()) != null)
-                {
-                    if (line.Contains("top-activity"))
-                        break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log("Cannot find top activity.");
-                return -1;
-            }
-            AndroidLogcatInternalLog.Log(line);
-
-            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
-            var match = reg.Match(line);
-            if (!match.Success)
-            {
-                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
-                return -1;
-            }
-
-            packageName = match.Groups["package"].Value;
-            return int.Parse(match.Groups["pid"].Value);
-        }
-
         public static int GetPidFromPackageName(ADB adb, AndroidDevice device, string deviceId, string packageName)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -157,6 +123,38 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static List<string> RetrieveConnectDevicesIDs(ADB adb)
+        {
+            var deviceIds = new List<string>();
+
+            AndroidLogcatInternalLog.Log("{0} devices", adb.GetADBPath());
+            var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
+            foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
+            {
+                AndroidLogcatInternalLog.Log(" " + line);
+                if (line.EndsWith("device"))
+                {
+                    var deviceId = line.Substring(0, line.IndexOf('\t'));
+                    deviceIds.Add(deviceId);
+                }
+            }
+
+            return deviceIds;
+        }
+
+        public static string RetrieveDeviceDetails(AndroidDevice device, string deviceId)
+        {
+            if (device == null)
+                return deviceId;
+
+            var manufacturer = device.Properties["ro.product.manufacturer"];
+            var model = device.Properties["ro.product.model"];
+            var release = device.Properties["ro.build.version.release"];
+            var sdkVersion = device.Properties["ro.build.version.sdk"];
+
+            return string.Format("{0} {1} (version: {2}, sdk: {3}, id: {4})", manufacturer, model, release, sdkVersion, deviceId);
+        }
+
         public static int ParsePidInfo(string packageName, string commandOutput)
         {
             string line = null;
@@ -185,6 +183,42 @@ namespace Unity.Android.Logcat
             }
 
             return int.Parse(match.Groups[0].Value);
+        }
+
+        public static int ParseTopActivityPackageInfo(string commandOutput, out string packageName)
+        {
+            packageName = "";
+            if (string.IsNullOrEmpty(commandOutput))
+                return -1;
+
+            // Note: Regex is very slow, looping through string is much faster
+            string line = null;
+            using (var sr = new StringReader(commandOutput))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains("top-activity"))
+                        break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(line))
+            {
+                AndroidLogcatInternalLog.Log("Cannot find top activity.");
+                return -1;
+            }
+            AndroidLogcatInternalLog.Log(line);
+
+            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
+            var match = reg.Match(line);
+            if (!match.Success)
+            {
+                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
+                return -1;
+            }
+
+            packageName = match.Groups["package"].Value;
+            return int.Parse(match.Groups["pid"].Value);
         }
     }
 }
