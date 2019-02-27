@@ -21,14 +21,14 @@ class AndroidLogcatPerformanceTests
 #else
     [PerformanceTest]
 #endif
-    public void ParsePIDByPackageName()
+    public void ParsePidByPackageName()
     {
         const int kLoopTime = 20;
         const int expectedPid = 26812;
 
         for (int i = 0; i < kLoopTime; ++i)
         {
-            var pid = AndroidLogcatUtilities.ParsePIDInfo("com.samsung.android.app.memo", m_LogMessageByPs);
+            var pid = AndroidLogcatUtilities.ParsePidInfo("com.samsung.android.app.memo", m_LogMessageByPs);
             Assert.IsTrue(pid == expectedPid);
         }
     }

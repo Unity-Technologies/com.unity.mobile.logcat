@@ -103,16 +103,16 @@ class AndroidLogcatRegexTests
             "shell     7045  5404  9864   4124           0 7f7aa45738 R ps"
         });
 
-        var pid = AndroidLogcatUtilities.ParsePIDInfo("com.android.settings", adbContents);
+        var pid = AndroidLogcatUtilities.ParsePidInfo("com.android.settings", adbContents);
 
         Assert.IsTrue(pid == expectedPid, "Process Id has to be " + expectedPid + ", but was " + pid);
 
-        pid = AndroidLogcatUtilities.ParsePIDInfo("com.I.DontExist", adbContents);
+        pid = AndroidLogcatUtilities.ParsePidInfo("com.I.DontExist", adbContents);
         Assert.IsTrue(pid == -1, "Process Id has to be -1 , but was " + pid);
 
 
         var invalidAdbContents = "blabla";
-        pid = AndroidLogcatUtilities.ParsePIDInfo("com.I.DontExist", invalidAdbContents);
+        pid = AndroidLogcatUtilities.ParsePidInfo("com.I.DontExist", invalidAdbContents);
         Assert.IsTrue(pid == -1, "Process Id has to be -1 , but was " + pid);
     }
 

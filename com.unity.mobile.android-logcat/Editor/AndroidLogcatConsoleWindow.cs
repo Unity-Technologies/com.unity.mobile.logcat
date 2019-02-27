@@ -228,7 +228,7 @@ namespace Unity.Android.Logcat
 
                 ResetPackages(m_DeviceIds[0]);
 
-                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
+                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_DeviceIds[0]);
                 if (package != null)
                 {
@@ -602,7 +602,7 @@ namespace Unity.Android.Logcat
             if (package != null &&
                 package.processId > 0 &&
                 !package.exited &&
-                GetPIDFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
+                GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
             {
                 m_SelectedPackage.exited = true;
                 m_SelectedPackage.displayName += " [Exited]";
@@ -638,7 +638,8 @@ namespace Unity.Android.Logcat
             int topActivityPid = 0;
             string topActivityPackageName = string.Empty;
             bool checkProjectPackage = true;
-            if (GetCurrentPackage(ref topActivityPackageName, ref topActivityPid) && topActivityPid > 0)
+            if (AndroidLogcatUtilities.GetTopActivityInfo(GetCachedAdb(), m_SelectedDeviceId, ref topActivityPackageName, ref topActivityPid)
+                && topActivityPid > 0)
             {
                 CreatePackageInformation(topActivityPackageName, topActivityPid, m_SelectedDeviceId);
 
@@ -647,36 +648,17 @@ namespace Unity.Android.Logcat
 
             if (checkProjectPackage)
             {
-                int projectApplicationPid = GetPIDFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
+                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
         }
 
-        private int GetPIDFromPackageName(string packageName, string deviceId)
+        private int GetPidFromPackageName(string packageName, string deviceId)
         {
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            return AndroidLogcatUtilities.GetPIDFromPackageName(adb, device, m_SelectedDeviceId, packageName);
-        }
-
-        private bool GetCurrentPackage(ref string packageName, ref int packagePID)
-        {
-            if (string.IsNullOrEmpty(m_SelectedDeviceId))
-                return false;
-            try
-            {
-                var adb = GetCachedAdb();
-                var cmd = "-s " + m_SelectedDeviceId + " shell \"dumpsys activity\" ";
-                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-                var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
-                packagePID = AndroidLogcatUtilities.ParseTopActivityPackageInfo(output, out packageName);
-                return packagePID != -1;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, m_SelectedDeviceId, packageName);
         }
 
         private static List<string> RetrieveConnectDevicesIDs(ADB adb)
@@ -834,9 +816,9 @@ namespace Unity.Android.Logcat
             if (wnd == null)
                 wnd = ScriptableObject.CreateInstance<AndroidLogcatConsoleWindow>();
             wnd.titleContent = new GUIContent("Android Logcat");
-            #if PLATFORM_ANDROID
+        #if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
-            #endif
+        #endif
             wnd.Show();
             wnd.Focus();
 

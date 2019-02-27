@@ -8,11 +8,11 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatIPWindow : EditorWindow
     {
         private ADB m_Adb = null;
-        internal string m_IPString;
+        internal string m_IpString;
         internal bool m_DidFocus = false;
 
         private const string kIPTextFieldId = "IPTextField";
-        private const string kAndroidLogcatLastIP = "AndroidLogcatLastIP";
+        private const string kAndroidLogcatLastIp = "AndroidLogcatLastIP";
 
         public static void Show(ADB adb, Rect screenRect)
         {
@@ -24,7 +24,7 @@ namespace Unity.Android.Logcat
 
         void OnEnable()
         {
-            m_IPString = EditorPrefs.GetString(kAndroidLogcatLastIP, "");
+            m_IpString = EditorPrefs.GetString(kAndroidLogcatLastIp, "");
         }
 
         void OnGUI()
@@ -36,7 +36,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
             {
                 GUILayout.Space(5);
-                m_IPString = EditorGUILayout.TextField(m_IPString);
+                m_IpString = EditorGUILayout.TextField(m_IpString);
 
                 if (!m_DidFocus)
                 {
@@ -44,12 +44,12 @@ namespace Unity.Android.Logcat
                     EditorGUI.FocusTextInControl(kIPTextFieldId);
                 }
 
-                GUI.enabled = !string.IsNullOrEmpty(m_IPString);
+                GUI.enabled = !string.IsNullOrEmpty(m_IpString);
                 if (GUILayout.Button("Connect") || hitEnter)
                 {
                     Close();
-                    EditorPrefs.SetString(kAndroidLogcatLastIP, m_IPString);
-                    AndroidLogcatUtilities.ConnectDeviceByIPAddress(m_Adb, m_IPString);
+                    EditorPrefs.SetString(kAndroidLogcatLastIp, m_IpString);
+                    AndroidLogcatUtilities.ConnectDeviceByIpAddress(m_Adb, m_IpString);
                     GUIUtility.ExitGUI();
                 }
             }
