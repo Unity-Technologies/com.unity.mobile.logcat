@@ -656,7 +656,7 @@ namespace Unity.Android.Logcat
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, m_SelectedDeviceId, packageName);
+            return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
         }
 
         private string GetDeviceDetailsFor(string deviceId)
