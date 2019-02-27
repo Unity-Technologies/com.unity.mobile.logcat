@@ -11,8 +11,8 @@ namespace Unity.Android.Logcat
         internal string m_IpString;
         internal bool m_DidFocus = false;
 
-        private const string kIPTextFieldId = "IPTextField";
-        private const string kAndroidLogcatLastIp = "AndroidLogcatLastIP";
+        private const string kIpTextFieldId = "IpTextField";
+        private const string kAndroidLogcatLastIp = "AndroidLogcatLastIp";
 
         public static void Show(ADB adb, Rect screenRect)
         {
@@ -31,7 +31,7 @@ namespace Unity.Android.Logcat
         {
             Event evt = Event.current;
             bool hitEnter = evt.type == EventType.KeyDown && (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter);
-            GUI.SetNextControlName(kIPTextFieldId);
+            GUI.SetNextControlName(kIpTextFieldId);
 
             EditorGUILayout.BeginVertical();
             {
@@ -41,7 +41,7 @@ namespace Unity.Android.Logcat
                 if (!m_DidFocus)
                 {
                     m_DidFocus = true;
-                    EditorGUI.FocusTextInControl(kIPTextFieldId);
+                    EditorGUI.FocusTextInControl(kIpTextFieldId);
                 }
 
                 GUI.enabled = !string.IsNullOrEmpty(m_IpString);

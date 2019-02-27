@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
 
-        private Rect m_IPWindowScreenRect;
+        private Rect m_IpWindowScreenRect;
 
         private enum PackageType
         {
@@ -385,7 +385,7 @@ namespace Unity.Android.Logcat
         {
             if (selected == m_DeviceIds.Count)
             {
-                AndroidLogcatIPWindow.Show(this.GetCachedAdb(), m_IPWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.GetCachedAdb(), m_IpWindowScreenRect);
                 return;
             }
 
@@ -407,7 +407,7 @@ namespace Unity.Android.Logcat
                 names.Add(new GUIContent("<Enter IP>"));
 
                 // Store the screen-space place that we should show the AndroidLogcatIPWindow.
-                m_IPWindowScreenRect = GUIUtility.GUIToScreenRect(rect);
+                m_IpWindowScreenRect = GUIUtility.GUIToScreenRect(rect);
 
                 EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names.ToArray(), CheckDeviceEnabled, m_SelectedDeviceIndex, DeviceSelection, null);
             }

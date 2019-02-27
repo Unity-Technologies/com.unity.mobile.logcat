@@ -70,18 +70,18 @@ class AndroidLogcatRegexTests
     }
 
     [Test]
-    public void CorrectlyParsePIDsWithWindowsEndlines()
+    public void CorrectlyParsePidsWithWindowsEndlines()
     {
-        CorrectlyParsePIDs("\r\n");
+        CorrectlyParsePids("\r\n");
     }
 
     [Test]
-    public void CorrectlyParsePIDsWithUnixEndlines()
+    public void CorrectlyParsePidsWithUnixEndlines()
     {
-        CorrectlyParsePIDs("\n");
+        CorrectlyParsePids("\n");
     }
 
-    private void CorrectlyParsePIDs(string separator)
+    private void CorrectlyParsePids(string separator)
     {
         var expectedPid = 2909;
         // Produced by adb shell ps
