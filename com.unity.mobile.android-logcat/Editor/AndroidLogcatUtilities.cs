@@ -20,24 +20,28 @@ namespace Unity.Android.Logcat
 
                 // Capture the screen on the device.
                 var cmd = string.Format("-s {0} shell screencap {1}", deviceId, screenshotPathOnDevice);
-                AndroidLogcatInternalLog.Log(cmd);
-                var output = adb.Run(new[] { cmd }, "Unable to capture the screen for device " + deviceId);
-                if (output.StartsWith("Unable to capture the screen for device"))
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+
+                var errorMsg = "Unable to capture the screen for device ";
+                var outputMsg = adb.Run(new[] { cmd }, errorMsg + deviceId);
+                if (outputMsg.StartsWith(errorMsg))
                 {
-                    AndroidLogcatInternalLog.Log(output);
-                    Debug.LogError(output);
+                    AndroidLogcatInternalLog.Log(outputMsg);
+                    Debug.LogError(outputMsg);
                     return null;
                 }
 
                 // Pull screenshot from the device to temp folder.
                 var filePath = Path.Combine(Path.GetTempPath(), "screen_" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".png");
                 cmd = string.Format("-s {0} pull {1} {2}", deviceId, screenshotPathOnDevice, filePath);
-                AndroidLogcatInternalLog.Log(cmd);
-                output = adb.Run(new[] { cmd }, "Unable to pull the screenshot from device " + deviceId);
-                if (output.StartsWith("Unable to pull the screenshot from device"))
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+
+                errorMsg = "Unable to pull the screenshot from device ";
+                outputMsg = adb.Run(new[] { cmd }, errorMsg + deviceId);
+                if (outputMsg.StartsWith(errorMsg))
                 {
-                    AndroidLogcatInternalLog.Log(output);
-                    Debug.LogError(output);
+                    AndroidLogcatInternalLog.Log(outputMsg);
+                    Debug.LogError(outputMsg);
                     return null;
                 }
 
@@ -47,6 +51,20 @@ namespace Unity.Android.Logcat
             {
                 AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", deviceId, ex);
                 return null;
+            }
+        }
+
+        public static void ConnectDeviceByIPAddress(ADB adb, string ip)
+        {
+            var cmd = "connect " + ip;
+            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+
+            var errorMsg = "Unable to connect to ";
+            var outputMsg = adb.Run(new[] { cmd }, errorMsg + ip);
+            if (outputMsg.StartsWith(errorMsg))
+            {
+                AndroidLogcatInternalLog.Log(outputMsg);
+                Debug.LogError(outputMsg);
             }
         }
 

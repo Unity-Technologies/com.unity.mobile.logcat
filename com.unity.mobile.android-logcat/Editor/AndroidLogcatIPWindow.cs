@@ -1,23 +1,24 @@
 #if PLATFORM_ANDROID
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatIPWindow : EditorWindow
     {
-        private AndroidLogcatConsoleWindow m_AndroidLogcatConsoleWindow = null;
+        private ADB m_Adb = null;
         internal string m_IPString;
         internal bool m_DidFocus = false;
 
         private const string kIPTextFieldId = "IPTextField";
         private const string kAndroidLogcatLastIP = "AndroidLogcatLastIP";
 
-        public static void Show(AndroidLogcatConsoleWindow window, Rect screenRect)
+        public static void Show(ADB adb, Rect screenRect)
         {
             var rect = new Rect(screenRect.x, screenRect.yMax, 300, 50);
             AndroidLogcatIPWindow win = EditorWindow.GetWindowWithRect<AndroidLogcatIPWindow>(rect, true, "Enter Device IP");
-            win.m_AndroidLogcatConsoleWindow = window;
+            win.m_Adb = adb;
             win.position = rect;
         }
 
@@ -48,7 +49,7 @@ namespace Unity.Android.Logcat
                 {
                     Close();
                     EditorPrefs.SetString(kAndroidLogcatLastIP, m_IPString);
-                    m_AndroidLogcatConsoleWindow.ConnectDeviceByIPAddress(m_IPString);
+                    AndroidLogcatUtilities.ConnectDeviceByIPAddress(m_Adb, m_IPString);
                     GUIUtility.ExitGUI();
                 }
             }

@@ -385,20 +385,11 @@ namespace Unity.Android.Logcat
         {
             if (selected == m_DeviceIds.Count)
             {
-                AndroidLogcatIPWindow.Show(this, m_IPWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.GetCachedAdb(), m_IPWindowScreenRect);
                 return;
             }
 
             SetSelectedDeviceByIndex(selected);
-        }
-
-        public void ConnectDeviceByIPAddress(string ip)
-        {
-            var cmd = "connect " + ip;
-            var errorMsg = "Unable to connect to " + ip;
-            var outputMsg = GetCachedAdb().Run(new[] { cmd }, errorMsg);
-            if (outputMsg.StartsWith(errorMsg))
-                Debug.LogError(outputMsg);
         }
 
         private void HandleSelectedDeviceField()
