@@ -579,7 +579,7 @@ namespace Unity.Android.Logcat
 
             var adb = GetCachedAdb();
 
-            m_DeviceIds = AndroidLogcatUtilities.RetrieveConnectDevicesIDs(adb);
+            m_DeviceIds = AndroidLogcatUtilities.RetrieveConnectedDeviceIds(adb);
 
             // Ensure selected device does not change (due to a new device name taking the same index)
             if (m_SelectedDeviceId != null)

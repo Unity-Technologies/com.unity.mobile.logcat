@@ -49,7 +49,7 @@ namespace Unity.Android.Logcat
                 {
                     Close();
                     EditorPrefs.SetString(kAndroidLogcatLastIp, m_IpString);
-                    AndroidLogcatUtilities.ConnectDeviceByIpAddress(m_Adb, m_IpString);
+                    AndroidLogcatUtilities.ConnectDevice(m_Adb, m_IpString);
                     GUIUtility.ExitGUI();
                 }
             }

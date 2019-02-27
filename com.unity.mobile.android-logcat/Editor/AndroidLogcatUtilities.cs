@@ -11,6 +11,10 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatUtilities
     {
+        /// <summary>
+        /// Capture the screenshot on the given device.
+        /// </summary>
+        /// <returns> Return the path to the screenshot on the PC. </returns>
         public static string CaptureScreen(ADB adb, string deviceId)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -56,7 +60,12 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static void ConnectDeviceByIpAddress(ADB adb, string ip)
+        /// <summary>
+        /// Connect to the device by ip address.
+        /// Please refer to https://developer.android.com/studio/command-line/adb#wireless for details.
+        /// </summary>
+        /// <param name="ip"> The ip address of the device that needs to be connected. Port can be included like 'device_ip_address:port'. Both IPV4 and IPV6 are supported. </param>
+        public static void ConnectDevice(ADB adb, string ip)
         {
             var cmd = "connect " + ip;
             AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
@@ -70,6 +79,9 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Get the top activity on the given device.
+        /// </summary>
         public static bool GetTopActivityInfo(ADB adb, string deviceId, ref string packageName, ref int packagePid)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -88,6 +100,9 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Return the pid of the given package on the given device.
+        /// </summary>
         public static int GetPidFromPackageName(ADB adb, AndroidDevice device, string deviceId, string packageName)
         {
             if (string.IsNullOrEmpty(deviceId))
@@ -123,7 +138,10 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static List<string> RetrieveConnectDevicesIDs(ADB adb)
+        /// <summary>
+        /// Return a list of the connected devices.
+        /// </summary>
+        public static List<string> RetrieveConnectedDeviceIds(ADB adb)
         {
             var deviceIds = new List<string>();
 
@@ -142,6 +160,9 @@ namespace Unity.Android.Logcat
             return deviceIds;
         }
 
+        /// <summary>
+        /// Return the detail info of the given device.
+        /// </summary>
         public static string RetrieveDeviceDetails(AndroidDevice device, string deviceId)
         {
             if (device == null)
