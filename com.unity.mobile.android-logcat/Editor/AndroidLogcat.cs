@@ -90,7 +90,7 @@ namespace Unity.Android.Logcat
         private ADB adb;
 
         private readonly AndroidDevice m_Device;
-        private readonly int m_PackagePID;
+        private readonly int m_PackagePid;
         private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
         private readonly string m_Filter;
@@ -100,7 +100,7 @@ namespace Unity.Android.Logcat
 
         public AndroidDevice Device { get { return m_Device; } }
 
-        public int PackagePID { get { return m_PackagePID; } }
+        public int PackagePid { get { return m_PackagePid; } }
 
         // Check if it is Android 7 or above due to the below options are only available on these devices:
         // 1) '--pid'
@@ -148,11 +148,11 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcat(ADB adb, AndroidDevice device, int packagePID, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(ADB adb, AndroidDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.adb = adb;
             this.m_Device = device;
-            this.m_PackagePID = packagePID;
+            this.m_PackagePid = packagePid;
             this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
             this.m_MessagePriority = priority;
             this.m_Filter = filterIsRegex  ? filter : Regex.Escape(filter);
@@ -206,8 +206,8 @@ namespace Unity.Android.Logcat
 
             var p = PriorityEnumToString(MessagePriority);
             var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : "*:" + p + " ";
-            if (PackagePID > 0 && IsAndroid7orAbove)
-                return string.Format("-s {0} logcat --pid={1} -s -v {2} {3}{4}", Device.Id, PackagePID, LogPrintFormat, tagLine, filterArg);
+            if (PackagePid > 0 && IsAndroid7orAbove)
+                return string.Format("-s {0} logcat --pid={1} -s -v {2} {3}{4}", Device.Id, PackagePid, LogPrintFormat, tagLine, filterArg);
 
             return string.Format("-s {0} logcat -s -v {1} {2}{3}", Device.Id, LogPrintFormat, tagLine, filterArg);
         }
@@ -274,7 +274,7 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var needFilterByPID = !IsAndroid7orAbove && PackagePID > 0;
+                var needFilterByPid = !IsAndroid7orAbove && PackagePid > 0;
                 var needFilterBySearch = !IsAndroid7orAbove && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
@@ -286,7 +286,7 @@ namespace Unity.Android.Logcat
                         continue;
                     }
 
-                    if (needFilterByPID && Int32.Parse(m.Groups["pid"].Value) != PackagePID)
+                    if (needFilterByPid && Int32.Parse(m.Groups["pid"].Value) != PackagePid)
                         continue;
 
                     if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
