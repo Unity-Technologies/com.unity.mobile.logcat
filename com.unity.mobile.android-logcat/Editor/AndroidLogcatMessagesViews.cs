@@ -242,8 +242,9 @@ namespace Unity.Android.Logcat
         {
             if (!m_Columns[(int)column].enabled)
                 return;
+            const float kMessageMargin = 5;
             var itemRect = m_Columns[(uint)column].itemSize;
-            var rc = new Rect(itemRect.x, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width, itemRect.height);
+            var rc = new Rect(itemRect.x + kMessageMargin, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width - kMessageMargin, itemRect.height);
             style.Draw(rc, new GUIContent(value), 0);
         }
 
@@ -292,6 +293,13 @@ namespace Unity.Android.Logcat
                     var le = m_LogEntries[i];
                     if (selected)
                         AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
+                    else
+                    {
+                        if (i % 2 == 0)
+                            AndroidLogcatStyles.backgroundEven.Draw(selectionRect, false, false, false, false);
+                        else
+                            AndroidLogcatStyles.backgroundOdd.Draw(selectionRect, false, false, false, false);
+                    }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
@@ -309,11 +317,34 @@ namespace Unity.Android.Logcat
                 }
             }
 
+            DoColumnBorders(totalWindowRect, Color.black, 1);
+
             requestRepaint |= DoKeyEvents();
 
             GUI.EndScrollView();
 
             return requestRepaint;
+        }
+
+        private void DoColumnBorders(Rect visibleWindowRect, Color borderColor, float borderWidth)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            var orgColor = GUI.color;
+            GUI.color = borderColor;
+            var prevColumnVisible = false;
+            foreach (var c in (Column[])Enum.GetValues(typeof(Column)))
+            {
+                if (prevColumnVisible)
+                {
+                    var itemRect = m_Columns[(uint)c].itemSize;
+                    var rc = new Rect(itemRect.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
+                    GUI.DrawTexture(rc, EditorGUIUtility.whiteTexture);
+                }
+                prevColumnVisible = m_Columns[(int)c].enabled;
+            }
+
+            GUI.color = orgColor;
         }
 
         private static bool HasCtrlOrCmdModifier(Event e)
