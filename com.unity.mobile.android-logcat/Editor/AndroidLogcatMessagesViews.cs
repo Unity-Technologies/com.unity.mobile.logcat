@@ -266,7 +266,7 @@ namespace Unity.Android.Logcat
                 m_ScrollPosition.y = totalWindowRect.height;
 
             EditorGUI.BeginChangeCheck();
-            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect);
+            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, false);
             int startItem = (int)(m_ScrollPosition.y / totalWindowRect.height * (kExtraMessageCount + m_LogEntries.Count));
 
             // Check if we need to enable autoscrolling
@@ -317,11 +317,14 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            DoColumnBorders(totalWindowRect, Color.black, 1);
-
             requestRepaint |= DoKeyEvents();
 
             GUI.EndScrollView();
+
+            Rect rc = GUILayoutUtility.GetLastRect();
+            // Decrement horizontal scrollbar height
+            rc.height -= 15.0f;
+            DoColumnBorders(rc, Color.black, 1);
 
             return requestRepaint;
         }
