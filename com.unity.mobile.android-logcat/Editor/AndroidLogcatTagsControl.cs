@@ -76,7 +76,7 @@ namespace Unity.Android.Logcat
                 return new string[0];
 
             var selectedTagNames = new List<string>(m_SelectedTags.Count);
-            for (int i = 0; i < m_SelectedTags.Count; i++)
+            for (int i = kFirstValidTagIndex; i < m_SelectedTags.Count; i++)
             {
                 if (m_SelectedTags[i])
                 {
