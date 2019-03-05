@@ -28,7 +28,7 @@ namespace Unity.Android.Logcat
 
         public bool Add(string tag, bool isSelected = false)
         {
-            if (m_TagNames.Where(tagName => tagName == tag).FirstOrDefault() != null)
+            if (m_TagNames.IndexOf(tag) > 0)
                 return false;
 
             m_TagNames.Add(tag);
@@ -40,29 +40,16 @@ namespace Unity.Android.Logcat
             return true;
         }
 
-        public bool Remove(string tag, bool updateSelection = false)
+        public bool Remove(string tag)
         {
-            if (m_TagNames.Where(tagName => tagName == tag).FirstOrDefault() == null)
-                return false;
-
-            // Tag names
-            var newTags = new List<string>(m_TagNames);
-            var tagIndex = newTags.IndexOf(tag);
-
+            var tagIndex = m_TagNames.IndexOf(tag);
             if (tagIndex < kFirstValidTagIndex)
                 return false;
 
-            if (updateSelection && IsSelected(tagIndex))
-            {
+            if (IsSelected(tagIndex))
                 TagSelected(null, null, tagIndex); // Deselect it
-                TagSelected(null, null, kNoFilterIndex); // Select *No Filter*
-            }
 
-            newTags.Remove(tag);
-
-            m_TagNames = newTags;
-
-            // Selected indices
+            m_TagNames.Remove(tag);
             m_SelectedTags.RemoveAt(tagIndex);
 
             return true;
