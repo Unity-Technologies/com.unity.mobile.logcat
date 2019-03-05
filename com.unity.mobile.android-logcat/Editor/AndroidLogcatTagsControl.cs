@@ -70,9 +70,9 @@ namespace Unity.Android.Logcat
             return true;
         }
 
-        public string[] GetSelectedTags()
+        public string[] GetSelectedTags(bool skipNoFilterIndex = false)
         {
-            if (m_SelectedTags[kNoFilterIndex])
+            if (!skipNoFilterIndex && m_SelectedTags[kNoFilterIndex])
                 return new string[0];
 
             var selectedTagNames = new List<string>(m_SelectedTags.Count);
@@ -124,7 +124,7 @@ namespace Unity.Android.Logcat
             else
             {
                 m_SelectedTags[selectedIndex] = !m_SelectedTags[selectedIndex];
-                m_SelectedTags[kNoFilterIndex] = false;
+                m_SelectedTags[kNoFilterIndex] = !(GetSelectedTags(true).Length > 0);
             }
 
             if (TagSelectionChanged != null)
