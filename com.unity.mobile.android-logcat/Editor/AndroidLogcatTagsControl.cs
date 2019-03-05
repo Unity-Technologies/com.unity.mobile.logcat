@@ -31,20 +31,18 @@ namespace Unity.Android.Logcat
             if (m_TagNames.Where(tagName => tagName == tag).FirstOrDefault() != null)
                 return false;
 
-            // Tag names
             m_TagNames.Add(tag);
-
-            // Indices
-            m_SelectedTags.Add(isSelected);
+            m_SelectedTags.Add(false);
 
             if (isSelected)
-                TagSelected(null, null, m_SelectedTags.Count - 1);
+                TagSelected(null, null, m_SelectedTags.Count - 1); // This will set the selected state.
+
             return true;
         }
 
         public bool Remove(string tag, bool updateSelection = false)
         {
-            if (m_TagNames.Where(tagName => tagName == tag).FirstOrDefault() != null)
+            if (m_TagNames.Where(tagName => tagName == tag).FirstOrDefault() == null)
                 return false;
 
             // Tag names
