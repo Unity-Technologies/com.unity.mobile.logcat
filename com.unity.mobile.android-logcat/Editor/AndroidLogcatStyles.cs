@@ -41,8 +41,9 @@ namespace Unity.Android.Logcat
 
         public const int kTagEntryFontSize = 11;
         public const int kTagEntryFixedHeight = kTagEntryFontSize + 5;
+        public const int ktagToggleFixedWidth = 10;
         public static GUIStyle TagEntryStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kTagEntryFontSize, fixedHeight = kTagEntryFixedHeight };
-        public static GUIStyle TagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedHeight = kTagEntryFixedHeight, fixedWidth = 10 };
+        public static GUIStyle TagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedHeight = kTagEntryFixedHeight, fixedWidth = ktagToggleFixedWidth};
     }
 }
 #endif

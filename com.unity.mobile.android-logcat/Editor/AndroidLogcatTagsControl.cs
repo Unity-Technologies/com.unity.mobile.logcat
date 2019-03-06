@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
         public List<string> TagNames { get { return m_TagNames; } }
 
         [SerializeField]
-        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false});
+        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false });
         public List<bool> SelectedTags { get { return m_SelectedTags; } }
 
         public event Action TagSelectionChanged;
@@ -143,6 +143,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatTagWindow : EditorWindow
     {
         private AndroidLogcatTagsControl m_TagControl = null;
+        private int m_SelectedTagIndex = -1;
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
         public static void Show(AndroidLogcatTagsControl tagControl)
@@ -157,27 +158,65 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            // Get the window with no height to get the width.
+            var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.priorityDefaultStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
+
             EditorGUILayout.BeginVertical();
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
 
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
             const float kEntryMargin = 8;
-            var toggleGUILayoutOption = GUILayout.Width(AndroidLogcatStyles.kTagEntryFontSize);
 
+            var e = Event.current;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
+                var selectionRect = new Rect(
+                    kEntryMargin,
+                    AndroidLogcatStyles.kTagEntryFontSize + 1 + (AndroidLogcatStyles.kTagEntryFixedHeight + 2) * (i - (int)AndroidLogcatTagType.FirstValidTag),
+                    noHeightWindowRect.width - AndroidLogcatStyles.ktagToggleFixedWidth - 2 * kEntryMargin,
+                    AndroidLogcatStyles.kTagEntryFixedHeight);
+
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin);
-                EditorGUILayout.LabelField(tagNames[i], AndroidLogcatStyles.TagEntryStyle);
-                GUILayout.FlexibleSpace();
-                EditorGUILayout.Toggle(selectedTags[i], AndroidLogcatStyles.TagToggleStyle, toggleGUILayoutOption);
+                if (e.type == EventType.Repaint)
+                {
+                    if (m_SelectedTagIndex == i)
+                        AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
+
+                    AndroidLogcatStyles.TagEntryStyle.Draw(selectionRect, new GUIContent(tagNames[i]), 0);
+                }
+                else
+                {
+                    DoMouseEvent(selectionRect, i);
+                }
+
+                var toggleRect = new Rect(selectionRect.width + 10, selectionRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, selectionRect.height);
+                GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.TagToggleStyle);
+
                 GUILayout.Space(kEntryMargin);
                 EditorGUILayout.EndHorizontal();
             }
 
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
+        }
+
+        private bool DoMouseEvent(Rect tagRect, int tagIndex)
+        {
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && tagRect.Contains(e.mousePosition))
+            {
+                switch (e.button)
+                {
+                    case 0:
+                        m_SelectedTagIndex = (m_SelectedTagIndex == tagIndex) ? -1 : tagIndex;
+                        e.Use();
+                        break;
+                }
+            }
+
+            return false;
         }
     }
 }
