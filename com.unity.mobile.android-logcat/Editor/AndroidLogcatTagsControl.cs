@@ -7,18 +7,24 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+    internal enum AndroidLogcatTagType
+    {
+        AllTags = 0,
+        NoFilter = 1,
+        TagControl = 3,
+        FirstValidTag = 5 // Skip the options + separators
+    }
+
     [Serializable]
     internal class AndroidLogcatTagsControl
     {
         [SerializeField]
-        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null });
+        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null });
+        public List<string> TagNames { get { return m_TagNames; } }
 
         [SerializeField]
-        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false });
-
-        private const byte kAllTagsIndex = 0;
-        private const byte kNoFilterIndex = 1;
-        private const byte kFirstValidTagIndex = 3; // Skip the first 2 options + separator
+        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false});
+        public List<bool> SelectedTags { get { return m_SelectedTags; } }
 
         public event Action TagSelectionChanged;
 
@@ -43,7 +49,7 @@ namespace Unity.Android.Logcat
         public bool Remove(string tag)
         {
             var tagIndex = m_TagNames.IndexOf(tag);
-            if (tagIndex < kFirstValidTagIndex)
+            if (tagIndex < (int)AndroidLogcatTagType.FirstValidTag)
                 return false;
 
             if (IsSelected(tagIndex))
@@ -57,11 +63,11 @@ namespace Unity.Android.Logcat
 
         public string[] GetSelectedTags(bool skipNoFilterIndex = false)
         {
-            if (!skipNoFilterIndex && m_SelectedTags[kNoFilterIndex])
+            if (!skipNoFilterIndex && m_SelectedTags[(int)AndroidLogcatTagType.NoFilter])
                 return new string[0];
 
             var selectedTagNames = new List<string>(m_SelectedTags.Count);
-            for (int i = kFirstValidTagIndex; i < m_SelectedTags.Count; i++)
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_SelectedTags.Count; i++)
             {
                 if (m_SelectedTags[i])
                 {
@@ -88,14 +94,14 @@ namespace Unity.Android.Logcat
 
         private void TagSelected(object userData, string[] options, int selectedIndex)
         {
-            if (selectedIndex == kAllTagsIndex)
+            if (selectedIndex == (int)AndroidLogcatTagType.AllTags)
             {
                 // Deselect *No Filter* and select all others.
                 UpdateTagFilterBasedOnNoFilterOption(false);
             }
-            else if (selectedIndex == kNoFilterIndex)
+            else if (selectedIndex == (int)AndroidLogcatTagType.NoFilter)
             {
-                if (!m_SelectedTags[kNoFilterIndex])
+                if (!m_SelectedTags[(int)AndroidLogcatTagType.NoFilter])
                 {
                     // Select *No Filter*, deselect all others.
                     UpdateTagFilterBasedOnNoFilterOption(true);
@@ -106,10 +112,14 @@ namespace Unity.Android.Logcat
                     UpdateTagFilterBasedOnNoFilterOption(false);
                 }
             }
+            else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
+            {
+                AndroidLogcatTagWindow.Show(this);
+            }
             else
             {
                 m_SelectedTags[selectedIndex] = !m_SelectedTags[selectedIndex];
-                m_SelectedTags[kNoFilterIndex] = !(GetSelectedTags(true).Length > 0);
+                m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
 
             if (TagSelectionChanged != null)
@@ -118,15 +128,56 @@ namespace Unity.Android.Logcat
 
         private void UpdateTagFilterBasedOnNoFilterOption(bool isNoFilterSelected)
         {
-            m_SelectedTags[kNoFilterIndex] = isNoFilterSelected;
+            m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = isNoFilterSelected;
 
-            for (int i = kFirstValidTagIndex; i < m_SelectedTags.Count; i++)
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_SelectedTags.Count; i++)
                 m_SelectedTags[i] = !isNoFilterSelected;
         }
 
         private bool IsSelected(int tagIndex)
         {
             return m_SelectedTags[tagIndex];
+        }
+    }
+
+    internal class AndroidLogcatTagWindow : EditorWindow
+    {
+        private AndroidLogcatTagsControl m_TagControl = null;
+
+        private static AndroidLogcatTagWindow s_TagWindow = null;
+        public static void Show(AndroidLogcatTagsControl tagControl)
+        {
+            if (s_TagWindow == null)
+                s_TagWindow = ScriptableObject.CreateInstance<AndroidLogcatTagWindow>();
+            s_TagWindow.m_TagControl = tagControl;
+            s_TagWindow.titleContent = new GUIContent("Tag Control");
+            s_TagWindow.Show();
+            s_TagWindow.Focus();
+        }
+
+        void OnGUI()
+        {
+            EditorGUILayout.BeginVertical();
+            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
+
+            var tagNames = m_TagControl.TagNames;
+            var selectedTags = m_TagControl.SelectedTags;
+            const float kEntryMargin = 8;
+            var toggleGUILayoutOption = GUILayout.Width(AndroidLogcatStyles.kTagEntryFontSize);
+
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(kEntryMargin);
+                EditorGUILayout.LabelField(tagNames[i], AndroidLogcatStyles.TagEntryStyle);
+                GUILayout.FlexibleSpace();
+                EditorGUILayout.Toggle(selectedTags[i], AndroidLogcatStyles.TagToggleStyle, toggleGUILayoutOption);
+                GUILayout.Space(kEntryMargin);
+                EditorGUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
+            EditorGUILayout.EndVertical();
         }
     }
 }

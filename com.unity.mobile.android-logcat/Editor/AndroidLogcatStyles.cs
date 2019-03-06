@@ -38,6 +38,11 @@ namespace Unity.Android.Logcat
         public const int kLStatusBarFixedHeight = kStatusBarFontSize + 5;
         public static GUIStyle statusBarBackground = new GUIStyle("AppToolbar") { fixedHeight = kStatusBarFontSize };
         public static GUIStyle statusLabel = new GUIStyle("AppToolbar") { fontSize = kStatusBarFontSize, fixedHeight = kLStatusBarFixedHeight, richText = true };
+
+        public const int kTagEntryFontSize = 11;
+        public const int kTagEntryFixedHeight = kTagEntryFontSize + 5;
+        public static GUIStyle TagEntryStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kTagEntryFontSize, fixedHeight = kTagEntryFixedHeight };
+        public static GUIStyle TagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedHeight = kTagEntryFixedHeight, fixedWidth = 10 };
     }
 }
 #endif
