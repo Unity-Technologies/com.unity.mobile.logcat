@@ -28,6 +28,13 @@ namespace Unity.Android.Logcat
 
         public event Action TagSelectionChanged;
 
+        private AndroidLogcatTagWindow m_TagWindow = null;
+        public AndroidLogcatTagWindow TagWindow
+        {
+            get { return m_TagWindow; }
+            set { m_TagWindow = value; }
+        }
+
         public AndroidLogcatTagsControl()
         {
         }
@@ -116,7 +123,7 @@ namespace Unity.Android.Logcat
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
                 tagWindowSelected = true;
-                AndroidLogcatTagWindow.Show(this);
+                m_TagWindow = AndroidLogcatTagWindow.Show(this);
             }
             else
             {
@@ -124,7 +131,13 @@ namespace Unity.Android.Logcat
                 m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
 
-            if (!tagWindowSelected && TagSelectionChanged != null)
+            if (tagWindowSelected)
+                return;
+
+            if (m_TagWindow != null)
+                m_TagWindow.Repaint();
+
+            if (TagSelectionChanged != null)
                 TagSelectionChanged.Invoke();
         }
 
@@ -148,14 +161,23 @@ namespace Unity.Android.Logcat
         private int m_SelectedTagIndex = -1;
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
-        public static void Show(AndroidLogcatTagsControl tagControl)
+
+        public static AndroidLogcatTagWindow Show(AndroidLogcatTagsControl tagControl)
         {
             if (s_TagWindow == null)
                 s_TagWindow = ScriptableObject.CreateInstance<AndroidLogcatTagWindow>();
+
             s_TagWindow.m_TagControl = tagControl;
             s_TagWindow.titleContent = new GUIContent("Tag Control");
             s_TagWindow.Show();
             s_TagWindow.Focus();
+
+            return s_TagWindow;
+        }
+
+        void OnDestroy()
+        {
+            m_TagControl.TagWindow = null;
         }
 
         void OnGUI()
@@ -169,7 +191,6 @@ namespace Unity.Android.Logcat
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
             const float kEntryMargin = 8;
-
             var e = Event.current;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
