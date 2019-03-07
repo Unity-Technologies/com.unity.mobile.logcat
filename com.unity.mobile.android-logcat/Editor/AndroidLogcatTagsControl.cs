@@ -53,19 +53,24 @@ namespace Unity.Android.Logcat
             return true;
         }
 
-        public bool Remove(string tag)
+        public bool Remove(int tagIndex)
         {
-            var tagIndex = m_TagNames.IndexOf(tag);
             if (tagIndex < (int)AndroidLogcatTagType.FirstValidTag)
                 return false;
 
             if (IsSelected(tagIndex))
                 TagSelected(null, null, tagIndex); // Deselect it
 
-            m_TagNames.Remove(tag);
+            m_TagNames.Remove(m_TagNames[tagIndex]);
             m_SelectedTags.RemoveAt(tagIndex);
 
             return true;
+        }
+
+        public bool Remove(string tag)
+        {
+            var tagIndex = m_TagNames.IndexOf(tag);
+            return Remove(tagIndex);
         }
 
         public string[] GetSelectedTags(bool skipNoFilterIndex = false)
@@ -159,6 +164,7 @@ namespace Unity.Android.Logcat
     {
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
+        private string m_InputTagName = String.Empty;
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
 
@@ -183,14 +189,14 @@ namespace Unity.Android.Logcat
         void OnGUI()
         {
             // Get the window with no height to get the width.
-            var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.priorityDefaultStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
+            var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
+            const float kEntryMargin = 8;
 
             EditorGUILayout.BeginVertical();
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
 
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
-            const float kEntryMargin = 8;
             var e = Event.current;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
@@ -205,9 +211,9 @@ namespace Unity.Android.Logcat
                 if (e.type == EventType.Repaint)
                 {
                     if (m_SelectedTagIndex == i)
-                        AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
+                        AndroidLogcatStyles.tagEntryBackground.Draw(selectionRect, false, false, true, false);
 
-                    AndroidLogcatStyles.TagEntryStyle.Draw(selectionRect, new GUIContent(tagNames[i]), 0);
+                    AndroidLogcatStyles.tagEntryStyle.Draw(selectionRect, new GUIContent(tagNames[i]), 0);
                 }
                 else
                 {
@@ -215,7 +221,7 @@ namespace Unity.Android.Logcat
                 }
 
                 var toggleRect = new Rect(selectionRect.width + 10, selectionRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, selectionRect.height);
-                var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.TagToggleStyle);
+                var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.tagToggleStyle);
                 if (toggled != selectedTags[i])
                 {
                     m_TagControl.TagSelected(null, null, i);
@@ -225,11 +231,30 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.EndHorizontal();
             }
 
+            var drawnHeight = AndroidLogcatStyles.kTagEntryFixedHeight * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
+            GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
+
+            GUILayout.Space(kEntryMargin);
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(kEntryMargin);
+            m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
+            if (GUILayout.Button("Add", GUILayout.Width(40)))
+            {
+                if (!string.IsNullOrEmpty(m_InputTagName))
+                {
+                    m_TagControl.Add(m_InputTagName);
+                    m_InputTagName = string.Empty;
+                }
+            }
+            GUILayout.Space(kEntryMargin - 4);
+            EditorGUILayout.EndHorizontal();
+
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
         }
 
-        private bool DoMouseEvent(Rect tagRect, int tagIndex)
+        private void DoMouseEvent(Rect tagRect, int tagIndex)
         {
             var e = Event.current;
             if (e.type == EventType.MouseDown && tagRect.Contains(e.mousePosition))
@@ -240,10 +265,21 @@ namespace Unity.Android.Logcat
                         m_SelectedTagIndex = (m_SelectedTagIndex == tagIndex) ? -1 : tagIndex;
                         e.Use();
                         break;
+                    case 1:
+                        if (m_SelectedTagIndex == tagIndex)
+                        {
+                            GUIContent[] remove = {new GUIContent("Remove")};
+                            EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), remove, -1, RemoveSelected, null);
+                        }
+                        e.Use();
+                        break;
                 }
             }
+        }
 
-            return false;
+        public void RemoveSelected(object userData, string[] option, int selectedIndex)
+        {
+            m_TagControl.Remove(m_SelectedTagIndex);
         }
     }
 }
