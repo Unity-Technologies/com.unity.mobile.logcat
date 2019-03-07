@@ -94,6 +94,7 @@ namespace Unity.Android.Logcat
 
         public void TagSelected(object userData, string[] options, int selectedIndex)
         {
+            bool tagWindowSelected = false;
             if (selectedIndex == (int)AndroidLogcatTagType.AllTags)
             {
                 // Deselect *No Filter* and select all others.
@@ -114,6 +115,7 @@ namespace Unity.Android.Logcat
             }
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
+                tagWindowSelected = true;
                 AndroidLogcatTagWindow.Show(this);
             }
             else
@@ -122,7 +124,7 @@ namespace Unity.Android.Logcat
                 m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
 
-            if (TagSelectionChanged != null)
+            if (!tagWindowSelected && TagSelectionChanged != null)
                 TagSelectionChanged.Invoke();
         }
 
