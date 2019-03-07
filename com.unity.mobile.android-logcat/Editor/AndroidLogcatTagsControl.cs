@@ -92,7 +92,7 @@ namespace Unity.Android.Logcat
             EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_TagNames.ToArray(), enabled, separators, selectedTags.ToArray(), TagSelected, null);
         }
 
-        private void TagSelected(object userData, string[] options, int selectedIndex)
+        public void TagSelected(object userData, string[] options, int selectedIndex)
         {
             if (selectedIndex == (int)AndroidLogcatTagType.AllTags)
             {
@@ -192,7 +192,11 @@ namespace Unity.Android.Logcat
                 }
 
                 var toggleRect = new Rect(selectionRect.width + 10, selectionRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, selectionRect.height);
-                GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.TagToggleStyle);
+                var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.TagToggleStyle);
+                if (toggled != selectedTags[i])
+                {
+                    m_TagControl.TagSelected(null, null, i);
+                }
 
                 GUILayout.Space(kEntryMargin);
                 EditorGUILayout.EndHorizontal();
