@@ -203,7 +203,7 @@ namespace Unity.Android.Logcat
             var selectedTags = m_TagControl.SelectedTags;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
-                var selectionRect = new Rect(
+                var tagLabelRect = new Rect(
                     kEntryMargin,
                     AndroidLogcatStyles.kTagEntryFontSize + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
                     noHeightWindowRect.width - AndroidLogcatStyles.ktagToggleFixedWidth - 2 * kEntryMargin,
@@ -211,19 +211,28 @@ namespace Unity.Android.Logcat
 
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin);
+
+                var backgroundRect = new Rect(tagLabelRect.x - 2, tagLabelRect.y, noHeightWindowRect.width - kEntryMargin, tagLabelRect.height);
                 if (e.type == EventType.Repaint)
                 {
                     if (m_SelectedTagIndex == i)
-                        AndroidLogcatStyles.tagEntryBackground.Draw(selectionRect, false, false, true, false);
+                        AndroidLogcatStyles.tagEntryBackground.Draw(tagLabelRect, false, false, true, false);
+                    else
+                    {
+                        if (i % 2 == 0)
+                            AndroidLogcatStyles.tagEntryBackgroundEven.Draw(backgroundRect, false, false, false, false);
+                        else
+                            AndroidLogcatStyles.tagEntryBackgroundOdd.Draw(backgroundRect, false, false, false, false);
+                    }
 
-                    AndroidLogcatStyles.tagEntryStyle.Draw(selectionRect, new GUIContent(tagNames[i]), 0);
+                    AndroidLogcatStyles.tagEntryStyle.Draw(tagLabelRect, new GUIContent(tagNames[i]), 0);
                 }
                 else
                 {
-                    DoMouseEvent(selectionRect, i);
+                    DoMouseEvent(tagLabelRect, i);
                 }
 
-                var toggleRect = new Rect(selectionRect.width + 10, selectionRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, selectionRect.height);
+                var toggleRect = new Rect(tagLabelRect.width + 10, tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
                 var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.tagToggleStyle);
                 if (toggled != selectedTags[i])
                 {
@@ -239,10 +248,10 @@ namespace Unity.Android.Logcat
             // Draw the borders.
             var orgColor = GUI.color;
             GUI.color = Color.black;
-            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin-8, 1, drawnHeight+8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin-8, noHeightWindowRect.width-kEntryMargin+6, 1), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(noHeightWindowRect.width+2, 2*kEntryMargin-8, 1, drawnHeight+8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin+drawnHeight, noHeightWindowRect.width-kEntryMargin+6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(noHeightWindowRect.width + 2, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin + drawnHeight, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
             GUI.color = orgColor;
 
             GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
@@ -250,7 +259,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(kEntryMargin);
 
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(kEntryMargin -4);
+            GUILayout.Space(kEntryMargin - 3);
             GUI.SetNextControlName(kInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
             if (GUILayout.Button("Add", GUILayout.Width(40))
@@ -269,10 +278,10 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
-        private void DoMouseEvent(Rect tagRect, int tagIndex)
+        private void DoMouseEvent(Rect rect, int tagIndex)
         {
             var e = Event.current;
-            if (e.type == EventType.MouseDown && tagRect.Contains(e.mousePosition))
+            if (e.type == EventType.MouseDown && rect.Contains(e.mousePosition))
             {
                 switch (e.button)
                 {
