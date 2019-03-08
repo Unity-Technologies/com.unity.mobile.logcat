@@ -44,7 +44,7 @@ namespace Unity.Android.Logcat
         public const int ktagToggleFixedWidth = 10;
         public static GUIStyle tagEntryBackground = new GUIStyle("CN EntryBackodd") { fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle tagEntryStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kTagEntryFontSize, fixedHeight = kTagEntryFixedHeight };
-        public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedHeight = kTagEntryFixedHeight, fixedWidth = ktagToggleFixedWidth};
+        public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedWidth = ktagToggleFixedWidth, fixedHeight = kTagEntryFixedHeight };
     }
 }
 #endif

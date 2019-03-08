@@ -165,6 +165,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
         private string m_InputTagName = String.Empty;
+        private const string kInputTextFieldControlId = "InputTextFieldControl";
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
 
@@ -188,6 +189,9 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            var e = Event.current;
+            bool hitEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+
             // Get the window with no height to get the width.
             var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
             const float kEntryMargin = 8;
@@ -197,12 +201,11 @@ namespace Unity.Android.Logcat
 
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
-            var e = Event.current;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
                 var selectionRect = new Rect(
                     kEntryMargin,
-                    AndroidLogcatStyles.kTagEntryFontSize + 1 + (AndroidLogcatStyles.kTagEntryFixedHeight + 2) * (i - (int)AndroidLogcatTagType.FirstValidTag),
+                    AndroidLogcatStyles.kTagEntryFontSize + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
                     noHeightWindowRect.width - AndroidLogcatStyles.ktagToggleFixedWidth - 2 * kEntryMargin,
                     AndroidLogcatStyles.kTagEntryFixedHeight);
 
@@ -231,15 +234,27 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.EndHorizontal();
             }
 
-            var drawnHeight = AndroidLogcatStyles.kTagEntryFixedHeight * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
+            var drawnHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
+
+            // Draw the borders.
+            var orgColor = GUI.color;
+            GUI.color = Color.black;
+            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin-8, 1, drawnHeight+8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin-8, noHeightWindowRect.width-kEntryMargin+6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(noHeightWindowRect.width+2, 2*kEntryMargin-8, 1, drawnHeight+8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin-4, 2*kEntryMargin+drawnHeight, noHeightWindowRect.width-kEntryMargin+6, 1), EditorGUIUtility.whiteTexture);
+            GUI.color = orgColor;
+
             GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
 
             GUILayout.Space(kEntryMargin);
 
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(kEntryMargin);
+            GUILayout.Space(kEntryMargin -4);
+            GUI.SetNextControlName(kInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (GUILayout.Button("Add", GUILayout.Width(40)))
+            if (GUILayout.Button("Add", GUILayout.Width(40))
+                || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
             {
                 if (!string.IsNullOrEmpty(m_InputTagName))
                 {
@@ -247,7 +262,7 @@ namespace Unity.Android.Logcat
                     m_InputTagName = string.Empty;
                 }
             }
-            GUILayout.Space(kEntryMargin - 4);
+            GUILayout.Space(2);
             EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
