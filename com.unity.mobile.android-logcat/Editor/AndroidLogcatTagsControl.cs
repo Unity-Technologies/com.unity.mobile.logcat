@@ -58,7 +58,7 @@ namespace Unity.Android.Logcat
         public string[] GetSelectedTags(bool skipNoFilterIndex = false)
         {
             if (!skipNoFilterIndex && m_SelectedTags[kNoFilterIndex])
-                return new string[0];
+                return null;
 
             var selectedTagNames = new List<string>(m_SelectedTags.Count);
             for (int i = kFirstValidTagIndex; i < m_SelectedTags.Count; i++)
