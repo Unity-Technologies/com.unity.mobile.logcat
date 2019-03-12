@@ -177,7 +177,7 @@ namespace Unity.Android.Logcat
 
         private void RemoveTag(string tag)
         {
-            if (!m_TagControl.Remove(tag, true))
+            if (!m_TagControl.Remove(tag))
                 return;
 
             RestartLogCat();
