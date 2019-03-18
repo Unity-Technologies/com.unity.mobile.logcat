@@ -262,17 +262,24 @@ namespace Unity.Android.Logcat
             GUILayout.Space(kEntryMargin - 3);
             GUI.SetNextControlName(kInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (GUILayout.Button("Add", GUILayout.Width(40))
-                || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
+            if (m_InputTagName.Length > 23)
             {
-                if (!string.IsNullOrEmpty(m_InputTagName))
-                {
-                    m_TagControl.Add(m_InputTagName);
-                    m_InputTagName = string.Empty;
-                }
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
             }
-            GUILayout.Space(2);
-            EditorGUILayout.EndHorizontal();
+            else
+            {
+                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
+                {
+                    if (!string.IsNullOrEmpty(m_InputTagName))
+                    {
+                        m_TagControl.Add(m_InputTagName);
+                        m_InputTagName = string.Empty;
+                    }
+                }
+                GUILayout.Space(2);
+                EditorGUILayout.EndHorizontal();
+            }
 
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
