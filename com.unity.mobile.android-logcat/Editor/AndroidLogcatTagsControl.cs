@@ -189,6 +189,7 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            bool needRepaint = false;
             var e = Event.current;
             bool hitEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
 
@@ -199,14 +200,14 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
 
-            var tagNames = m_TagControl.TagNames;
-            var selectedTags = m_TagControl.SelectedTags;
+            var tagNames = new List<string>(m_TagControl.TagNames);
+            var selectedTags = new List<bool>(m_TagControl.SelectedTags);
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
                 var tagLabelRect = new Rect(
                     kEntryMargin,
                     AndroidLogcatStyles.kTagEntryFontSize + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
-                    noHeightWindowRect.width - AndroidLogcatStyles.ktagToggleFixedWidth - 2 * kEntryMargin,
+                    noHeightWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin,
                     AndroidLogcatStyles.kTagEntryFixedHeight);
 
                 EditorGUILayout.BeginHorizontal();
@@ -232,6 +233,7 @@ namespace Unity.Android.Logcat
                     DoMouseEvent(tagLabelRect, i);
                 }
 
+                // Draw the toggle.
                 var toggleRect = new Rect(tagLabelRect.width + 10, tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
                 var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.tagToggleStyle);
                 if (toggled != selectedTags[i])
@@ -239,13 +241,23 @@ namespace Unity.Android.Logcat
                     m_TagControl.TagSelected(null, null, i);
                 }
 
+                // Draw the remove button.
+                GUILayout.Space(kEntryMargin);
+                var removeButtonRect = new Rect(tagLabelRect.width + 10 + AndroidLogcatStyles.ktagToggleFixedWidth + kEntryMargin,
+                    tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
+                if (GUI.Button(removeButtonRect, string.Empty, AndroidLogcatStyles.tagToggleStyle))
+                {
+                    needRepaint |= RemoveSelected(i);
+                }
+                var removeTextRect = new Rect(removeButtonRect.x + 2, removeButtonRect.y + 1, removeButtonRect.width, removeButtonRect.height);
+                GUI.Label(removeTextRect, "X", AndroidLogcatStyles.removeTextStyle);
+
                 GUILayout.Space(kEntryMargin);
                 EditorGUILayout.EndHorizontal();
             }
 
-            var drawnHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
-
             // Draw the borders.
+            var drawnHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
             var orgColor = GUI.color;
             GUI.color = Color.black;
             GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
@@ -255,9 +267,9 @@ namespace Unity.Android.Logcat
             GUI.color = orgColor;
 
             GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
-
             GUILayout.Space(kEntryMargin);
 
+            // Draw the input field.
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(kEntryMargin - 3);
             GUI.SetNextControlName(kInputTextFieldControlId);
@@ -283,6 +295,9 @@ namespace Unity.Android.Logcat
 
             GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
+
+            if (needRepaint)
+                Repaint();
         }
 
         private void DoMouseEvent(Rect rect, int tagIndex)
@@ -296,21 +311,20 @@ namespace Unity.Android.Logcat
                         m_SelectedTagIndex = (m_SelectedTagIndex == tagIndex) ? -1 : tagIndex;
                         e.Use();
                         break;
-                    case 1:
-                        if (m_SelectedTagIndex == tagIndex)
-                        {
-                            GUIContent[] remove = {new GUIContent("Remove")};
-                            EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), remove, -1, RemoveSelected, null);
-                        }
-                        e.Use();
-                        break;
                 }
             }
         }
 
-        public void RemoveSelected(object userData, string[] option, int selectedIndex)
+        public bool RemoveSelected(int tagIndex)
         {
-            m_TagControl.Remove(m_SelectedTagIndex);
+            if (tagIndex < 0 || tagIndex >= m_TagControl.TagNames.Count)
+                return false;
+
+            // Simply reset to no selected.
+            m_SelectedTagIndex = -1;
+            m_TagControl.Remove(tagIndex);
+
+            return true;
         }
     }
 }
