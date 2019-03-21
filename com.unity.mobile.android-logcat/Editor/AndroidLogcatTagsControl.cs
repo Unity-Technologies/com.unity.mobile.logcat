@@ -41,7 +41,7 @@ namespace Unity.Android.Logcat
 
         public bool Add(string tag, bool isSelected = false)
         {
-            if (m_TagNames.IndexOf(tag) > 0)
+            if (string.IsNullOrEmpty(tag) || m_TagNames.IndexOf(tag) > 0)
                 return false;
 
             m_TagNames.Add(tag);
