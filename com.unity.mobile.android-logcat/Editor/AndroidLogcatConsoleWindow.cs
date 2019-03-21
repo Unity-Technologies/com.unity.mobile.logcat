@@ -121,6 +121,12 @@ namespace Unity.Android.Logcat
             }
         }
 
+        void OnDestroy()
+        {
+            if (m_TagControl.TagWindow != null)
+                m_TagControl.TagWindow.Close();
+        }
+
         private void OnEnable()
         {
             AndroidLogcatInternalLog.Log("OnEnable");
