@@ -204,11 +204,11 @@ namespace Unity.Android.Logcat
                 filterArg = "--regex \"" + Filter + "\"";
             }
 
-            var p = PriorityEnumToString(MessagePriority);
+            var priority = PriorityEnumToString(MessagePriority);
             if (PackagePid > 0 && IsAndroid7orAbove)
-                return string.Format("-s {0} logcat --pid={1} -v {2} {3}", Device.Id, PackagePid, LogPrintFormat, filterArg);
+                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", Device.Id, PackagePid, LogPrintFormat, priority, filterArg);
 
-            return string.Format("-s {0} logcat -v {1} {2}", Device.Id, LogPrintFormat, filterArg);
+            return string.Format("-s {0} logcat -v {1} *:{2} {3}", Device.Id, LogPrintFormat, priority, filterArg);
         }
 
         internal void Stop()
