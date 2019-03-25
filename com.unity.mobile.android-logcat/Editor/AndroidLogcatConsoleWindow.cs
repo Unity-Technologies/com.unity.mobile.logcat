@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEditor;
-
+using UnityEditor.IMGUI.Controls;
 #if PLATFORM_ANDROID
 using UnityEditor.Android;
 #endif
@@ -83,6 +83,8 @@ namespace Unity.Android.Logcat
         private string m_Filter = string.Empty;
         private bool m_FilterIsRegularExpression;
 
+        SearchField m_SearchField;
+
         [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
 
@@ -130,6 +132,10 @@ namespace Unity.Android.Logcat
         private void OnEnable()
         {
             AndroidLogcatInternalLog.Log("OnEnable");
+
+            if (m_SearchField == null)
+                m_SearchField = new SearchField();
+
             if (m_TagControl == null)
                 RecreateTags();
             m_TagControl.TagSelectionChanged += TagSelectionChanged;
@@ -319,6 +325,8 @@ namespace Unity.Android.Logcat
                 HandleSelectedPackage();
 
                 HandleSearchField();
+                GUILayout.Space(kSpace);
+
                 SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
 
                 GUILayout.Space(kSpace);
@@ -510,16 +518,9 @@ namespace Unity.Android.Logcat
 
         private void HandleSearchField()
         {
-            const string kSearchFieldControlName = "LogcatSearch";
-
-            EditorGUI.BeginChangeCheck();
-            GUI.SetNextControlName(kSearchFieldControlName);
-            var newFilter = EditorGUILayout.DelayedTextField(m_Filter, AndroidLogcatStyles.toolbarSearchField);
-            if (EditorGUI.EndChangeCheck())
-            {
-                SetFilter(newFilter);
-                EditorGUI.FocusTextInControl(kSearchFieldControlName);
-            }
+            var newFilter = m_SearchField.OnToolbarGUI(m_Filter, null);
+            SetFilter(newFilter);
+            m_SearchField.SetFocus();
         }
 
         private void SetSelectedDeviceByIndex(int newDeviceIndex, bool force = false)
