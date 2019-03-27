@@ -13,7 +13,7 @@ namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow : EditorWindow
 #if PLATFORM_ANDROID
-        , IHasCustomMenu, ISerializationCallbackReceiver
+        , IHasCustomMenu
     {
         private int m_SelectedDeviceIndex;
         private string m_SelectedDeviceId;
@@ -61,7 +61,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        [SerializeField]
         private PackageInformation m_SelectedPackage = null;
 
         private List<PackageInformation> PackagesForSelectedDevice
@@ -76,19 +75,13 @@ namespace Unity.Android.Logcat
 
         private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
 
-        [SerializeField]
-        private List<PackageInformation> m_PackagesForSerialization = new List<PackageInformation>();
-
-
-        [SerializeField]
         private AndroidLogcat.Priority m_SelectedPriority;
 
         private string m_Filter = string.Empty;
         private bool m_FilterIsRegularExpression;
 
-        SearchField m_SearchField;
+        private SearchField m_SearchField;
 
-        [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
 
         private AndroidLogcatJsonSerialization m_JsonSerialization = null;
@@ -238,32 +231,6 @@ namespace Unity.Android.Logcat
             StopLogCat();
             EditorApplication.update -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
-        }
-
-        public void OnBeforeSerialize()
-        {
-            m_PackagesForSerialization.Clear();
-
-            foreach (var p in m_PackagesForAllDevices)
-            {
-                m_PackagesForSerialization.AddRange(p.Value);
-            }
-        }
-
-        public void OnAfterDeserialize()
-        {
-            m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
-
-            foreach (var p in m_PackagesForSerialization)
-            {
-                List<PackageInformation> packages;
-                if (!m_PackagesForAllDevices.TryGetValue(p.deviceId, out packages))
-                {
-                    packages = new List<PackageInformation>();
-                    m_PackagesForAllDevices[p.deviceId] = packages;
-                }
-                packages.Add(p);
-            }
         }
 
         private void RemoveTag(string tag)
