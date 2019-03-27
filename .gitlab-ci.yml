@@ -54,7 +54,7 @@ test:windows:trunk:
    - bokken-runner
   script:
     - echo "Running Android Playmode Tests"
-  #  - python.exe -u testrunner.py Android --version=trunk
+    - python.exe -u testrunner.py Android --version=trunk
 
 
 publish:
