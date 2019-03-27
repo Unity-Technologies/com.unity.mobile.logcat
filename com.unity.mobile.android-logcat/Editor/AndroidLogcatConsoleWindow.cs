@@ -131,7 +131,7 @@ namespace Unity.Android.Logcat
 
         internal void SavePreferences()
         {
-            m_JsonSerialization = ScriptableObject.CreateInstance<AndroidLogcatJsonSerialization>();
+            m_JsonSerialization = new AndroidLogcatJsonSerialization();
             m_JsonSerialization.m_SelectedDeviceId = m_SelectedDeviceId;
             m_JsonSerialization.m_SelectedPackage = m_SelectedPackage;
             m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
@@ -172,8 +172,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                m_JsonSerialization = ScriptableObject.CreateInstance<AndroidLogcatJsonSerialization>();
-                JsonUtility.FromJsonOverwrite(jsonString, m_JsonSerialization);
+                m_JsonSerialization = JsonUtility.FromJson<AndroidLogcatJsonSerialization>(jsonString);
             }
             catch (Exception ex)
             {

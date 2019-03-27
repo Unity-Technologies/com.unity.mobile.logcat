@@ -243,7 +243,7 @@ namespace Unity.Android.Logcat
         }
     }
 
-    internal class AndroidLogcatJsonSerialization : ScriptableObject
+    internal class AndroidLogcatJsonSerialization
     {
         public string m_SelectedDeviceId = String.Empty;
 
