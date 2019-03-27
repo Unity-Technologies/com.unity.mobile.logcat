@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEditor;
@@ -25,6 +26,8 @@ namespace Unity.Android.Logcat
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
 
+        private const string kJsonFileName = "AndroidLogcatJsonFile.json";
+
         private Rect m_IpWindowScreenRect;
 
         private enum PackageType
@@ -35,7 +38,7 @@ namespace Unity.Android.Logcat
         }
 
         [Serializable]
-        private class PackageInformation
+        internal class PackageInformation
         {
             public string deviceId;
             public string name;
@@ -88,6 +91,8 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
 
+        private AndroidLogcatJsonSerialization m_JsonSerialization = null;
+
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private ADB m_Adb;
@@ -125,8 +130,82 @@ namespace Unity.Android.Logcat
 
         void OnDestroy()
         {
+            SavePreferences();
+
             if (m_TagControl.TagWindow != null)
                 m_TagControl.TagWindow.Close();
+        }
+
+        internal void SavePreferences()
+        {
+            m_JsonSerialization = ScriptableObject.CreateInstance<AndroidLogcatJsonSerialization>();
+            m_JsonSerialization.m_SelectedDeviceId = m_SelectedDeviceId;
+            m_JsonSerialization.m_SelectedPackage = m_SelectedPackage;
+            m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
+            m_JsonSerialization.m_TagControl = m_TagControl;
+
+            var packagesForSerialization = new List<PackageInformation>();
+            foreach (var p in m_PackagesForAllDevices)
+            {
+                packagesForSerialization.AddRange(p.Value);
+            }
+            m_JsonSerialization.m_PackagesForSerialization = packagesForSerialization;
+
+            var jsonString = JsonUtility.ToJson(m_JsonSerialization);
+            m_JsonSerialization = null;
+
+            if (string.IsNullOrEmpty(jsonString))
+                return;
+
+            var jsonFilePath = Path.Combine(Application.temporaryCachePath, kJsonFileName);
+
+            if (File.Exists(jsonFilePath))
+                File.Delete(jsonFilePath);
+
+            File.WriteAllText(jsonFilePath, jsonString);
+
+            EditorPrefs.SetString(kJsonFileName, jsonFilePath);
+        }
+
+        internal void LoadPreferences()
+        {
+            if (!EditorPrefs.HasKey(kJsonFileName))
+                return;
+
+            var jsonFile = EditorPrefs.GetString(kJsonFileName);
+            var jsonString = File.ReadAllText(jsonFile);
+            if (string.IsNullOrEmpty(jsonString))
+                return;
+
+            try
+            {
+                m_JsonSerialization = ScriptableObject.CreateInstance<AndroidLogcatJsonSerialization>();
+                JsonUtility.FromJsonOverwrite(jsonString, m_JsonSerialization);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log("Load Preferences from Json failed: " + ex.Message);
+                m_JsonSerialization = null;
+                return;
+            }
+
+            // We can only restore Priority, TagControl & PackageForSerialization here.
+            // For selected device & package, we have to delay it when we first launch the window.
+            m_SelectedPriority = m_JsonSerialization.m_SelectedPriority;
+            m_TagControl.TagNames = m_JsonSerialization.m_TagControl.TagNames;
+            m_TagControl.SelectedTags = m_JsonSerialization.m_TagControl.SelectedTags;
+
+            m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
+            foreach (var p in m_JsonSerialization.m_PackagesForSerialization)
+            {
+                List<PackageInformation> packages;
+                if (!m_PackagesForAllDevices.TryGetValue(p.deviceId, out packages))
+                {
+                    packages = new List<PackageInformation>();
+                    m_PackagesForAllDevices[p.deviceId] = packages;
+                }
+                packages.Add(p);
+            }
         }
 
         private void OnEnable()
@@ -232,6 +311,7 @@ namespace Unity.Android.Logcat
 
             if (m_AutoSelectPackage && !m_FinishedAutoselectingPackage)
             {
+                // This is for AutoRun triggered by "Build And Run".
                 if ((DateTime.Now - m_TimeOfLastAutoConnectUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveAutoConnectChecks)
                     return;
                 m_TimeOfLastAutoConnectUpdate = DateTime.Now;
@@ -264,9 +344,29 @@ namespace Unity.Android.Logcat
             {
                 if (m_SelectedDeviceId == null)
                 {
-                    SetSelectedDeviceByIndex(0, true);
+                    SetSelectedDeviceByIndex(GetSelectedDeviceIndex(), true);
                 }
             }
+        }
+
+        private int GetSelectedDeviceIndex()
+        {
+            // We should only restore from AndroidLogcatJsonSerialization once during first launching.
+            if (m_JsonSerialization == null)
+                return 0;
+
+            var selectedDeviceId = m_JsonSerialization.m_SelectedDeviceId;
+            if (string.IsNullOrEmpty(selectedDeviceId) || m_DeviceIds.IndexOf(selectedDeviceId) < 0)
+            {
+                m_JsonSerialization = null;
+                return 0;
+            }
+
+            var selectedDeviceIndex = m_DeviceIds.IndexOf(selectedDeviceId);
+            m_SelectedPackage = m_JsonSerialization.m_SelectedPackage;
+            m_JsonSerialization = null;
+
+            return selectedDeviceIndex;
         }
 
         private void OnDeviceDisconnected(string deviceId)
@@ -784,11 +884,15 @@ namespace Unity.Android.Logcat
         {
             var wnd = GetWindow<AndroidLogcatConsoleWindow>();
             if (wnd == null)
+            {
                 wnd = ScriptableObject.CreateInstance<AndroidLogcatConsoleWindow>();
+            }
+
             wnd.titleContent = new GUIContent("Android Logcat");
-        #if PLATFORM_ANDROID
+#if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
-        #endif
+            wnd.LoadPreferences();
+#endif
             wnd.Show();
             wnd.Focus();
 

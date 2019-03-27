@@ -20,11 +20,20 @@ namespace Unity.Android.Logcat
     {
         [SerializeField]
         private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null });
-        public List<string> TagNames { get { return m_TagNames; } }
+        public List<string> TagNames
+        {
+            get { return m_TagNames; }
+            set { m_TagNames = value; }
+        }
 
         [SerializeField]
         private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false });
-        public List<bool> SelectedTags { get { return m_SelectedTags; } }
+
+        public List<bool> SelectedTags
+        {
+            get { return m_SelectedTags; }
+            set { m_SelectedTags = value; }
+        }
 
         public event Action TagSelectionChanged;
 
