@@ -139,6 +139,7 @@ namespace Unity.Android.Logcat
             m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
             m_JsonSerialization.m_TagControl = m_TagControl;
 
+            // Convert Dictionary to List for serialization.
             var packagesForSerialization = new List<PackageInformation>();
             foreach (var p in m_PackagesForAllDevices)
             {
@@ -148,15 +149,12 @@ namespace Unity.Android.Logcat
 
             var jsonString = JsonUtility.ToJson(m_JsonSerialization);
             m_JsonSerialization = null;
-
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
             var jsonFilePath = Path.Combine(Application.temporaryCachePath, kJsonFileName);
-
             if (File.Exists(jsonFilePath))
                 File.Delete(jsonFilePath);
-
             File.WriteAllText(jsonFilePath, jsonString);
 
             EditorPrefs.SetString(kJsonFileName, jsonFilePath);
