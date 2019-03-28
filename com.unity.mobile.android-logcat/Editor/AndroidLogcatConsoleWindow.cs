@@ -310,29 +310,30 @@ namespace Unity.Android.Logcat
             {
                 if (m_SelectedDeviceId == null)
                 {
-                    SetSelectedDeviceByIndex(GetSelectedDeviceIndex(), true);
+                    int selectedDeviceIndex;
+                    PackageInformation selectedPackage;
+                    GetSelectedDeviceIndex(out selectedDeviceIndex, out selectedPackage);
+                    SetSelectedDeviceByIndex(selectedDeviceIndex, true);
+                    SelectPackage(selectedPackage);
                 }
             }
         }
 
-        private int GetSelectedDeviceIndex()
+        private void GetSelectedDeviceIndex(out int selectedDeviceIndex, out PackageInformation selectedPackage)
         {
-            // We should only restore from AndroidLogcatJsonSerialization once during first launching.
-            if (m_JsonSerialization == null)
-                return 0;
-
-            var selectedDeviceId = m_JsonSerialization.m_SelectedDeviceId;
-            if (string.IsNullOrEmpty(selectedDeviceId) || m_DeviceIds.IndexOf(selectedDeviceId) < 0)
+            if (m_JsonSerialization == null || string.IsNullOrEmpty(m_JsonSerialization.m_SelectedDeviceId) || m_DeviceIds.IndexOf(m_JsonSerialization.m_SelectedDeviceId) < 0)
             {
+                selectedDeviceIndex = 0;
+                selectedPackage = null;
                 m_JsonSerialization = null;
-                return 0;
+                return;
             }
 
-            var selectedDeviceIndex = m_DeviceIds.IndexOf(selectedDeviceId);
-            m_SelectedPackage = m_JsonSerialization.m_SelectedPackage;
-            m_JsonSerialization = null;
+            selectedDeviceIndex = m_DeviceIds.IndexOf(m_JsonSerialization.m_SelectedDeviceId);
+            selectedPackage = m_JsonSerialization.m_SelectedPackage;
 
-            return selectedDeviceIndex;
+            // We should only restore from AndroidLogcatJsonSerialization once during first launching.
+            m_JsonSerialization = null;
         }
 
         private void OnDeviceDisconnected(string deviceId)
