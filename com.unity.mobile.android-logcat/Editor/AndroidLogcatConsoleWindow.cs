@@ -264,12 +264,6 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
-        private void ClearTags()
-        {
-            RecreateTags();
-            RestartLogCat();
-        }
-
         private void Update()
         {
             if (m_DeviceIds != null && m_DeviceIds.Count == 0)
