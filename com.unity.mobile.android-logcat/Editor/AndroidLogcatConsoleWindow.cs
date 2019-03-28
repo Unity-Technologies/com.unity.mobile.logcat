@@ -27,6 +27,8 @@ namespace Unity.Android.Logcat
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
 
         private const string kJsonFileName = "AndroidLogcatJsonFile.json";
+        private const string kUnityTag = "Unity";
+        private const string kCrashTag = "CRASH";
 
         private Rect m_IpWindowScreenRect;
 
@@ -123,13 +125,13 @@ namespace Unity.Android.Logcat
 
         void OnDestroy()
         {
-            SavePreferences();
+            SaveStates();
 
             if (m_TagControl.TagWindow != null)
                 m_TagControl.TagWindow.Close();
         }
 
-        internal void SavePreferences()
+        internal void SaveStates()
         {
             m_JsonSerialization = new AndroidLogcatJsonSerialization();
             m_JsonSerialization.m_SelectedDeviceId = m_SelectedDeviceId;
@@ -160,7 +162,7 @@ namespace Unity.Android.Logcat
             EditorPrefs.SetString(kJsonFileName, jsonFilePath);
         }
 
-        internal void LoadPreferences()
+        internal void LoadStates()
         {
             if (!EditorPrefs.HasKey(kJsonFileName))
                 return;
@@ -187,8 +189,7 @@ namespace Unity.Android.Logcat
             // We can only restore Priority, TagControl & PackageForSerialization here.
             // For selected device & package, we have to delay it when we first launch the window.
             m_SelectedPriority = m_JsonSerialization.m_SelectedPriority;
-            m_TagControl.TagNames = m_JsonSerialization.m_TagControl.TagNames;
-            m_TagControl.SelectedTags = m_JsonSerialization.m_TagControl.SelectedTags;
+            RestoreTags(m_JsonSerialization);
 
             m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
             foreach (var p in m_JsonSerialization.m_PackagesForSerialization)
@@ -200,6 +201,25 @@ namespace Unity.Android.Logcat
                     m_PackagesForAllDevices[p.deviceId] = packages;
                 }
                 packages.Add(p);
+            }
+        }
+
+        void RestoreTags(AndroidLogcatJsonSerialization jsonSerialization)
+        {
+            m_TagControl.TagNames = jsonSerialization.m_TagControl.TagNames;
+            m_TagControl.SelectedTags = jsonSerialization.m_TagControl.SelectedTags;
+
+            // Merge predefined tags if necessary.
+            var predefinedTags = new List<string>(new[] { kUnityTag, kCrashTag });
+            int position = (int)AndroidLogcatTagType.FirstValidTag;
+            foreach (var tag in predefinedTags)
+            {
+                if (m_TagControl.TagNames.Contains(tag))
+                    continue;
+
+                m_TagControl.TagNames.Insert(position, tag);
+                m_TagControl.SelectedTags.Insert(position, false);
+                ++position;
             }
         }
 
@@ -255,8 +275,8 @@ namespace Unity.Android.Logcat
         {
             m_TagControl = new AndroidLogcatTagsControl();
 
-            m_TagControl.Add("Unity");
-            m_TagControl.Add("CRASH");
+            m_TagControl.Add(kUnityTag);
+            m_TagControl.Add(kCrashTag);
         }
 
         private void TagSelectionChanged()
@@ -858,7 +878,7 @@ namespace Unity.Android.Logcat
             wnd.titleContent = new GUIContent("Android Logcat");
 #if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
-            wnd.LoadPreferences();
+            wnd.LoadStates();
 #endif
             wnd.Show();
             wnd.Focus();
