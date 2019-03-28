@@ -166,6 +166,9 @@ namespace Unity.Android.Logcat
                 return;
 
             var jsonFile = EditorPrefs.GetString(kJsonFileName);
+            if (string.IsNullOrEmpty(jsonFile) || !File.Exists(jsonFile))
+                return;
+
             var jsonString = File.ReadAllText(jsonFile);
             if (string.IsNullOrEmpty(jsonString))
                 return;
@@ -669,15 +672,18 @@ namespace Unity.Android.Logcat
             m_DeviceDetails = devicesDetails.ToArray();
         }
 
-        private void CheckIfPackageExited(PackageInformation package)
+        private void CheckIfPackagesExited()
         {
-            if (package != null &&
-                package.processId > 0 &&
-                !package.exited &&
-                GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
+            foreach (var package in PackagesForSelectedDevice)
             {
-                m_SelectedPackage.exited = true;
-                m_SelectedPackage.displayName += " [Exited]";
+                if (package == null || package.processId <= 0 || package.exited)
+                    continue;
+
+                if (GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
+                {
+                    package.exited = true;
+                    package.displayName += " [Exited]";
+                }
             }
         }
 
@@ -705,7 +711,7 @@ namespace Unity.Android.Logcat
 
         private void UpdateDebuggablePackages()
         {
-            CheckIfPackageExited(m_SelectedPackage);
+            CheckIfPackagesExited();
 
             int topActivityPid = 0;
             string topActivityPackageName = string.Empty;
