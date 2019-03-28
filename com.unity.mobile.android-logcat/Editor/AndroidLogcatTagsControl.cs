@@ -199,23 +199,52 @@ namespace Unity.Android.Logcat
         void OnGUI()
         {
             bool needRepaint = false;
+            const float kEntryMargin = 8;
+
             var e = Event.current;
             bool hitEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
 
+            EditorGUILayout.BeginVertical();
+            GUILayout.Space(kEntryMargin);
+
+            // Draw the input field & "Add" Button.
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(kEntryMargin - 3);
+            GUI.SetNextControlName(kInputTextFieldControlId);
+            m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
+            if (m_InputTagName.Length > 23)
+            {
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
+            }
+            else
+            {
+                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
+                {
+                    if (!string.IsNullOrEmpty(m_InputTagName))
+                    {
+                        m_TagControl.Add(m_InputTagName);
+                        m_InputTagName = string.Empty;
+                        needRepaint = true;
+                    }
+                }
+                GUILayout.Space(2);
+                EditorGUILayout.EndHorizontal();
+            }
+
             // Get the window with no height to get the width.
             var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
-            const float kEntryMargin = 8;
 
-            EditorGUILayout.BeginVertical();
-            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
+            float yoffset = noHeightWindowRect.y + kEntryMargin;
 
+            // Draw the tag list.
             var tagNames = new List<string>(m_TagControl.TagNames);
             var selectedTags = new List<bool>(m_TagControl.SelectedTags);
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
             {
                 var tagLabelRect = new Rect(
                     kEntryMargin,
-                    AndroidLogcatStyles.kTagEntryFontSize + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
+                    yoffset + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
                     noHeightWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin,
                     AndroidLogcatStyles.kTagEntryFixedHeight);
 
@@ -266,43 +295,16 @@ namespace Unity.Android.Logcat
             }
 
             // Draw the borders.
-            var drawnHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
+            var tagsHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
             var orgColor = GUI.color;
             GUI.color = Color.black;
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(noHeightWindowRect.width + 2, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin + drawnHeight, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, yoffset - 4, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(noHeightWindowRect.width + 2, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin - 4, yoffset + tagsHeight + 4, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
             GUI.color = orgColor;
 
-            GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
             GUILayout.Space(kEntryMargin);
-
-            // Draw the input field.
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(kEntryMargin - 3);
-            GUI.SetNextControlName(kInputTextFieldControlId);
-            m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (m_InputTagName.Length > 23)
-            {
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
-            }
-            else
-            {
-                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
-                {
-                    if (!string.IsNullOrEmpty(m_InputTagName))
-                    {
-                        m_TagControl.Add(m_InputTagName);
-                        m_InputTagName = string.Empty;
-                    }
-                }
-                GUILayout.Space(2);
-                EditorGUILayout.EndHorizontal();
-            }
-
-            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
 
             if (needRepaint)
