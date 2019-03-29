@@ -174,7 +174,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
         private string m_InputTagName = String.Empty;
-        private const string kInputTextFieldControlId = "InputTextFieldControl";
+        private const string kTagInputTextFieldControlId = "TagInputTextFieldControl";
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
 
@@ -198,19 +198,17 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            bool needRepaint = false;
+            var currentEvent = Event.current;
+            bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
+
             const float kEntryMargin = 8;
-
-            var e = Event.current;
-            bool hitEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
-
             EditorGUILayout.BeginVertical();
             GUILayout.Space(kEntryMargin);
 
             // Draw the input field & "Add" Button.
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(kEntryMargin - 3);
-            GUI.SetNextControlName(kInputTextFieldControlId);
+            GUI.SetNextControlName(kTagInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
             if (m_InputTagName.Length > 23)
             {
@@ -219,13 +217,13 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
+                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kTagInputTextFieldControlId))
                 {
                     if (!string.IsNullOrEmpty(m_InputTagName))
                     {
                         m_TagControl.Add(m_InputTagName);
                         m_InputTagName = string.Empty;
-                        needRepaint = true;
+                        GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
                     }
                 }
                 GUILayout.Space(2);
@@ -252,7 +250,7 @@ namespace Unity.Android.Logcat
                 GUILayout.Space(kEntryMargin);
 
                 var backgroundRect = new Rect(tagLabelRect.x - 2, tagLabelRect.y, noHeightWindowRect.width - kEntryMargin, tagLabelRect.height);
-                if (e.type == EventType.Repaint)
+                if (currentEvent.type == EventType.Repaint)
                 {
                     if (m_SelectedTagIndex == i)
                         AndroidLogcatStyles.tagEntryBackground.Draw(tagLabelRect, false, false, true, false);
@@ -285,7 +283,7 @@ namespace Unity.Android.Logcat
                     tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
                 if (GUI.Button(removeButtonRect, string.Empty, AndroidLogcatStyles.tagToggleStyle))
                 {
-                    needRepaint |= RemoveSelected(i);
+                    RemoveSelected(i);
                 }
                 var removeTextRect = new Rect(removeButtonRect.x + 2, removeButtonRect.y + 1, removeButtonRect.width, removeButtonRect.height);
                 GUI.Label(removeTextRect, "X", AndroidLogcatStyles.removeTextStyle);
@@ -306,9 +304,6 @@ namespace Unity.Android.Logcat
 
             GUILayout.Space(kEntryMargin);
             EditorGUILayout.EndVertical();
-
-            if (needRepaint)
-                Repaint();
         }
 
         private void DoMouseEvent(Rect rect, int tagIndex)
