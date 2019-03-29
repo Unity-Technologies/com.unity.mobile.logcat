@@ -209,12 +209,15 @@ namespace Unity.Android.Logcat
 
             // Draw the input field & "Add" Button.
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(kEntryMargin - 3);
+            GUILayout.Space(kEntryMargin + 7);
             GUI.SetNextControlName(kTagInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
             if (m_InputTagName.Length > 23)
             {
+                GUILayout.Space(kEntryMargin + 2);
                 EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(kEntryMargin + 7);
                 EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
             }
             else
@@ -228,9 +231,9 @@ namespace Unity.Android.Logcat
                         GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
                     }
                 }
-                GUILayout.Space(2);
-                EditorGUILayout.EndHorizontal();
             }
+            GUILayout.Space(kEntryMargin + 2);
+            EditorGUILayout.EndHorizontal();
 
             // Get the visible window rect and tag window rect for scroll view.
             var visibleWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
