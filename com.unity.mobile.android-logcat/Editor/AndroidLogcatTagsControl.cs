@@ -20,11 +20,20 @@ namespace Unity.Android.Logcat
     {
         [SerializeField]
         private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null });
-        public List<string> TagNames { get { return m_TagNames; } }
+        public List<string> TagNames
+        {
+            get { return m_TagNames; }
+            set { m_TagNames = value; }
+        }
 
         [SerializeField]
         private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false });
-        public List<bool> SelectedTags { get { return m_SelectedTags; } }
+
+        public List<bool> SelectedTags
+        {
+            get { return m_SelectedTags; }
+            set { m_SelectedTags = value; }
+        }
 
         public event Action TagSelectionChanged;
 
@@ -41,7 +50,7 @@ namespace Unity.Android.Logcat
 
         public bool Add(string tag, bool isSelected = false)
         {
-            if (m_TagNames.IndexOf(tag) > 0)
+            if (string.IsNullOrEmpty(tag) || m_TagNames.IndexOf(tag) > 0)
                 return false;
 
             m_TagNames.Add(tag);
@@ -76,7 +85,7 @@ namespace Unity.Android.Logcat
         public string[] GetSelectedTags(bool skipNoFilterIndex = false)
         {
             if (!skipNoFilterIndex && m_SelectedTags[(int)AndroidLogcatTagType.NoFilter])
-                return new string[0];
+                return null;
 
             var selectedTagNames = new List<string>(m_SelectedTags.Count);
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_SelectedTags.Count; i++)
@@ -165,7 +174,9 @@ namespace Unity.Android.Logcat
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
         private string m_InputTagName = String.Empty;
-        private const string kInputTextFieldControlId = "InputTextFieldControl";
+        private const string kTagInputTextFieldControlId = "TagInputTextFieldControl";
+
+        public Vector2 m_ScrollPosition = Vector2.zero;
 
         private static AndroidLogcatTagWindow s_TagWindow = null;
 
@@ -189,32 +200,68 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            bool needRepaint = false;
-            var e = Event.current;
-            bool hitEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+            var currentEvent = Event.current;
+            bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
 
-            // Get the window with no height to get the width.
-            var noHeightWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(0));
             const float kEntryMargin = 8;
-
             EditorGUILayout.BeginVertical();
-            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
+            GUILayout.Space(kEntryMargin);
 
-            var tagNames = new List<string>(m_TagControl.TagNames);
-            var selectedTags = new List<bool>(m_TagControl.SelectedTags);
-            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < tagNames.Count; ++i)
+            // Draw the input field & "Add" Button.
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Space(kEntryMargin + 7);
+            GUI.SetNextControlName(kTagInputTextFieldControlId);
+            m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
+            if (m_InputTagName.Length > 23)
+            {
+                GUILayout.Space(kEntryMargin + 2);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(kEntryMargin + 7);
+                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
+            }
+            else
+            {
+                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kTagInputTextFieldControlId))
+                {
+                    if (!string.IsNullOrEmpty(m_InputTagName))
+                    {
+                        m_TagControl.Add(m_InputTagName);
+                        m_InputTagName = string.Empty;
+                        GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
+                    }
+                }
+            }
+            GUILayout.Space(kEntryMargin + 2);
+            EditorGUILayout.EndHorizontal();
+
+            // Get the visible window rect and tag window rect for scroll view.
+            var visibleWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            var tagsHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (m_TagControl.TagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
+            var tagWindowRect = visibleWindowRect;
+            tagWindowRect.width = visibleWindowRect.width - 10;
+            tagWindowRect.height = tagsHeight + 2 * kEntryMargin;
+
+            // Draw scroll view without horizontal scrollbar.
+            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, tagWindowRect, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+
+            // Draw the tag list.
+            var tagNames = m_TagControl.TagNames;
+            var selectedTags = m_TagControl.SelectedTags;
+            float yoffset = tagWindowRect.y + kEntryMargin;
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_TagControl.TagNames.Count; ++i)
             {
                 var tagLabelRect = new Rect(
-                    kEntryMargin,
-                    AndroidLogcatStyles.kTagEntryFontSize + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
-                    noHeightWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin,
+                    kEntryMargin + 10,
+                    yoffset + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
+                    tagWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin - 10,
                     AndroidLogcatStyles.kTagEntryFixedHeight);
 
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin);
 
-                var backgroundRect = new Rect(tagLabelRect.x - 2, tagLabelRect.y, noHeightWindowRect.width - kEntryMargin, tagLabelRect.height);
-                if (e.type == EventType.Repaint)
+                var backgroundRect = new Rect(tagLabelRect.x - 2, tagLabelRect.y, tagWindowRect.width - kEntryMargin - 10, tagLabelRect.height);
+                if (currentEvent.type == EventType.Repaint)
                 {
                     if (m_SelectedTagIndex == i)
                         AndroidLogcatStyles.tagEntryBackground.Draw(tagLabelRect, false, false, true, false);
@@ -234,7 +281,7 @@ namespace Unity.Android.Logcat
                 }
 
                 // Draw the toggle.
-                var toggleRect = new Rect(tagLabelRect.width + 10, tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
+                var toggleRect = new Rect(tagLabelRect.width + 20, tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
                 var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.tagToggleStyle);
                 if (toggled != selectedTags[i])
                 {
@@ -243,11 +290,11 @@ namespace Unity.Android.Logcat
 
                 // Draw the remove button.
                 GUILayout.Space(kEntryMargin);
-                var removeButtonRect = new Rect(tagLabelRect.width + 10 + AndroidLogcatStyles.ktagToggleFixedWidth + kEntryMargin,
+                var removeButtonRect = new Rect(tagLabelRect.width + 20 + AndroidLogcatStyles.ktagToggleFixedWidth + kEntryMargin,
                     tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
                 if (GUI.Button(removeButtonRect, string.Empty, AndroidLogcatStyles.tagToggleStyle))
                 {
-                    needRepaint |= RemoveSelected(i);
+                    RemoveSelected(i);
                 }
                 var removeTextRect = new Rect(removeButtonRect.x + 2, removeButtonRect.y + 1, removeButtonRect.width, removeButtonRect.height);
                 GUI.Label(removeTextRect, "X", AndroidLogcatStyles.removeTextStyle);
@@ -257,47 +304,18 @@ namespace Unity.Android.Logcat
             }
 
             // Draw the borders.
-            var drawnHeight = (AndroidLogcatStyles.kTagEntryFixedHeight) * (tagNames.Count - (int)AndroidLogcatTagType.FirstValidTag);
             var orgColor = GUI.color;
             GUI.color = Color.black;
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin - 8, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(noHeightWindowRect.width + 2, 2 * kEntryMargin - 8, 1, drawnHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin - 4, 2 * kEntryMargin + drawnHeight, noHeightWindowRect.width - kEntryMargin + 6, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset - 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(tagWindowRect.width + 2, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset + tagsHeight + 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
             GUI.color = orgColor;
 
-            GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagEntryStyle, GUILayout.ExpandWidth(true), GUILayout.Height(drawnHeight));
+            GUI.EndScrollView();
+
             GUILayout.Space(kEntryMargin);
-
-            // Draw the input field.
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Space(kEntryMargin - 3);
-            GUI.SetNextControlName(kInputTextFieldControlId);
-            m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (m_InputTagName.Length > 23)
-            {
-                EditorGUILayout.EndHorizontal();
-                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
-            }
-            else
-            {
-                if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
-                {
-                    if (!string.IsNullOrEmpty(m_InputTagName))
-                    {
-                        m_TagControl.Add(m_InputTagName);
-                        m_InputTagName = string.Empty;
-                    }
-                }
-                GUILayout.Space(2);
-                EditorGUILayout.EndHorizontal();
-            }
-
-            GUILayout.Space(AndroidLogcatStyles.kTagEntryFontSize);
             EditorGUILayout.EndVertical();
-
-            if (needRepaint)
-                Repaint();
         }
 
         private void DoMouseEvent(Rect rect, int tagIndex)

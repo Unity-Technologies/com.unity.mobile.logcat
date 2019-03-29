@@ -433,7 +433,6 @@ namespace Unity.Android.Logcat
                         if (entries.Count > 0)
                         {
                             menuItems.Add("");
-                            menuItems.Add("Clear tags");
                             menuItems.Add("Add tag '" + entries[0].tag + "'");
                             menuItems.Add("Remove tag '" + entries[0].tag + "'");
                         }
@@ -567,16 +566,12 @@ namespace Unity.Android.Logcat
                 case 3:
                     SaveToFile((AndroidLogcat.LogEntry[])userData);
                     break;
-                // Clear tags
-                case 5:
-                    ClearTags();
-                    break;
                 // Add tag
-                case 6:
+                case 5:
                     AddTag(((AndroidLogcat.LogEntry[])userData)[0].tag);
                     break;
                 // Remove tag
-                case 7:
+                case 6:
                     RemoveTag(((AndroidLogcat.LogEntry[])userData)[0].tag);
                     break;
             }

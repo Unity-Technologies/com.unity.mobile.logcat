@@ -201,15 +201,14 @@ namespace Unity.Android.Logcat
             var filterArg = string.Empty;
             if (IsAndroid7orAbove && !string.IsNullOrEmpty(Filter))
             {
-                filterArg = " --regex \"" + Filter + "\"";
+                filterArg = "--regex \"" + Filter + "\"";
             }
 
-            var p = PriorityEnumToString(MessagePriority);
-            var tagLine = Tags.Length > 0 ? string.Join(" ", Tags.Select(m => m + ":" + p + " ").ToArray()) : "*:" + p + " ";
+            var priority = PriorityEnumToString(MessagePriority);
             if (PackagePid > 0 && IsAndroid7orAbove)
-                return string.Format("-s {0} logcat --pid={1} -s -v {2} {3}{4}", Device.Id, PackagePid, LogPrintFormat, tagLine, filterArg);
+                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", Device.Id, PackagePid, LogPrintFormat, priority, filterArg);
 
-            return string.Format("-s {0} logcat -s -v {1} {2}{3}", Device.Id, LogPrintFormat, tagLine, filterArg);
+            return string.Format("-s {0} logcat -v {1} *:{2} {3}", Device.Id, LogPrintFormat, priority, filterArg);
         }
 
         internal void Stop()
@@ -275,6 +274,7 @@ namespace Unity.Android.Logcat
                     return;
 
                 var needFilterByPid = !IsAndroid7orAbove && PackagePid > 0;
+                var needFilterByTags = Tags != null && Tags.Length > 0;
                 var needFilterBySearch = !IsAndroid7orAbove && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
@@ -282,11 +282,18 @@ namespace Unity.Android.Logcat
                     var m = regex.Match(logLine);
                     if (!m.Success)
                     {
-                        entries.Add(LogEntryParserErrorFor(logLine));
+                        // The reason we need to check `needFilterByTags` is we don't really want to show the error logs that we can't parse if a tag is chosen.
+                        // For logs we can't parse, please refer to https://gitlab.cds.internal.unity3d.com/upm-packages/mobile/mobile-android-logcat/issues/44
+                        // And we should remove this check once #44 is fixed completely.
+                        if (!needFilterByTags)
+                            entries.Add(LogEntryParserErrorFor(logLine));
                         continue;
                     }
 
                     if (needFilterByPid && Int32.Parse(m.Groups["pid"].Value) != PackagePid)
+                        continue;
+
+                    if (needFilterByTags && !MatchTagsFilter(m.Groups["tag"].Value))
                         continue;
 
                     if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
@@ -307,6 +314,17 @@ namespace Unity.Android.Logcat
         private LogEntry LogEntryParserErrorFor(string msg)
         {
             return new LogEntry(msg);
+        }
+
+        private bool MatchTagsFilter(string tagInMsg)
+        {
+            foreach (var tag in Tags)
+            {
+                if (tagInMsg.Contains(tag))
+                    return true;
+            }
+
+            return false;
         }
 
         private bool MatchSearchFilter(string msg)
