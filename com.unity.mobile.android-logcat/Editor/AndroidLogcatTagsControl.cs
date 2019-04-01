@@ -286,6 +286,7 @@ namespace Unity.Android.Logcat
                 if (toggled != selectedTags[i])
                 {
                     m_TagControl.TagSelected(null, null, i);
+                    GUIUtility.keyboardControl = 0;
                 }
 
                 // Draw the remove button.
@@ -295,6 +296,7 @@ namespace Unity.Android.Logcat
                 if (GUI.Button(removeButtonRect, string.Empty, AndroidLogcatStyles.tagToggleStyle))
                 {
                     RemoveSelected(i);
+                    GUIUtility.keyboardControl = 0;
                 }
                 var removeTextRect = new Rect(removeButtonRect.x + 2, removeButtonRect.y + 1, removeButtonRect.width, removeButtonRect.height);
                 GUI.Label(removeTextRect, "X", AndroidLogcatStyles.removeTextStyle);
@@ -328,6 +330,7 @@ namespace Unity.Android.Logcat
                     case 0:
                         m_SelectedTagIndex = (m_SelectedTagIndex == tagIndex) ? -1 : tagIndex;
                         e.Use();
+                        GUIUtility.keyboardControl = 0;
                         break;
                 }
             }
