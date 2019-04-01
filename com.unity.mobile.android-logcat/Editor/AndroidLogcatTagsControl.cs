@@ -245,22 +245,24 @@ namespace Unity.Android.Logcat
             // Draw scroll view without horizontal scrollbar.
             m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, tagWindowRect, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
 
-            // Draw the tag list.
+            // Set the rects for all the UI widgets, loop y for each tag.
+            var backgroundRect = new Rect(2 * kEntryMargin, 0, tagWindowRect.width - kEntryMargin - 10, AndroidLogcatStyles.kTagEntryFixedHeight);
+            var tagLabelRect = new Rect(2 * kEntryMargin + 2, 0, tagWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin - 10, AndroidLogcatStyles.kTagEntryFixedHeight);
+            var toggleRect = new Rect(tagLabelRect.width + 20, 0, AndroidLogcatStyles.ktagToggleFixedWidth, AndroidLogcatStyles.kTagEntryFixedHeight);
+            var removeButtonRect = new Rect(toggleRect.x + AndroidLogcatStyles.ktagToggleFixedWidth + kEntryMargin, 0, AndroidLogcatStyles.ktagToggleFixedWidth, AndroidLogcatStyles.kTagEntryFixedHeight);
+            var removeTextRect = new Rect(removeButtonRect.x + 2, 0, removeButtonRect.width, removeButtonRect.height);
+
+            // Draw tag list.
+            float yOffset = tagWindowRect.y + kEntryMargin;
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
-            float yoffset = tagWindowRect.y + kEntryMargin;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_TagControl.TagNames.Count; ++i)
             {
-                var tagLabelRect = new Rect(
-                    kEntryMargin + 10,
-                    yoffset + (AndroidLogcatStyles.kTagEntryFixedHeight) * (i - (int)AndroidLogcatTagType.FirstValidTag),
-                    tagWindowRect.width - 2 * AndroidLogcatStyles.ktagToggleFixedWidth - 3 * kEntryMargin - 10,
-                    AndroidLogcatStyles.kTagEntryFixedHeight);
-
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin);
 
-                var backgroundRect = new Rect(tagLabelRect.x - 2, tagLabelRect.y, tagWindowRect.width - kEntryMargin - 10, tagLabelRect.height);
+                tagLabelRect.y = yOffset;
+                backgroundRect.y = yOffset;
                 if (currentEvent.type == EventType.Repaint)
                 {
                     if (m_SelectedTagIndex == i)
@@ -281,7 +283,7 @@ namespace Unity.Android.Logcat
                 }
 
                 // Draw the toggle.
-                var toggleRect = new Rect(tagLabelRect.width + 20, tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
+                toggleRect.y = yOffset;
                 var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, AndroidLogcatStyles.tagToggleStyle);
                 if (toggled != selectedTags[i])
                 {
@@ -291,27 +293,29 @@ namespace Unity.Android.Logcat
 
                 // Draw the remove button.
                 GUILayout.Space(kEntryMargin);
-                var removeButtonRect = new Rect(tagLabelRect.width + 20 + AndroidLogcatStyles.ktagToggleFixedWidth + kEntryMargin,
-                    tagLabelRect.y, AndroidLogcatStyles.ktagToggleFixedWidth, tagLabelRect.height);
+                removeButtonRect.y = yOffset;
                 if (GUI.Button(removeButtonRect, string.Empty, AndroidLogcatStyles.tagToggleStyle))
                 {
                     RemoveSelected(i);
                     GUIUtility.keyboardControl = 0;
                 }
-                var removeTextRect = new Rect(removeButtonRect.x + 2, removeButtonRect.y + 1, removeButtonRect.width, removeButtonRect.height);
+                removeTextRect.y = yOffset + 1;
                 GUI.Label(removeTextRect, "X", AndroidLogcatStyles.removeTextStyle);
 
                 GUILayout.Space(kEntryMargin);
                 EditorGUILayout.EndHorizontal();
+
+                yOffset += AndroidLogcatStyles.kTagEntryFixedHeight;
             }
 
             // Draw the borders.
             var orgColor = GUI.color;
             GUI.color = Color.black;
-            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset - 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(tagWindowRect.width + 2, yoffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
-            GUI.DrawTexture(new Rect(kEntryMargin + 6, yoffset + tagsHeight + 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
+            yOffset = tagWindowRect.y + kEntryMargin;
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yOffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yOffset - 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(tagWindowRect.width + 2, yOffset - 4, 1, tagsHeight + 8), EditorGUIUtility.whiteTexture);
+            GUI.DrawTexture(new Rect(kEntryMargin + 6, yOffset + tagsHeight + 4, tagWindowRect.width - kEntryMargin - 3, 1), EditorGUIUtility.whiteTexture);
             GUI.color = orgColor;
 
             GUI.EndScrollView();
