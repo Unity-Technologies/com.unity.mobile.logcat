@@ -95,6 +95,11 @@ You can input text in the text field on the toolbar to search logs by text. You 
 	2. Right click on the message and select **Add Tag** or **Remove Tag**.  
 	![Tag Control](images/tag_control.png)
 
+  You can also open the tag control window to manipulate tags by following steps:
+  	1. Click the **Tag** column to show the menu.
+	2. Click **Tag Control** menu item to show the **Tag Control Window**.  
+	!![Tag Control Window](images/tag_control_window.png)
+
 ### Screen Capture
 You can use **Capture Screen** button on the toolbar to capture a screenshot of the selected device. You can also **Save** the screenshot as file.  
 ![Device Screen Capture](images/device_screen_capture.png)
