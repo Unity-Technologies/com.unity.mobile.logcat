@@ -4,12 +4,19 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.2.x-preview] - 2019-xx-xx
+## [0.2.5-preview] - 2019-04-01
 
 ### Fixes & Improvements.
 - UI improvements:
-  - borders for columns
-  - odd/even background for message entries
+  - Add borders for columns.
+  - Display odd/even background for message entries.
+  - Fixed search bar issue.
+  - Fix the issue that screenshot is cropped.
+  - Add a simple tag control window to manipulate tags.
+- Fixed the issue that search filter doesn't work on Android 6 or lower.
+- Fixed the issue that tag filter doesn't work with some corner cases like "SSRM:k".
+- Restored the states including current selected device, current selected package, tags, priority after closing and reopening the window.
+- Fixed some issues in tags, like not allowing adding empty tag, setting tag length limitation to 23, etc.
 
 ## [0.2.1-preview] - 2019-01-22
 
