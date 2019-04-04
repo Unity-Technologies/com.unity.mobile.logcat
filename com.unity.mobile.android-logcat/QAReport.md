@@ -17,7 +17,7 @@
 
 #### QA Owner: Juozas Kasiliauskas @juozas
 
-##Test strategy
+## Test strategy
 
 * Manual test Results, [Link to doc](https://docs.google.com/document/d/1bhSnYdWCtcrUY5Hzjx0AEWEB78XuU5n6yZ4ZHiGE3lE/edit)
 * No test project, just empty project with package added
