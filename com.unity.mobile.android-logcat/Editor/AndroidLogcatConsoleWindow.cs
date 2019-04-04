@@ -26,6 +26,7 @@ namespace Unity.Android.Logcat
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
 
+        private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
         private const string kJsonFileName = "AndroidLogcatJsonFile.json";
         private const string kUnityTag = "Unity";
         private const string kCrashTag = "CRASH";
@@ -152,20 +153,20 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            var jsonFilePath = Path.Combine(Application.temporaryCachePath, kJsonFileName);
+            var jsonFilePath = Path.Combine(Application.persistentDataPath, kJsonFileName);
             if (File.Exists(jsonFilePath))
                 File.Delete(jsonFilePath);
             File.WriteAllText(jsonFilePath, jsonString);
 
-            EditorPrefs.SetString(kJsonFileName, jsonFilePath);
+            EditorPrefs.SetString(kJsonFileEditorPrefKey, jsonFilePath);
         }
 
         internal void LoadStates()
         {
-            if (!EditorPrefs.HasKey(kJsonFileName))
+            if (!EditorPrefs.HasKey(kJsonFileEditorPrefKey))
                 return;
 
-            var jsonFile = EditorPrefs.GetString(kJsonFileName);
+            var jsonFile = EditorPrefs.GetString(kJsonFileEditorPrefKey);
             if (string.IsNullOrEmpty(jsonFile) || !File.Exists(jsonFile))
                 return;
 
