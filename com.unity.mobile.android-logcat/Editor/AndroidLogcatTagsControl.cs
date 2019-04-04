@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,6 +6,7 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+#if PLATFORM_ANDROID
     internal enum AndroidLogcatTagType
     {
         AllTags = 0,
@@ -352,5 +352,13 @@ namespace Unity.Android.Logcat
             return true;
         }
     }
-}
+#else
+    internal class AndroidLogcatTagWindow : EditorWindow
+    {
+        internal void OnGUI()
+        {
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+        }
+    }
 #endif
+}
