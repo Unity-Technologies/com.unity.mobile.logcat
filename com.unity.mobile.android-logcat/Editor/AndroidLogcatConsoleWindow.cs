@@ -229,8 +229,7 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
-            // This means we're switching to other platforms with logcat window active...
-            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android && m_TagControl.TagWindow != null)
+            if (m_TagControl.TagWindow != null)
             {
                 m_TagControl.TagWindow.Close();
                 m_TagControl.TagWindow = null;
