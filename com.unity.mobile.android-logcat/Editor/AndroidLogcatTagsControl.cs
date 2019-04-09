@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,6 +6,7 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+#if PLATFORM_ANDROID
     internal enum AndroidLogcatTagType
     {
         AllTags = 0,
@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatTagsControl
     {
         [SerializeField]
-        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null });
+        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null, "Unity", "CRASH" });
         public List<string> TagNames
         {
             get { return m_TagNames; }
@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
         }
 
         [SerializeField]
-        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false });
+        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false, false, false });
 
         public List<bool> SelectedTags
         {
@@ -352,5 +352,13 @@ namespace Unity.Android.Logcat
             return true;
         }
     }
-}
+#else
+    internal class AndroidLogcatTagWindow : EditorWindow
+    {
+        internal void OnGUI()
+        {
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+        }
+    }
 #endif
+}

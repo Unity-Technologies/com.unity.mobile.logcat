@@ -26,9 +26,8 @@ namespace Unity.Android.Logcat
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
 
+        private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
         private const string kJsonFileName = "AndroidLogcatJsonFile.json";
-        private const string kUnityTag = "Unity";
-        private const string kCrashTag = "CRASH";
 
         private Rect m_IpWindowScreenRect;
 
@@ -84,7 +83,7 @@ namespace Unity.Android.Logcat
 
         private SearchField m_SearchField;
 
-        private AndroidLogcatTagsControl m_TagControl;
+        private AndroidLogcatTagsControl m_TagControl = null;
 
         private AndroidLogcatJsonSerialization m_JsonSerialization = null;
 
@@ -152,20 +151,20 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            var jsonFilePath = Path.Combine(Application.temporaryCachePath, kJsonFileName);
+            var jsonFilePath = Path.Combine(Application.persistentDataPath, kJsonFileName);
             if (File.Exists(jsonFilePath))
                 File.Delete(jsonFilePath);
             File.WriteAllText(jsonFilePath, jsonString);
 
-            EditorPrefs.SetString(kJsonFileName, jsonFilePath);
+            EditorPrefs.SetString(kJsonFileEditorPrefKey, jsonFilePath);
         }
 
         internal void LoadStates()
         {
-            if (!EditorPrefs.HasKey(kJsonFileName))
+            if (!EditorPrefs.HasKey(kJsonFileEditorPrefKey))
                 return;
 
-            var jsonFile = EditorPrefs.GetString(kJsonFileName);
+            var jsonFile = EditorPrefs.GetString(kJsonFileEditorPrefKey);
             if (string.IsNullOrEmpty(jsonFile) || !File.Exists(jsonFile))
                 return;
 
@@ -187,7 +186,8 @@ namespace Unity.Android.Logcat
             // We can only restore Priority, TagControl & PackageForSerialization here.
             // For selected device & package, we have to delay it when we first launch the window.
             m_SelectedPriority = m_JsonSerialization.m_SelectedPriority;
-            RestoreTags(m_JsonSerialization);
+            m_TagControl.TagNames = m_JsonSerialization.m_TagControl.TagNames;
+            m_TagControl.SelectedTags = m_JsonSerialization.m_TagControl.SelectedTags;
 
             m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
             foreach (var p in m_JsonSerialization.m_PackagesForSerialization)
@@ -202,25 +202,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void RestoreTags(AndroidLogcatJsonSerialization jsonSerialization)
-        {
-            m_TagControl.TagNames = jsonSerialization.m_TagControl.TagNames;
-            m_TagControl.SelectedTags = jsonSerialization.m_TagControl.SelectedTags;
-
-            // Merge predefined tags if necessary.
-            var predefinedTags = new List<string>(new[] { kUnityTag, kCrashTag });
-            int position = (int)AndroidLogcatTagType.FirstValidTag;
-            foreach (var tag in predefinedTags)
-            {
-                if (m_TagControl.TagNames.Contains(tag))
-                    continue;
-
-                m_TagControl.TagNames.Insert(position, tag);
-                m_TagControl.SelectedTags.Insert(position, false);
-                ++position;
-            }
-        }
-
         private void OnEnable()
         {
             AndroidLogcatInternalLog.Log("OnEnable");
@@ -229,7 +210,7 @@ namespace Unity.Android.Logcat
                 m_SearchField = new SearchField();
 
             if (m_TagControl == null)
-                RecreateTags();
+                m_TagControl = new AndroidLogcatTagsControl();
             m_TagControl.TagSelectionChanged += TagSelectionChanged;
 
             m_SelectedDeviceIndex = -1;
@@ -248,6 +229,12 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            if (m_TagControl.TagWindow != null)
+            {
+                m_TagControl.TagWindow.Close();
+                m_TagControl.TagWindow = null;
+            }
+
             StopLogCat();
             EditorApplication.update -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
@@ -267,14 +254,6 @@ namespace Unity.Android.Logcat
                 return;
 
             RestartLogCat();
-        }
-
-        private void RecreateTags()
-        {
-            m_TagControl = new AndroidLogcatTagsControl();
-
-            m_TagControl.Add(kUnityTag);
-            m_TagControl.Add(kCrashTag);
         }
 
         private void TagSelectionChanged()
