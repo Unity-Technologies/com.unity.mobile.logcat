@@ -93,7 +93,7 @@ namespace Unity.Android.Logcat
         private readonly int m_PackagePid;
         private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
-        private readonly string m_Filter;
+        private string m_Filter;
         private readonly bool m_FilterIsRegex;
         private Regex m_FilterRegex;
         private readonly string[] m_Tags;
@@ -110,7 +110,7 @@ namespace Unity.Android.Logcat
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
-        public string Filter { get { return m_Filter; } }
+        public string Filter { get { return m_Filter; }  set { m_Filter = value; } }
 
         public bool FilterIsRegex { get { return m_FilterIsRegex; } }
 
@@ -155,21 +155,33 @@ namespace Unity.Android.Logcat
             this.m_PackagePid = packagePid;
             this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
             this.m_MessagePriority = priority;
-            this.m_Filter = filterIsRegex  ? filter : Regex.Escape(filter);
             this.m_FilterIsRegex = filterIsRegex;
-            InitFilterRegex();
+            InitFilterRegex(filter);
             this.m_Tags = tags;
 
             LogEntry.SetTimeFormat(IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
         }
 
-        private void InitFilterRegex()
+        private void InitFilterRegex(string filter)
         {
-            if (IsAndroid7orAbove || !m_FilterIsRegex || string.IsNullOrEmpty(m_Filter))
+            if (string.IsNullOrEmpty(filter))
                 return;
+
+            if (IsAndroid7orAbove)
+            {
+                this.m_Filter = Regex.Escape(filter);
+                return;
+            }
+
+            if (!this.m_FilterIsRegex)
+            {
+                this.m_Filter = filter;
+                return;
+            }
 
             try
             {
+                this.m_Filter = Regex.Escape(filter);
                 m_FilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
             catch (Exception ex)
