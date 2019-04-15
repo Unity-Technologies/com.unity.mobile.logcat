@@ -4,6 +4,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [0.2.6-preview] - 2018-04-15
+
+### Minor fixes.
+- Fixed some issues about tag window.
+- Restored the states including current selected device, current selected package, tags, priority after closing and launching Unity Editor.
+
 ## [0.2.5-preview] - 2019-04-01
 
 ### Fixes & Improvements.
