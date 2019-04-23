@@ -6,7 +6,8 @@
 
 ## Test strategy
 * Manual tests, more robust Tag window testing
-* Changing platform, re-launching editor while Tag window is open
+* Changing platform, while Tag window is open
+* Re-launching editor, checking custom tags
 * No test project, just empty project with package added
 
 ## Package status
