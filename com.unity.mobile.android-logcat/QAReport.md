@@ -1,5 +1,20 @@
 ## Quality Report For Unity Android Logcat
 
+### Version tested: 0.2.6 
+
+#### QA Owner: Juozas Kasiliauskas @juozas
+
+## Test strategy
+* Manual tests, more robust Tag window testing
+* Changing platform, re-launching editor while Tag window is open
+* No test project, just empty project with package added
+
+## Package status
+* Minor issues fixed
+* Package stability: Good, usable product, some known issues still there, but ranging on the more corner-case side
+* [known bugs, issues](https://gitlab.cds.internal.unity3d.com/upm-packages/mobile/mobile-android-logcat/issues)
+
+
 ### Version tested: 0.2.5 
 
 #### QA Owner: Juozas Kasiliauskas @juozas
