@@ -18,6 +18,5 @@ namespace Unity.Android.Logcat
         internal AndroidLogcatTaskResult result;
         internal Action<AndroidLogcatTaskResult> integrateAction;
     }
-
 }
 #endif

@@ -13,6 +13,5 @@ using System.Threading;
 
 namespace Unity.Android.Logcat
 {
-
-}   
+}
 #endif

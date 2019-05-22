@@ -8,7 +8,7 @@ using UnityEditor.Android;
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatRetrieveDeviceIdsInput : AndroidLogcatTaskInput
-    { 
+    {
         internal ADB adb;
     }
 
@@ -38,8 +38,7 @@ namespace Unity.Android.Logcat
             }
 
             return result;
-
         }
     }
-}   
+}
 #endif

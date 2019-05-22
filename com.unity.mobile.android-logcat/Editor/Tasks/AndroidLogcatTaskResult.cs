@@ -4,7 +4,6 @@ namespace Unity.Android.Logcat
 {
     internal interface AndroidLogcatTaskResult
     {
-
     }
-}   
+}
 #endif
