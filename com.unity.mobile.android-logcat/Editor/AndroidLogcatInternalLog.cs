@@ -23,13 +23,22 @@ namespace Unity.Android.Logcat
             ms_Instance.Focus();
         }
 
+        /// <summary>
+        /// This function should be thread safe.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="args"></param>
         public static void Log(string message, params object[] args)
         {
-            var timedMessage = DateTime.Now.ToString("HH:mm:ss.ffff") + " " + string.Format(message, args);
-            ms_LogEntries.AppendLine(timedMessage);
+            lock (ms_LogEntries)
+            {
+                var timedMessage = DateTime.Now.ToString("HH:mm:ss.ffff") + " " + string.Format(message, args);
+                ms_LogEntries.AppendLine(timedMessage);
 
-            Console.WriteLine("[Logcat] " + timedMessage);
+                Console.WriteLine("[Logcat] " + timedMessage);
+            }
 
+            // TODO: this is wrong, can't call from non main thread
             if (ms_Instance != null)
             {
                 ms_Instance.m_ScrollPosition = new Vector2(ms_Instance.m_ScrollPosition.x, float.MaxValue);
