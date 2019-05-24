@@ -41,6 +41,20 @@ test:windows:2019-1:
   script:
     - echo "Running Android Playmode Tests"
     - python.exe -u testrunner.py Android --version=2019.1
+	
+test:windows:2019-2:
+  stage: test
+  image: 'core-meta/harisen-base-image:stable'
+  artifacts:
+    paths:
+      - "TestArtifacts/*"
+    expire_in: 2 weeks
+    when: always
+  tags:
+   - bokken-runner
+  script:
+    - echo "Running Android Playmode Tests"
+    - python.exe -u testrunner.py Android --version=2019.2
 
 test:windows:trunk:
   stage: test
