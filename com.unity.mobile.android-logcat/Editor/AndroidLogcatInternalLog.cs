@@ -32,14 +32,14 @@ namespace Unity.Android.Logcat
         {
             lock (ms_LogEntries)
             {
-                var timedMessage = DateTime.Now.ToString("HH:mm:ss.ffff") + " " + string.Format(message, args);
+                var timedMessage = AndroidLogcatDispatcher.isMainThread ? "[MainThread]" : "[WorkThread] ";
+                timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + string.Format(message, args);
                 ms_LogEntries.AppendLine(timedMessage);
 
                 Console.WriteLine("[Logcat] " + timedMessage);
             }
 
-            // TODO: this is wrong, can't call from non main thread
-            if (ms_Instance != null)
+            if (AndroidLogcatDispatcher.isMainThread && ms_Instance != null)
             {
                 ms_Instance.m_ScrollPosition = new Vector2(ms_Instance.m_ScrollPosition.x, float.MaxValue);
                 ms_Instance.Repaint();

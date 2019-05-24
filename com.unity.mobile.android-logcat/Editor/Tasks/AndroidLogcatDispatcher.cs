@@ -27,14 +27,24 @@ namespace Unity.Android.Logcat
         private AutoResetEvent m_AutoResetEvent = new AutoResetEvent(false);
         private AutoResetEvent m_FinishedEvent = new AutoResetEvent(false);
         private volatile bool m_Running;
+        private static Thread s_MainThread;
 
         internal void OnEnable()
         {
             if (m_Running)
                 throw new Exception("Already running?");
             m_Running = true;
+
+            lock (m_AsyncTaskQueue)
+                m_AsyncTaskQueue.Clear();
+
+            lock (m_IntegrateTaskQueue)
+                m_IntegrateTaskQueue.Clear();
+
             EditorApplication.update += MainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
+
+            s_MainThread = Thread.CurrentThread;
         }
 
         internal void OnDisable()
@@ -44,13 +54,29 @@ namespace Unity.Android.Logcat
             EditorApplication.update -= MainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
-            m_FinishedEvent.WaitOne();
-            Debug.Log("Dispatcher shutting down");
+            if (!m_FinishedEvent.WaitOne(1000))
+                throw new Exception("Time out while waiting for android logcat dispatcher to exit.");
+
+            lock (m_AsyncTaskQueue)
+                m_AsyncTaskQueue.Clear();
+
+            lock (m_IntegrateTaskQueue)
+                m_IntegrateTaskQueue.Clear();
+
+            AndroidLogcatInternalLog.Log("Dispatcher shutting down");
+        }
+
+        internal static bool isMainThread
+        {
+            get
+            {
+                return Thread.CurrentThread == s_MainThread;
+            }
         }
 
         private void WorkerThread(object o)
         {
-            Debug.Log("Worker thread started");
+            AndroidLogcatInternalLog.Log("Worker thread started");
 
             while (m_AutoResetEvent.WaitOne() && m_Running)
             {
@@ -73,7 +99,7 @@ namespace Unity.Android.Logcat
                     }
                 }
             }
-            Debug.Log("Worker thread exited");
+            AndroidLogcatInternalLog.Log("Worker thread exited");
             m_FinishedEvent.Set();
         }
 
@@ -97,6 +123,12 @@ namespace Unity.Android.Logcat
 
         internal void Schedule(AndroidLogcatTaskInput taskData, Func<AndroidLogcatTaskInput, AndroidLogcatTaskResult> asyncAction, Action<AndroidLogcatTaskResult> integrateAction, bool immediate)
         {
+            if (!m_Running)
+            {
+                AndroidLogcatInternalLog.Log("Ignore schedule action, because dispatcher is not running.");
+                return;
+            }
+
             if (immediate)
             {
                 integrateAction(asyncAction.Invoke(taskData));
@@ -107,7 +139,8 @@ namespace Unity.Android.Logcat
             {
                 var task = new AsyncTask() { taskData = taskData, asyncAction = asyncAction, integrateAction = integrateAction };
                 m_AsyncTaskQueue.Enqueue(task);
-                m_AutoResetEvent.Set();
+                if (!m_AutoResetEvent.Set())
+                    throw new Exception("Failed to signal auto reset event in dispatcher.");
             }
         }
     }
