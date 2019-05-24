@@ -4,6 +4,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 using System.Threading;
+using UnityEngine.Profiling;
 
 namespace Unity.Android.Logcat
 {
@@ -21,6 +22,8 @@ namespace Unity.Android.Logcat
             internal Func<AndroidLogcatTaskInput, AndroidLogcatTaskResult> asyncAction;
             internal Action<AndroidLogcatTaskResult> integrateAction;
         }
+
+        CustomSampler m_Sampler;
 
         private Queue<AsyncTask> m_AsyncTaskQueue = new Queue<AsyncTask>();
         private Queue<IntegrationTask> m_IntegrateTaskQueue = new Queue<IntegrationTask>();
@@ -43,6 +46,8 @@ namespace Unity.Android.Logcat
 
             EditorApplication.update += MainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
+
+            m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
 
             s_MainThread = Thread.CurrentThread;
         }
@@ -77,6 +82,7 @@ namespace Unity.Android.Logcat
         private void WorkerThread(object o)
         {
             AndroidLogcatInternalLog.Log("Worker thread started");
+            Profiler.BeginThreadProfiling("AndroidLogcat", "Dispatcher");
 
             while (m_AutoResetEvent.WaitOne() && m_Running)
             {
@@ -91,7 +97,9 @@ namespace Unity.Android.Logcat
                 }
                 if (task != null && task.asyncAction != null)
                 {
+                    m_Sampler.Begin();
                     var result = task.asyncAction.Invoke(task.taskData);
+                    m_Sampler.End();
 
                     lock (m_IntegrateTaskQueue)
                     {
@@ -100,6 +108,7 @@ namespace Unity.Android.Logcat
                 }
             }
             AndroidLogcatInternalLog.Log("Worker thread exited");
+            Profiler.EndThreadProfiling();
             m_FinishedEvent.Set();
         }
 
