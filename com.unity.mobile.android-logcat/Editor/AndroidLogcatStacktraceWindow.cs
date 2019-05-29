@@ -35,7 +35,7 @@ namespace Unity.Android.Logcat
         Vector2 m_ScrollPosition;
         string m_Text = String.Empty;
         string m_ResolvedStacktraces = String.Empty;
-        
+
         private WindowMode m_WindowMode;
 
         GUISkin m_MonoSkin;
@@ -175,7 +175,7 @@ namespace Unity.Android.Logcat
                 var placeholder = new StringBuilder();
                 placeholder.AppendLine("Copy paste log with address and click Resolve Stackraces");
                 placeholder.AppendLine("For example:");
-                placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: 	#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
+                placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
         }
@@ -212,7 +212,6 @@ namespace Unity.Android.Logcat
 
         void DoRegex(float labelWidth, Regex regex)
         {
-            
             EditorGUILayout.BeginHorizontal();
             GUILayout.Label("Address regex:", GUILayout.Width(labelWidth));
             m_AddressRegex = GUILayout.TextField(m_AddressRegex);
@@ -244,7 +243,7 @@ namespace Unity.Android.Logcat
             GUILayout.EndArea();
 
             EditorGUI.BeginChangeCheck();
-            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new []{new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);
+            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);
             if (EditorGUI.EndChangeCheck())
             {
                 // Editor seems to be caching text from EditorGUILayout.TextArea
