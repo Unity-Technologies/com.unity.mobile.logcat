@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12001, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: MyGuiSkin
+  m_Name: MonoSpaceSkin
   m_EditorClassIdentifier: 
   m_Font: {fileID: 0}
   m_box:
@@ -407,7 +407,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_Alignment: 0
     m_WordWrap: 1
-    m_RichText: 0
+    m_RichText: 1
     m_TextClipping: 1
     m_ImagePosition: 0
     m_ContentOffset: {x: 0, y: 0}

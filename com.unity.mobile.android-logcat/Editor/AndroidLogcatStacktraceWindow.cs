@@ -14,7 +14,13 @@ namespace Unity.Android.Logcat
     {
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)";
+        static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(lib.*\.so)";
+
+        enum WindowMode
+        {
+            OriginalLog,
+            ResolvedLog
+        }
 
         [SerializeField]
         List<string> m_RecentSymbolPaths;
@@ -29,8 +35,7 @@ namespace Unity.Android.Logcat
         string m_Text = String.Empty;
         string m_ResolvedStacktraces = String.Empty;
         
-        
-        bool m_ShowResolved;
+        private WindowMode m_WindowMode;
 
         GUISkin m_MonoSkin;
 
@@ -90,11 +95,15 @@ namespace Unity.Android.Logcat
             return text_.Replace("/", " \u2215");
         }
 
-
-        void ResolveStacktraces(string symbolPath)
+        void ResolveStacktraces(string symbolPath, Regex regex)
         {
             m_ResolvedStacktraces = String.Empty;
-            var regex = new Regex(m_AddressRegex);
+            if (string.IsNullOrEmpty(m_Text))
+            {
+                m_ResolvedStacktraces = string.Format(" <color={0}>(Please add some log with addresses first)</color>", m_RedColor);
+                return;
+            }
+
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var l in lines)
             {
@@ -111,36 +120,19 @@ namespace Unity.Android.Logcat
                     if (string.IsNullOrEmpty(symbolFile))
                     {
                         resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
-
                     }
                     else
                     {
-
-                        Debug.Log(address + " " + library);
-
                         try
                         {
-                            // TODO: quates
                             var result = Addr2LineWrapper.Run("\"" + symbolFile + "\"", new[] { address });
                             if (!string.IsNullOrEmpty(result[0]))
                                 resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());
                         }
                         catch (Exception ex)
                         {
-                            Debug.LogError(ex.Message);
+                            m_ResolvedStacktraces = string.Format("Exception while running addr2line ('{0}', {1}):\n{2}", symbolFile, address, ex.Message);
                             return;
-                            //for (int i = 0; i < addresses.Count; i++)
-                            //{
-                            //    var idx = addresses[i].logEntryIndex;
-                            //    entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, "(Addr2Line failure)", true) };
-                            //    var errorMessage = new StringBuilder();
-                            //    errorMessage.AppendLine("Addr2Line failure");
-                            //    errorMessage.AppendLine("Scripting Backend: " + buildInfo.scriptingImplementation);
-                            //    errorMessage.AppendLine("Build Type: " + buildInfo.buildType);
-                            //    errorMessage.AppendLine("CPU: " + buildInfo.cpu);
-                            //    errorMessage.AppendLine(ex.Message);
-                            //    UnityEngine.Debug.LogError(errorMessage.ToString());
-                            //}
                         }
                     }
 
@@ -209,19 +201,21 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
-        void DoRegex(float labelWidth, float buttonWidth)
+        void DoRegex(float labelWidth, Regex regex)
         {
+            
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Regex:", GUILayout.Width(labelWidth));
+            GUILayout.Label("Address regex:", GUILayout.Width(labelWidth));
             m_AddressRegex = GUILayout.TextField(m_AddressRegex);
             EditorGUI.BeginDisabledGroup(m_SelectedSymbolPath < 0);
-            if (GUILayout.Button("Reset Regex", GUILayout.Width(buttonWidth)))
+            if (GUILayout.Button("Reset Regex"))
             {
                 m_AddressRegex = m_DefaultAddressRegex;
             }
-            if (GUILayout.Button("Resolve", GUILayout.Width(buttonWidth)))
+            if (GUILayout.Button("Resolve Stacktraces"))
             {
-                ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath]);
+                m_WindowMode = WindowMode.ResolvedLog;
+                ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath], regex);
                 GUIUtility.keyboardControl = 0;
                 GUIUtility.hotControl = 0;
             }
@@ -231,17 +225,17 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            const float kLabelWidth = 80.0f;
-            const float kButtonWidth = 80.0f;
+            var regex = new Regex(m_AddressRegex);
+            const float kLabelWidth = 120.0f;
 
             GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(40));
             GUILayout.BeginArea(new Rect(0, 0, this.position.width, 40));
             DoSymbolPath(kLabelWidth);
-            DoRegex(kLabelWidth, kButtonWidth);
+            DoRegex(kLabelWidth, regex);
             GUILayout.EndArea();
 
             EditorGUI.BeginChangeCheck();
-            m_ShowResolved = GUILayout.Toggle(m_ShowResolved, "Resolved");
+            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new []{new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);
             if (EditorGUI.EndChangeCheck())
             {
                 // Editor seems to be caching text from EditorGUILayout.TextArea
@@ -251,10 +245,15 @@ namespace Unity.Android.Logcat
             }
 
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition);
-            if (m_ShowResolved)
-                EditorGUILayout.TextArea(m_ResolvedStacktraces, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
-            else
-                m_Text = EditorGUILayout.TextArea(m_Text, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
+            switch (m_WindowMode)
+            {
+                case WindowMode.ResolvedLog:
+                    EditorGUILayout.SelectableLabel(m_ResolvedStacktraces, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
+                    break;
+                case WindowMode.OriginalLog:
+                    m_Text = EditorGUILayout.TextArea(m_Text, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
+                    break;
+            }
             GUILayout.EndScrollView();
         }
     }
