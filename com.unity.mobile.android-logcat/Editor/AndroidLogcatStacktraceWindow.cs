@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using UnityEditor.Android;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Unity.Android.Logcat
 {
@@ -39,7 +40,6 @@ namespace Unity.Android.Logcat
 
         GUISkin m_MonoSkin;
 
-        [MenuItem("Stacktrace/Stack")]
         public static void ShowStacktraceWindow()
         {
             var wnd = GetWindow<AndroidLogcatStacktraceWindow>();
@@ -169,6 +169,15 @@ namespace Unity.Android.Logcat
                 m_AddressRegex = m_DefaultAddressRegex;
 
             m_MonoSkin = AssetDatabase.LoadAssetAtPath<GUISkin>("Packages/com.unity.mobile.android-logcat/Editor/Resources/Skins/MonoSpaceSkin.guiskin");
+
+            if (string.IsNullOrEmpty(m_Text))
+            {
+                var placeholder = new StringBuilder();
+                placeholder.AppendLine("Copy paste log with address and click Resolve Stackraces");
+                placeholder.AppendLine("For example:");
+                placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: 	#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
+                m_Text = placeholder.ToString();
+            }
         }
 
         private void OnDisable()
