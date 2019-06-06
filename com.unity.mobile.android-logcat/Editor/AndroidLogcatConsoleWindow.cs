@@ -411,6 +411,12 @@ namespace Unity.Android.Logcat
                     Repaint();
                 }
 
+                GUILayout.Space(kSpace);
+                if (GUILayout.Button("Open terminal", AndroidLogcatStyles.toolbarButton))
+                {
+                    AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
+                }
+
                 // Don't erase, used for debugging purposes
                 /*
                 if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
