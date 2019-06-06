@@ -256,10 +256,10 @@ namespace Unity.Android.Logcat
             switch (m_WindowMode)
             {
                 case WindowMode.ResolvedLog:
-                    EditorGUILayout.SelectableLabel(m_ResolvedStacktraces, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
+                    EditorGUILayout.SelectableLabel(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
                 case WindowMode.OriginalLog:
-                    m_Text = EditorGUILayout.TextArea(m_Text, m_MonoSkin.textArea, GUILayout.ExpandHeight(true));
+                    m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
             }
             GUILayout.EndScrollView();

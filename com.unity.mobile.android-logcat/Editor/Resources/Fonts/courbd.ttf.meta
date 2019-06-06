@@ -3,7 +3,7 @@ guid: 5c6d011eb19a9f848b0eb08321dae603
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
-  fontSize: 11
+  fontSize: 15
   forceTextureCase: -2
   characterSpacing: 0
   characterPadding: 1
@@ -12,7 +12,7 @@ TrueTypeFontImporter:
   fontNames:
   - Courier New
   fallbackFontReferences: []
-  customCharacters: 
+  customCharacters: a
   fontRenderingMode: 0
   ascentCalculationMode: 1
   useLegacyBoundsCalculation: 0
