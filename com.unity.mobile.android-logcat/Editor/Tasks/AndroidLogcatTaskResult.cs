@@ -2,7 +2,7 @@
 
 namespace Unity.Android.Logcat
 {
-    internal interface AndroidLogcatTaskResult
+    internal interface IAndroidLogcatTaskResult
     {
     }
 }

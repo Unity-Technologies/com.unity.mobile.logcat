@@ -7,21 +7,24 @@ using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatRetrieveDeviceIdsInput : AndroidLogcatTaskInput
+    internal class AndroidLogcatRetrieveDeviceIdsInput : IAndroidLogcatTaskInput
     {
         internal ADB adb;
     }
 
-    internal class AndroidLogcatRetrieveDeviceIdsResult : AndroidLogcatTaskResult
+    internal class AndroidLogcatRetrieveDeviceIdsResult : IAndroidLogcatTaskResult
     {
         internal List<string> deviceIds = new List<string>();
     }
 
     internal class AndroidLogcatRetrieveDeviceIdsTask
     {
-        internal static AndroidLogcatTaskResult Execute(AndroidLogcatTaskInput input)
+        internal static IAndroidLogcatTaskResult Execute(IAndroidLogcatTaskInput input)
         {
             var adb = ((AndroidLogcatRetrieveDeviceIdsInput)input).adb;
+
+            if (adb == null)
+                throw new NullReferenceException("ADB interface has to be valid");
 
             var result = new AndroidLogcatRetrieveDeviceIdsResult();
 

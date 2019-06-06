@@ -12,15 +12,15 @@ namespace Unity.Android.Logcat
     {
         private class IntegrationTask
         {
-            internal AndroidLogcatTaskResult result;
-            internal Action<AndroidLogcatTaskResult> integrateAction;
+            internal IAndroidLogcatTaskResult result;
+            internal Action<IAndroidLogcatTaskResult> integrateAction;
         }
 
         private class AsyncTask
         {
-            internal AndroidLogcatTaskInput taskData;
-            internal Func<AndroidLogcatTaskInput, AndroidLogcatTaskResult> asyncAction;
-            internal Action<AndroidLogcatTaskResult> integrateAction;
+            internal IAndroidLogcatTaskInput taskData;
+            internal Func<IAndroidLogcatTaskInput, IAndroidLogcatTaskResult> asyncAction;
+            internal Action<IAndroidLogcatTaskResult> integrateAction;
         }
 
         CustomSampler m_Sampler;
@@ -44,7 +44,7 @@ namespace Unity.Android.Logcat
             lock (m_IntegrateTaskQueue)
                 m_IntegrateTaskQueue.Clear();
 
-            EditorApplication.update += MainThread;
+            EditorApplication.update += IntegrateMainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
 
             m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
@@ -56,7 +56,7 @@ namespace Unity.Android.Logcat
         {
             if (!m_Running)
                 throw new Exception("Expected dispatcher to run");
-            EditorApplication.update -= MainThread;
+            EditorApplication.update -= IntegrateMainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
             if (!m_FinishedEvent.WaitOne(1000))
@@ -112,14 +112,13 @@ namespace Unity.Android.Logcat
             m_FinishedEvent.Set();
         }
 
-        private void MainThread()
+        private void IntegrateMainThread()
         {
-            var temp = new Queue<IntegrationTask>();
+            Queue<IntegrationTask> temp;
 
             lock (m_IntegrateTaskQueue)
             {
-                foreach (var i in m_IntegrateTaskQueue)
-                    temp.Enqueue(i);
+                temp = new Queue<IntegrationTask>(m_IntegrateTaskQueue);
                 m_IntegrateTaskQueue.Clear();
             }
 
@@ -130,7 +129,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal void Schedule(AndroidLogcatTaskInput taskData, Func<AndroidLogcatTaskInput, AndroidLogcatTaskResult> asyncAction, Action<AndroidLogcatTaskResult> integrateAction, bool immediate)
+        internal void Schedule(IAndroidLogcatTaskInput taskData, Func<IAndroidLogcatTaskInput, IAndroidLogcatTaskResult> asyncAction, Action<IAndroidLogcatTaskResult> integrateAction, bool synchronous)
         {
             if (!m_Running)
             {
@@ -138,7 +137,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            if (immediate)
+            if (synchronous)
             {
                 integrateAction(asyncAction.Invoke(taskData));
                 return;
