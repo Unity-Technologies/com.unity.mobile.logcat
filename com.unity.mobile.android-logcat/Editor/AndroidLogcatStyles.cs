@@ -14,12 +14,19 @@ namespace Unity.Android.Logcat
 
         public static GUIStyle columnHeader = new GUIStyle("OL TITLE");
 
-        public const int kLogEntryFontSize = 10;
+        public const int kLogEntryFontSize = 11;
         public const int kLogEntryFixedHeight = kLogEntryFontSize + 5;
         public static GUIStyle background = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundOdd = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundEven = new GUIStyle("CN EntryBackEven") { fixedHeight = kLogEntryFixedHeight };
-        public static GUIStyle priorityDefaultStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kLogEntryFontSize, fixedHeight = kLogEntryFixedHeight, padding = new RectOffset(0, 0, 1, 1) };
+        public static GUIStyle priorityDefaultStyle = new GUIStyle(EditorStyles.miniLabel)
+        {
+            fontSize = kLogEntryFontSize,
+            fixedHeight = kLogEntryFixedHeight,
+            padding = new RectOffset(0, 0, 1, 1),
+            font = (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf")
+        };
+
         public static GUIStyle[] priorityStyles = new[]
         {
             new GUIStyle(priorityDefaultStyle) {},
