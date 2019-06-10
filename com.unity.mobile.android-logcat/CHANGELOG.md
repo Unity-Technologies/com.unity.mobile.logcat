@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fix & Improvements.
 - Added Open Terminal button
+- Use monospace font for displaying log messages, this makes text align properly when displaying addresses
 
 ## [0.2.7-preview] - 2019-04-24
 
