@@ -219,6 +219,21 @@ namespace Unity.Android.Logcat
             packageName = match.Groups["package"].Value;
             return int.Parse(match.Groups["pid"].Value);
         }
+
+        public static void OpenTerminal(string workingDirectory)
+        {
+            switch (Application.platform)
+            {
+                case RuntimePlatform.WindowsEditor:
+                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd '{0}'\"", workingDirectory));
+                    break;
+                case RuntimePlatform.OSXEditor:
+                    System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
+                    break;
+                default:
+                    throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
+            }
+        }
     }
 
     internal class AndroidLogcatJsonSerialization

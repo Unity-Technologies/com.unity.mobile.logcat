@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.2.?-?] - 2019-??-??
 
 ### Fix & Improvements.
+- Added Open Terminal button
+- Use monospace font for displaying log messages, this makes text align properly when displaying addresses
 - Fix performance issues whene there's no Android device attached, the device querying will happen on worker thread.
 
 ## [0.2.7-preview] - 2019-04-24
