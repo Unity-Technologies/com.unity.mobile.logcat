@@ -645,16 +645,11 @@ namespace Unity.Android.Logcat
             m_LogCat.Start();
         }
 
-        private void UpdateConnectedDevicesList(bool immediate)
+        private void IntegrateUpdateConnectedDevicesList(IAndroidLogcatTaskResult resut)
         {
-            if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !immediate)
-                return;
-            m_TimeOfLastDeviceListUpdate = DateTime.Now;
+            m_DeviceIds = ((AndroidLogcatRetrieveDeviceIdsResult)resut).deviceIds;
 
             var adb = GetCachedAdb();
-
-            m_DeviceIds = AndroidLogcatUtilities.RetrieveConnectedDeviceIds(adb);
-
             // Ensure selected device does not change (due to a new device name taking the same index)
             if (m_SelectedDeviceId != null)
             {
@@ -667,6 +662,15 @@ namespace Unity.Android.Logcat
                 devicesDetails.Add(AndroidLogcatUtilities.RetrieveDeviceDetails(GetAndroidDeviceFromCache(adb, deviceId), deviceId));
             }
             m_DeviceDetails = devicesDetails.ToArray();
+        }
+
+        private void UpdateConnectedDevicesList(bool synchronous)
+        {
+            if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !synchronous)
+                return;
+            m_TimeOfLastDeviceListUpdate = DateTime.Now;
+
+            AndroidLogcatDispatcher.instance.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
         private void CheckIfPackagesExited()
