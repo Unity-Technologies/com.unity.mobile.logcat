@@ -150,8 +150,9 @@ namespace Unity.Android.Logcat
             var model = device.Properties["ro.product.model"];
             var release = device.Properties["ro.build.version.release"];
             var sdkVersion = device.Properties["ro.build.version.sdk"];
+            var abi = device.Properties["ro.product.cpu.abi"];
 
-            return string.Format("{0} {1} (version: {2}, sdk: {3}, id: {4})", manufacturer, model, release, sdkVersion, deviceId);
+            return string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", manufacturer, model, release, abi, sdkVersion, deviceId);
         }
 
         public static int ParsePidInfo(string packageName, string commandOutput)
@@ -225,7 +226,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd '{0}'\"", workingDirectory));
+                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd {0}\"", workingDirectory));
                     break;
                 case RuntimePlatform.OSXEditor:
                     System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
