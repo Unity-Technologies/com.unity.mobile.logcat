@@ -32,7 +32,7 @@ namespace Unity.Android.Logcat
             new GUIStyle(priorityDefaultStyle) {},
             new GUIStyle(priorityDefaultStyle) {},
             new GUIStyle(priorityDefaultStyle) {},
-            new GUIStyle(priorityDefaultStyle) { normal = new GUIStyleState() { textColor = Color.yellow }},
+            new GUIStyle(priorityDefaultStyle) { normal = new GUIStyleState() { textColor = Color.yellow } },
             new GUIStyle(priorityDefaultStyle) { normal = new GUIStyleState() { textColor = Color.red } },
             new GUIStyle(priorityDefaultStyle) { normal = new GUIStyleState() { textColor = Color.red } },
         };
