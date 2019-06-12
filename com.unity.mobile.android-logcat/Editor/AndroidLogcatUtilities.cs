@@ -139,28 +139,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Return a list of the connected devices.
-        /// </summary>
-        public static List<string> RetrieveConnectedDeviceIds(ADB adb)
-        {
-            var deviceIds = new List<string>();
-
-            AndroidLogcatInternalLog.Log("{0} devices", adb.GetADBPath());
-            var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
-            foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
-            {
-                AndroidLogcatInternalLog.Log(" " + line);
-                if (line.EndsWith("device"))
-                {
-                    var deviceId = line.Substring(0, line.IndexOf('\t'));
-                    deviceIds.Add(deviceId);
-                }
-            }
-
-            return deviceIds;
-        }
-
-        /// <summary>
         /// Return the detail info of the given device.
         /// </summary>
         public static string RetrieveDeviceDetails(AndroidDevice device, string deviceId)
@@ -240,6 +218,21 @@ namespace Unity.Android.Logcat
 
             packageName = match.Groups["package"].Value;
             return int.Parse(match.Groups["pid"].Value);
+        }
+
+        public static void OpenTerminal(string workingDirectory)
+        {
+            switch (Application.platform)
+            {
+                case RuntimePlatform.WindowsEditor:
+                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd '{0}'\"", workingDirectory));
+                    break;
+                case RuntimePlatform.OSXEditor:
+                    System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
+                    break;
+                default:
+                    throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
+            }
         }
     }
 

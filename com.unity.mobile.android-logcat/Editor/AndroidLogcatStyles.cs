@@ -19,7 +19,14 @@ namespace Unity.Android.Logcat
         public static GUIStyle background = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundOdd = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundEven = new GUIStyle("CN EntryBackEven") { fixedHeight = kLogEntryFixedHeight };
-        public static GUIStyle priorityDefaultStyle = new GUIStyle(EditorStyles.miniLabel) { font = GetFont(), fontSize = kLogEntryFontSize, fixedHeight = kLogEntryFixedHeight, padding = new RectOffset(0, 0, 1, 1) };
+        public static GUIStyle priorityDefaultStyle = new GUIStyle(EditorStyles.miniLabel)
+        {
+            fontSize = kLogEntryFontSize,
+            fixedHeight = kLogEntryFixedHeight,
+            padding = new RectOffset(0, 0, 1, 1),
+            font = (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf")
+        };
+
         public static GUIStyle[] priorityStyles = new[]
         {
             new GUIStyle(priorityDefaultStyle) {},
@@ -44,14 +51,6 @@ namespace Unity.Android.Logcat
         public static GUIStyle tagEntryStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kTagEntryFontSize, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedWidth = ktagToggleFixedWidth, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle removeTextStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = 8, fixedHeight = kTagEntryFixedHeight };
-        public static GUIStyle stacktraceStyle = new GUIStyle("textArea") {font = GetFont(), fontSize = kLogEntryFontSize, richText = true, wordWrap = false};
-
-        private static Font GetFont()
-        {
-            //return null;
-            return AssetDatabase.LoadAssetAtPath<Font>(
-                "Packages/com.unity.mobile.android-logcat/Editor/Resources/Fonts/courbd.ttf");
-        }
     }
 }
 #endif

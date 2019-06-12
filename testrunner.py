@@ -89,6 +89,10 @@ def main():
         print("Copying package manifest file for trunk")
         copyfile("TestProjects/package_manifest_for_trunk.json", "TestProjects/SampleProject1/Packages/manifest.json")
 
+    if unityVersion == "2019.2":
+        print("Copying package manifest file for 2019.2")
+        copyfile("TestProjects/package_manifest_for_2019_2.json", "TestProjects/SampleProject1/Packages/manifest.json")
+
     # Run tests.
     for platform in runtimePlatforms:
 
