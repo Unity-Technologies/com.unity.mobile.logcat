@@ -419,7 +419,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
                 }
 
-				GUILayout.Space(kSpace);
+                GUILayout.Space(kSpace);
                 if (GUILayout.Button(kStacktraceUtility, AndroidLogcatStyles.toolbarButton))
                 {
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();

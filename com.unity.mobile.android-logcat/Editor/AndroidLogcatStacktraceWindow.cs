@@ -189,7 +189,7 @@ namespace Unity.Android.Logcat
         void DoSymbolPath(float labelWidth)
         {
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Symbol path:", GUILayout.Width(labelWidth));
+            GUILayout.Label("Symbol path:", EditorStyles.boldLabel, GUILayout.Width(labelWidth));
 
             var recentPaths = new List<string>(m_RecentSymbolPaths);
             recentPaths.Add("");
@@ -213,14 +213,21 @@ namespace Unity.Android.Logcat
         void DoRegex(float labelWidth, Regex regex)
         {
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Address regex:", GUILayout.Width(labelWidth));
+            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("Address regex:", EditorStyles.boldLabel, GUILayout.Width(labelWidth));
             m_AddressRegex = GUILayout.TextField(m_AddressRegex);
-            EditorGUI.BeginDisabledGroup(m_SelectedSymbolPath < 0);
-            if (GUILayout.Button("Reset Regex"))
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.BeginVertical();
+            if (GUILayout.Button("Reset Regex", EditorStyles.miniButton))
             {
                 m_AddressRegex = m_DefaultAddressRegex;
             }
-            if (GUILayout.Button("Resolve Stacktraces"))
+
+            EditorGUI.BeginDisabledGroup(m_SelectedSymbolPath < 0);
+            if (GUILayout.Button("Resolve Stacktraces", EditorStyles.miniButton))
             {
                 m_WindowMode = WindowMode.ResolvedLog;
                 ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath], regex);
@@ -228,6 +235,8 @@ namespace Unity.Android.Logcat
                 GUIUtility.hotControl = 0;
             }
             EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndVertical();
+
             EditorGUILayout.EndHorizontal();
         }
 
@@ -235,9 +244,9 @@ namespace Unity.Android.Logcat
         {
             var regex = new Regex(m_AddressRegex);
             const float kLabelWidth = 120.0f;
-
-            GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(40));
-            GUILayout.BeginArea(new Rect(0, 0, this.position.width, 40));
+            const float kInfoAreaHeight = 60.0f;
+            GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
+            GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
             DoSymbolPath(kLabelWidth);
             DoRegex(kLabelWidth, regex);
             GUILayout.EndArea();
@@ -252,17 +261,19 @@ namespace Unity.Android.Logcat
                 GUIUtility.hotControl = 0;
             }
 
-            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition);
+            m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
             switch (m_WindowMode)
             {
                 case WindowMode.ResolvedLog:
-                    EditorGUILayout.SelectableLabel(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
+                    // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
+                    EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
+                    GUIUtility.keyboardControl = 0;
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
             }
-            GUILayout.EndScrollView();
+            EditorGUILayout.EndScrollView();
         }
     }
 }
