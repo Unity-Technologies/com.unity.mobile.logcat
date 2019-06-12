@@ -126,6 +126,7 @@ namespace Unity.Android.Logcat
                         try
                         {
                             var result = Addr2LineWrapper.Run("\"" + symbolFile + "\"", new[] { address });
+                            AndroidLogcatInternalLog.Log("addr2line \"{0}\" {1}", symbolFile, address);
                             if (!string.IsNullOrEmpty(result[0]))
                                 resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());
                         }
