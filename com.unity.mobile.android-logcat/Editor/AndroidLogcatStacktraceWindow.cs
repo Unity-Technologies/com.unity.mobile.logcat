@@ -1,4 +1,4 @@
-#if UNITY_EDITOR || PLATFORM_ANDROID
+#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using UnityEngine;
