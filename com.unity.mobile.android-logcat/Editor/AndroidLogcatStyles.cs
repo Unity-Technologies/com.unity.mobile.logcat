@@ -56,7 +56,8 @@ namespace Unity.Android.Logcat
         {
             fontSize = kLogEntryFontSize,
             font = GetFont(),
-            richText = true
+            richText = true,
+            wordWrap = false
         };
 
         public static Font GetFont()
