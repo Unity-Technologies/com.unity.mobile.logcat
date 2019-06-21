@@ -80,5 +80,3 @@ publish:
     - ./build.sh package-ci publish --git-head $CI_COMMIT_SHA --git-url $CI_REPOSITORY_URL
 
 
-
-  
