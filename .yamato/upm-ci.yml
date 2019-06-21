@@ -54,7 +54,7 @@ test_{{ platform.name }}_android_{{ editor.version }}:
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple
     - git clone git@github.cds.internal.unity3d.com:unity/utr.git
     - unity-downloader-cli -b {{ editor.version }} -c editor -c android --wait
-    - {{ platform.utrcommand }} --suite=editor --editor-location=.Editor --testproject=TestProjects/SampleProject1 --artifacts_path=upm-ci~/test-results/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
+    - {{ platform.utrcommand }} --suite=editor --editor-location=.Editor --testproject=TestProjects/SampleProject1 --artifacts_path=upm-ci~/test-results/ --extra-editor-arg="-buildTarget=android"
   artifacts:
     logs:
       paths:
