@@ -11,6 +11,7 @@ using System.Text;
 //sdfsd
 //sdsds
 
+
 [assembly: InternalsVisibleTo("Unity.Mobile.AndroidLogcat.EditorTests")]
 
 namespace Unity.Android.Logcat
