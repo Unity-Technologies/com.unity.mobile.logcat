@@ -420,7 +420,6 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
                 }
-
             }
             EditorGUILayout.EndHorizontal();
 
