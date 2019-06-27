@@ -66,6 +66,20 @@ class AndroidLogcatRegexTests
     }
 
     [Test]
+    public void WhitespacesArePreservedInMessage()
+    {
+        var myTestMessage = "  hello  ";
+        var msgWithYearFormat = @"2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : " + myTestMessage;
+        var msgWithThreadTimeFormat = "10-25 14:27:29.803  1277 10543 E ctxmgr  : " + myTestMessage;
+
+        var yearMsg = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgWithYearFormat).Groups["msg"].Value;
+        Assert.IsTrue(yearMsg.Equals(myTestMessage));
+
+        var threadMsg = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgWithThreadTimeFormat).Groups["msg"].Value;
+        Assert.IsTrue(threadMsg.Equals(myTestMessage));
+    }
+
+    [Test]
     public void CorrectlyParsePidsWithWindowsEndlines()
     {
         CorrectlyParsePids("\r\n");
