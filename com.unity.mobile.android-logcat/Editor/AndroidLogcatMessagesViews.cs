@@ -341,7 +341,7 @@ namespace Unity.Android.Logcat
                 if (prevColumnVisible)
                 {
                     var itemRect = m_Columns[(uint)c].itemSize;
-                    var rc = new Rect(itemRect.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
+                    var rc = new Rect(itemRect.x - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
                     GUI.DrawTexture(rc, EditorGUIUtility.whiteTexture);
                 }
                 prevColumnVisible = m_Columns[(int)c].enabled;

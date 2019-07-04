@@ -112,6 +112,7 @@ namespace Unity.Android.Logcat
             {
                 m_AutoSelectPackage = value;
                 m_FinishedAutoselectingPackage = false;
+                m_TimeOfLastAutoConnectStart = DateTime.Now;
                 if (m_StatusBar != null && m_AutoSelectPackage)
                     m_StatusBar.Message = "Waiting for '" + PlayerSettings.applicationIdentifier + "'";
             }
@@ -220,11 +221,9 @@ namespace Unity.Android.Logcat
             EditorApplication.update += Update;
 
             m_FinishedAutoselectingPackage = false;
-            AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, m_AutoSelectPackage);
+            AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
 
             m_StatusBar = new AndroidLogcatStatusBar();
-            if (m_AutoSelectPackage)
-                m_StatusBar.Message = "Waiting for '" + PlayerSettings.applicationIdentifier + "'";
         }
 
         private void OnDisable()
@@ -274,6 +273,7 @@ namespace Unity.Android.Logcat
                 // This is for AutoRun triggered by "Build And Run".
                 if ((DateTime.Now - m_TimeOfLastAutoConnectUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveAutoConnectChecks)
                     return;
+                AndroidLogcatInternalLog.Log("Waiting for {0} launch, elapsed {1} seconds", PlayerSettings.applicationIdentifier, (DateTime.Now - m_TimeOfLastAutoConnectStart).Seconds);
                 m_TimeOfLastAutoConnectUpdate = DateTime.Now;
 
                 ResetPackages(m_DeviceIds[0]);
@@ -282,8 +282,12 @@ namespace Unity.Android.Logcat
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_DeviceIds[0]);
                 if (package != null)
                 {
+                    AndroidLogcatInternalLog.Log("Auto selecting package {0}", PlayerSettings.applicationIdentifier);
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
                     m_SelectedPackage = package;
+                    m_SelectedDeviceIndex = 0;
+                    m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
+
                     RestartLogCat();
                     m_FinishedAutoselectingPackage = true;
                     UpdateStatusBar();
@@ -416,39 +420,12 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
                 }
-
-                // Don't erase, used for debugging purposes
-                /*
-                if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
-                {
-                    UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
-                }
-
-                if (GUILayout.Button("AutoSelect " + m_AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
-                {
-                    m_AutoSelectPackage = true;
-                }
-
-                if (GUILayout.Button("Stop logcat ", AndroidLogcatStyles.toolbarButton))
-                {
-                    StopLogCat();
-                }
-
-                if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
-                {
-                    for (int i = 0; i < 7000; i++)
-                        m_LogEntries.Add(new AndroidLogcat.LogEntry() { processId = i, message = "Dummy", tag = "sdsd" });
-                    Repaint();
-                }
-
-                if (GUILayout.Button("Remove All Log Lines", AndroidLogcatStyles.toolbarButton))
-                {
-                    m_LogEntries.RemoveAt(0);
-                    Repaint();
-                }
-                // Debugging purposes */
             }
             EditorGUILayout.EndHorizontal();
+
+            if (Unsupported.IsDeveloperMode())
+                DoDebuggingGUI();
+
             if (DoMessageView())
             {
                 Repaint();
@@ -458,6 +435,40 @@ namespace Unity.Android.Logcat
                 m_StatusBar.DoGUI();
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void DoDebuggingGUI()
+        {
+            GUILayout.Label("Developer Mode is on, showing debugging buttons:", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+            if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
+            {
+                UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
+            }
+
+            if (GUILayout.Button("AutoSelect " + AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
+            {
+                AutoSelectPackage = true;
+            }
+
+            if (GUILayout.Button("Stop logcat ", AndroidLogcatStyles.toolbarButton))
+            {
+                StopLogCat();
+            }
+
+            if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
+            {
+                for (int i = 0; i < 7000; i++)
+                    m_LogEntries.Add(new AndroidLogcat.LogEntry() { processId = i, message = "Dummy", tag = "sdsd" });
+                Repaint();
+            }
+
+            if (GUILayout.Button("Remove All Log Lines", AndroidLogcatStyles.toolbarButton))
+            {
+                m_LogEntries.RemoveAt(0);
+                Repaint();
+            }
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DeviceSelection(object userData, string[] options, int selected)
@@ -509,6 +520,8 @@ namespace Unity.Android.Logcat
             m_SelectedPackage = newPackage;
 
             RestartLogCat();
+
+            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.displayName);
         }
 
         private void PackageSelection(object userData, string[] options, int selected)
