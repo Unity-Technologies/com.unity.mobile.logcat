@@ -122,7 +122,7 @@ Quick Steps:
   - You should adjust the regex if your addresses are printed in a different format
 - Click Resolve Stacktraces
 
-![Device Screen Capture](images/stacktraceUtility.jpg)
+![Device Screen Capture](images/stacktraceUtility.png)
 
 **Note: If you provide invalid symbol path, the function names will still be resolved, but they will not be correct. Android tools don't validate if specific address belongs to specific symbol file.**
 
