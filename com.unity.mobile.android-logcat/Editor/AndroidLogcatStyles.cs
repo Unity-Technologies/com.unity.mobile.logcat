@@ -24,7 +24,7 @@ namespace Unity.Android.Logcat
             fontSize = kLogEntryFontSize,
             fixedHeight = kLogEntryFixedHeight,
             padding = new RectOffset(0, 0, 1, 1),
-            font = (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf")
+            font = GetFont()
         };
 
         public static GUIStyle[] priorityStyles = new[]
@@ -51,6 +51,19 @@ namespace Unity.Android.Logcat
         public static GUIStyle tagEntryStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = kTagEntryFontSize, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedWidth = ktagToggleFixedWidth, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle removeTextStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = 8, fixedHeight = kTagEntryFixedHeight };
+
+        public static GUIStyle stacktraceStyle = new GUIStyle("textArea")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont(),
+            richText = true,
+            wordWrap = false
+        };
+
+        public static Font GetFont()
+        {
+            return (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
+        }
     }
 }
 #endif

@@ -25,6 +25,8 @@ namespace Unity.Android.Logcat
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
+        private GUIContent kStacktraceUtility = new GUIContent(L10n.Tr("Stacktrace Utility"), L10n.Tr("Utility for resolving custom stacktrace addresses"));
+
 
         private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
         private const string kJsonFileName = "AndroidLogcatJsonFile.json";
@@ -419,6 +421,11 @@ namespace Unity.Android.Logcat
                 if (GUILayout.Button("Open terminal", AndroidLogcatStyles.toolbarButton))
                 {
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
+                }
+                GUILayout.Space(kSpace);
+                if (GUILayout.Button(kStacktraceUtility, AndroidLogcatStyles.toolbarButton))
+                {
+                    AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                 }
             }
             EditorGUILayout.EndHorizontal();
