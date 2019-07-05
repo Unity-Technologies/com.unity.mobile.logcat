@@ -7,10 +7,12 @@ test_platforms:
     type: Unity::VM
     image: package-ci/win10:stable
     flavor: m1.large
+    downloader: c:\python27\Scripts\unity-downloader-cli.exe 
   - name: mac
     type: Unity::VM::osx
     image: buildfarm/mac:stable
     flavor: m1.mac
+    downloader: ~/Library/Python/2.7/bin/unity-downloader-cli
 ---
 pack:
   name: Pack
@@ -37,7 +39,7 @@ test_{{ platform.name }}_{{ editor.version }}:
   commands:
     - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version {{ editor.version }}
-    - unity-downloader-cli -b {{ editor.version }} -c editor -c android --wait
+    - {{ platform.downloader }} -b {{ editor.version }} -c editor -c android --wait
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject=TestProjects/SampleProject1 --artifacts_path=upm-ci~/test-results/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
   artifacts:
     logs:
