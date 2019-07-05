@@ -39,7 +39,7 @@ test_{{ platform.name }}_{{ editor.version }}:
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version {{ editor.version }}
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple --upgrade --pre
     - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
-    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject=TestProjects/SampleProject1 --artifacts_path=upm-ci~/test-results/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
+    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject=TestProjects/SampleProject1 --artifacts_path=upm-ci~/test-results/editor-android/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
   artifacts:
     logs:
       paths:
