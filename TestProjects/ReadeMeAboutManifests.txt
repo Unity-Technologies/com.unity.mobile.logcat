@@ -1,0 +1,21 @@
+There are package manifest upgrade issues from 2019.1 to 2019.2 when testing framework is used.
+
+"com.unity.test-framework.performance": "0.1.50-preview" 
+in 2019.1 
+
+becomes
+
+"com.unity.test-framework": "1.0.13",
+"com.unity.test-framework.performance": "1.2.5-preview"
+in 2019.2
+
+But the automatic upgrade seems to not be doing a good job.
+
+
+When upgrading from 2019.2 manifest to 2019.3 manifest seems to happen without issues.
+
+
+Due reasons above, we'll use 2019.2 manifest as base which can be upgraded to higher version.
+
+
+
