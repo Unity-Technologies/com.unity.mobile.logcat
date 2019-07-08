@@ -41,7 +41,7 @@ test_{{ platform.name }}_{{ editor.version }}:
     - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
     - |
       {% if editor.version = "2019.1 %} {% assign testingProject = "TestProjects/SampleProject2019.1Net35" %}  {% else %} {% assign testingProject = "TestProjects/SampleProject1" %} {% endif %}
-      upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject={{ testingProejct }} --artifacts_path=upm-ci~/test-results/editor-android/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
+      upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject={{ testingProject }} --artifacts_path=upm-ci~/test-results/editor-android/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
   artifacts:
     logs:
       paths:
