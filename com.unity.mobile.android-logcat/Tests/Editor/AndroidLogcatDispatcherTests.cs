@@ -3,7 +3,6 @@ using System.IO;
 using System.Threading;
 using NUnit.Framework;
 using Unity.Android.Logcat;
-using Unity.PerformanceTesting;
 using UnityEngine;
 using UnityEngine.TestTools;
 

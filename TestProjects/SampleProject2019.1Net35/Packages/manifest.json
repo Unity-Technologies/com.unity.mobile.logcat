@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "com.unity.mobile.android-logcat": "file:../../../com.unity.mobile.android-logcat",
-    "com.unity.test-framework.performance": "0.1.50-preview",
     "com.unity.modules.jsonserialize": "1.0.0",
     "com.unity.modules.physics": "1.0.0",
     "com.unity.modules.physics2d": "1.0.0",
@@ -11,7 +10,6 @@
   },
   "registry": "https://staging-packages.unity.com",
   "testables": [
-    "com.unity.mobile.android-logcat",
-    "com.unity.test-framework.performance"
+    "com.unity.mobile.android-logcat"
   ]
 }

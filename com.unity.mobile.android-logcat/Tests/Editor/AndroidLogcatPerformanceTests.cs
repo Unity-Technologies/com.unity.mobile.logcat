@@ -1,3 +1,4 @@
+#if UNITY_2019_2_OR_NEWER
 using System.IO;
 using NUnit.Framework;
 using Unity.Android.Logcat;
@@ -16,11 +17,7 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell ps".
-#if UNITY_2019_2_OR_NEWER
     [Test, Performance]
-#else
-    [PerformanceTest]
-#endif
     public void ParsePidByPackageName()
     {
         const int kLoopTime = 20;
@@ -34,11 +31,7 @@ class AndroidLogcatPerformanceTests
     }
 
     // Test parsing messages produced by "adb shell "dumpsys activity"".
-#if UNITY_2019_2_OR_NEWER
     [Test, Performance]
-#else
-    [PerformanceTest]
-#endif
     public void ParseTopActivity()
     {
         const int kLoopTime = 20;
@@ -54,3 +47,4 @@ class AndroidLogcatPerformanceTests
         }
     }
 }
+#endif
