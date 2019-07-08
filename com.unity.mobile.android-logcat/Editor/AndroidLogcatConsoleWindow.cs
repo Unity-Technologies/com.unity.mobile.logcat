@@ -657,7 +657,16 @@ namespace Unity.Android.Logcat
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            m_LogCat = new AndroidLogcat(adb, device, m_SelectedPackage == null ? 0 : m_SelectedPackage.processId, m_SelectedPriority, m_Filter, m_FilterIsRegularExpression, m_TagControl.GetSelectedTags());
+            m_LogCat = new AndroidLogcat(
+                new AndroidLogcatFactory(), 
+                adb, 
+                device, 
+                int.Parse(device.Properties["ro.build.version.sdk"]),
+                m_SelectedPackage == null ? 0 : m_SelectedPackage.processId, 
+                m_SelectedPriority, 
+                m_Filter, 
+                m_FilterIsRegularExpression, 
+                m_TagControl.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.DeviceDisconnected += OnDeviceDisconnected;
             m_LogCat.DeviceConnected += OnDeviceConnected;

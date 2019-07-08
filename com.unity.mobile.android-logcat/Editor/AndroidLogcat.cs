@@ -87,6 +87,7 @@ namespace Unity.Android.Logcat
             public string cpu;
         }
 
+        private IAndroidLogcatFactory m_Factory;
         private ADB adb;
 
         private readonly AndroidDevice m_Device;
@@ -124,11 +125,9 @@ namespace Unity.Android.Logcat
 
         public event Action<string> DeviceConnected;
 
-        private Process m_LogcatProcess;
+        private IAndroidLogcatProcess m_LogcatProcess;
 
         private List<string> m_CachedLogLines = new List<string>();
-
-        private string m_LastLogcatCommand = "";
 
         public bool IsConnected
         {
@@ -148,12 +147,18 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcat(ADB adb, AndroidDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public IAndroidLogcatProcess Process
         {
+            get { return m_LogcatProcess; }
+        }
+
+        public AndroidLogcat(IAndroidLogcatFactory factory, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        {
+            this.m_Factory = factory;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
-            this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
+            this.m_AndroidSDKVersion = androidSDKVersion;
             this.m_MessagePriority = priority;
             this.m_FilterIsRegex = filterIsRegex;
             InitFilterRegex(filter);
@@ -198,30 +203,13 @@ namespace Unity.Android.Logcat
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             EditorApplication.update += OnUpdate;
 
-            m_LastLogcatCommand = LogcatArguments();
-            m_LogcatProcess = StartADB(m_LastLogcatCommand);
-
-            m_LogcatProcess.BeginOutputReadLine();
-            m_LogcatProcess.BeginErrorReadLine();
+            m_LogcatProcess = m_Factory.CreateLogcatProcess(adb, IsAndroid7orAbove, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_LogcatProcess.Start();
 
             if (DeviceConnected != null)
                 DeviceConnected.Invoke(Device.Id);
         }
 
-        private string LogcatArguments()
-        {
-            var filterArg = string.Empty;
-            if (IsAndroid7orAbove && !string.IsNullOrEmpty(Filter))
-            {
-                filterArg = "--regex \"" + Filter + "\"";
-            }
-
-            var priority = PriorityEnumToString(MessagePriority);
-            if (PackagePid > 0 && IsAndroid7orAbove)
-                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", Device.Id, PackagePid, LogPrintFormat, priority, filterArg);
-
-            return string.Format("-s {0} logcat -v {1} *:{2} {3}", Device.Id, LogPrintFormat, priority, filterArg);
-        }
 
         internal void Stop()
         {
@@ -230,7 +218,6 @@ namespace Unity.Android.Logcat
             EditorApplication.update -= OnUpdate;
             if (m_LogcatProcess != null && !m_LogcatProcess.HasExited)
             {
-                AndroidLogcatInternalLog.Log("Stopping logcat (process id {0})", m_LogcatProcess.Id);
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
                 m_LogcatProcess.Kill();
             }
@@ -246,23 +233,6 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
             var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
             AndroidLogcatInternalLog.Log(adbOutput);
-        }
-
-        private Process StartADB(string arguments)
-        {
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), arguments);
-            Process logcatProcess = new Process();
-            logcatProcess.StartInfo.FileName = adb.GetADBPath();
-            logcatProcess.StartInfo.Arguments = arguments;
-            logcatProcess.StartInfo.RedirectStandardError = true;
-            logcatProcess.StartInfo.RedirectStandardOutput = true;
-            logcatProcess.StartInfo.UseShellExecute = false;
-            logcatProcess.StartInfo.CreateNoWindow = true;
-            logcatProcess.OutputDataReceived += OutputDataReceived;
-            logcatProcess.ErrorDataReceived += ErrorDataReceived;
-            logcatProcess.Start();
-
-            return logcatProcess;
         }
 
         void OnUpdate()
@@ -548,26 +518,15 @@ namespace Unity.Android.Logcat
             return priority.ToString().Substring(0, 1);
         }
 
-        private void ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data == null)
-                return;
-
-            lock (m_CachedLogLines)
-            {
-                m_CachedLogLines.Add(e.Data);
-            }
-        }
-
-        private void OutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (string.IsNullOrEmpty(e.Data))
+            if (string.IsNullOrEmpty(message))
                 return;
 
             lock (m_CachedLogLines)
             {
-                m_CachedLogLines.Add(e.Data);
+                m_CachedLogLines.Add(message);
             }
         }
 
