@@ -76,22 +76,56 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
     }
 }
 
+internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
+{
+    public int SDKVersion
+    {
+        get { return 28; }
+    }
+
+    public string Manufacturer
+    {
+        get { return "Undefined"; }
+    }
+
+    public string Model
+    {
+        get { return "Undefined"; }
+    }
+
+    public string OSVersion
+    {
+        get { return "Undefined"; }
+    }
+
+    public string ABI
+    {
+        get { return "Undefined"; }
+    }
+
+    public string Id
+    {
+        get { return "FakeDevice"; }
+    }
+}
+
 internal class AndroidLogcatProcessTests
 {
-    [UnityTest]
-    public IEnumerator MessagesAreFilteredCorrectly()
+    [Test]
+    public void MessagesAreFilteredCorrectly()
     {
         var runtime = new AndroidLogcatTestRuntime();
         runtime.Initialize();
         var entries = new List<AndroidLogcat.LogEntry>();
-        var logcat = new AndroidLogcat(runtime, null, null, 28, -1, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
+        var logcat = new AndroidLogcat(runtime, null, new AndroidLogcatFakeDevice(), -1, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
         logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) => { entries.AddRange(e); };
         logcat.Start();
 
         var process = (AndroidLogcatFakeProcess)logcat.Process;
         process.SupplyFakeMessage("Test");
 
-        yield return null;
+        // Force integration of messages
+        runtime.Update();
 
         logcat.Stop();
 

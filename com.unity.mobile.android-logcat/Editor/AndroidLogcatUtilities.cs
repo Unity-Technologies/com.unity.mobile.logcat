@@ -103,14 +103,14 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Return the pid of the given package on the given device.
         /// </summary>
-        public static int GetPidFromPackageName(ADB adb, AndroidDevice device, string deviceId, string packageName)
+        public static int GetPidFromPackageName(ADB adb, AndroidLogcatDevice device, string deviceId, string packageName)
         {
             if (string.IsNullOrEmpty(deviceId))
                 return -1;
 
             try
             {
-                var pidofOptionAvailable = Int32.Parse(device.Properties["ro.build.version.sdk"]) >= 24; // pidof option is only available in Android 7 or above.
+                var pidofOptionAvailable = device.SDKVersion >= 24; // pidof option is only available in Android 7 or above.
 
                 string cmd = null;
                 if (pidofOptionAvailable)
@@ -141,16 +141,16 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Return the detail info of the given device.
         /// </summary>
-        public static string RetrieveDeviceDetails(AndroidDevice device, string deviceId)
+        public static string RetrieveDeviceDetails(AndroidLogcatDevice device, string deviceId)
         {
             if (device == null)
                 return deviceId;
 
-            var manufacturer = device.Properties["ro.product.manufacturer"];
-            var model = device.Properties["ro.product.model"];
-            var release = device.Properties["ro.build.version.release"];
-            var sdkVersion = device.Properties["ro.build.version.sdk"];
-            var abi = device.Properties["ro.product.cpu.abi"];
+            var manufacturer = device.Manufacturer;
+            var model = device.Model;
+            var release = device.OSVersion;
+            var sdkVersion = device.SDKVersion;
+            var abi = device.ABI;
 
             return string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", manufacturer, model, release, abi, sdkVersion, deviceId);
         }

@@ -16,6 +16,14 @@ namespace Unity.Android.Logcat
     {
         int SDKVersion { get; }
 
+        string Manufacturer { get; }
+
+        string Model { get; }
+
+        string OSVersion { get; }
+
+        string ABI { get; }
+
         string Id { get; }
     }
 
@@ -31,6 +39,26 @@ namespace Unity.Android.Logcat
         public int SDKVersion
         {
             get { return int.Parse(m_Device.Properties["ro.build.version.sdk"]); }
+        }
+
+        public string Manufacturer
+        {
+            get { return m_Device.Properties["ro.product.manufacturer"]; }
+        }
+
+        public string Model
+        {
+            get { return m_Device.Properties["ro.product.model"]; }
+        }
+
+        public string OSVersion
+        {
+            get { return m_Device.Properties["ro.build.version.release"]; }
+        }
+
+        public string ABI
+        {
+            get { return m_Device.Properties["ro.product.cpu.abi"]; }
         }
 
         public string Id
