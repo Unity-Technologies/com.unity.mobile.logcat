@@ -660,8 +660,7 @@ namespace Unity.Android.Logcat
             m_LogCat = new AndroidLogcat(
                 new AndroidLogcatRuntime(),
                 adb,
-                device,
-                int.Parse(device.Properties["ro.build.version.sdk"]),
+                new AndroidLogcatDevice(device), 
                 m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
                 m_SelectedPriority,
                 m_Filter,

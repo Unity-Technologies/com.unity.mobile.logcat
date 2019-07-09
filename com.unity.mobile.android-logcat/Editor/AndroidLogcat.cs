@@ -90,7 +90,7 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatRuntime m_Runtime;
         private ADB adb;
 
-        private readonly AndroidDevice m_Device;
+        private readonly IAndroidLogcatDevice m_Device;
         private readonly int m_PackagePid;
         private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
@@ -99,7 +99,7 @@ namespace Unity.Android.Logcat
         private Regex m_FilterRegex;
         private readonly string[] m_Tags;
 
-        public AndroidDevice Device { get { return m_Device; } }
+        public IAndroidLogcatDevice Device { get { return m_Device; } }
 
         public int PackagePid { get { return m_PackagePid; } }
 
@@ -152,13 +152,13 @@ namespace Unity.Android.Logcat
             get { return m_LogcatProcess; }
         }
 
-        public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
-            this.m_AndroidSDKVersion = androidSDKVersion;
+            this.m_AndroidSDKVersion = device.SDKVersion;
             this.m_MessagePriority = priority;
             this.m_FilterIsRegex = filterIsRegex;
             InitFilterRegex(filter);
@@ -201,7 +201,7 @@ namespace Unity.Android.Logcat
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
-            EditorApplication.update += OnUpdate;
+            m_Runtime.OnUpdate += OnUpdate;
 
             m_LogcatProcess = m_Runtime.CreateMessageProvider(adb, IsAndroid7orAbove, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
             m_LogcatProcess.Start();
@@ -214,7 +214,7 @@ namespace Unity.Android.Logcat
         {
             m_CachedLogLines.Clear();
             m_BuildInfos.Clear();
-            EditorApplication.update -= OnUpdate;
+            m_Runtime.OnUpdate -= OnUpdate;
             if (m_LogcatProcess != null && !m_LogcatProcess.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
