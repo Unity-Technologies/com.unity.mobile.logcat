@@ -658,7 +658,7 @@ namespace Unity.Android.Logcat
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             m_LogCat = new AndroidLogcat(
-                new AndroidLogcatRuntime(),
+                AndroidLogcatManager.instance.Runtime,
                 adb,
                 device,
                 m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
