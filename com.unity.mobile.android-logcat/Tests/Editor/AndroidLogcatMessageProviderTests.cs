@@ -78,38 +78,38 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
 
 internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
-    public int SDKVersion
+    internal override int SDKVersion
     {
         get { return 28; }
     }
 
-    public string Manufacturer
+    internal override string Manufacturer
     {
         get { return "Undefined"; }
     }
 
-    public string Model
+    internal override string Model
     {
         get { return "Undefined"; }
     }
 
-    public string OSVersion
+    internal override string OSVersion
     {
         get { return "Undefined"; }
     }
 
-    public string ABI
+    internal override string ABI
     {
         get { return "Undefined"; }
     }
 
-    public string Id
+    internal override string Id
     {
         get { return "FakeDevice"; }
     }
 }
 
-internal class AndroidLogcatProcessTests
+internal class AndroidLogcatMessageProvideTests
 {
     [Test]
     public void MessagesAreFilteredCorrectly()
