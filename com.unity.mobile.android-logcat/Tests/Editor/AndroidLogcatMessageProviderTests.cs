@@ -93,9 +93,9 @@ internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
         get { return "Undefined"; }
     }
 
-    internal override string OSVersion
+    internal override Version OSVersion
     {
-        get { return "Undefined"; }
+        get { return new Version(9, 0); }
     }
 
     internal override string ABI

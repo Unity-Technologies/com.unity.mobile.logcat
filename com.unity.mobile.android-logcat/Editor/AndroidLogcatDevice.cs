@@ -20,22 +20,17 @@ namespace Unity.Android.Logcat
 
         internal abstract string Model { get; }
 
-        internal abstract string OSVersion { get; }
+        internal abstract Version OSVersion { get; }
 
         internal abstract string ABI { get; }
 
         internal abstract string Id { get; }
-
-        // Check if it is Android 7 or above due to the below options are only available on these devices:
-        // 1) '--pid'
-        // 2) 'logcat -v year'
-        // 3) '--regex'
-        internal bool IsAndroid7orAbove { get { return SDKVersion >= 24; } }
     }
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
         private AndroidDevice m_Device;
+        private Version m_Version;
 
         internal AndroidLogcatDevice(AndroidDevice device)
         {
@@ -57,9 +52,22 @@ namespace Unity.Android.Logcat
             get { return m_Device.Properties["ro.product.model"]; }
         }
 
-        internal override string OSVersion
+        internal override Version OSVersion
         {
-            get { return m_Device.Properties["ro.build.version.release"]; }
+            get
+            {
+                if (m_Version == null)
+                {
+                    var versionString = m_Device.Properties["ro.build.version.release"];
+                    if (!Version.TryParse(versionString, out m_Version))
+                    {
+                        AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                        m_Version = new Version(0, 0);
+                    }
+                }
+
+                return m_Version;
+            }
         }
 
         internal override string ABI
