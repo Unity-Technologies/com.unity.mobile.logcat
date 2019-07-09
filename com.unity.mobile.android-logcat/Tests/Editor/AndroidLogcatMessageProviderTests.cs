@@ -7,7 +7,7 @@ using UnityEditor.Android;
 using System.Collections.Generic;
 using UnityEngine.TestTools;
 
-internal class AndroidLogcatFakeProcess : IAndroidLogcatProcess
+internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
 {
     private ADB m_ADB;
     private bool m_IsAndroid7OrAbove;
@@ -80,9 +80,6 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatProcess
     {
         get { return -1; }
     }
-
-
-
 
 }
 

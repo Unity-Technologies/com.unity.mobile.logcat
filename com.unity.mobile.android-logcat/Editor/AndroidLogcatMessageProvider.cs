@@ -12,7 +12,7 @@ using System.Text;
 
 namespace Unity.Android.Logcat
 {
-    internal interface IAndroidLogcatProcess
+    internal interface IAndroidLogcatMessageProvider
     {
         void Start();
         void Stop();
@@ -22,7 +22,7 @@ namespace Unity.Android.Logcat
         int Id { get; }
     }
 
-    internal class AndroidLogcatProcess : IAndroidLogcatProcess
+    internal class AndroidLogcatMessageProvider : IAndroidLogcatMessageProvider
     {
         private Process m_LogcatProcess;
         private ADB m_ADB;
@@ -34,7 +34,7 @@ namespace Unity.Android.Logcat
         private string m_DeviceId;
         private Action<string> m_LogCallbackAction;
 
-        internal AndroidLogcatProcess(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
         {
             m_ADB = adb;
             m_IsAndroid7OrAbove = isAndroid7orAbove;

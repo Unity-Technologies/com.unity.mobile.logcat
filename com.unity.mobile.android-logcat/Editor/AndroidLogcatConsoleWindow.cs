@@ -658,7 +658,7 @@ namespace Unity.Android.Logcat
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             m_LogCat = new AndroidLogcat(
-                new AndroidLogcatFactory(), 
+                new AndroidLogcatRuntime(), 
                 adb, 
                 device, 
                 int.Parse(device.Properties["ro.build.version.sdk"]),

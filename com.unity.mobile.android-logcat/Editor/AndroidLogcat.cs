@@ -87,7 +87,7 @@ namespace Unity.Android.Logcat
             public string cpu;
         }
 
-        private IAndroidLogcatFactory m_Factory;
+        private IAndroidLogcatRuntime m_Factory;
         private ADB adb;
 
         private readonly AndroidDevice m_Device;
@@ -125,7 +125,7 @@ namespace Unity.Android.Logcat
 
         public event Action<string> DeviceConnected;
 
-        private IAndroidLogcatProcess m_LogcatProcess;
+        private IAndroidLogcatMessageProvider m_LogcatProcess;
 
         private List<string> m_CachedLogLines = new List<string>();
 
@@ -147,12 +147,12 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public IAndroidLogcatProcess Process
+        public IAndroidLogcatMessageProvider Process
         {
             get { return m_LogcatProcess; }
         }
 
-        public AndroidLogcat(IAndroidLogcatFactory factory, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(IAndroidLogcatRuntime factory, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.m_Factory = factory;
             this.adb = adb;
