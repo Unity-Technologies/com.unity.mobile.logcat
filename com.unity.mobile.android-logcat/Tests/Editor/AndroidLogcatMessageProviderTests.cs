@@ -74,11 +74,6 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
             return false;
         }
     }
-
-    public int Id
-    {
-        get { return -1; }
-    }
 }
 
 internal class AndroidLogcatProcessTests

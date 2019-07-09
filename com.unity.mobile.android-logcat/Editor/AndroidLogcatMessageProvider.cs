@@ -18,8 +18,6 @@ namespace Unity.Android.Logcat
         void Stop();
         void Kill();
         bool HasExited { get; }
-
-        int Id { get; }
     }
 
     internal class AndroidLogcatMessageProvider : IAndroidLogcatMessageProvider
@@ -106,11 +104,6 @@ namespace Unity.Android.Logcat
             {
                 return m_LogcatProcess.HasExited;
             }
-        }
-
-        public int Id
-        {
-            get { return m_LogcatProcess.Id; }
         }
 
         private void OutputDataReceived(object sender, DataReceivedEventArgs e)
