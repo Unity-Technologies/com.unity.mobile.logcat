@@ -8,7 +8,7 @@ using UnityEngine.Profiling;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatDispatcher : ScriptableSingleton<AndroidLogcatDispatcher>
+    internal class AndroidLogcatDispatcher
     {
         private class IntegrationTask
         {
@@ -31,8 +31,14 @@ namespace Unity.Android.Logcat
         private AutoResetEvent m_FinishedEvent = new AutoResetEvent(false);
         private volatile bool m_Running;
         private static Thread s_MainThread;
+        private IAndroidLogcatRuntime m_Runtime;
 
-        internal void OnEnable()
+        internal AndroidLogcatDispatcher(IAndroidLogcatRuntime runtime)
+        {
+            m_Runtime = runtime;
+        }
+
+        internal void Initialize()
         {
             if (m_Running)
                 throw new Exception("Already running?");
@@ -44,7 +50,7 @@ namespace Unity.Android.Logcat
             lock (m_IntegrateTaskQueue)
                 m_IntegrateTaskQueue.Clear();
 
-            EditorApplication.update += IntegrateMainThread;
+            m_Runtime.OnUpdate += IntegrateMainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
 
             m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
@@ -52,11 +58,11 @@ namespace Unity.Android.Logcat
             s_MainThread = Thread.CurrentThread;
         }
 
-        internal void OnDisable()
+        internal void Shutdown()
         {
             if (!m_Running)
                 throw new Exception("Expected dispatcher to run");
-            EditorApplication.update -= IntegrateMainThread;
+            m_Runtime.OnUpdate -= IntegrateMainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
             if (!m_FinishedEvent.WaitOne(1000))

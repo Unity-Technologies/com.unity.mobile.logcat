@@ -658,14 +658,14 @@ namespace Unity.Android.Logcat
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             m_LogCat = new AndroidLogcat(
-                new AndroidLogcatRuntime(), 
-                adb, 
-                device, 
+                new AndroidLogcatRuntime(),
+                adb,
+                device,
                 int.Parse(device.Properties["ro.build.version.sdk"]),
-                m_SelectedPackage == null ? 0 : m_SelectedPackage.processId, 
-                m_SelectedPriority, 
-                m_Filter, 
-                m_FilterIsRegularExpression, 
+                m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
+                m_SelectedPriority,
+                m_Filter,
+                m_FilterIsRegularExpression,
                 m_TagControl.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.DeviceDisconnected += OnDeviceDisconnected;
@@ -699,7 +699,8 @@ namespace Unity.Android.Logcat
                 return;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
 
-            AndroidLogcatDispatcher.instance.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
+            var runtime = AndroidLogcatManager.instance.Runtime;
+            runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
         private void CheckIfPackagesExited()

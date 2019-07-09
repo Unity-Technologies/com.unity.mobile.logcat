@@ -87,7 +87,7 @@ namespace Unity.Android.Logcat
             public string cpu;
         }
 
-        private IAndroidLogcatRuntime m_Factory;
+        private IAndroidLogcatRuntime m_Runtime;
         private ADB adb;
 
         private readonly AndroidDevice m_Device;
@@ -152,9 +152,9 @@ namespace Unity.Android.Logcat
             get { return m_LogcatProcess; }
         }
 
-        public AndroidLogcat(IAndroidLogcatRuntime factory, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, AndroidDevice device, int androidSDKVersion, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
-            this.m_Factory = factory;
+            this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
@@ -203,13 +203,12 @@ namespace Unity.Android.Logcat
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             EditorApplication.update += OnUpdate;
 
-            m_LogcatProcess = m_Factory.CreateLogcatProcess(adb, IsAndroid7orAbove, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_LogcatProcess = m_Runtime.CreateMessageProvider(adb, IsAndroid7orAbove, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
             m_LogcatProcess.Start();
 
             if (DeviceConnected != null)
                 DeviceConnected.Invoke(Device.Id);
         }
-
 
         internal void Stop()
         {

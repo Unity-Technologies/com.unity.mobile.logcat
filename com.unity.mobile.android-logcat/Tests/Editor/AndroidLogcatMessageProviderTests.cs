@@ -65,7 +65,6 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
 
     public void Kill()
     {
-
     }
 
     public bool HasExited
@@ -80,7 +79,6 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
     {
         get { return -1; }
     }
-
 }
 
 internal class AndroidLogcatProcessTests
@@ -88,8 +86,10 @@ internal class AndroidLogcatProcessTests
     [UnityTest]
     public IEnumerator MessagesAreFilteredCorrectly()
     {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
         var entries = new List<AndroidLogcat.LogEntry>();
-        var logcat = new AndroidLogcat(new AndroidLogcatTestFactory(), null, null, 28, -1, AndroidLogcat.Priority.Verbose, "", false, new string[] { });
+        var logcat = new AndroidLogcat(runtime, null, null, 28, -1, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
         logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) => { entries.AddRange(e); };
         logcat.Start();
 
@@ -104,5 +104,6 @@ internal class AndroidLogcatProcessTests
         {
             UnityEngine.Debug.Log(e.message);
         }
+        runtime.Shutdown();
     }
 }
