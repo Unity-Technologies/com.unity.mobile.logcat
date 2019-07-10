@@ -34,7 +34,7 @@ namespace Unity.Android.Logcat
         public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
         {
-            return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat,deviceId, logCallbackAction);
+            return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
         }
 
         public AndroidLogcatDispatcher Dispatcher
