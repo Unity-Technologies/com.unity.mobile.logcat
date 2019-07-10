@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Unity.Android.Logcat;
 using UnityEditor.Android;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine.TestTools;
 
 internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
@@ -74,13 +75,8 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
     }
 }
 
-internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
+internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
-    internal override int APILevel
-    {
-        get { return 28; }
-    }
-
     internal override string Manufacturer
     {
         get { return "Undefined"; }
@@ -91,10 +87,6 @@ internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
         get { return "Undefined"; }
     }
 
-    internal override Version OSVersion
-    {
-        get { return new Version(9, 0); }
-    }
 
     internal override string ABI
     {
@@ -107,30 +99,80 @@ internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     }
 }
 
+internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
+{
+    internal override int APILevel
+    {
+        get { return 28; }
+    }
+    internal override Version OSVersion
+    {
+        get { return new Version(9, 0); }
+    }
+}
+
+internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
+{
+    internal override int APILevel
+    {
+        get { return 23; }
+    }
+    internal override Version OSVersion
+    {
+        get { return new Version(6, 0); }
+    }
+}
+
+
 internal class AndroidLogcatMessageProvideTests
 {
-    [Test]
-    public void MessagesAreFilteredCorrectly()
+    private AndroidLogcatTestRuntime m_Runtime;
+
+    public void InitRuntime()
     {
-        var runtime = new AndroidLogcatTestRuntime();
-        runtime.Initialize();
-        var entries = new List<AndroidLogcat.LogEntry>();
-        var logcat = new AndroidLogcat(runtime, null, new AndroidLogcatFakeDevice(), -1, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
-        logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) => { entries.AddRange(e); };
-        logcat.Start();
+        if (m_Runtime != null)
+            throw new Exception("Runtime was not shutdown by previous test?");
+        m_Runtime = new AndroidLogcatTestRuntime();
+        m_Runtime.Initialize();
+    }
 
-        var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
-        provider.SupplyFakeMessage("Test");
+    public void ShutdownRuntime()
+    {
+        if (m_Runtime == null)
+            throw new Exception("Runtime was not created?");
+        m_Runtime.Shutdown();
+        m_Runtime = null;
+    }
 
-        // Force integration of messages
-        runtime.Update();
 
-        logcat.Stop();
+    [Test]
+    public void RegexFilterCorrectlyFormed()
+    {
+        var devices = new AndroidLogcatFakeDevice[] {new AndroidLogcatFakeDevice60(), new AndroidLogcatFakeDevice90()};
+        var filter = ".*abc";
+        InitRuntime();
 
-        foreach (var e in entries)
+        foreach (var device in devices)
         {
-            UnityEngine.Debug.Log(e.message);
+            foreach (var isRegexEnabled in new[] {true, false})
+            { 
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc", isRegexEnabled, new string[] { });
+                var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName, isRegexEnabled.ToString());
+
+                if (device.SupportsFilteringByRegex)
+                {
+                    if (isRegexEnabled)
+                        Assert.IsTrue(logcat.Filter.Equals(filter), message);
+                    else
+                        Assert.IsTrue(logcat.Filter.Equals(Regex.Escape(filter)), message);
+                }
+                else
+                {
+                    Assert.IsTrue(logcat.Filter.Equals(filter), message);
+                }
+            }
         }
-        runtime.Shutdown();
+
+        ShutdownRuntime();
     }
 }
