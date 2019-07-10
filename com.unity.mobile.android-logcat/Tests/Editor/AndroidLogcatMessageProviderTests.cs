@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Unity.Android.Logcat;
 using UnityEditor.Android;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine.TestTools;
 
@@ -124,7 +125,7 @@ internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
 }
 
 
-internal class AndroidLogcatMessageProvideTests
+internal class AndroidLogcatMessagerProvideTests
 {
     private AndroidLogcatTestRuntime m_Runtime;
 
@@ -144,7 +145,6 @@ internal class AndroidLogcatMessageProvideTests
         m_Runtime = null;
     }
 
-
     [Test]
     public void RegexFilterCorrectlyFormed()
     {
@@ -155,8 +155,8 @@ internal class AndroidLogcatMessageProvideTests
         foreach (var device in devices)
         {
             foreach (var isRegexEnabled in new[] {true, false})
-            { 
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc", isRegexEnabled, new string[] { });
+            {
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc", isRegexEnabled, new string[] {});
                 var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName, isRegexEnabled.ToString());
 
                 if (device.SupportsFilteringByRegex)
@@ -170,6 +170,63 @@ internal class AndroidLogcatMessageProvideTests
                 {
                     Assert.IsTrue(logcat.Filter.Equals(filter), message);
                 }
+            }
+        }
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void ManualRegexFilteringWorksAndroid60Devices()
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  2255  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2255  2255 I chromium: .abc"
+        };
+
+        InitRuntime();
+        foreach (var regexIsEnabled in new[] {true, false})
+        {
+            foreach (var filter in new[] {"", ".abc", "...."})
+            {
+                var entries = new List<string>();
+                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), -1, AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
+                logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                {
+                    entries.AddRange(e.Select(m => m.message));
+                };
+                logcat.Start();
+
+                var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
+                foreach (var m in messages)
+                    provider.SupplyFakeMessage(m);
+
+                m_Runtime.Update();
+                if (filter == "")
+                {
+                    Assert.IsTrue(entries.Contains(".abc"));
+                    Assert.IsTrue(entries.Contains("Help"));
+                }
+                else if (filter == ".abc")
+                {
+                    Assert.IsTrue(entries.Contains(".abc"));
+                    Assert.IsTrue(!entries.Contains("Help"));
+                }
+                else if (filter == "....")
+                {
+                    if (regexIsEnabled)
+                    {
+                        Assert.IsTrue(entries.Contains(".abc"));
+                        Assert.IsTrue(entries.Contains("Help"));
+                    }
+                    else
+                    {
+                        Assert.IsFalse(entries.Contains(".abc"));
+                        Assert.IsFalse(entries.Contains("Help"));
+                    }
+                }
+
+                logcat.Stop();
             }
         }
 
