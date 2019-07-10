@@ -14,6 +14,12 @@ namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatDevice
     {
+        // Check if it is Android 7 or above due to the below options are only available on these devices:
+        // 1) '--pid'
+        // 2) 'logcat -v year'
+        // 3) '--regex'
+        internal static readonly Version kAndroidVersion70 = new Version(7, 0);
+
         internal abstract int SDKVersion { get; }
 
         internal abstract string Manufacturer { get; }
@@ -25,6 +31,21 @@ namespace Unity.Android.Logcat
         internal abstract string ABI { get; }
 
         internal abstract string Id { get; }
+
+        internal bool SupportsFilteringByRegex
+        {
+            get { return OSVersion >= kAndroidVersion70; }
+        }
+
+        internal bool SupportsFilteringByPid
+        {
+            get { return OSVersion >= kAndroidVersion70; }
+        }
+
+        internal bool SupportYearFormat
+        {
+            get { return OSVersion >= kAndroidVersion70; }
+        }
     }
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice

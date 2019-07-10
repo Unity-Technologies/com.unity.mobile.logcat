@@ -87,12 +87,6 @@ namespace Unity.Android.Logcat
             public string cpu;
         }
 
-        // Check if it is Android 7 or above due to the below options are only available on these devices:
-        // 1) '--pid'
-        // 2) 'logcat -v year'
-        // 3) '--regex'
-        private Version kAndroidVersion70 = new Version(7, 0);
-
         private IAndroidLogcatRuntime m_Runtime;
         private ADB adb;
 
@@ -162,7 +156,7 @@ namespace Unity.Android.Logcat
             InitFilterRegex(filter);
             this.m_Tags = tags;
 
-            LogEntry.SetTimeFormat(m_Device.OSVersion >= kAndroidVersion70 ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
+            LogEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
         }
 
         private void InitFilterRegex(string filter)
@@ -170,7 +164,7 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(filter))
                 return;
 
-            if (m_Device.OSVersion >= kAndroidVersion70)
+            if (m_Device.SupportsFilteringByRegex)
             {
                 this.m_Filter = Regex.Escape(filter);
                 return;
@@ -201,7 +195,7 @@ namespace Unity.Android.Logcat
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.OnUpdate += OnUpdate;
 
-            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, m_Device.OSVersion >= kAndroidVersion70, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device?.Id, OnDataReceived);
             m_MessageProvider.Start();
 
             if (DeviceConnected != null)
@@ -252,9 +246,9 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var needFilterByPid = m_Device.OSVersion < kAndroidVersion70 && PackagePid > 0;
+                var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = m_Device.OSVersion < kAndroidVersion70  && !string.IsNullOrEmpty(Filter);
+                var needFilterBySearch = !m_Device.SupportsFilteringByRegex  && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -529,7 +523,7 @@ namespace Unity.Android.Logcat
 
         internal Regex LogParseRegex
         {
-            get { return m_Device.OSVersion >= kAndroidVersion70  ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+            get { return m_Device.SupportYearFormat  ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
         }
 
         /// <summary>
@@ -540,7 +534,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal string LogPrintFormat
         {
-            get { return m_Device.OSVersion >= kAndroidVersion70  ? kYearTime : kThreadTime; }
+            get { return m_Device.SupportYearFormat ? kYearTime : kThreadTime; }
         }
 
         private Dictionary<int, BuildInfo> m_BuildInfos = new Dictionary<int, BuildInfo>();

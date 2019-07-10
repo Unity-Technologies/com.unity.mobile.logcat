@@ -16,7 +16,7 @@ namespace Unity.Android.Logcat
     {
         AndroidLogcatDispatcher Dispatcher { get; }
 
-        IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
+        IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
 
         void Initialize();
 
@@ -31,12 +31,10 @@ namespace Unity.Android.Logcat
 
         public event Action OnUpdate;
 
-        public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, bool isAndroid7orAbove, string filter,
-            AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
+        public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
         {
-            return new AndroidLogcatMessageProvider(adb, isAndroid7orAbove, filter, priority, packageID, logPrintFormat,
-                deviceId, logCallbackAction);
+            return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat,deviceId, logCallbackAction);
         }
 
         public AndroidLogcatDispatcher Dispatcher

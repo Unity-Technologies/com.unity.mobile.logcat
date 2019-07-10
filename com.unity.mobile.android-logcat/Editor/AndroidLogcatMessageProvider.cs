@@ -24,7 +24,6 @@ namespace Unity.Android.Logcat
     {
         private Process m_LogcatProcess;
         private ADB m_ADB;
-        private bool m_IsAndroid7OrAbove;
         private string m_Filter;
         private AndroidLogcat.Priority m_Priority;
         private int m_PackageID;
@@ -32,10 +31,9 @@ namespace Unity.Android.Logcat
         private string m_DeviceId;
         private Action<string> m_LogCallbackAction;
 
-        internal AndroidLogcatMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
         {
             m_ADB = adb;
-            m_IsAndroid7OrAbove = isAndroid7orAbove;
             m_Filter = filter;
             m_Priority = priority;
             m_PackageID = packageID;
@@ -52,13 +50,12 @@ namespace Unity.Android.Logcat
         private string LogcatArguments()
         {
             var filterArg = string.Empty;
-            if (m_IsAndroid7OrAbove && !string.IsNullOrEmpty(m_Filter))
-            {
+            if (!string.IsNullOrEmpty(m_Filter))
                 filterArg = "--regex \"" + m_Filter + "\"";
-            }
+
             // Note: We're not using --regex argument, because some older Android device (prior to 7.0) doesn't support that
             var priority = PriorityEnumToString(m_Priority);
-            if (m_PackageID > 0 && m_IsAndroid7OrAbove)
+            if (m_PackageID > 0)
                 return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", m_DeviceId, m_PackageID, m_LogPrintFormat, priority, filterArg);
 
             return string.Format("-s {0} logcat -v {1} *:{2} {3}", m_DeviceId, m_LogPrintFormat, priority, filterArg);
