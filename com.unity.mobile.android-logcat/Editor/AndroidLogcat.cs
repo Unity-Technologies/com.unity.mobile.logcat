@@ -162,7 +162,10 @@ namespace Unity.Android.Logcat
 
             if (m_Device.SupportsFilteringByRegex)
             {
-                this.m_Filter = Regex.Escape(filter);
+                // When doing searching by filter, we use --regex command.
+                // Note: there's no command line argument to disable or enable regular expressions for logcat
+                // Thus when we want to disable regular expressions, we simply provide filter with escaped characters to --regex command
+                this.m_Filter = m_FilterIsRegex ? filter : Regex.Escape(filter);
                 return;
             }
 
@@ -174,7 +177,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                this.m_Filter = Regex.Escape(filter);
+                this.m_Filter = filter;
                 m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
             catch (Exception ex)
