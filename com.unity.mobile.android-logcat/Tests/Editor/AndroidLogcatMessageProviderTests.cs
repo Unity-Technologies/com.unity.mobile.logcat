@@ -156,8 +156,10 @@ internal class AndroidLogcatMessagerProvideTests
         {
             foreach (var isRegexEnabled in new[] {true, false})
             {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc", isRegexEnabled, new string[] {});
-                var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName, isRegexEnabled.ToString());
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc",
+                    isRegexEnabled, new string[] {});
+                var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName,
+                    isRegexEnabled.ToString());
 
                 if (device.SupportsFilteringByRegex)
                 {
@@ -172,6 +174,7 @@ internal class AndroidLogcatMessagerProvideTests
                 }
             }
         }
+
         ShutdownRuntime();
     }
 
@@ -190,7 +193,8 @@ internal class AndroidLogcatMessagerProvideTests
             foreach (var filter in new[] {"", ".abc", "...."})
             {
                 var entries = new List<string>();
-                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), -1, AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
+                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), -1,
+                    AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
                 logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
                 {
                     entries.AddRange(e.Select(m => m.message));
@@ -229,6 +233,59 @@ internal class AndroidLogcatMessagerProvideTests
                 logcat.Stop();
             }
         }
+
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void ManualPidFilteringWorksAndroid60Devices()
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  1  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2  2255 I chromium: .abc"
+        };
+
+        InitRuntime();
+
+        foreach (var pid in new[] { -1, 0, 1 })
+        {
+            var processIds = new List<int>();
+            var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
+            logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+            {
+                processIds.AddRange(e.Select(m => m.processId));
+            };
+            logcat.Start();
+
+            var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
+            foreach (var m in messages)
+                provider.SupplyFakeMessage(m);
+
+            m_Runtime.Update();
+
+            switch (pid)
+            {
+                // Should accept messages from any process id
+                case -1:
+                    Assert.IsTrue(processIds.Contains(1));
+                    Assert.IsTrue(processIds.Contains(2));
+                    break;
+                // Should accept messages from any process id
+                case 0:
+                    Assert.IsTrue(processIds.Contains(1));
+                    Assert.IsTrue(processIds.Contains(2));
+                    break;
+                // Should accept messages from process id which equals 1
+                case 1:
+                    Assert.IsTrue(processIds.Contains(1));
+                    Assert.IsFalse(processIds.Contains(2));
+                    break;
+            }
+
+            logcat.Stop();
+        }
+
 
         ShutdownRuntime();
     }
