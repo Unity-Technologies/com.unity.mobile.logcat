@@ -95,7 +95,7 @@ namespace Unity.Android.Logcat
         private readonly Priority m_MessagePriority;
         private string m_Filter;
         private readonly bool m_FilterIsRegex;
-        private Regex m_FilterRegex;
+        private Regex m_ManualFilterRegex;
         private readonly string[] m_Tags;
 
         public IAndroidLogcatDevice Device { get { return m_Device; } }
@@ -105,10 +105,6 @@ namespace Unity.Android.Logcat
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
         public string Filter { get { return m_Filter; }  set { m_Filter = value; } }
-
-        public bool FilterIsRegex { get { return m_FilterIsRegex; } }
-
-        public Regex FilterRegex { get { return m_FilterRegex; } }
 
         public string[] Tags { get { return m_Tags; } }
 
@@ -179,7 +175,7 @@ namespace Unity.Android.Logcat
             try
             {
                 this.m_Filter = Regex.Escape(filter);
-                m_FilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
+                m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
             catch (Exception ex)
             {
@@ -302,7 +298,7 @@ namespace Unity.Android.Logcat
 
         private bool MatchSearchFilter(string msg)
         {
-            return FilterIsRegex ? FilterRegex.Match(msg).Success : msg.Contains(Filter);
+            return m_FilterIsRegex ? m_ManualFilterRegex.Match(msg).Success : msg.Contains(Filter);
         }
 
         private LogEntry ParseLogEntry(Match m)
