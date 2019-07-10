@@ -11,9 +11,9 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 
     public event Action OnUpdate;
 
-    public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+    public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
-        return new AndroidLogcatFakeProcess(adb, isAndroid7orAbove, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
+        return new AndroidLogcatFakeMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
     }
 
     public AndroidLogcatDispatcher Dispatcher

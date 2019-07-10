@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
         // 3) '--regex'
         internal static readonly Version kAndroidVersion70 = new Version(7, 0);
 
-        internal abstract int SDKVersion { get; }
+        internal abstract int APILevel { get; }
 
         internal abstract string Manufacturer { get; }
 
@@ -58,7 +58,7 @@ namespace Unity.Android.Logcat
             m_Device = device;
         }
 
-        internal override int SDKVersion
+        internal override int APILevel
         {
             get { return int.Parse(m_Device.Properties["ro.build.version.sdk"]); }
         }

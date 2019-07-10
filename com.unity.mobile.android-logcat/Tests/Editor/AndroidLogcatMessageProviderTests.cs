@@ -10,7 +10,6 @@ using UnityEngine.TestTools;
 internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 {
     private ADB m_ADB;
-    private bool m_IsAndroid7OrAbove;
     private string m_Filter;
     private AndroidLogcat.Priority m_Priority;
     private int m_PackageID;
@@ -21,10 +20,9 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
     private List<string> m_FakeMessages;
 
-    internal AndroidLogcatFakeMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
         m_ADB = adb;
-        m_IsAndroid7OrAbove = isAndroid7orAbove;
         m_Filter = filter;
         m_Priority = priority;
         m_PackageID = packageID;
@@ -78,7 +76,7 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
 internal class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
-    internal override int SDKVersion
+    internal override int APILevel
     {
         get { return 28; }
     }
