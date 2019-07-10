@@ -124,7 +124,7 @@ namespace Unity.Android.Logcat
 
         public event Action<string> DeviceConnected;
 
-        private IAndroidLogcatMessageProvider m_LogcatProcess;
+        private IAndroidLogcatMessageProvider m_MessageProvider;
 
         private List<string> m_CachedLogLines = new List<string>();
 
@@ -132,11 +132,11 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                if (m_LogcatProcess == null)
+                if (m_MessageProvider == null)
                     return false;
                 try
                 {
-                    return !m_LogcatProcess.HasExited;
+                    return !m_MessageProvider.HasExited;
                 }
                 catch (Exception ex)
                 {
@@ -146,9 +146,9 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public IAndroidLogcatMessageProvider Process
+        public IAndroidLogcatMessageProvider MessageProvider
         {
-            get { return m_LogcatProcess; }
+            get { return m_MessageProvider; }
         }
 
         public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
@@ -201,8 +201,8 @@ namespace Unity.Android.Logcat
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.OnUpdate += OnUpdate;
 
-            m_LogcatProcess = m_Runtime.CreateMessageProvider(adb, m_Device.OSVersion >= kAndroidVersion70, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
-            m_LogcatProcess.Start();
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, m_Device.OSVersion >= kAndroidVersion70, Filter, MessagePriority, PackagePid, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_MessageProvider.Start();
 
             if (DeviceConnected != null)
                 DeviceConnected.Invoke(Device.Id);
@@ -213,18 +213,18 @@ namespace Unity.Android.Logcat
             m_CachedLogLines.Clear();
             m_BuildInfos.Clear();
             m_Runtime.OnUpdate -= OnUpdate;
-            if (m_LogcatProcess != null && !m_LogcatProcess.HasExited)
+            if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
-                m_LogcatProcess.Kill();
+                m_MessageProvider.Kill();
             }
 
-            m_LogcatProcess = null;
+            m_MessageProvider = null;
         }
 
         internal void Clear()
         {
-            if (m_LogcatProcess != null)
+            if (m_MessageProvider != null)
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
             AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
@@ -234,10 +234,10 @@ namespace Unity.Android.Logcat
 
         void OnUpdate()
         {
-            if (m_LogcatProcess == null)
+            if (m_MessageProvider == null)
                 return;
 
-            if (m_LogcatProcess.HasExited)
+            if (m_MessageProvider.HasExited)
             {
                 Stop();
                 if (DeviceDisconnected != null)

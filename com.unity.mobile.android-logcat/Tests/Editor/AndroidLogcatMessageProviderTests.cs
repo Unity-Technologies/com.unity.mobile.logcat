@@ -7,7 +7,7 @@ using UnityEditor.Android;
 using System.Collections.Generic;
 using UnityEngine.TestTools;
 
-internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
+internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 {
     private ADB m_ADB;
     private bool m_IsAndroid7OrAbove;
@@ -21,7 +21,7 @@ internal class AndroidLogcatFakeProcess : IAndroidLogcatMessageProvider
 
     private List<string> m_FakeMessages;
 
-    internal AndroidLogcatFakeProcess(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(ADB adb, bool isAndroid7orAbove, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
         m_ADB = adb;
         m_IsAndroid7OrAbove = isAndroid7orAbove;
@@ -121,8 +121,8 @@ internal class AndroidLogcatMessageProvideTests
         logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) => { entries.AddRange(e); };
         logcat.Start();
 
-        var process = (AndroidLogcatFakeProcess)logcat.Process;
-        process.SupplyFakeMessage("Test");
+        var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
+        provider.SupplyFakeMessage("Test");
 
         // Force integration of messages
         runtime.Update();
