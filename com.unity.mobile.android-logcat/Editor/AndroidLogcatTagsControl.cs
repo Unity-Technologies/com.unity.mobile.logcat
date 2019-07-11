@@ -236,8 +236,8 @@ namespace Unity.Android.Logcat
                 else
                 {
                     var selectableRect = itemRect;
-                    itemRect.width = toggleRect.min.x - labelRect.min.x;
-                    DoMouseEvent(itemRect, i);
+                    selectableRect.width = toggleRect.min.x - labelRect.min.x;
+                    DoMouseEvent(selectableRect, i);
                 }
 
                 GUI.Label(labelRect, new GUIContent(tagNames[i]), labelStyle);
