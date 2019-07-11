@@ -235,6 +235,8 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
+                    var selectableRect = itemRect;
+                    itemRect.width = toggleRect.min.x - labelRect.min.x;
                     DoMouseEvent(itemRect, i);
                 }
 
