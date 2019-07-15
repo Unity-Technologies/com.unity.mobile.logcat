@@ -38,8 +38,6 @@ namespace Unity.Android.Logcat
 
         private WindowMode m_WindowMode;
 
-        GUISkin m_MonoSkin;
-
         public static void ShowStacktraceWindow()
         {
             var wnd = GetWindow<AndroidLogcatStacktraceWindow>();
@@ -168,8 +166,6 @@ namespace Unity.Android.Logcat
 
             if (string.IsNullOrEmpty(m_AddressRegex))
                 m_AddressRegex = m_DefaultAddressRegex;
-
-            m_MonoSkin = AssetDatabase.LoadAssetAtPath<GUISkin>("Packages/com.unity.mobile.android-logcat/Editor/Resources/Skins/MonoSpaceSkin.guiskin");
 
             if (string.IsNullOrEmpty(m_Text))
             {
