@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
         private string m_SelectedDeviceId;
         private string[] m_DeviceDetails = new string[0];
         private List<string> m_DeviceIds = new List<string>();
-        private IDictionary<string, AndroidDevice> m_CachedDevices = new Dictionary<string, AndroidDevice>();
+        private IDictionary<string, AndroidLogcatDevice> m_CachedDevices = new Dictionary<string, AndroidLogcatDevice>();
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
@@ -657,7 +657,15 @@ namespace Unity.Android.Logcat
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            m_LogCat = new AndroidLogcat(adb, device, m_SelectedPackage == null ? 0 : m_SelectedPackage.processId, m_SelectedPriority, m_Filter, m_FilterIsRegularExpression, m_TagControl.GetSelectedTags());
+            m_LogCat = new AndroidLogcat(
+                AndroidLogcatManager.instance.Runtime,
+                adb,
+                device,
+                m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
+                m_SelectedPriority,
+                m_Filter,
+                m_FilterIsRegularExpression,
+                m_TagControl.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.DeviceDisconnected += OnDeviceDisconnected;
             m_LogCat.DeviceConnected += OnDeviceConnected;
@@ -690,7 +698,8 @@ namespace Unity.Android.Logcat
                 return;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
 
-            AndroidLogcatDispatcher.instance.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
+            var runtime = AndroidLogcatManager.instance.Runtime;
+            runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
         private void CheckIfPackagesExited()
@@ -768,9 +777,9 @@ namespace Unity.Android.Logcat
             return m_DeviceDetails[deviceIndex];
         }
 
-        private AndroidDevice GetAndroidDeviceFromCache(ADB adb, string deviceId)
+        private AndroidLogcatDevice GetAndroidDeviceFromCache(ADB adb, string deviceId)
         {
-            AndroidDevice device;
+            AndroidLogcatDevice device;
             if (m_CachedDevices.TryGetValue(deviceId, out device))
             {
                 return device;
@@ -778,7 +787,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                device = new AndroidDevice(adb, deviceId);
+                device = new AndroidLogcatDevice(new AndroidDevice(adb, deviceId));
                 m_CachedDevices[deviceId] = device;
             }
             catch (Exception ex)

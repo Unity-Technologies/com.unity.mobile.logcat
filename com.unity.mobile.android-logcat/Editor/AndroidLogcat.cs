@@ -87,34 +87,24 @@ namespace Unity.Android.Logcat
             public string cpu;
         }
 
+        private IAndroidLogcatRuntime m_Runtime;
         private ADB adb;
 
-        private readonly AndroidDevice m_Device;
+        private readonly IAndroidLogcatDevice m_Device;
         private readonly int m_PackagePid;
-        private readonly int m_AndroidSDKVersion;
         private readonly Priority m_MessagePriority;
         private string m_Filter;
         private readonly bool m_FilterIsRegex;
-        private Regex m_FilterRegex;
+        private Regex m_ManualFilterRegex;
         private readonly string[] m_Tags;
 
-        public AndroidDevice Device { get { return m_Device; } }
+        public IAndroidLogcatDevice Device { get { return m_Device; } }
 
         public int PackagePid { get { return m_PackagePid; } }
-
-        // Check if it is Android 7 or above due to the below options are only available on these devices:
-        // 1) '--pid'
-        // 2) 'logcat -v year'
-        // 3) '--regex'
-        public bool IsAndroid7orAbove { get { return m_AndroidSDKVersion >= 24; } }
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
         public string Filter { get { return m_Filter; }  set { m_Filter = value; } }
-
-        public bool FilterIsRegex { get { return m_FilterIsRegex; } }
-
-        public Regex FilterRegex { get { return m_FilterRegex; } }
 
         public string[] Tags { get { return m_Tags; } }
 
@@ -124,21 +114,19 @@ namespace Unity.Android.Logcat
 
         public event Action<string> DeviceConnected;
 
-        private Process m_LogcatProcess;
+        private IAndroidLogcatMessageProvider m_MessageProvider;
 
         private List<string> m_CachedLogLines = new List<string>();
-
-        private string m_LastLogcatCommand = "";
 
         public bool IsConnected
         {
             get
             {
-                if (m_LogcatProcess == null)
+                if (m_MessageProvider == null)
                     return false;
                 try
                 {
-                    return !m_LogcatProcess.HasExited;
+                    return !m_MessageProvider.HasExited;
                 }
                 catch (Exception ex)
                 {
@@ -148,18 +136,23 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcat(ADB adb, AndroidDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public IAndroidLogcatMessageProvider MessageProvider
         {
+            get { return m_MessageProvider; }
+        }
+
+        public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        {
+            this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
-            this.m_AndroidSDKVersion = int.Parse(device.Properties["ro.build.version.sdk"]);
             this.m_MessagePriority = priority;
             this.m_FilterIsRegex = filterIsRegex;
             InitFilterRegex(filter);
             this.m_Tags = tags;
 
-            LogEntry.SetTimeFormat(IsAndroid7orAbove ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
+            LogEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
         }
 
         private void InitFilterRegex(string filter)
@@ -167,9 +160,12 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(filter))
                 return;
 
-            if (IsAndroid7orAbove)
+            if (m_Device.SupportsFilteringByRegex)
             {
-                this.m_Filter = Regex.Escape(filter);
+                // When doing searching by filter, we use --regex command.
+                // Note: there's no command line argument to disable or enable regular expressions for logcat
+                // Thus when we want to disable regular expressions, we simply provide filter with escaped characters to --regex command
+                this.m_Filter = m_FilterIsRegex ? filter : Regex.Escape(filter);
                 return;
             }
 
@@ -181,8 +177,8 @@ namespace Unity.Android.Logcat
 
             try
             {
-                this.m_Filter = Regex.Escape(filter);
-                m_FilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
+                this.m_Filter = filter;
+                m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
             catch (Exception ex)
             {
@@ -196,51 +192,32 @@ namespace Unity.Android.Logcat
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
-            EditorApplication.update += OnUpdate;
+            m_Runtime.OnUpdate += OnUpdate;
 
-            m_LastLogcatCommand = LogcatArguments();
-            m_LogcatProcess = StartADB(m_LastLogcatCommand);
-
-            m_LogcatProcess.BeginOutputReadLine();
-            m_LogcatProcess.BeginErrorReadLine();
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_MessageProvider.Start();
 
             if (DeviceConnected != null)
                 DeviceConnected.Invoke(Device.Id);
-        }
-
-        private string LogcatArguments()
-        {
-            var filterArg = string.Empty;
-            if (IsAndroid7orAbove && !string.IsNullOrEmpty(Filter))
-            {
-                filterArg = "--regex \"" + Filter + "\"";
-            }
-
-            var priority = PriorityEnumToString(MessagePriority);
-            if (PackagePid > 0 && IsAndroid7orAbove)
-                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", Device.Id, PackagePid, LogPrintFormat, priority, filterArg);
-
-            return string.Format("-s {0} logcat -v {1} *:{2} {3}", Device.Id, LogPrintFormat, priority, filterArg);
         }
 
         internal void Stop()
         {
             m_CachedLogLines.Clear();
             m_BuildInfos.Clear();
-            EditorApplication.update -= OnUpdate;
-            if (m_LogcatProcess != null && !m_LogcatProcess.HasExited)
+            m_Runtime.OnUpdate -= OnUpdate;
+            if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
-                AndroidLogcatInternalLog.Log("Stopping logcat (process id {0})", m_LogcatProcess.Id);
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
-                m_LogcatProcess.Kill();
+                m_MessageProvider.Kill();
             }
 
-            m_LogcatProcess = null;
+            m_MessageProvider = null;
         }
 
         internal void Clear()
         {
-            if (m_LogcatProcess != null)
+            if (m_MessageProvider != null)
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
             AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
@@ -248,29 +225,12 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log(adbOutput);
         }
 
-        private Process StartADB(string arguments)
-        {
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), arguments);
-            Process logcatProcess = new Process();
-            logcatProcess.StartInfo.FileName = adb.GetADBPath();
-            logcatProcess.StartInfo.Arguments = arguments;
-            logcatProcess.StartInfo.RedirectStandardError = true;
-            logcatProcess.StartInfo.RedirectStandardOutput = true;
-            logcatProcess.StartInfo.UseShellExecute = false;
-            logcatProcess.StartInfo.CreateNoWindow = true;
-            logcatProcess.OutputDataReceived += OutputDataReceived;
-            logcatProcess.ErrorDataReceived += ErrorDataReceived;
-            logcatProcess.Start();
-
-            return logcatProcess;
-        }
-
         void OnUpdate()
         {
-            if (m_LogcatProcess == null)
+            if (m_MessageProvider == null)
                 return;
 
-            if (m_LogcatProcess.HasExited)
+            if (m_MessageProvider.HasExited)
             {
                 Stop();
                 if (DeviceDisconnected != null)
@@ -285,9 +245,9 @@ namespace Unity.Android.Logcat
                 if (m_CachedLogLines.Count == 0)
                     return;
 
-                var needFilterByPid = !IsAndroid7orAbove && PackagePid > 0;
+                var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = !IsAndroid7orAbove && !string.IsNullOrEmpty(Filter);
+                var needFilterBySearch = !m_Device.SupportsFilteringByRegex  && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -341,7 +301,7 @@ namespace Unity.Android.Logcat
 
         private bool MatchSearchFilter(string msg)
         {
-            return FilterIsRegex ? FilterRegex.Match(msg).Success : msg.Contains(Filter);
+            return m_FilterIsRegex ? m_ManualFilterRegex.Match(msg).Success : msg.Contains(Filter);
         }
 
         private LogEntry ParseLogEntry(Match m)
@@ -548,32 +508,21 @@ namespace Unity.Android.Logcat
             return priority.ToString().Substring(0, 1);
         }
 
-        private void ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data == null)
-                return;
-
-            lock (m_CachedLogLines)
-            {
-                m_CachedLogLines.Add(e.Data);
-            }
-        }
-
-        private void OutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (string.IsNullOrEmpty(e.Data))
+            if (string.IsNullOrEmpty(message))
                 return;
 
             lock (m_CachedLogLines)
             {
-                m_CachedLogLines.Add(e.Data);
+                m_CachedLogLines.Add(message);
             }
         }
 
         internal Regex LogParseRegex
         {
-            get { return IsAndroid7orAbove ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+            get { return m_Device.SupportYearFormat  ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
         }
 
         /// <summary>
@@ -584,7 +533,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal string LogPrintFormat
         {
-            get { return IsAndroid7orAbove ? kYearTime : kThreadTime; }
+            get { return m_Device.SupportYearFormat ? kYearTime : kThreadTime; }
         }
 
         private Dictionary<int, BuildInfo> m_BuildInfos = new Dictionary<int, BuildInfo>();

@@ -33,10 +33,14 @@ public class AndroidLogcatDispatcherTests
     [UnityTest]
     public IEnumerator SimpleDispatchingWorks([Values(true, false)] bool synchronousTask)
     {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+
         bool taskFinished = false;
         TaskResultData result = new TaskResultData() { mainThreadId = 0, workerThreadId = 0 };
         TaskInputData data = new TaskInputData() { mainThreadId = Thread.CurrentThread.ManagedThreadId };
-        AndroidLogcatDispatcher.instance.Schedule(data, PerformAsycnTask, (IAndroidLogcatTaskResult r) =>
+
+        runtime.Dispatcher.Schedule(data, PerformAsycnTask, (IAndroidLogcatTaskResult r) =>
         {
             taskFinished = true;
             result = (TaskResultData)r;
@@ -46,6 +50,7 @@ public class AndroidLogcatDispatcherTests
         const float kMaxWaitTime = 1.0f;
         do
         {
+            runtime.Update();
             yield return null;
         }
         while (!taskFinished && Time.realtimeSinceStartup - startTime < kMaxWaitTime);
@@ -62,5 +67,7 @@ public class AndroidLogcatDispatcherTests
             Assert.IsTrue(result.mainThreadId != result.workerThreadId && result.mainThreadId > 0 && result.workerThreadId > 0,
                 string.Format("Expected main ({0}) and worker thread ({1}) to not match and be bigger than 0", result.mainThreadId, result.workerThreadId));
         }
+
+        runtime.Shutdown();
     }
 }
