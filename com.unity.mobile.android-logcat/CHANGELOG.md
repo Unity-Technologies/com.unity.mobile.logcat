@@ -4,12 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.2.?-?] - 2019-??-??
+## [1.0.0] - 2019-07-18
 
 ### Fix & Improvements.
 - Added Open Terminal button
 - Use monospace font for displaying log messages, this makes text align properly when displaying addresses
 - Fix performance issues whene there's no Android device attached, the device querying will happen on worker thread.
+- Fix Regex filter functionality, on newer devices it wasn't working as intended.
+- Fix appearance of Delele button in Tag control window.
 ### Stacktrace Utility
 - Add a custom way of resolving stacktraces, read more about in the documentation
 
