@@ -194,7 +194,7 @@ namespace Unity.Android.Logcat
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.OnUpdate += OnUpdate;
 
-            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device?.Id, OnDataReceived);
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device != null ? m_Device.Id : null, OnDataReceived);
             m_MessageProvider.Start();
 
             if (DeviceConnected != null)

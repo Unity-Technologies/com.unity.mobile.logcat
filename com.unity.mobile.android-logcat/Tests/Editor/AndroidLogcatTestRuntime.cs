@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using Unity.Android.Logcat;
-using Unity.PerformanceTesting;
 using UnityEditor.Android;
 
 internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
@@ -38,6 +37,7 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
     /// </summary>
     public void Update()
     {
-        OnUpdate?.Invoke();
+        if (OnUpdate != null)
+            OnUpdate.Invoke();
     }
 }
