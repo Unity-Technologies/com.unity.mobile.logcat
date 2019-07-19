@@ -1,0 +1,12 @@
+{
+    "name": "Unity.Mobile.AndroidLogcat.RuntimeTests",
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "versionDefines": []
+}
