@@ -16,6 +16,8 @@ namespace Unity.Android.Logcat
     {
         AndroidLogcatDispatcher Dispatcher { get; }
 
+        AndroidLogcatSettings Settings { get; }
+
         IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
 
         void Initialize();
@@ -28,6 +30,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
     {
         private AndroidLogcatDispatcher m_Dispatcher;
+        private AndroidLogcatSettings m_Settings;
 
         public event Action OnUpdate;
 
@@ -42,16 +45,26 @@ namespace Unity.Android.Logcat
             get { return m_Dispatcher; }
         }
 
+        public AndroidLogcatSettings Settings
+        {
+            get { return m_Settings; }
+        }
+
         public void Initialize()
         {
             EditorApplication.update += Update;
 
             m_Dispatcher = new AndroidLogcatDispatcher(this);
             m_Dispatcher.Initialize();
+
+            m_Settings = AndroidLogcatSettings.Load();
         }
 
         public void Shutdown()
         {
+            AndroidLogcatSettings.Save(m_Settings);
+            m_Settings = null;
+
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
 

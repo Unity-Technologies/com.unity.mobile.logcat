@@ -89,6 +89,7 @@ namespace Unity.Android.Logcat
 
         private AndroidLogcatJsonSerialization m_JsonSerialization = null;
 
+        private IAndroidLogcatRuntime m_Runtime;
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private ADB m_Adb;
@@ -208,6 +209,7 @@ namespace Unity.Android.Logcat
         private void OnEnable()
         {
             AndroidLogcatInternalLog.Log("OnEnable");
+            m_Runtime = AndroidLogcatManager.instance.Runtime;
 
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
@@ -365,6 +367,8 @@ namespace Unity.Android.Logcat
         private void OnNewLogEntryAdded(List<AndroidLogcat.LogEntry> entries)
         {
             m_LogEntries.AddRange(entries);
+            if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
+                m_LogEntries.RemoveRange(0, m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
             Repaint();
         }
 
@@ -465,8 +469,11 @@ namespace Unity.Android.Logcat
 
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
-                for (int i = 0; i < 7000; i++)
-                    m_LogEntries.Add(new AndroidLogcat.LogEntry() { processId = i, message = "Dummy", tag = "sdsd" });
+                int count = 10000;
+                var entries = new List<AndroidLogcat.LogEntry>(count);
+                for (int i = 0; i < count; i++)
+                    entries.Add(new AndroidLogcat.LogEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
+                OnNewLogEntryAdded(entries);
                 Repaint();
             }
 
@@ -657,7 +664,7 @@ namespace Unity.Android.Logcat
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             m_LogCat = new AndroidLogcat(
-                AndroidLogcatManager.instance.Runtime,
+                m_Runtime,
                 adb,
                 device,
                 m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
@@ -697,8 +704,7 @@ namespace Unity.Android.Logcat
                 return;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
 
-            var runtime = AndroidLogcatManager.instance.Runtime;
-            runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
         private void CheckIfPackagesExited()
