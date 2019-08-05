@@ -43,6 +43,7 @@ namespace Unity.Android.Logcat
             var wnd = GetWindow<AndroidLogcatStacktraceWindow>();
             if (wnd == null)
                 wnd = ScriptableObject.CreateInstance<AndroidLogcatStacktraceWindow>();
+            wnd.titleContent = new GUIContent("Stacktrace Utility");
             wnd.Show();
             wnd.Focus();
         }
