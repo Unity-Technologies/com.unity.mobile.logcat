@@ -263,7 +263,7 @@ namespace Unity.Android.Logcat
             totalWindowRect.width = Mathf.Max(totalWindowRect.width, m_MaxLogEntryWidth);
 
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
-            
+
             if (m_Autoscroll)
                 m_ScrollPosition.y = totalWindowRect.height;
 
@@ -357,101 +357,119 @@ namespace Unity.Android.Logcat
             return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
         }
 
+        private void DoSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
+        {
+            if (HasCtrlOrCmdModifier(e))
+            {
+                if (m_SelectedIndices.Contains(logEntryIndex))
+                    m_SelectedIndices.Remove(logEntryIndex);
+                else
+                    m_SelectedIndices.Add(logEntryIndex);
+            }
+            else if ((e.modifiers & EventModifiers.Shift) != 0)
+            {
+                if (m_SelectedIndices.Count == 0)
+                {
+                    m_SelectedIndices.Add(logEntryIndex);
+                }
+                else
+                {
+                    int minValue = logEntryIndex;
+                    int maxValue = logEntryIndex;
+                    foreach (var si in m_SelectedIndices)
+                    {
+                        if (si > maxValue)
+                            maxValue = si;
+                        else if (si < minValue)
+                            minValue = si;
+                    }
+
+                    for (int si = minValue; si <= maxValue; si++)
+                    {
+                        if (m_SelectedIndices.Contains(si))
+                            continue;
+                        m_SelectedIndices.Add(si);
+                    }
+                }
+            }
+            else
+            {
+                if (isLogEntrySelected && m_SelectedIndices.Count == 1)
+                {
+                    if ((Time.realtimeSinceStartup - doubleClickStart) < 0.3f)
+                        TryToOpenFileFromLogEntry(m_LogEntries[logEntryIndex]);
+                    else
+                        m_SelectedIndices.Remove(logEntryIndex);
+                    doubleClickStart = -1;
+                }
+                else
+                {
+                    m_SelectedIndices.Clear();
+                    m_SelectedIndices.Add(logEntryIndex);
+                    doubleClickStart = Time.realtimeSinceStartup;
+                }
+            }
+
+            m_SelectedIndices.Sort();
+            GUIUtility.keyboardControl = keyboardControlId;
+        }
+
+        void DoContextMenu(Event e)
+        {
+            var entries = new List<AndroidLogcat.LogEntry>();
+            foreach (var si in m_SelectedIndices)
+            {
+                if (si > m_LogEntries.Count - 1)
+                    continue;
+                entries.Add(m_LogEntries[si]);
+            }
+            var menuItems = new List<string>();
+            menuItems.AddRange(new[] { "Copy", "Select All", "", "Save Selection..." });
+
+            if (entries.Count > 0)
+            {
+                menuItems.Add("");
+                menuItems.Add("Add tag '" + entries[0].tag + "'");
+                menuItems.Add("Remove tag '" + entries[0].tag + "'");
+            }
+
+            var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
+            var separator = new bool[menuItems.Count];
+            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
+                menuItems.ToArray(),
+                enabled,
+                separator,
+                null,
+                MenuSelection,
+                entries.ToArray());
+        }
+
         private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
         {
             bool requestRepaint = false;
             var e = Event.current;
             if (e.type == EventType.MouseDown && logEntryRect.Contains(e.mousePosition))
             {
-                switch (e.button)
+                // Selection occurs both with Left Click & and Right click, this happens in all Unity windows.
+                if (e.button == 0 || e.button == 1)
                 {
-                    case 0:
-                        if (HasCtrlOrCmdModifier(e))
-                        {
-                            if (m_SelectedIndices.Contains(logEntryIndex))
-                                m_SelectedIndices.Remove(logEntryIndex);
-                            else
-                                m_SelectedIndices.Add(logEntryIndex);
-                        }
-                        else if ((e.modifiers & EventModifiers.Shift) != 0)
-                        {
-                            if (m_SelectedIndices.Count == 0)
-                            {
-                                m_SelectedIndices.Add(logEntryIndex);
-                            }
-                            else
-                            {
-                                int minValue = logEntryIndex;
-                                int maxValue = logEntryIndex;
-                                foreach (var si in m_SelectedIndices)
-                                {
-                                    if (si > maxValue)
-                                        maxValue = si;
-                                    else if (si < minValue)
-                                        minValue = si;
-                                }
+                    DoSelection(e, logEntryIndex, isLogEntrySelected, keyboardControlId);
 
-                                for (int si = minValue; si <= maxValue; si++)
-                                {
-                                    if (m_SelectedIndices.Contains(si))
-                                        continue;
-                                    m_SelectedIndices.Add(si);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (isLogEntrySelected && m_SelectedIndices.Count == 1)
-                            {
-                                if ((Time.realtimeSinceStartup - doubleClickStart) < 0.3f)
-                                    TryToOpenFileFromLogEntry(m_LogEntries[logEntryIndex]);
-                                else
-                                    m_SelectedIndices.Remove(logEntryIndex);
-                                doubleClickStart = -1;
-                            }
-                            else
-                            {
-                                m_SelectedIndices.Clear();
-                                m_SelectedIndices.Add(logEntryIndex);
-                                doubleClickStart = Time.realtimeSinceStartup;
-                            }
-                        }
-
-                        m_SelectedIndices.Sort();
-                        e.Use();
-                        GUIUtility.keyboardControl = keyboardControlId;
-                        requestRepaint = true;
-                        break;
-                    case 1:
-                        var entries = new List<AndroidLogcat.LogEntry>();
-                        foreach (var si in m_SelectedIndices)
-                        {
-                            if (si > m_LogEntries.Count - 1)
-                                continue;
-                            entries.Add(m_LogEntries[si]);
-                        }
-                        var menuItems = new List<string>();
-                        menuItems.AddRange(new[] { "Copy", "Select All", "", "Save Selection..." });
-
-                        if (entries.Count > 0)
-                        {
-                            menuItems.Add("");
-                            menuItems.Add("Add tag '" + entries[0].tag + "'");
-                            menuItems.Add("Remove tag '" + entries[0].tag + "'");
-                        }
-
-                        var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
-                        var separator = new bool[menuItems.Count];
-                        EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
-                            menuItems.ToArray(),
-                            enabled,
-                            separator,
-                            null,
-                            MenuSelection,
-                            entries.ToArray());
-                        break;
+                    requestRepaint = true;
+                    e.Use();
                 }
             }
+
+            if (e.type == EventType.MouseUp && logEntryRect.Contains(e.mousePosition))
+            {
+                if (e.button == 1)
+                {
+                    DoContextMenu(e);
+                    requestRepaint = true;
+                    e.Use();
+                }
+            }
+
             return requestRepaint;
         }
 
