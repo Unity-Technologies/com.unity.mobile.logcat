@@ -61,7 +61,8 @@ namespace Unity.Android.Logcat
     {
         class Styles
         {
-            public static GUIContent maxMessageCount = new GUIContent("Max Message Count", "The maximum number of messages.");
+            public static GUIContent maxMessageCount = new GUIContent("Max Count", "The maximum number of messages.");
+            public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
         }
 
         public AndroidLogcatSettingsProvider(string path, SettingsScope scope)
@@ -70,7 +71,9 @@ namespace Unity.Android.Logcat
         public override void OnGUI(string searchContext)
         {
             var settings = AndroidLogcatManager.instance.Runtime.Settings;
+            EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
             settings.MaxMessageCount = EditorGUILayout.IntSlider(Styles.maxMessageCount, settings.MaxMessageCount, 1, 100000);
+            EditorGUILayout.ObjectField(Styles.font, AndroidLogcatStyles.GetFont(), typeof(Font), true);
         }
 
         [SettingsProvider]
