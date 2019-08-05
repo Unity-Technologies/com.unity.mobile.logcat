@@ -262,6 +262,8 @@ namespace Unity.Android.Logcat
             totalWindowRect.height = AndroidLogcatStyles.kLogEntryFixedHeight * (m_LogEntries.Count + kExtraMessageCount);
             totalWindowRect.width = Mathf.Max(totalWindowRect.width, m_MaxLogEntryWidth);
 
+            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
+            
             if (m_Autoscroll)
                 m_ScrollPosition.y = totalWindowRect.height;
 
@@ -313,7 +315,7 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    requestRepaint |= DoMouseEventsForLogEntry(selectionRect, i, selected);
+                    requestRepaint |= DoMouseEventsForLogEntry(selectionRect, i, selected, controlId);
                 }
             }
 
@@ -355,7 +357,7 @@ namespace Unity.Android.Logcat
             return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
         }
 
-        private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected)
+        private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
         {
             bool requestRepaint = false;
             var e = Event.current;
@@ -417,6 +419,7 @@ namespace Unity.Android.Logcat
 
                         m_SelectedIndices.Sort();
                         e.Use();
+                        GUIUtility.keyboardControl = keyboardControlId;
                         requestRepaint = true;
                         break;
                     case 1:

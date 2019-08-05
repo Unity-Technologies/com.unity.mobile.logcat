@@ -607,7 +607,6 @@ namespace Unity.Android.Logcat
         {
             var newFilter = m_SearchField.OnToolbarGUI(m_Filter, null);
             SetFilter(newFilter);
-            m_SearchField.SetFocus();
         }
 
         private void SetSelectedDeviceByIndex(int newDeviceIndex, bool force = false)
