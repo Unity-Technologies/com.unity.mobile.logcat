@@ -175,7 +175,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
             settings.MaxMessageCount = EditorGUILayout.IntSlider(Styles.maxMessageCount, settings.MaxMessageCount, 1, 100000);
             settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
-            settings.MessageFontSize = EditorGUILayout.IntSlider(Styles.fontSize, settings.MessageFontSize, 3, 64);
+            settings.MessageFontSize = EditorGUILayout.IntSlider(Styles.fontSize, settings.MessageFontSize, 5, 25);
 
             GUILayout.Space(20);
             EditorGUILayout.LabelField("Message Colors", EditorStyles.boldLabel);

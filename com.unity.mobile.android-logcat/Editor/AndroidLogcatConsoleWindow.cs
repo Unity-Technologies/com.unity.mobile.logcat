@@ -106,6 +106,7 @@ namespace Unity.Android.Logcat
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
+        private bool m_ApplySettings;
 
         private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
 
@@ -228,10 +229,17 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
 
             m_StatusBar = new AndroidLogcatStatusBar();
+
+            m_Runtime.Settings.OnSettingsChanged += OnSettingsChanged;
+
+            // Can't apply settings here, apparently EditorStyles aren't initialized yet.
+            m_ApplySettings = true;
         }
 
         private void OnDisable()
         {
+            if (m_Runtime.Settings != null)
+                m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
             if (m_TagControl.TagWindow != null)
             {
                 m_TagControl.TagWindow.Close();
@@ -241,6 +249,32 @@ namespace Unity.Android.Logcat
             StopLogCat();
             EditorApplication.update -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
+        }
+
+        private void OnSettingsChanged(AndroidLogcatSettings settings)
+        {
+            m_ApplySettings = true;
+        }
+
+        private void ApplySettings(AndroidLogcatSettings settings)
+        {
+            int fixedHeight = settings.MessageFontSize + 5;
+            AndroidLogcatStyles.kLogEntryFontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.kLogEntryFixedHeight = fixedHeight;
+            AndroidLogcatStyles.background.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundEven.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundOdd.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.priorityDefaultStyle.font = settings.MessageFont;
+            AndroidLogcatStyles.priorityDefaultStyle.fontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.priorityDefaultStyle.fixedHeight = fixedHeight;
+            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
+            {
+                AndroidLogcatStyles.priorityStyles[(int)p].normal.textColor = settings.GetMessageColor(p);
+                AndroidLogcatStyles.priorityStyles[(int)p].font = settings.MessageFont;
+                AndroidLogcatStyles.priorityStyles[(int)p].fontSize = settings.MessageFontSize;
+                AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
+            }
+            Repaint();
         }
 
         private void RemoveTag(string tag)
@@ -386,6 +420,12 @@ namespace Unity.Android.Logcat
 
         internal void OnGUI()
         {
+            if (m_ApplySettings)
+            {
+                ApplySettings(m_Runtime.Settings);
+                m_ApplySettings = false;
+            }
+
             EditorGUILayout.BeginVertical();
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
             {
