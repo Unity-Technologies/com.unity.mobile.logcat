@@ -150,7 +150,7 @@ namespace Unity.Android.Logcat
         internal static void Save(AndroidLogcatSettings settings)
         {
             if (settings == null)
-                throw new NullReferenceException("settings");
+                throw new NullReferenceException("Android logcat settings value was null");
 
             var data = JsonUtility.ToJson(settings);
             EditorPrefs.SetString(kSettingsName, data);
