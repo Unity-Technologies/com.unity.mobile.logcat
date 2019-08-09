@@ -3,7 +3,7 @@ check_formatting:
   agent:
     type: Unity::VM::osx
     image: buildfarm/mac:stable
-    flavor: m1.mac
+    flavor: b1.mac
   commands:
     - hg clone -b stable http://hg-mirror-slo.hq.unity3d.com/unity-extra/unity-meta
     - perl unity-meta/Tools/Format/format.pl --dry-run com.unity.mobile.android-logcat/Editor com.unity.mobile.android-logcat/Tests/Editor TestProjects
