@@ -159,8 +159,12 @@ namespace Unity.Android.Logcat
                     lastHeaderDrawn = true;
                 }
 
-                // Don't allow splitter to make item small than 4px
-                d.itemSize.x = Mathf.Max(4.0f, d.itemSize.x);
+                if (headerDrawn)
+                {
+                    // Don't allow splitter to make item small than 4px
+                    // No need to do it for first visible item
+                    d.itemSize.x = Mathf.Max(4.0f, d.itemSize.x);
+                }
                 headerDrawn = true;
             }
 
@@ -337,16 +341,13 @@ namespace Unity.Android.Logcat
                 return;
             var orgColor = GUI.color;
             GUI.color = borderColor;
-            var prevColumnVisible = false;
-            foreach (var c in (Column[])Enum.GetValues(typeof(Column)))
+            for (int i = 0; i < Enum.GetValues(typeof(Column)).Length; i++)
             {
-                if (prevColumnVisible)
-                {
-                    var itemRect = m_Columns[(uint)c].itemSize;
-                    var rc = new Rect(itemRect.x - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
-                    GUI.DrawTexture(rc, EditorGUIUtility.whiteTexture);
-                }
-                prevColumnVisible = m_Columns[(int)c].enabled;
+                if (!m_Columns[i].enabled)
+                    continue;
+                var itemRect = m_Columns[i].itemSize;
+                var rc = new Rect(itemRect.x + itemRect.width - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
+                GUI.DrawTexture(rc, EditorGUIUtility.whiteTexture);
             }
 
             GUI.color = orgColor;
