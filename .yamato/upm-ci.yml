@@ -11,7 +11,7 @@ test_platforms:
   - name: mac
     type: Unity::VM::osx
     image: buildfarm/mac:stable
-    flavor: b1.mac
+    flavor: m1.mac
     unity-downloader-cli: ~/Library/Python/2.7/bin/unity-downloader-cli
 ---
 pack:
