@@ -223,7 +223,7 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = null;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
-            EditorApplication.update += Update;
+            m_Runtime.OnUpdate += Update;
 
             m_FinishedAutoselectingPackage = false;
             AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
@@ -247,7 +247,7 @@ namespace Unity.Android.Logcat
             }
 
             StopLogCat();
-            EditorApplication.update -= Update;
+            m_Runtime.OnUpdate -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
 
