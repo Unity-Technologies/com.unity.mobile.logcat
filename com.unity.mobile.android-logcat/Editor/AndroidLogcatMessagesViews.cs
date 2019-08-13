@@ -399,8 +399,6 @@ namespace Unity.Android.Logcat
                 {
                     if ((Time.realtimeSinceStartup - doubleClickStart) < 0.3f)
                         TryToOpenFileFromLogEntry(m_LogEntries[logEntryIndex]);
-                    else
-                        m_SelectedIndices.Remove(logEntryIndex);
                     doubleClickStart = -1;
                 }
                 else
