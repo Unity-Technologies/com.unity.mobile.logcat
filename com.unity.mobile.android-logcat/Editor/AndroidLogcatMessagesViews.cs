@@ -292,7 +292,7 @@ namespace Unity.Android.Logcat
             for (int i = startItem; i - startItem < maxVisibleItems && i < m_LogEntries.Count; i++)
             {
                 bool selected = m_SelectedIndices.Contains(i);
-                var selectionRect = new Rect(visibleWindowRect.x, visibleWindowRect.y + AndroidLogcatStyles.kLogEntryFixedHeight * i, totalWindowRect.width, AndroidLogcatStyles.kFixedHeight);
+                var selectionRect = new Rect(visibleWindowRect.x, visibleWindowRect.y + AndroidLogcatStyles.kLogEntryFixedHeight * i, totalWindowRect.width, AndroidLogcatStyles.kLogEntryFixedHeight);
 
                 if (e.type == EventType.Repaint)
                 {
