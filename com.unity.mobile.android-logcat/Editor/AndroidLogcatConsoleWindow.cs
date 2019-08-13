@@ -406,7 +406,7 @@ namespace Unity.Android.Logcat
             for (int i = 0; i < m_SelectedIndices.Count; i++)
                 m_SelectedIndices[i] -= count;
 
-            // Remove selection indexes which point to remove lines
+            // Remove selection indices which point to removed lines
             while (m_SelectedIndices.Count > 0 && m_SelectedIndices[0] < 0)
                 m_SelectedIndices.RemoveAt(0);
         }
