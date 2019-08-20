@@ -138,7 +138,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                settings = JsonUtility.FromJson<AndroidLogcatSettings>(data);
+                EditorJsonUtility.FromJsonOverwrite(data, settings);
             }
             catch (Exception ex)
             {
@@ -152,7 +152,7 @@ namespace Unity.Android.Logcat
             if (settings == null)
                 throw new NullReferenceException("Android logcat settings value was null");
 
-            var data = JsonUtility.ToJson(settings);
+            var data = EditorJsonUtility.ToJson(settings);
             EditorPrefs.SetString(kSettingsName, data);
         }
     }
