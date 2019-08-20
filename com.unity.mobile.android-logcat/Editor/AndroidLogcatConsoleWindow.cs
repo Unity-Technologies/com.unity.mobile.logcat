@@ -492,10 +492,16 @@ namespace Unity.Android.Logcat
         {
             GUILayout.Label("Developer Mode is on, showing debugging buttons:", EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+
             if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
             {
+#if UNITY_2019_3_OR_NEWER
+                EditorUtility.RequestScriptReload();
+#else
                 UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
+#endif
             }
+
 
             if (GUILayout.Button("AutoSelect " + AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
             {
