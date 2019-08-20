@@ -223,7 +223,7 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = null;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
-            EditorApplication.update += Update;
+            m_Runtime.OnUpdate += Update;
 
             m_FinishedAutoselectingPackage = false;
             AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
@@ -247,7 +247,7 @@ namespace Unity.Android.Logcat
             }
 
             StopLogCat();
-            EditorApplication.update -= Update;
+            m_Runtime.OnUpdate -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
 
@@ -398,11 +398,26 @@ namespace Unity.Android.Logcat
             UpdateStatusBar(string.Empty);
         }
 
+        private void RemoveMessages(int count)
+        {
+            m_LogEntries.RemoveRange(0, count);
+
+            // Modify selection indices
+            for (int i = 0; i < m_SelectedIndices.Count; i++)
+                m_SelectedIndices[i] -= count;
+
+            // Remove selection indices which point to removed lines
+            while (m_SelectedIndices.Count > 0 && m_SelectedIndices[0] < 0)
+                m_SelectedIndices.RemoveAt(0);
+        }
+
         private void OnNewLogEntryAdded(List<AndroidLogcat.LogEntry> entries)
         {
             m_LogEntries.AddRange(entries);
             if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
-                m_LogEntries.RemoveRange(0, m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
+            {
+                RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
+            }
             Repaint();
         }
 
@@ -436,7 +451,6 @@ namespace Unity.Android.Logcat
                 HandleSelectedPackage();
 
                 HandleSearchField();
-                GUILayout.Space(kSpace);
 
                 SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
 
@@ -523,9 +537,10 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            if (GUILayout.Button("Remove All Log Lines", AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button("Remove Log Line", AndroidLogcatStyles.toolbarButton))
             {
-                m_LogEntries.RemoveAt(0);
+                if (m_LogEntries.Count > 0)
+                    RemoveMessages(1);
                 Repaint();
             }
             EditorGUILayout.EndHorizontal();

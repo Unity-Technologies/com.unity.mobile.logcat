@@ -292,7 +292,7 @@ namespace Unity.Android.Logcat
             for (int i = startItem; i - startItem < maxVisibleItems && i < m_LogEntries.Count; i++)
             {
                 bool selected = m_SelectedIndices.Contains(i);
-                var selectionRect = new Rect(visibleWindowRect.x, visibleWindowRect.y + AndroidLogcatStyles.kLogEntryFixedHeight * i, totalWindowRect.width, AndroidLogcatStyles.kFixedHeight);
+                var selectionRect = new Rect(visibleWindowRect.x, visibleWindowRect.y + AndroidLogcatStyles.kLogEntryFixedHeight * i, totalWindowRect.width, AndroidLogcatStyles.kLogEntryFixedHeight);
 
                 if (e.type == EventType.Repaint)
                 {
@@ -399,8 +399,6 @@ namespace Unity.Android.Logcat
                 {
                     if ((Time.realtimeSinceStartup - doubleClickStart) < 0.3f)
                         TryToOpenFileFromLogEntry(m_LogEntries[logEntryIndex]);
-                    else
-                        m_SelectedIndices.Remove(logEntryIndex);
                     doubleClickStart = -1;
                 }
                 else
@@ -494,14 +492,14 @@ namespace Unity.Android.Logcat
                     case KeyCode.C:
                         if (hasCtrlOrCmd)
                         {
-                            var copyText = new StringBuilder();
+                            var entries = new List<AndroidLogcat.LogEntry>(m_SelectedIndices.Count);
                             foreach (var si in m_SelectedIndices)
                             {
                                 if (si >= m_LogEntries.Count)
                                     continue;
-                                copyText.AppendLine(m_LogEntries[si].ToString());
+                                entries.Add(m_LogEntries[si]);
                             }
-                            EditorGUIUtility.systemCopyBuffer = copyText.ToString();
+                            EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries.ToArray());
                             e.Use();
                         }
                         break;
@@ -541,8 +539,16 @@ namespace Unity.Android.Logcat
 
         private void SaveToFile(AndroidLogcat.LogEntry[] logEntries)
         {
+            var contents = LogEntriesToString(logEntries);
+            var filePath = EditorUtility.SaveFilePanel("Save selected logs", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
+            if (!string.IsNullOrEmpty(filePath))
+                File.WriteAllText(filePath, contents);
+        }
+
+        private string LogEntriesToString(AndroidLogcat.LogEntry[] entries)
+        {
             var contents = new StringBuilder();
-            foreach (var l in logEntries)
+            foreach (var l in entries)
             {
                 var entry = string.Empty;
                 for (int i = 0; i < m_Columns.Length; i++)
@@ -563,9 +569,8 @@ namespace Unity.Android.Logcat
                 }
                 contents.AppendLine(entry);
             }
-            var filePath = EditorUtility.SaveFilePanel("Save selected logs", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
-            if (!string.IsNullOrEmpty(filePath))
-                File.WriteAllText(filePath, contents.ToString());
+
+            return contents.ToString();
         }
 
         private void MenuSelection(object userData, string[] options, int selected)
@@ -574,11 +579,7 @@ namespace Unity.Android.Logcat
             {
                 // Copy
                 case 0:
-                    var selectedLogEntries = (AndroidLogcat.LogEntry[])userData;
-                    var text = new StringBuilder();
-                    foreach (var l in selectedLogEntries)
-                        text.AppendLine(l.ToString());
-                    EditorGUIUtility.systemCopyBuffer = text.ToString();
+                    EditorGUIUtility.systemCopyBuffer = LogEntriesToString((AndroidLogcat.LogEntry[])userData);
                     break;
                 // Select All
                 case 1:
