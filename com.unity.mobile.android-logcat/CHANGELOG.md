@@ -4,6 +4,16 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.0.1-preview] - 2019-08-21
+
+### Fix & Improvements.
+ - Provide proper windows title for Stacktrace Utility window
+ - Right clicking log lines behavior will be consistent with other Unity windows.
+ - Ctrl/CMD + C will copy log lines correctly.
+ - Column seperators will be drawn correctly
+### Android Logcat Settings 
+ - Introducing settings, accessible from Preferences. For ex., on Windows Edit->Preferences
+ 
 ## [1.0.0] - 2019-07-18
 
 ### Fix & Improvements.
