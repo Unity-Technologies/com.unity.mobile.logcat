@@ -89,6 +89,7 @@ namespace Unity.Android.Logcat
 
         private AndroidLogcatJsonSerialization m_JsonSerialization = null;
 
+        private IAndroidLogcatRuntime m_Runtime;
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private ADB m_Adb;
@@ -105,6 +106,7 @@ namespace Unity.Android.Logcat
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
+        private bool m_ApplySettings;
 
         private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
 
@@ -208,6 +210,7 @@ namespace Unity.Android.Logcat
         private void OnEnable()
         {
             AndroidLogcatInternalLog.Log("OnEnable");
+            m_Runtime = AndroidLogcatManager.instance.Runtime;
 
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
@@ -220,16 +223,23 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = null;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
-            EditorApplication.update += Update;
+            m_Runtime.OnUpdate += Update;
 
             m_FinishedAutoselectingPackage = false;
             AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
 
             m_StatusBar = new AndroidLogcatStatusBar();
+
+            m_Runtime.Settings.OnSettingsChanged += OnSettingsChanged;
+
+            // Can't apply settings here, apparently EditorStyles aren't initialized yet.
+            m_ApplySettings = true;
         }
 
         private void OnDisable()
         {
+            if (m_Runtime.Settings != null)
+                m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
             if (m_TagControl.TagWindow != null)
             {
                 m_TagControl.TagWindow.Close();
@@ -237,8 +247,34 @@ namespace Unity.Android.Logcat
             }
 
             StopLogCat();
-            EditorApplication.update -= Update;
+            m_Runtime.OnUpdate -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
+        }
+
+        private void OnSettingsChanged(AndroidLogcatSettings settings)
+        {
+            m_ApplySettings = true;
+        }
+
+        private void ApplySettings(AndroidLogcatSettings settings)
+        {
+            int fixedHeight = settings.MessageFontSize + 5;
+            AndroidLogcatStyles.kLogEntryFontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.kLogEntryFixedHeight = fixedHeight;
+            AndroidLogcatStyles.background.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundEven.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundOdd.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.priorityDefaultStyle.font = settings.MessageFont;
+            AndroidLogcatStyles.priorityDefaultStyle.fontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.priorityDefaultStyle.fixedHeight = fixedHeight;
+            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
+            {
+                AndroidLogcatStyles.priorityStyles[(int)p].normal.textColor = settings.GetMessageColor(p);
+                AndroidLogcatStyles.priorityStyles[(int)p].font = settings.MessageFont;
+                AndroidLogcatStyles.priorityStyles[(int)p].fontSize = settings.MessageFontSize;
+                AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
+            }
+            Repaint();
         }
 
         private void RemoveTag(string tag)
@@ -362,9 +398,26 @@ namespace Unity.Android.Logcat
             UpdateStatusBar(string.Empty);
         }
 
+        private void RemoveMessages(int count)
+        {
+            m_LogEntries.RemoveRange(0, count);
+
+            // Modify selection indices
+            for (int i = 0; i < m_SelectedIndices.Count; i++)
+                m_SelectedIndices[i] -= count;
+
+            // Remove selection indices which point to removed lines
+            while (m_SelectedIndices.Count > 0 && m_SelectedIndices[0] < 0)
+                m_SelectedIndices.RemoveAt(0);
+        }
+
         private void OnNewLogEntryAdded(List<AndroidLogcat.LogEntry> entries)
         {
             m_LogEntries.AddRange(entries);
+            if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
+            {
+                RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
+            }
             Repaint();
         }
 
@@ -382,6 +435,12 @@ namespace Unity.Android.Logcat
 
         internal void OnGUI()
         {
+            if (m_ApplySettings)
+            {
+                ApplySettings(m_Runtime.Settings);
+                m_ApplySettings = false;
+            }
+
             EditorGUILayout.BeginVertical();
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
             {
@@ -392,7 +451,6 @@ namespace Unity.Android.Logcat
                 HandleSelectedPackage();
 
                 HandleSearchField();
-                GUILayout.Space(kSpace);
 
                 SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
 
@@ -448,10 +506,16 @@ namespace Unity.Android.Logcat
         {
             GUILayout.Label("Developer Mode is on, showing debugging buttons:", EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+
             if (GUILayout.Button("Reload Me", AndroidLogcatStyles.toolbarButton))
             {
+#if UNITY_2019_3_OR_NEWER
+                EditorUtility.RequestScriptReload();
+#else
                 UnityEditorInternal.InternalEditorUtility.RequestScriptReload();
+#endif
             }
+
 
             if (GUILayout.Button("AutoSelect " + AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
             {
@@ -465,14 +529,18 @@ namespace Unity.Android.Logcat
 
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
-                for (int i = 0; i < 7000; i++)
-                    m_LogEntries.Add(new AndroidLogcat.LogEntry() { processId = i, message = "Dummy", tag = "sdsd" });
+                int count = 10000;
+                var entries = new List<AndroidLogcat.LogEntry>(count);
+                for (int i = 0; i < count; i++)
+                    entries.Add(new AndroidLogcat.LogEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
+                OnNewLogEntryAdded(entries);
                 Repaint();
             }
 
-            if (GUILayout.Button("Remove All Log Lines", AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button("Remove Log Line", AndroidLogcatStyles.toolbarButton))
             {
-                m_LogEntries.RemoveAt(0);
+                if (m_LogEntries.Count > 0)
+                    RemoveMessages(1);
                 Repaint();
             }
             EditorGUILayout.EndHorizontal();
@@ -607,7 +675,6 @@ namespace Unity.Android.Logcat
         {
             var newFilter = m_SearchField.OnToolbarGUI(m_Filter, null);
             SetFilter(newFilter);
-            m_SearchField.SetFocus();
         }
 
         private void SetSelectedDeviceByIndex(int newDeviceIndex, bool force = false)
@@ -658,7 +725,7 @@ namespace Unity.Android.Logcat
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             m_LogCat = new AndroidLogcat(
-                AndroidLogcatManager.instance.Runtime,
+                m_Runtime,
                 adb,
                 device,
                 m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
@@ -698,8 +765,7 @@ namespace Unity.Android.Logcat
                 return;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
 
-            var runtime = AndroidLogcatManager.instance.Runtime;
-            runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
         private void CheckIfPackagesExited()

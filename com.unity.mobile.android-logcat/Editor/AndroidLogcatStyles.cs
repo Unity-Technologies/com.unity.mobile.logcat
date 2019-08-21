@@ -14,8 +14,8 @@ namespace Unity.Android.Logcat
 
         public static GUIStyle columnHeader = new GUIStyle("OL TITLE");
 
-        public const int kLogEntryFontSize = 11;
-        public const int kLogEntryFixedHeight = kLogEntryFontSize + 5;
+        public static int kLogEntryFontSize = 11;
+        public static int kLogEntryFixedHeight = kLogEntryFontSize + 5;
         public static GUIStyle background = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundOdd = new GUIStyle("CN EntryBackodd") { fixedHeight = kLogEntryFixedHeight };
         public static GUIStyle backgroundEven = new GUIStyle("CN EntryBackEven") { fixedHeight = kLogEntryFixedHeight };

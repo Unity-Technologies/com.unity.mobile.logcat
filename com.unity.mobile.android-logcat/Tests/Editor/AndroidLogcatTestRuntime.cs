@@ -20,6 +20,11 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
         get { return m_Dispatcher; }
     }
 
+    public AndroidLogcatSettings Settings
+    {
+        get { return null;  }
+    }
+
     public void Initialize()
     {
         m_Dispatcher = new AndroidLogcatDispatcher(this);
