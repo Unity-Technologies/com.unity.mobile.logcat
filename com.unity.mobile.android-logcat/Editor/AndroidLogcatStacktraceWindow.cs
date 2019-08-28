@@ -15,7 +15,8 @@ namespace Unity.Android.Logcat
     {
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*)\.so";
+        internal static readonly string m_AddressRegexFormat1 = @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*)\.so";
+        internal static readonly string m_AddressRegexFormat2 = @"\s*at (?<libName>lib.*)\.(?<address>[a-fA-F0-9]{8})";
 
         enum WindowMode
         {
@@ -30,7 +31,10 @@ namespace Unity.Android.Logcat
         int m_SelectedSymbolPath;
 
         [SerializeField]
-        string m_AddressRegex;
+        string m_CustomAddressRegex;
+
+        [SerializeField]
+        int m_SelectedRegex;
 
         Vector2 m_ScrollPosition;
         string m_Text = String.Empty;
@@ -162,11 +166,11 @@ namespace Unity.Android.Logcat
                 m_RecentSymbolPaths = validatedSymbolPaths;
             }
 
+            if (string.IsNullOrEmpty(m_CustomAddressRegex))
+                m_CustomAddressRegex = "";
+
             if (m_SelectedSymbolPath >= m_RecentSymbolPaths.Count)
                 m_SelectedSymbolPath = (m_RecentSymbolPaths.Count == 0) ? -1 : 0;
-
-            if (string.IsNullOrEmpty(m_AddressRegex))
-                m_AddressRegex = m_DefaultAddressRegex;
 
             if (string.IsNullOrEmpty(m_Text))
             {
@@ -208,27 +212,39 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
-        void DoRegex(float labelWidth, Regex regex)
+        void DoRegex()
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.BeginVertical();
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Address regex:", EditorStyles.boldLabel, GUILayout.Width(labelWidth));
-            m_AddressRegex = GUILayout.TextField(m_AddressRegex);
-            EditorGUILayout.EndHorizontal();
+
+            var regs = new[] { m_AddressRegexFormat1, m_AddressRegexFormat2, m_CustomAddressRegex };
+            if (m_SelectedRegex > regs.Length - 1)
+                m_SelectedRegex = 0;
+
+            GUILayout.Label("Select regex for address/library name resolving:", EditorStyles.boldLabel);
+            for (int i = 0; i < regs.Length; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                bool value = GUILayout.Toggle(m_SelectedRegex == i, "", GUILayout.ExpandWidth(false));
+                if (value)
+                    m_SelectedRegex = i;
+                var isPredefinedRegex = i < regs.Length - 1;
+                GUILayout.Label(isPredefinedRegex ? "(Predefined)" : "(Custom)", GUILayout.Width(100));
+                if (isPredefinedRegex)
+                    GUILayout.Label(regs[i], EditorStyles.textField, GUILayout.ExpandWidth(true));
+                else
+                    regs[i] = m_CustomAddressRegex = GUILayout.TextField(m_CustomAddressRegex, GUILayout.ExpandWidth(true));
+                EditorGUILayout.EndHorizontal();
+            }
+
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.BeginVertical();
-            if (GUILayout.Button("Reset Regex", EditorStyles.miniButton))
-            {
-                m_AddressRegex = m_DefaultAddressRegex;
-            }
-
             EditorGUI.BeginDisabledGroup(m_SelectedSymbolPath < 0);
             if (GUILayout.Button("Resolve Stacktraces", EditorStyles.miniButton))
             {
                 m_WindowMode = WindowMode.ResolvedLog;
-                ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath], regex);
+                ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath], new Regex(regs[m_SelectedRegex]));
                 GUIUtility.keyboardControl = 0;
                 GUIUtility.hotControl = 0;
             }
@@ -240,13 +256,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            var regex = new Regex(m_AddressRegex);
             const float kLabelWidth = 120.0f;
-            const float kInfoAreaHeight = 60.0f;
+            const float kInfoAreaHeight = 100.0f;
             GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
             GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
             DoSymbolPath(kLabelWidth);
-            DoRegex(kLabelWidth, regex);
+            DoRegex();
             GUILayout.EndArea();
 
             EditorGUI.BeginChangeCheck();
@@ -265,7 +280,6 @@ namespace Unity.Android.Logcat
                 case WindowMode.ResolvedLog:
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
                     EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
-                    GUIUtility.keyboardControl = 0;
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));

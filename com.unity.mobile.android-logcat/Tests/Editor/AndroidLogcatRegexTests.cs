@@ -189,15 +189,28 @@ class AndroidLogcatRegexTests
     }
 
     [Test]
-    public void CorrectyParseStacktraceCrash()
+    public void CorrectyParseStacktraceCrashFormat1()
     {
         var logLine = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
-        var regex = new Regex(AndroidLogcatStacktraceWindow.m_DefaultAddressRegex);
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_AddressRegexFormat1);
         string address;
         string libName;
         var result = AndroidLogcatStacktraceWindow.ParseLine(regex, logLine, out address, out libName);
         Assert.IsTrue(result, "Failed to parse " + logLine);
         Assert.IsTrue(address.Equals("002983fc"));
+        Assert.IsTrue(libName.Equals("libunity.so"));
+    }
+
+    [Test]
+    public void CorrectyParseStacktraceCrashFormat2()
+    {
+        var logLine = "    at libunity.0041e340(Native Method)  ";
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_AddressRegexFormat2);
+        string address;
+        string libName;
+        var result = AndroidLogcatStacktraceWindow.ParseLine(regex, logLine, out address, out libName);
+        Assert.IsTrue(result, "Failed to parse " + logLine);
+        Assert.IsTrue(address.Equals("0041e340"));
         Assert.IsTrue(libName.Equals("libunity.so"));
     }
 }
