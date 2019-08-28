@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
     {
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*\.so)";
+        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*)\.so";
 
         enum WindowMode
         {
@@ -54,7 +54,7 @@ namespace Unity.Android.Logcat
             if (match.Success)
             {
                 address = match.Groups["address"].Value;
-                libName = match.Groups["libName"].Value;
+                libName = match.Groups["libName"].Value + ".so";
                 return true;
             }
             address = null;
