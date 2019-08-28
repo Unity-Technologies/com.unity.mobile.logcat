@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
     {
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(lib.*\.so)";
+        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*\.so)";
 
         enum WindowMode
         {
@@ -48,13 +48,13 @@ namespace Unity.Android.Logcat
             wnd.Focus();
         }
 
-        private bool ParseLine(Regex regex, string msg, out string address, out string libName)
+        internal static bool ParseLine(Regex regex, string msg, out string address, out string libName)
         {
             var match = regex.Match(msg);
             if (match.Success)
             {
-                address = match.Groups[1].Value;
-                libName = match.Groups[2].Value;
+                address = match.Groups["address"].Value;
+                libName = match.Groups["libName"].Value;
                 return true;
             }
             address = null;
