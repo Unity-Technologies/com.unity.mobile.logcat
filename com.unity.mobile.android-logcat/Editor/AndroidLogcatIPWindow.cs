@@ -33,6 +33,9 @@ namespace Unity.Android.Logcat
         {
             m_IpString = EditorPrefs.GetString(kAndroidLogcatLastIp, "");
             m_PortString = EditorPrefs.GetString(kAndroidLogcatLastPort, "5555");
+
+            // Disable progress bar just in case, if we have a stale process hanging where we peform adb connect
+            EditorUtility.ClearProgressBar();
         }
 
         /// <summary>
