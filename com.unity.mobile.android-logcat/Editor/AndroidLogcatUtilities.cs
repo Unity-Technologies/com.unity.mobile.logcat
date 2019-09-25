@@ -61,25 +61,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Connect to the device by ip address.
-        /// Please refer to https://developer.android.com/studio/command-line/adb#wireless for details.
-        /// </summary>
-        /// <param name="ip"> The ip address of the device that needs to be connected. Port can be included like 'device_ip_address:port'. Both IPV4 and IPV6 are supported. </param>
-        public static void ConnectDevice(ADB adb, string ip)
-        {
-            var cmd = "connect " + ip;
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-
-            var errorMsg = "Unable to connect to ";
-            var outputMsg = adb.Run(new[] { cmd }, errorMsg + ip);
-            if (outputMsg.StartsWith(errorMsg))
-            {
-                AndroidLogcatInternalLog.Log(outputMsg);
-                Debug.LogError(outputMsg);
-            }
-        }
-
-        /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
         public static bool GetTopActivityInfo(ADB adb, string deviceId, ref string packageName, ref int packagePid)
@@ -224,7 +205,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd {0}\"", workingDirectory));
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") {WorkingDirectory = workingDirectory});
                     break;
                 case RuntimePlatform.OSXEditor:
                     System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
