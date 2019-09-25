@@ -550,7 +550,7 @@ namespace Unity.Android.Logcat
         {
             if (selected == m_DeviceIds.Count)
             {
-                AndroidLogcatIPWindow.Show(this.GetCachedAdb(), m_IpWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.m_Runtime, this.GetCachedAdb(), this.m_DeviceIds, this.m_DeviceDetails, m_IpWindowScreenRect);
                 return;
             }
 
