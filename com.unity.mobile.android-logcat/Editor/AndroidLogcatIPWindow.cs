@@ -15,6 +15,7 @@ namespace Unity.Android.Logcat
         internal string m_IpString;
         internal string m_PortString;
         private Vector2 m_DevicesScrollPosition = Vector2.zero;
+        private Rect m_DeviceScrollRect = new Rect();
 
         private const string kAndroidLogcatLastIp = "AndroidLogcatLastIp";
         private const string kAndroidLogcatLastPort = "AndroidLogcatLastPort";
@@ -22,8 +23,6 @@ namespace Unity.Android.Logcat
         public static void Show(IAndroidLogcatRuntime runtime, ADB adb, List<string> connectedDevices, string[] details, Rect screenRect)
         {
             AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Enter Device IP");
-            win.m_Runtime = runtime;
-            win.m_Adb = adb;
             win.m_ConnectedDevices = connectedDevices;
             win.m_ConnectedDeviceDetails = details;
             win.position = new Rect(screenRect.x, screenRect.y, 600, 500);
@@ -31,6 +30,10 @@ namespace Unity.Android.Logcat
 
         void OnEnable()
         {
+            if (m_Adb == null)
+                m_Adb = ADB.GetInstance();
+            if (m_Runtime == null)
+                m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_IpString = EditorPrefs.GetString(kAndroidLogcatLastIp, "");
             m_PortString = EditorPrefs.GetString(kAndroidLogcatLastPort, "5555");
 
@@ -57,7 +60,7 @@ namespace Unity.Android.Logcat
             EditorUtility.DisplayDialog(r.success ? "Success" : "Failure", r.message, "Ok");
         }
 
-        string QueryIP(string deviceId)
+        string CopyIP(string deviceId)
         {
             var result = m_Adb.Run(new[] { "-s", deviceId, "shell", "ip", "route"}, "Failed to query ip");
             var i = result.IndexOf("src ");
@@ -71,6 +74,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
             {
                 EditorGUILayout.LabelField("Available devices:", EditorStyles.boldLabel);
+                GUI.Box(m_DeviceScrollRect, GUIContent.none, EditorStyles.helpBox);
                 m_DevicesScrollPosition = EditorGUILayout.BeginScrollView(m_DevicesScrollPosition);
                 for (int i = 0; i < m_ConnectedDevices.Count; i++)
                 {
@@ -78,21 +82,28 @@ namespace Unity.Android.Logcat
                     var name = i < m_ConnectedDeviceDetails.Length && !string.IsNullOrEmpty(m_ConnectedDeviceDetails[i])
                         ? m_ConnectedDeviceDetails[i]
                         : m_ConnectedDevices[i];
-                    var labelRect = GUILayoutUtility.GetRect(new GUIContent(name), EditorStyles.label);
-                    var rc = GUILayoutUtility.GetLastRect();
-                    GUI.Box(rc, "");
-                    EditorGUI.LabelField(labelRect, name, EditorStyles.label);
-                    if (GUILayout.Button(" Query IP ", EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
+
+
+                    EditorGUILayout.LabelField(name, EditorStyles.label);
+
+                    if (GUILayout.Button(" Copy IP ", GUILayout.ExpandWidth(false)))
                     {
-                        m_IpString = QueryIP(m_ConnectedDevices[i]);
+                        m_IpString = CopyIP(m_ConnectedDevices[i]);
                         GUIUtility.keyboardControl = 0;
                         GUIUtility.hotControl = 0;
                         Repaint();
                     }
+                    var rc = GUILayoutUtility.GetLastRect();
+                    var orgColor = GUI.color;
+                    GUI.color = Color.black;
+                    if (Event.current.type == EventType.Repaint)
+                        GUI.DrawTexture(new Rect(0, rc.y + rc.height, m_DeviceScrollRect.width, 1), EditorGUIUtility.whiteTexture);
+                    GUI.color = orgColor;
                     EditorGUILayout.EndHorizontal();
                 }
                 EditorGUILayout.EndScrollView();
-
+                if (Event.current.type == EventType.Repaint)
+                    m_DeviceScrollRect = GUILayoutUtility.GetLastRect();
                 GUILayout.Space(5);
                 EditorGUILayout.BeginHorizontal();
                 EditorGUILayout.LabelField("IP", EditorStyles.boldLabel);
