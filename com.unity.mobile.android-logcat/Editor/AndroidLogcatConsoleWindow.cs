@@ -681,6 +681,9 @@ namespace Unity.Android.Logcat
         {
             if (newDeviceIndex != m_SelectedDeviceIndex || force)
             {
+                if (m_SelectedDeviceIndex >= m_DeviceIds.Count)
+                    return;
+
                 m_SelectedDeviceIndex = newDeviceIndex;
                 m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
                 ResetPackages(m_SelectedDeviceId);
