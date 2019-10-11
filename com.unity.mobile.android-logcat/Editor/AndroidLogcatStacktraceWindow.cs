@@ -273,6 +273,7 @@ namespace Unity.Android.Logcat
             }
             EditorGUILayout.EndScrollView();
         }
+
 #else
         internal void OnGUI()
         {
@@ -280,6 +281,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
 #endif
         }
+
 #endif
     }
 }

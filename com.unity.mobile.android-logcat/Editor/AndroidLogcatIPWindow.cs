@@ -62,7 +62,7 @@ namespace Unity.Android.Logcat
             var result = m_Adb.Run(new[] { "-s", deviceId, "shell", "ip", "route"}, "Failed to query ip");
             var i = result.IndexOf("src ");
             if (i > 0)
-                result = result.Substring(i + 4).Trim(new[]{' ', '\r', '\n'});
+                result = result.Substring(i + 4).Trim(new[] {' ', '\r', '\n'});
             return string.IsNullOrEmpty(result) ? "Failed to get IP address" : result;
         }
 
