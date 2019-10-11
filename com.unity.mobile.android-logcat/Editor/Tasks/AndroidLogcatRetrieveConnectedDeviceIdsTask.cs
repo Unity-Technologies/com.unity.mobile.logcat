@@ -35,7 +35,7 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log(" " + line);
                 if (line.EndsWith("device"))
                 {
-                    var deviceId = line.Substring(0, line.IndexOf('\t'));
+                    var deviceId = line.Split(new[] { '\t', ' ' })[0];
                     result.deviceIds.Add(deviceId);
                 }
             }
