@@ -89,6 +89,7 @@ namespace Unity.Android.Logcat
                     if (GUILayout.Button(" Copy IP ", GUILayout.ExpandWidth(false)))
                     {
                         m_IpString = CopyIP(m_ConnectedDevices[i]);
+                        EditorGUIUtility.systemCopyBuffer = m_IpString;
                         GUIUtility.keyboardControl = 0;
                         GUIUtility.hotControl = 0;
                         Repaint();
