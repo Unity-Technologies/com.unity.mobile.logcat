@@ -28,7 +28,10 @@ namespace Unity.Android.Logcat
         private int m_MessageFontSize;
 
         [SerializeField]
-        private List<Color> m_MessageColors;
+        private List<Color> m_MessageColorsProSkin;
+
+        [SerializeField]
+        private List<Color> m_MessageColorsFreeSkin;
 
         internal int MaxMessageCount
         {
@@ -77,20 +80,23 @@ namespace Unity.Android.Logcat
 
         internal void SetMessageColor(AndroidLogcat.Priority priority, Color color)
         {
-            // Populate the color list if needed
-            while ((int)priority >= m_MessageColors.Count)
-                m_MessageColors.Add(Color.white);
+            var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
 
-            if (m_MessageColors[(int)priority] == color)
+            // Populate the color list if needed
+            while ((int)priority >= messages.Count)
+                messages.Add(Color.white);
+
+            if (messages[(int)priority] == color)
                 return;
-            m_MessageColors[(int)priority] = color;
+            messages[(int)priority] = color;
             InvokeOnSettingsChanged();
         }
 
         internal Color GetMessageColor(AndroidLogcat.Priority priority)
         {
-            if ((int)priority < m_MessageColors.Count)
-                return m_MessageColors[(int)priority];
+            var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
+            if ((int)priority < messages.Count)
+                return messages[(int)priority];
             return Color.white;
         }
 
@@ -109,12 +115,22 @@ namespace Unity.Android.Logcat
             if (Enum.GetValues(typeof(AndroidLogcat.Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
-            m_MessageColors = new List<Color>(new[]
+            m_MessageColorsProSkin = new List<Color>(new[]
             {
                 Color.white,
                 Color.white,
                 Color.white,
                 Color.yellow,
+                Color.red,
+                Color.red
+            });
+
+            m_MessageColorsFreeSkin = new List<Color>(new[]
+{
+                Color.black,
+                Color.black,
+                Color.black,
+                new Color(0.3f, 0.3f, 0.0f),
                 Color.red,
                 Color.red
             });
