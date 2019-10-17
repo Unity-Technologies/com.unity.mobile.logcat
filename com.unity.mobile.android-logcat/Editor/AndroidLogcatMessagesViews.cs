@@ -14,6 +14,7 @@ namespace Unity.Android.Logcat
     {
         internal enum Column
         {
+            Icon,
             Time,
             ProcessId,
             ThreadId,
@@ -51,18 +52,24 @@ namespace Unity.Android.Logcat
         private float m_MaxLogEntryWidth = 0.0f;
 
         [SerializeField]
-        private ColumnData[] m_Columns = new ColumnData[]
-        {
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
-        };
+        private ColumnData[] m_Columns = GetColumns();
 
         private bool m_Autoscroll = true;
         private float doubleClickStart = -1;
+
+        private static ColumnData[] GetColumns()
+        {
+            return new ColumnData[]
+            {
+                new ColumnData() {content = new GUIContent(""), width = 30.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
+            };
+        }
 
         private bool DoSplitter(ColumnData data, Rect splitterRect)
         {
@@ -252,6 +259,20 @@ namespace Unity.Android.Logcat
             style.Draw(rc, new GUIContent(value), 0);
         }
 
+        private GUIStyle GetIconStyle(AndroidLogcat.Priority priority)
+        {
+            switch (priority)
+            {
+                case AndroidLogcat.Priority.Warn:
+                    return AndroidLogcatStyles.warningSmallStyle;
+                case AndroidLogcat.Priority.Error:
+                case AndroidLogcat.Priority.Fatal:
+                    return AndroidLogcatStyles.errorSmallStyle;
+                default:
+                    return AndroidLogcatStyles.infoSmallStyle;
+            }
+        }
+
         private bool DoGUIEntries()
         {
             bool requestRepaint = false;
@@ -307,6 +328,7 @@ namespace Unity.Android.Logcat
                             AndroidLogcatStyles.backgroundOdd.Draw(selectionRect, false, false, false, false);
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
+                    DoLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority));
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
