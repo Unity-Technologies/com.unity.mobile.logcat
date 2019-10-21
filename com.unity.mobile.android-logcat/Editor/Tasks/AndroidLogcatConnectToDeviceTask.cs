@@ -12,6 +12,8 @@ namespace Unity.Android.Logcat
         internal ADB adb;
         internal string ip;
         internal string port;
+        internal string deviceId;
+        internal bool setListeningPort;
     }
 
     internal class AndroidLogcatConnectToDeviceResult : IAndroidLogcatTaskResult
@@ -24,14 +26,27 @@ namespace Unity.Android.Logcat
     {
         internal static IAndroidLogcatTaskResult Execute(IAndroidLogcatTaskInput input)
         {
-            var adb = ((AndroidLogcatConnectToDeviceInput)input).adb;
+            var workInput = ((AndroidLogcatConnectToDeviceInput)input);
+            var adb = workInput.adb;
 
             if (adb == null)
                 throw new NullReferenceException("ADB interface has to be valid");
 
-            var ip = ((AndroidLogcatConnectToDeviceInput)input).ip;
-            var port = ((AndroidLogcatConnectToDeviceInput)input).port;
-            var cmd = "connect " + ip + ":" + port;
+            var ip = workInput.ip;
+            var port = workInput.port;
+            string cmd;
+            if (workInput.setListeningPort)
+            {
+                cmd = "-s " + workInput.deviceId + " tcpip " + port;
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var resultTCPIP = adb.Run(new[] { cmd }, "Failed to adb tcpip " + port);
+                AndroidLogcatInternalLog.Log(resultTCPIP);
+                var wait = 3000;
+                AndroidLogcatInternalLog.Log("Waiting {0} ms until ADB returns", wait);
+                System.Threading.Thread.Sleep(wait);
+            }
+
+            cmd = "connect " + ip + ":" + port;
             AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
 
             var errorMsg = "Unable to connect to ";

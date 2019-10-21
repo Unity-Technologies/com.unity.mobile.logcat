@@ -20,6 +20,8 @@ namespace Unity.Android.Logcat
         private const string kAndroidLogcatLastIp = "AndroidLogcatLastIp";
         private const string kAndroidLogcatLastPort = "AndroidLogcatLastPort";
 
+        private GUIContent kConnect = new GUIContent(L10n.Tr("Connect"), L10n.Tr("Sets the target device to listen for a TCP/IP connection on port 5555 and connects to it via IP address."));
+
         public static void Show(IAndroidLogcatRuntime runtime, ADB adb, List<string> connectedDevices, string[] details, Rect screenRect)
         {
             AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Enter Device IP");
@@ -50,6 +52,16 @@ namespace Unity.Android.Logcat
         {
             EditorUtility.DisplayProgressBar("Connecting", "Connecting to " + ip + ":" + port, 0.0f);
             m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Adb, ip = ip, port = port}, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
+        }
+
+        public void SetTCPIPAndConnectDevice(string deviceId, string ip, string port)
+        {
+            EditorUtility.DisplayProgressBar("Connecting",
+                string.Join("\n", new string[]
+                {
+                    "Set listening port to " + port + ". Connecting to " + ip + ":" + port,
+                }), 0.0f);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Adb, ip = ip, port = port, deviceId = deviceId, setListeningPort = true }, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
         }
 
         private static void IntegrateConnectToDevice(IAndroidLogcatTaskResult result)
@@ -94,6 +106,14 @@ namespace Unity.Android.Logcat
                         GUIUtility.hotControl = 0;
                         Repaint();
                     }
+                    if (GUILayout.Button(kConnect, GUILayout.ExpandWidth(false)))
+                    {
+                        SetTCPIPAndConnectDevice(m_ConnectedDevices[i], CopyIP(m_ConnectedDevices[i]), "5555");
+                        GUIUtility.keyboardControl = 0;
+                        GUIUtility.hotControl = 0;
+                        Repaint();
+                    }
+
                     var rc = GUILayoutUtility.GetLastRect();
                     var orgColor = GUI.color;
                     GUI.color = Color.black;
