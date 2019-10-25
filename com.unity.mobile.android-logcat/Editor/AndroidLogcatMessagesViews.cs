@@ -380,7 +380,7 @@ namespace Unity.Android.Logcat
             return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
         }
 
-        private void DoSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
+        private void DoMouseSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
         {
             if (HasCtrlOrCmdModifier(e))
             {
@@ -425,8 +425,14 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    m_SelectedIndices.Clear();
-                    m_SelectedIndices.Add(logEntryIndex);
+                    // Curious behavior with right click. In Unity if you right click on already selected item which is a part of selection list, it doesn't deselect other items
+                    // But if you right click on unselected item, the selection list will be cleared
+                    if (e.button == 0 ||
+                        (e.button == 1 && !m_SelectedIndices.Contains(logEntryIndex)))
+                    {
+                        m_SelectedIndices.Clear();
+                        m_SelectedIndices.Add(logEntryIndex);
+                    }
                     doubleClickStart = Time.realtimeSinceStartup;
                 }
             }
@@ -474,7 +480,7 @@ namespace Unity.Android.Logcat
                 // Selection occurs both with Left Click & and Right click, this happens in all Unity windows.
                 if (e.button == 0 || e.button == 1)
                 {
-                    DoSelection(e, logEntryIndex, isLogEntrySelected, keyboardControlId);
+                    DoMouseSelection(e, logEntryIndex, isLogEntrySelected, keyboardControlId);
 
                     requestRepaint = true;
                     e.Use();
