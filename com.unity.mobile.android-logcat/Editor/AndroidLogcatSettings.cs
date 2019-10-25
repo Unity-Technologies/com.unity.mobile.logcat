@@ -231,7 +231,7 @@ namespace Unity.Android.Logcat
         [SettingsProvider]
         public static SettingsProvider CreateMyCustomSettingsProvider()
         {
-            var provider = new AndroidLogcatSettingsProvider("Preferences/Android Logcat Settings", SettingsScope.User);
+            var provider = new AndroidLogcatSettingsProvider("Preferences/Analysis/Android Logcat Settings", SettingsScope.User);
             return provider;
         }
     }
