@@ -22,6 +22,7 @@ namespace Unity.Android.Logcat
         private IDictionary<string, AndroidLogcatDevice> m_CachedDevices = new Dictionary<string, AndroidLogcatDevice>();
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
+        private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
@@ -462,6 +463,8 @@ namespace Unity.Android.Logcat
 
                 if (GUILayout.Button(kReconnect, AndroidLogcatStyles.toolbarButton))
                     RestartLogCat();
+                if (GUILayout.Button(kDisconnect, AndroidLogcatStyles.toolbarButton))
+                    StopLogCat();
 
                 GUILayout.Space(kSpace);
                 if (GUILayout.Button(kClearButtonText, AndroidLogcatStyles.toolbarButton))
@@ -524,11 +527,6 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button("AutoSelect " + AutoSelectPackage.ToString(), AndroidLogcatStyles.toolbarButton))
             {
                 AutoSelectPackage = true;
-            }
-
-            if (GUILayout.Button("Stop logcat ", AndroidLogcatStyles.toolbarButton))
-            {
-                StopLogCat();
             }
 
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
