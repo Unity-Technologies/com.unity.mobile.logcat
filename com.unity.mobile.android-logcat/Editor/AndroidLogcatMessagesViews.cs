@@ -328,7 +328,9 @@ namespace Unity.Android.Logcat
                             AndroidLogcatStyles.backgroundOdd.Draw(selectionRect, false, false, false, false);
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
-                    DoLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority));
+                    // Icons can't be scaled thus don't draw them if font is too small
+                    if (m_Runtime.Settings.MessageFontSize > 8)
+                        DoLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority));
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
