@@ -214,6 +214,58 @@ namespace Unity.Android.Logcat
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
         }
+
+        public static Version ParseVersionLegacy(string versionString)
+        {
+            int major = 0;
+            int minor = 0;
+            int build = 0;
+            int revision = 0;
+            var vals = versionString.Split('.');
+            if (vals.Length > 0)
+                int.TryParse(vals[0], out major);
+            if (vals.Length > 1)
+                int.TryParse(vals[1], out minor);
+            if (vals.Length > 2)
+                int.TryParse(vals[2], out build);
+            if (vals.Length > 3)
+                int.TryParse(vals[3], out revision);
+
+            if (vals.Length <= 2)
+                return new Version(major, minor);
+            if (vals.Length <= 3)
+                return new Version(major, minor, build);
+            return new Version(major, minor, build, revision);
+        }
+
+        public static Version ParseVersion(string versionString)
+        {
+#if NET_2_0
+            return ParseVersionLegacy(versionString);
+#else
+            var vals = versionString.Split('.');
+
+            // Version.TryParse isn't capable of parsing digits without dots, for ex., 1
+            if (vals.Length == 1)
+            {
+                int n;
+                if (!int.TryParse(vals[0], out n))
+                {
+                    AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                    return new Version(0, 0);
+                }
+                return new Version(n, 0);
+            }
+
+            Version version;
+            if (!Version.TryParse(versionString, out version))
+            {
+                AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                return new Version(0, 0);
+            }
+            return version;
+#endif
+        }
     }
 
     internal class AndroidLogcatJsonSerialization
