@@ -453,11 +453,14 @@ namespace Unity.Android.Logcat
 
                 HandleSelectedDeviceField();
 
+                EditorGUI.BeginDisabledGroup(!m_StatusBar.Connected);
                 HandleSelectedPackage();
 
                 HandleSearchField();
 
                 SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
+
+                EditorGUI.EndDisabledGroup();
 
                 GUILayout.Space(kSpace);
 
