@@ -249,13 +249,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private void DoIconLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style, Vector2 iconSize)
+        {
+            if (!m_Columns[(int)column].enabled)
+                return;
+            var itemRect = m_Columns[(uint)column].itemSize;
+            var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index + (itemRect.height - iconSize.y) * 0.5f, itemRect.width, itemRect.height);
+            style.Draw(rc, new GUIContent(value), 0);
+        }
+
         private void DoLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style)
         {
             if (!m_Columns[(int)column].enabled)
                 return;
             const float kMessageMargin = 5;
             var itemRect = m_Columns[(uint)column].itemSize;
-            var rc = new Rect(itemRect.x + kMessageMargin, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width - kMessageMargin, itemRect.height);
+            var rc = new Rect(itemRect.x + kMessageMargin, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width - kMessageMargin, itemRect.height);            
             style.Draw(rc, new GUIContent(value), 0);
         }
 
@@ -329,8 +338,10 @@ namespace Unity.Android.Logcat
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
                     // Icons can't be scaled thus don't draw them if font is too small
-                    if (m_Runtime.Settings.MessageFontSize > 8)
-                        DoLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority));
+                    if (m_Runtime.Settings.MessageFontSize > 11)
+                    {
+                        DoIconLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority), AndroidLogcatStyles.kSmallIconSize);
+                    }
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
