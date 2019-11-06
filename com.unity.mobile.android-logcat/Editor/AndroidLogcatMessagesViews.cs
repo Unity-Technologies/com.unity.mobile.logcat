@@ -111,6 +111,16 @@ namespace Unity.Android.Logcat
             return false;
         }
 
+        private bool ShowColumn(Column column)
+        {
+            if (column == Column.Icon)
+            {
+                return m_Runtime.Settings.MessageFontSize > 11 && m_Columns[(int)column].enabled;
+            }
+
+            return m_Columns[(int)column].enabled;
+        }
+
         private bool DoGUIHeader()
         {
             bool requestRepaint = false;
@@ -118,11 +128,11 @@ namespace Unity.Android.Logcat
             bool headerDrawn = false;
             bool lastHeaderDrawn = false;
             var offset = 0.0f;
-            foreach (var c in Enum.GetValues(typeof(Column)))
+            foreach (var c in (Column[])Enum.GetValues(typeof(Column)))
             {
-                var d = m_Columns[(int)c];
-                if (!d.enabled)
+                if (!ShowColumn(c))
                     continue;
+                var d = m_Columns[(int)c];
 
                 d.itemSize = new Rect(offset, fullHeaderRect.y, d.width, fullHeaderRect.height);
                 offset += d.width;
@@ -251,7 +261,7 @@ namespace Unity.Android.Logcat
 
         private void DoIconLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style, Vector2 iconSize)
         {
-            if (!m_Columns[(int)column].enabled)
+            if (!ShowColumn(column))
                 return;
             var itemRect = m_Columns[(uint)column].itemSize;
             var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index + (itemRect.height - iconSize.y) * 0.5f, itemRect.width, itemRect.height);
@@ -260,7 +270,7 @@ namespace Unity.Android.Logcat
 
         private void DoLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style)
         {
-            if (!m_Columns[(int)column].enabled)
+            if (!ShowColumn(column))
                 return;
             const float kMessageMargin = 5;
             var itemRect = m_Columns[(uint)column].itemSize;
@@ -337,11 +347,7 @@ namespace Unity.Android.Logcat
                             AndroidLogcatStyles.backgroundOdd.Draw(selectionRect, false, false, false, false);
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
-                    // Icons can't be scaled thus don't draw them if font is too small
-                    if (m_Runtime.Settings.MessageFontSize > 11)
-                    {
-                        DoIconLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority), AndroidLogcatStyles.kSmallIconSize);
-                    }
+                    DoIconLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority), AndroidLogcatStyles.kSmallIconSize);
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
@@ -378,7 +384,7 @@ namespace Unity.Android.Logcat
             GUI.color = borderColor;
             for (int i = 0; i < Enum.GetValues(typeof(Column)).Length; i++)
             {
-                if (!m_Columns[i].enabled)
+                if (!ShowColumn((Column)i))
                     continue;
                 var itemRect = m_Columns[i].itemSize;
                 var rc = new Rect(itemRect.x + itemRect.width - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
@@ -594,7 +600,7 @@ namespace Unity.Android.Logcat
                 var entry = string.Empty;
                 for (int i = 0; i < m_Columns.Length; i++)
                 {
-                    if (!m_Columns[i].enabled)
+                    if (!ShowColumn((Column)i))
                         continue;
                     if (entry.Length > 0)
                         entry += " ";
