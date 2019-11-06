@@ -264,7 +264,8 @@ namespace Unity.Android.Logcat
             if (!ShowColumn(column))
                 return;
             var itemRect = m_Columns[(uint)column].itemSize;
-            var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index + (itemRect.height - iconSize.y) * 0.5f, itemRect.width, itemRect.height);
+            var entryHeight = AndroidLogcatStyles.kLogEntryFixedHeight;
+            var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + entryHeight * index + (entryHeight - iconSize.y) * 0.5f, 0, 0);
             style.Draw(rc, new GUIContent(value), 0);
         }
 
