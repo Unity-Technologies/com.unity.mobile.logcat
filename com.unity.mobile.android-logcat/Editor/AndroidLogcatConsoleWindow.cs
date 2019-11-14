@@ -247,7 +247,10 @@ namespace Unity.Android.Logcat
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
             if (m_TagControl.TagWindow != null)
             {
-                m_TagControl.TagWindow.Close();
+                // Note: For some reason m_TagControl.TagWindow.Close doesn't work correctly during domain reload
+                var tagWindow = GetWindow<AndroidLogcatTagWindow>();
+                if (tagWindow != null)
+                    tagWindow.Close();
                 m_TagControl.TagWindow = null;
             }
 
