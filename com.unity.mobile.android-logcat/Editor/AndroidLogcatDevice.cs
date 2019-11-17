@@ -80,26 +80,7 @@ namespace Unity.Android.Logcat
                 if (m_Version == null)
                 {
                     var versionString = m_Device.Properties["ro.build.version.release"];
-#if NET_2_0
-                    int major = 0;
-                    int minor = 0;
-                    int build = 0;
-                    var vals = versionString.Split('.');
-                    if (vals.Length > 0)
-                        int.TryParse(vals[0], out major);
-                    if (vals.Length > 1)
-                        int.TryParse(vals[1], out minor);
-                    if (vals.Length > 2)
-                        int.TryParse(vals[2], out build);
-
-                    m_Version = new Version(major, minor, build);
-#else
-                    if (!Version.TryParse(versionString, out m_Version))
-                    {
-                        AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
-                        m_Version = new Version(0, 0);
-                    }
-#endif
+                    m_Version = AndroidLogcatUtilities.ParseVersion(versionString);
                 }
 
                 return m_Version;

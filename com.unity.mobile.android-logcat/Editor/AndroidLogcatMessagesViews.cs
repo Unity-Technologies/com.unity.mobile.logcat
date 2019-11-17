@@ -14,6 +14,7 @@ namespace Unity.Android.Logcat
     {
         internal enum Column
         {
+            Icon,
             Time,
             ProcessId,
             ThreadId,
@@ -51,18 +52,24 @@ namespace Unity.Android.Logcat
         private float m_MaxLogEntryWidth = 0.0f;
 
         [SerializeField]
-        private ColumnData[] m_Columns = new ColumnData[]
-        {
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
-            new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
-        };
+        private ColumnData[] m_Columns = GetColumns();
 
         private bool m_Autoscroll = true;
         private float doubleClickStart = -1;
+
+        private static ColumnData[] GetColumns()
+        {
+            return new ColumnData[]
+            {
+                new ColumnData() {content = new GUIContent(""), width = 30.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
+            };
+        }
 
         private bool DoSplitter(ColumnData data, Rect splitterRect)
         {
@@ -104,6 +111,16 @@ namespace Unity.Android.Logcat
             return false;
         }
 
+        private bool ShowColumn(Column column)
+        {
+            if (column == Column.Icon)
+            {
+                return m_Runtime.Settings.MessageFontSize > 11 && m_Columns[(int)column].enabled;
+            }
+
+            return m_Columns[(int)column].enabled;
+        }
+
         private bool DoGUIHeader()
         {
             bool requestRepaint = false;
@@ -111,11 +128,11 @@ namespace Unity.Android.Logcat
             bool headerDrawn = false;
             bool lastHeaderDrawn = false;
             var offset = 0.0f;
-            foreach (var c in Enum.GetValues(typeof(Column)))
+            foreach (var c in (Column[])Enum.GetValues(typeof(Column)))
             {
-                var d = m_Columns[(int)c];
-                if (!d.enabled)
+                if (!ShowColumn(c))
                     continue;
+                var d = m_Columns[(int)c];
 
                 d.itemSize = new Rect(offset, fullHeaderRect.y, d.width, fullHeaderRect.height);
                 offset += d.width;
@@ -242,14 +259,38 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private void DoIconLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style, Vector2 iconSize)
+        {
+            if (!ShowColumn(column))
+                return;
+            var itemRect = m_Columns[(uint)column].itemSize;
+            var entryHeight = AndroidLogcatStyles.kLogEntryFixedHeight;
+            var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + entryHeight * index + (entryHeight - iconSize.y) * 0.5f, 0, 0);
+            style.Draw(rc, new GUIContent(value), 0);
+        }
+
         private void DoLogEntryItem(Rect fullView, int index, Column column, string value, GUIStyle style)
         {
-            if (!m_Columns[(int)column].enabled)
+            if (!ShowColumn(column))
                 return;
             const float kMessageMargin = 5;
             var itemRect = m_Columns[(uint)column].itemSize;
             var rc = new Rect(itemRect.x + kMessageMargin, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width - kMessageMargin, itemRect.height);
             style.Draw(rc, new GUIContent(value), 0);
+        }
+
+        private GUIStyle GetIconStyle(AndroidLogcat.Priority priority)
+        {
+            switch (priority)
+            {
+                case AndroidLogcat.Priority.Warn:
+                    return AndroidLogcatStyles.warningSmallStyle;
+                case AndroidLogcat.Priority.Error:
+                case AndroidLogcat.Priority.Fatal:
+                    return AndroidLogcatStyles.errorSmallStyle;
+                default:
+                    return AndroidLogcatStyles.infoSmallStyle;
+            }
         }
 
         private bool DoGUIEntries()
@@ -307,6 +348,7 @@ namespace Unity.Android.Logcat
                             AndroidLogcatStyles.backgroundOdd.Draw(selectionRect, false, false, false, false);
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
+                    DoIconLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority), AndroidLogcatStyles.kSmallIconSize);
                     DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
@@ -343,7 +385,7 @@ namespace Unity.Android.Logcat
             GUI.color = borderColor;
             for (int i = 0; i < Enum.GetValues(typeof(Column)).Length; i++)
             {
-                if (!m_Columns[i].enabled)
+                if (!ShowColumn((Column)i))
                     continue;
                 var itemRect = m_Columns[i].itemSize;
                 var rc = new Rect(itemRect.x + itemRect.width - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
@@ -358,7 +400,7 @@ namespace Unity.Android.Logcat
             return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
         }
 
-        private void DoSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
+        private void DoMouseSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
         {
             if (HasCtrlOrCmdModifier(e))
             {
@@ -403,8 +445,14 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    m_SelectedIndices.Clear();
-                    m_SelectedIndices.Add(logEntryIndex);
+                    // Curious behavior with right click. In Unity if you right click on already selected item which is a part of selection list, it doesn't deselect other items
+                    // But if you right click on unselected item, the selection list will be cleared
+                    if (e.button == 0 ||
+                        (e.button == 1 && !m_SelectedIndices.Contains(logEntryIndex)))
+                    {
+                        m_SelectedIndices.Clear();
+                        m_SelectedIndices.Add(logEntryIndex);
+                    }
                     doubleClickStart = Time.realtimeSinceStartup;
                 }
             }
@@ -452,7 +500,7 @@ namespace Unity.Android.Logcat
                 // Selection occurs both with Left Click & and Right click, this happens in all Unity windows.
                 if (e.button == 0 || e.button == 1)
                 {
-                    DoSelection(e, logEntryIndex, isLogEntrySelected, keyboardControlId);
+                    DoMouseSelection(e, logEntryIndex, isLogEntrySelected, keyboardControlId);
 
                     requestRepaint = true;
                     e.Use();
@@ -553,7 +601,7 @@ namespace Unity.Android.Logcat
                 var entry = string.Empty;
                 for (int i = 0; i < m_Columns.Length; i++)
                 {
-                    if (!m_Columns[i].enabled)
+                    if (!ShowColumn((Column)i))
                         continue;
                     if (entry.Length > 0)
                         entry += " ";

@@ -61,25 +61,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Connect to the device by ip address.
-        /// Please refer to https://developer.android.com/studio/command-line/adb#wireless for details.
-        /// </summary>
-        /// <param name="ip"> The ip address of the device that needs to be connected. Port can be included like 'device_ip_address:port'. Both IPV4 and IPV6 are supported. </param>
-        public static void ConnectDevice(ADB adb, string ip)
-        {
-            var cmd = "connect " + ip;
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-
-            var errorMsg = "Unable to connect to ";
-            var outputMsg = adb.Run(new[] { cmd }, errorMsg + ip);
-            if (outputMsg.StartsWith(errorMsg))
-            {
-                AndroidLogcatInternalLog.Log(outputMsg);
-                Debug.LogError(outputMsg);
-            }
-        }
-
-        /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
         public static bool GetTopActivityInfo(ADB adb, string deviceId, ref string packageName, ref int packagePid)
@@ -224,7 +205,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd {0}\"", workingDirectory));
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") {WorkingDirectory = workingDirectory});
                     break;
                 case RuntimePlatform.OSXEditor:
                     System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
@@ -232,6 +213,58 @@ namespace Unity.Android.Logcat
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        public static Version ParseVersionLegacy(string versionString)
+        {
+            int major = 0;
+            int minor = 0;
+            int build = 0;
+            int revision = 0;
+            var vals = versionString.Split('.');
+            if (vals.Length > 0)
+                int.TryParse(vals[0], out major);
+            if (vals.Length > 1)
+                int.TryParse(vals[1], out minor);
+            if (vals.Length > 2)
+                int.TryParse(vals[2], out build);
+            if (vals.Length > 3)
+                int.TryParse(vals[3], out revision);
+
+            if (vals.Length <= 2)
+                return new Version(major, minor);
+            if (vals.Length <= 3)
+                return new Version(major, minor, build);
+            return new Version(major, minor, build, revision);
+        }
+
+        public static Version ParseVersion(string versionString)
+        {
+#if NET_2_0
+            return ParseVersionLegacy(versionString);
+#else
+            var vals = versionString.Split('.');
+
+            // Version.TryParse isn't capable of parsing digits without dots, for ex., 1
+            if (vals.Length == 1)
+            {
+                int n;
+                if (!int.TryParse(vals[0], out n))
+                {
+                    AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                    return new Version(0, 0);
+                }
+                return new Version(n, 0);
+            }
+
+            Version version;
+            if (!Version.TryParse(versionString, out version))
+            {
+                AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                return new Version(0, 0);
+            }
+            return version;
+#endif
         }
     }
 

@@ -202,7 +202,7 @@ namespace Unity.Android.Logcat
         void DoTagListGUI(float entryMargin)
         {
             var currentEvent = Event.current;
-            var buttonWidth = 20;
+            var buttonWidth = 25;
             var tagNames = m_TagControl.TagNames;
             var selectedTags = m_TagControl.SelectedTags;
             GUILayout.BeginHorizontal();

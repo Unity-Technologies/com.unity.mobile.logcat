@@ -22,10 +22,12 @@ namespace Unity.Android.Logcat
         private IDictionary<string, AndroidLogcatDevice> m_CachedDevices = new Dictionary<string, AndroidLogcatDevice>();
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
+        private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
         private GUIContent kStacktraceUtility = new GUIContent(L10n.Tr("Stacktrace Utility"), L10n.Tr("Utility for resolving custom stacktrace addresses"));
+        private GUIContent kOpenTerminal = new GUIContent(L10n.Tr("Open Terminal"), L10n.Tr("Opens operating system's terminal emulator with Android SDK as working directory. Allows manual execution of ADB commands."));
 
 
         private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
@@ -212,6 +214,9 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = AndroidLogcatManager.instance.Runtime;
 
+            if (m_Columns == null || m_Columns.Length != Enum.GetValues(typeof(Column)).Length)
+                m_Columns = GetColumns();
+
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
 
@@ -242,7 +247,10 @@ namespace Unity.Android.Logcat
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
             if (m_TagControl.TagWindow != null)
             {
-                m_TagControl.TagWindow.Close();
+                // Note: For some reason m_TagControl.TagWindow.Close doesn't work correctly during domain reload
+                var tagWindow = GetWindow<AndroidLogcatTagWindow>();
+                if (tagWindow != null)
+                    tagWindow.Close();
                 m_TagControl.TagWindow = null;
             }
 
@@ -448,16 +456,21 @@ namespace Unity.Android.Logcat
 
                 HandleSelectedDeviceField();
 
+                EditorGUI.BeginDisabledGroup(!m_StatusBar.Connected);
                 HandleSelectedPackage();
 
                 HandleSearchField();
 
                 SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
 
+                EditorGUI.EndDisabledGroup();
+
                 GUILayout.Space(kSpace);
 
                 if (GUILayout.Button(kReconnect, AndroidLogcatStyles.toolbarButton))
                     RestartLogCat();
+                if (GUILayout.Button(kDisconnect, AndroidLogcatStyles.toolbarButton))
+                    StopLogCat();
 
                 GUILayout.Space(kSpace);
                 if (GUILayout.Button(kClearButtonText, AndroidLogcatStyles.toolbarButton))
@@ -476,7 +489,7 @@ namespace Unity.Android.Logcat
                 }
 
                 GUILayout.Space(kSpace);
-                if (GUILayout.Button("Open terminal", AndroidLogcatStyles.toolbarButton))
+                if (GUILayout.Button(kOpenTerminal, AndroidLogcatStyles.toolbarButton))
                 {
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
                 }
@@ -522,11 +535,6 @@ namespace Unity.Android.Logcat
                 AutoSelectPackage = true;
             }
 
-            if (GUILayout.Button("Stop logcat ", AndroidLogcatStyles.toolbarButton))
-            {
-                StopLogCat();
-            }
-
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
                 int count = 10000;
@@ -550,7 +558,7 @@ namespace Unity.Android.Logcat
         {
             if (selected == m_DeviceIds.Count)
             {
-                AndroidLogcatIPWindow.Show(this.GetCachedAdb(), m_IpWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.m_Runtime, this.GetCachedAdb(), this.m_DeviceIds, this.m_DeviceDetails, m_IpWindowScreenRect);
                 return;
             }
 
@@ -681,6 +689,9 @@ namespace Unity.Android.Logcat
         {
             if (newDeviceIndex != m_SelectedDeviceIndex || force)
             {
+                if (m_SelectedDeviceIndex >= m_DeviceIds.Count)
+                    return;
+
                 m_SelectedDeviceIndex = newDeviceIndex;
                 m_SelectedDeviceId = m_DeviceIds[m_SelectedDeviceIndex];
                 ResetPackages(m_SelectedDeviceId);

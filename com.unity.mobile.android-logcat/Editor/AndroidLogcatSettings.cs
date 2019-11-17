@@ -28,7 +28,10 @@ namespace Unity.Android.Logcat
         private int m_MessageFontSize;
 
         [SerializeField]
-        private List<Color> m_MessageColors;
+        private List<Color> m_MessageColorsProSkin;
+
+        [SerializeField]
+        private List<Color> m_MessageColorsFreeSkin;
 
         internal int MaxMessageCount
         {
@@ -77,21 +80,24 @@ namespace Unity.Android.Logcat
 
         internal void SetMessageColor(AndroidLogcat.Priority priority, Color color)
         {
-            // Populate the color list if needed
-            while ((int)priority >= m_MessageColors.Count)
-                m_MessageColors.Add(Color.white);
+            var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
 
-            if (m_MessageColors[(int)priority] == color)
+            // Populate the color list if needed
+            while ((int)priority >= messages.Count)
+                messages.Add(GetDefaultColor(priority, EditorGUIUtility.isProSkin));
+
+            if (messages[(int)priority] == color)
                 return;
-            m_MessageColors[(int)priority] = color;
+            messages[(int)priority] = color;
             InvokeOnSettingsChanged();
         }
 
         internal Color GetMessageColor(AndroidLogcat.Priority priority)
         {
-            if ((int)priority < m_MessageColors.Count)
-                return m_MessageColors[(int)priority];
-            return Color.white;
+            var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
+            if ((int)priority < messages.Count)
+                return messages[(int)priority];
+            return GetDefaultColor(priority, EditorGUIUtility.isProSkin);
         }
 
         internal Action<AndroidLogcatSettings> OnSettingsChanged;
@@ -109,16 +115,45 @@ namespace Unity.Android.Logcat
             if (Enum.GetValues(typeof(AndroidLogcat.Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
-            m_MessageColors = new List<Color>(new[]
+            m_MessageColorsProSkin = new List<Color>();
+            m_MessageColorsFreeSkin = new List<Color>();
+            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
             {
-                Color.white,
-                Color.white,
-                Color.white,
-                Color.yellow,
-                Color.red,
-                Color.red
-            });
+                m_MessageColorsProSkin.Add(GetDefaultColor(p, true));
+                m_MessageColorsFreeSkin.Add(GetDefaultColor(p, false));
+            }
             InvokeOnSettingsChanged();
+        }
+
+        private Color GetDefaultColor(AndroidLogcat.Priority priority, bool isProSkin)
+        {
+            if (Enum.GetValues(typeof(AndroidLogcat.Priority)).Length != 6)
+                throw new Exception("Unexpected length of Priority enum.");
+
+            if (isProSkin)
+            {
+                return new[]
+                {
+                    Color.white,
+                    Color.white,
+                    Color.white,
+                    Color.yellow,
+                    Color.red,
+                    Color.red
+                }[(int)priority];
+            }
+            else
+            {
+                return new[]
+                {
+                    Color.black,
+                    Color.black,
+                    Color.black,
+                    new Color(0.3f, 0.3f, 0.0f),
+                    Color.red,
+                    Color.red
+                }[(int)priority];
+            }
         }
 
         private void InvokeOnSettingsChanged()
@@ -196,7 +231,7 @@ namespace Unity.Android.Logcat
         [SettingsProvider]
         public static SettingsProvider CreateMyCustomSettingsProvider()
         {
-            var provider = new AndroidLogcatSettingsProvider("Preferences/Android Logcat Settings", SettingsScope.User);
+            var provider = new AndroidLogcatSettingsProvider("Preferences/Analysis/Android Logcat Settings", SettingsScope.User);
             return provider;
         }
     }

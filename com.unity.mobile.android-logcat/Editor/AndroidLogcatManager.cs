@@ -18,20 +18,32 @@ namespace Unity.Android.Logcat
 
         internal void OnEnable()
         {
-            m_Runtime = new AndroidLogcatRuntime();
-            m_Runtime.Initialize();
+            Initialize();
         }
 
         internal void OnDisable()
         {
-            m_Runtime.Shutdown();
-            m_Runtime = null;
+            if (m_Runtime != null)
+            {
+                m_Runtime.Shutdown();
+                m_Runtime = null;
+            }
+        }
+
+        private void Initialize()
+        {
+            if (m_Runtime != null)
+                return;
+
+            m_Runtime = new AndroidLogcatRuntime();
+            m_Runtime.Initialize();
         }
 
         internal IAndroidLogcatRuntime Runtime
         {
             get
             {
+                Initialize();
                 return m_Runtime;
             }
         }

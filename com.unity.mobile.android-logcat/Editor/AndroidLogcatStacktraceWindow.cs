@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using UnityEngine;
@@ -13,6 +12,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
+#if PLATFORM_ANDROID
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
         static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(lib.*\.so)";
@@ -273,6 +273,15 @@ namespace Unity.Android.Logcat
             }
             EditorGUILayout.EndScrollView();
         }
+
+#else
+        internal void OnGUI()
+        {
+#if !PLATFORM_ANDROID
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+#endif
+        }
+
+#endif
     }
 }
-#endif
