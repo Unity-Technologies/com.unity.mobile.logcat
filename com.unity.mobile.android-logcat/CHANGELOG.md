@@ -4,6 +4,19 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.0.2-preview] - 2019-11-17
+
+### Fix & Improvements.
+ - Fix Stacktrace window not able to load when active Editor platform is not Android.
+ - Fix Open Terminal button not working on Windows sometimes.
+ - Reworked Connect to IP window, it's now multithreaded, thus it will not lock Editor. It's now easier to connect to Android device via IP.
+ - Added icons for messages
+ - Added disconnect button, you can stop logcat messages this way.
+ - Improved mouse right click behavior to be consistent with the rest of Unity
+ - Correctly identify Android 9 version
+ - Android Settings will have color settings separated between Free skin and Pro skin.
+ - Moved Android Settingsunder Preferences->Analysis
+
 ## [1.0.1-preview] - 2019-08-21
 
 ### Fix & Improvements.
