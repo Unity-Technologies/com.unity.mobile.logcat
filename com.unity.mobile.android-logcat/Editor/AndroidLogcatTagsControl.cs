@@ -278,21 +278,22 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
             GUI.SetNextControlName(kTagInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (m_InputTagName.Length > 23)
+            var trimmedTagName = m_InputTagName.Trim();
+            if (trimmedTagName.Length > 23)
             {
                 GUILayout.Space(kEntryMargin + 2);
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin + 7);
-                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
+                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + trimmedTagName.Length + " .", MessageType.Warning);
             }
             else
             {
                 if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kTagInputTextFieldControlId))
                 {
-                    if (!string.IsNullOrEmpty(m_InputTagName))
+                    if (!string.IsNullOrEmpty(trimmedTagName))
                     {
-                        m_TagControl.Add(m_InputTagName);
+                        m_TagControl.Add(trimmedTagName);
                         m_InputTagName = string.Empty;
                         GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
                     }
