@@ -37,13 +37,6 @@ namespace Unity.Android.Logcat
 
         public event Action TagSelectionChanged;
 
-        private AndroidLogcatTagWindow m_TagWindow = null;
-        public AndroidLogcatTagWindow TagWindow
-        {
-            get { return m_TagWindow; }
-            set { m_TagWindow = value; }
-        }
-
         public AndroidLogcatTagsControl()
         {
         }
@@ -137,7 +130,7 @@ namespace Unity.Android.Logcat
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
                 tagWindowSelected = true;
-                m_TagWindow = AndroidLogcatTagWindow.Show(this);
+                //m_TagWindow = AndroidLogcatTagWindow.Show(this);
             }
             else
             {
@@ -147,9 +140,6 @@ namespace Unity.Android.Logcat
 
             if (tagWindowSelected)
                 return;
-
-            if (m_TagWindow != null)
-                m_TagWindow.Repaint();
 
             if (TagSelectionChanged != null)
                 TagSelectionChanged.Invoke();
@@ -169,7 +159,7 @@ namespace Unity.Android.Logcat
         }
     }
 
-    internal class AndroidLogcatTagWindow : EditorWindow
+    internal class AndroidLogcatTagListPopup : PopupWindowContent
     {
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
@@ -179,24 +169,9 @@ namespace Unity.Android.Logcat
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 
-        private static AndroidLogcatTagWindow s_TagWindow = null;
-
-        public static AndroidLogcatTagWindow Show(AndroidLogcatTagsControl tagControl)
+        public AndroidLogcatTagListPopup(AndroidLogcatTagsControl tagsControl)
         {
-            if (s_TagWindow == null)
-                s_TagWindow = ScriptableObject.CreateInstance<AndroidLogcatTagWindow>();
-
-            s_TagWindow.m_TagControl = tagControl;
-            s_TagWindow.titleContent = new GUIContent("Tag Control");
-            s_TagWindow.Show();
-            s_TagWindow.Focus();
-
-            return s_TagWindow;
-        }
-
-        void OnDestroy()
-        {
-            m_TagControl.TagWindow = null;
+            m_TagControl = tagsControl;
         }
 
         void DoTagListGUI(float entryMargin)
@@ -265,7 +240,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(entryMargin);
         }
 
-        void OnGUI()
+        public override void OnGUI(Rect rect)
         {
             var currentEvent = Event.current;
             bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);

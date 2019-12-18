@@ -132,9 +132,6 @@ namespace Unity.Android.Logcat
         void OnDestroy()
         {
             SaveStates();
-
-            if (m_TagControl.TagWindow != null)
-                m_TagControl.TagWindow.Close();
         }
 
         internal void SaveStates()
@@ -245,14 +242,6 @@ namespace Unity.Android.Logcat
         {
             if (m_Runtime.Settings != null)
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
-            if (m_TagControl.TagWindow != null)
-            {
-                // Note: For some reason m_TagControl.TagWindow.Close doesn't work correctly during domain reload
-                var tagWindow = GetWindow<AndroidLogcatTagWindow>();
-                if (tagWindow != null)
-                    tagWindow.Close();
-                m_TagControl.TagWindow = null;
-            }
 
             StopLogCat();
             m_Runtime.OnUpdate -= Update;
