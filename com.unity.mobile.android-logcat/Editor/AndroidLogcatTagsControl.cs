@@ -37,6 +37,8 @@ namespace Unity.Android.Logcat
 
         public event Action TagSelectionChanged;
 
+        private Rect m_TagButtonRect = new Rect();
+
         public AndroidLogcatTagsControl()
         {
         }
@@ -92,8 +94,10 @@ namespace Unity.Android.Logcat
             return selectedTagNames.ToArray();
         }
 
-        public void DoGUI(Rect rect)
+        public void DoGUI(Rect rect, Rect tagButtonRect)
         {
+            m_TagButtonRect = tagButtonRect;
+
             var separators = m_TagNames.Select(t => t == null).ToArray();
             var enabled = Enumerable.Repeat(true, m_TagNames.Count).ToArray();
             var selectedTags = new List<int>();
@@ -108,7 +112,6 @@ namespace Unity.Android.Logcat
 
         public void TagSelected(object userData, string[] options, int selectedIndex)
         {
-            bool tagWindowSelected = false;
             if (selectedIndex == (int)AndroidLogcatTagType.AllTags)
             {
                 // Deselect *No Filter* and select all others.
@@ -129,17 +132,14 @@ namespace Unity.Android.Logcat
             }
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
-                tagWindowSelected = true;
-                //m_TagWindow = AndroidLogcatTagWindow.Show(this);
+                var tagListPopup = new AndroidLogcatTagListPopup(this);
+                PopupWindow.Show(new Rect(m_TagButtonRect.x + 2, m_TagButtonRect.y + m_TagButtonRect.height * 2, 0, 0), tagListPopup);
             }
             else
             {
                 m_SelectedTags[selectedIndex] = !m_SelectedTags[selectedIndex];
                 m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
-
-            if (tagWindowSelected)
-                return;
 
             if (TagSelectionChanged != null)
                 TagSelectionChanged.Invoke();
@@ -172,6 +172,11 @@ namespace Unity.Android.Logcat
         public AndroidLogcatTagListPopup(AndroidLogcatTagsControl tagsControl)
         {
             m_TagControl = tagsControl;
+        }
+
+        public override Vector2 GetWindowSize()
+        {
+            return new Vector2(300, 200);
         }
 
         void DoTagListGUI(float entryMargin)
