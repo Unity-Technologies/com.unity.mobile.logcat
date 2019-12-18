@@ -132,8 +132,8 @@ namespace Unity.Android.Logcat
             }
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
-                var tagListPopup = new AndroidLogcatTagListPopup(this);
-                PopupWindow.Show(new Rect(m_TagButtonRect.x + 2, m_TagButtonRect.y + m_TagButtonRect.height * 2, 0, 0), tagListPopup);
+                PopupWindow.Show(new Rect(m_TagButtonRect.x + 2, m_TagButtonRect.y + m_TagButtonRect.height * 2, 0, 0), new AndroidLogcatTagListPopup(this));
+                return;
             }
             else
             {
