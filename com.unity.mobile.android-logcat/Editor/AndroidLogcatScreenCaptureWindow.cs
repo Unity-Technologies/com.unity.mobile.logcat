@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using UnityEngine;
@@ -6,6 +5,7 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+#if PLATFORM_ANDROID
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
         private string m_ImagePath;
@@ -80,5 +80,13 @@ namespace Unity.Android.Logcat
             maxSize = new Vector2(Math.Max(m_ImageTexture.width, position.width), m_ImageTexture.height + kButtonAreaHeight);
         }
     }
-}
+#else
+    internal class AndroidLogcatScreenCaptureWindow : EditorWindow
+    {
+        internal void OnGUI()
+        {
+            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+        }
+    }
 #endif
+}
