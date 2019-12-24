@@ -83,7 +83,7 @@ namespace Unity.Android.Logcat
 #else
         internal void OnGUI()
         {
-            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
+            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
         }
 
 #endif
