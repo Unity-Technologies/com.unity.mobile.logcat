@@ -281,4 +281,15 @@ namespace Unity.Android.Logcat
         public AndroidLogcatTagsControl m_TagControl = null;
     }
 }
+#else
+namespace Unity.Android.Logcat
+{
+    internal class AndroidLogcatUtilities
+    {
+        public static void ShowActivePlatformNotAndroidMessage()
+        {
+            UnityEditor.EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", UnityEditor.MessageType.Info);
+        }
+    }
+}
 #endif

@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Linq;
 using UnityEngine;
@@ -7,6 +6,7 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+#if PLATFORM_ANDROID
     internal class AndroidLogcatInternalLog : EditorWindow
     {
         static AndroidLogcatInternalLog ms_Instance = null;
@@ -76,5 +76,13 @@ namespace Unity.Android.Logcat
             }
         }
     }
-}
+#else
+    internal class AndroidLogcatInternalLog : EditorWindow
+    {
+        internal void OnGUI()
+        {
+            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
+        }
+    }
 #endif
+}

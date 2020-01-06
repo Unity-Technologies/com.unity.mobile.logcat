@@ -154,7 +154,7 @@ namespace Unity.Android.Logcat
                         case Column.Tag:
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
-                                m_TagControl.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero));
+                                m_TagControl.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero), buttonRect);
                             }
                             break;
                         default:

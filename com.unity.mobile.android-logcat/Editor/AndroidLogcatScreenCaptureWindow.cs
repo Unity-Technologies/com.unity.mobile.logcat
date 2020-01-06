@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using UnityEngine;
@@ -8,7 +7,8 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
-        private string m_ImagePath;
+        [SerializeField] private string m_ImagePath;
+#if PLATFORM_ANDROID
         private Texture2D m_ImageTexture = null;
         bool didLoad = false;
         private const int kButtonAreaHeight = 30;
@@ -79,6 +79,13 @@ namespace Unity.Android.Logcat
 
             maxSize = new Vector2(Math.Max(m_ImageTexture.width, position.width), m_ImageTexture.height + kButtonAreaHeight);
         }
+
+#else
+        internal void OnGUI()
+        {
+            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
+        }
+
+#endif
     }
 }
-#endif

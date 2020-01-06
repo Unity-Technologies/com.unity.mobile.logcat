@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +7,6 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
-#if PLATFORM_ANDROID
     internal enum AndroidLogcatTagType
     {
         AllTags = 0,
@@ -37,12 +37,7 @@ namespace Unity.Android.Logcat
 
         public event Action TagSelectionChanged;
 
-        private AndroidLogcatTagWindow m_TagWindow = null;
-        public AndroidLogcatTagWindow TagWindow
-        {
-            get { return m_TagWindow; }
-            set { m_TagWindow = value; }
-        }
+        private Rect m_TagButtonRect = new Rect();
 
         public AndroidLogcatTagsControl()
         {
@@ -99,8 +94,10 @@ namespace Unity.Android.Logcat
             return selectedTagNames.ToArray();
         }
 
-        public void DoGUI(Rect rect)
+        public void DoGUI(Rect rect, Rect tagButtonRect)
         {
+            m_TagButtonRect = tagButtonRect;
+
             var separators = m_TagNames.Select(t => t == null).ToArray();
             var enabled = Enumerable.Repeat(true, m_TagNames.Count).ToArray();
             var selectedTags = new List<int>();
@@ -115,7 +112,6 @@ namespace Unity.Android.Logcat
 
         public void TagSelected(object userData, string[] options, int selectedIndex)
         {
-            bool tagWindowSelected = false;
             if (selectedIndex == (int)AndroidLogcatTagType.AllTags)
             {
                 // Deselect *No Filter* and select all others.
@@ -136,20 +132,14 @@ namespace Unity.Android.Logcat
             }
             else if (selectedIndex == (int)AndroidLogcatTagType.TagControl)
             {
-                tagWindowSelected = true;
-                m_TagWindow = AndroidLogcatTagWindow.Show(this);
+                PopupWindow.Show(new Rect(m_TagButtonRect.x + 2, m_TagButtonRect.y + m_TagButtonRect.height * 2, 0, 0), new AndroidLogcatTagListPopup(this));
+                return;
             }
             else
             {
                 m_SelectedTags[selectedIndex] = !m_SelectedTags[selectedIndex];
                 m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
-
-            if (tagWindowSelected)
-                return;
-
-            if (m_TagWindow != null)
-                m_TagWindow.Repaint();
 
             if (TagSelectionChanged != null)
                 TagSelectionChanged.Invoke();
@@ -169,7 +159,7 @@ namespace Unity.Android.Logcat
         }
     }
 
-    internal class AndroidLogcatTagWindow : EditorWindow
+    internal class AndroidLogcatTagListPopup : PopupWindowContent
     {
         private AndroidLogcatTagsControl m_TagControl = null;
         private int m_SelectedTagIndex = -1;
@@ -179,24 +169,14 @@ namespace Unity.Android.Logcat
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 
-        private static AndroidLogcatTagWindow s_TagWindow = null;
-
-        public static AndroidLogcatTagWindow Show(AndroidLogcatTagsControl tagControl)
+        public AndroidLogcatTagListPopup(AndroidLogcatTagsControl tagsControl)
         {
-            if (s_TagWindow == null)
-                s_TagWindow = ScriptableObject.CreateInstance<AndroidLogcatTagWindow>();
-
-            s_TagWindow.m_TagControl = tagControl;
-            s_TagWindow.titleContent = new GUIContent("Tag Control");
-            s_TagWindow.Show();
-            s_TagWindow.Focus();
-
-            return s_TagWindow;
+            m_TagControl = tagsControl;
         }
 
-        void OnDestroy()
+        public override Vector2 GetWindowSize()
         {
-            m_TagControl.TagWindow = null;
+            return new Vector2(300, 200);
         }
 
         void DoTagListGUI(float entryMargin)
@@ -265,7 +245,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(entryMargin);
         }
 
-        void OnGUI()
+        public override void OnGUI(Rect rect)
         {
             var currentEvent = Event.current;
             bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
@@ -278,21 +258,22 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal(GUILayout.ExpandWidth(true));
             GUI.SetNextControlName(kTagInputTextFieldControlId);
             m_InputTagName = EditorGUILayout.TextField(m_InputTagName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
-            if (m_InputTagName.Length > 23)
+            var trimmedTagName = m_InputTagName.Trim();
+            if (trimmedTagName.Length > 23)
             {
                 GUILayout.Space(kEntryMargin + 2);
                 EditorGUILayout.EndHorizontal();
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(kEntryMargin + 7);
-                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + m_InputTagName.Length + " .", MessageType.Warning);
+                EditorGUILayout.HelpBox("The logging tag can be at most 23 characters, was " + trimmedTagName.Length + " .", MessageType.Warning);
             }
             else
             {
                 if (GUILayout.Button("Add", GUILayout.Width(40)) || (hitEnter && GUI.GetNameOfFocusedControl() == kTagInputTextFieldControlId))
                 {
-                    if (!string.IsNullOrEmpty(m_InputTagName))
+                    if (!string.IsNullOrEmpty(trimmedTagName))
                     {
-                        m_TagControl.Add(m_InputTagName);
+                        m_TagControl.Add(trimmedTagName);
                         m_InputTagName = string.Empty;
                         GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
                     }
@@ -332,13 +313,5 @@ namespace Unity.Android.Logcat
             return true;
         }
     }
-#else
-    internal class AndroidLogcatTagWindow : EditorWindow
-    {
-        internal void OnGUI()
-        {
-            EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", MessageType.Info);
-        }
-    }
-#endif
 }
+#endif
