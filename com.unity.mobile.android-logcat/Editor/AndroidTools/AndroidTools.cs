@@ -10,23 +10,41 @@ namespace Unity.Android.Logcat
         private string m_NDKDirectory;
         private string m_Addr2LinePath;
         private string m_NMPath;
+        private string m_ReadElfPath;
 
         internal AndroidTools()
         {
 #if UNITY_2019_3_OR_NEWER
             m_NDKDirectory = AndroidExternalToolsSettings.ndkRootPath;
-#else
-            m_NDKDirectory = EditorPrefs.GetString("AndroidNdkRootR16b");
-#endif
-
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", "windows-x86_64", "bin");
+            m_NMPath = Path.Combine(binPath, "llvm-nm");
+#else
+            m_NDKDirectory = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(UnityEditor.Android.ADB.GetInstance().GetADBPath()), @"..\..\NDK"));
+            if (!Directory.Exists(m_NDKDirectory))
+            {
+                m_NDKDirectory = EditorPrefs.GetString("AndroidNdkRootR16b");
+                if (!Directory.Exists(m_NDKDirectory))
+                {
+                    m_NDKDirectory = string.Empty;
+                    throw new System.Exception("Failed to locate NDK directory");
+                }
+            }
+
+            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", "windows-x86_64", "bin");
+            m_NMPath = Path.Combine(binPath, "aarch64-linux-android-nm");
+#endif
             m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
-            m_NMPath = @"H:\Android\android-ndk-r16b\toolchains\x86_64-4.9\prebuilt\windows-x86_64\x86_64-linux-android\bin\nm";// Path.Combine(binPath, "llvm -nm");
+            m_ReadElfPath = Path.Combine(binPath, "aarch64-linux-android-readelf");
             if (Application.platform == RuntimePlatform.WindowsEditor)
             {
                 m_Addr2LinePath += ".exe";
                 m_NMPath += ".exe";
+                m_ReadElfPath += ".exe";
             }
+
+            // Addr2Line is important for us, so show an error, if it's not found
+            if (!File.Exists(m_Addr2LinePath))
+                Debug.LogError("Failed to locate " + m_Addr2LinePath);
         }
 
         internal void ValidateResult(ShellReturnInfo result)
@@ -55,6 +73,16 @@ namespace Unity.Android.Logcat
             var result = Shell.RunProcess(
                 m_NMPath,
                 "-extern-only \"" + symbolFilePath + "\"",
+                Path.GetDirectoryName(m_NMPath));
+            ValidateResult(result);
+            return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        internal string[] RunReadElf(string symbolFilePath)
+        {
+            var result = Shell.RunProcess(
+                m_ReadElfPath,
+                "-Ws \"" + symbolFilePath + "\"",
                 Path.GetDirectoryName(m_NMPath));
             ValidateResult(result);
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
