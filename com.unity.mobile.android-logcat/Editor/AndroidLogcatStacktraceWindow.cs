@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
 #if PLATFORM_ANDROID
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(lib.*\.so)";
+        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s*(\S*)\s*.*(lib.*\.so)";
 
         enum WindowMode
         {
@@ -124,7 +124,7 @@ namespace Unity.Android.Logcat
                     {
                         try
                         {
-                            var result = Addr2LineWrapper.Run("\"" + symbolFile + "\"", new[] { address });
+                            var result = AndroidLogcatManager.instance.Runtime.Tools.RunAddr2Line("\"" + symbolFile + "\"", new[] { address });
                             AndroidLogcatInternalLog.Log("addr2line \"{0}\" {1}", symbolFile, address);
                             if (!string.IsNullOrEmpty(result[0]))
                                 resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());

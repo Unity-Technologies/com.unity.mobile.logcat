@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 
 class AndroidLogcatRegexTests
@@ -185,5 +186,24 @@ class AndroidLogcatRegexTests
         pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
         Assert.IsTrue(pid == -1, "Expected top activity process id to be -1 but was " + pid);
         Assert.IsTrue(packageName == "", "Expected top activity package to be empty, but was " + packageName);
+    }
+
+    [Test]
+    public void ParseCrashStackrace()
+    {
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_DefaultAddressRegex);
+
+        string crash32 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+        string crash64 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+
+        var result = regex.Match(crash32);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+
+        result = regex.Match(crash64);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
     }
 }

@@ -438,7 +438,7 @@ namespace Unity.Android.Logcat
                 // For optimizations purposes, we batch addresses which belong to same library, so addr2line can be ran less
                 try
                 {
-                    var result = Addr2LineWrapper.Run(libpath, addresses.Select(m => m.unresolvedAddress));
+                    var result = m_Runtime.Tools.RunAddr2Line(libpath, addresses.Select(m => m.unresolvedAddress).ToArray());
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         var idx = addresses[i].logEntryIndex;
