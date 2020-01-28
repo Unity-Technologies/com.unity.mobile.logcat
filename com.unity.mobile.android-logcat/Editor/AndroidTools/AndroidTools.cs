@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
         internal AndroidTools()
         {
 #if UNITY_2019_3_OR_NEWER
-            m_NDKDirectory = AndroidExternalToolsSettings.ndkRootPath;
+            m_NDKDirectory = UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath;
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", "windows-x86_64", "bin");
             m_NMPath = Path.Combine(binPath, "llvm-nm");
 #else
