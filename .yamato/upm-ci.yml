@@ -5,12 +5,12 @@ test_editors:
 test_platforms:
   - name: win
     type: Unity::VM
-    image: mobile/android-execution-r19
+    image: mobile/android-execution-r19:latest
     flavor: b1.large
     unity-downloader-cli: c:\python27\Scripts\unity-downloader-cli.exe
   - name: mac
     type: Unity::VM::osx
-    image: mobile/android-execution-r19
+    image: mobile/android-execution-r19:latest
     flavor: m1.mac
     unity-downloader-cli: ~/Library/Python/2.7/bin/unity-downloader-cli
 ---
