@@ -117,6 +117,42 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static string GetPackageNameFromPid(ADB adb, string deviceId, int processId)
+        {
+            if (string.IsNullOrEmpty(deviceId))
+                return string.Empty;
+
+            try
+            {
+                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", deviceId, processId);
+
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);
+                if (string.IsNullOrEmpty(output))
+                    return string.Empty;
+
+                using (var sr = new StringReader(output))
+                {
+                    string line;
+                    while ((line = sr.ReadLine().Trim()) != null)
+                    {
+                        if (line.Equals("NAME"))
+                            continue;
+
+                        return line;
+                    }
+                }
+
+                AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return string.Empty;
+            }
+        }
+
         /// <summary>
         /// Return the detail info of the given device.
         /// </summary>
