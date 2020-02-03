@@ -14,6 +14,7 @@ namespace Unity.Android.Logcat
 
         internal AndroidTools()
         {
+#if PLATFORM_ANDROID
 #if UNITY_2019_3_OR_NEWER
             m_NDKDirectory = UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath;
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", "windows-x86_64", "bin");
@@ -45,6 +46,7 @@ namespace Unity.Android.Logcat
             // Addr2Line is important for us, so show an error, if it's not found
             if (!File.Exists(m_Addr2LinePath))
                 Debug.LogError("Failed to locate " + m_Addr2LinePath);
+#endif
         }
 
         internal void ValidateResult(ShellReturnInfo result)
