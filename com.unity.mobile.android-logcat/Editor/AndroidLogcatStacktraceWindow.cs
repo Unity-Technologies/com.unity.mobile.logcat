@@ -62,20 +62,6 @@ namespace Unity.Android.Logcat
             return false;
         }
 
-        string GetSymbolFile(string symbolPath, string libraryFile)
-        {
-            var fullPath = Path.Combine(symbolPath, libraryFile);
-            if (File.Exists(fullPath))
-                return fullPath;
-
-            // Try sym.so extension
-            fullPath = Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + ".sym.so");
-            if (File.Exists(fullPath))
-                return fullPath;
-
-            return null;
-        }
-
         void AddSymbolPath(string path)
         {
             int index = m_RecentSymbolPaths.IndexOf(path);
@@ -115,7 +101,7 @@ namespace Unity.Android.Logcat
                 else
                 {
                     string resolved = string.Format(" <color={0}>(Not resolved)</color>", m_RedColor);
-                    var symbolFile = GetSymbolFile(symbolPath, library);
+                    var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPath, library);
                     if (string.IsNullOrEmpty(symbolFile))
                     {
                         resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
@@ -265,7 +251,8 @@ namespace Unity.Android.Logcat
                 case WindowMode.ResolvedLog:
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
                     EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
-                    GUIUtility.keyboardControl = 0;
+					// Keep this commented, otherwise, it's not possible to select text in this text area and copy it.
+                    //GUIUtility.keyboardControl = 0;
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));

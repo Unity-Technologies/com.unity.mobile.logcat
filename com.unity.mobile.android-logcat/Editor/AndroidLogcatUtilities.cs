@@ -302,6 +302,46 @@ namespace Unity.Android.Logcat
             return version;
 #endif
         }
+
+        public static BuildInfo ParseBuildInfo(string msg)
+        {
+            BuildInfo buildInfo;
+
+            var reg = new Regex(@"Build type '(\S+)',\s+Scripting Backend '(\S+)',\s+CPU '(\S+)'");
+            Match match = reg.Match(msg);
+
+            buildInfo.buildType = match.Groups[1].Value.ToLower();
+            buildInfo.scriptingImplementation = match.Groups[2].Value.ToLower();
+            buildInfo.cpu = match.Groups[3].Value.ToLower();
+            return buildInfo;
+        }
+
+        /// <summary>
+        /// Returns symbol file by checking following extensions, for ex., if you're searching for libunity.so symbol file, it will first try to:
+        /// - libunity.so
+        /// - libunity.sym.so
+        /// - libunity.dbg.so
+        /// </summary>
+        /// <param name="symbolPath"></param>
+        /// <param name="libraryFile"></param>
+        /// <returns></returns>
+        public static string GetSymbolFile(string symbolPath, string libraryFile)
+        {
+            var fullPath = Path.Combine(symbolPath, libraryFile);
+            if (File.Exists(fullPath))
+                return fullPath;
+
+            var extensionsToTry = new[] { ".sym.so", ".dbg.so" };
+            foreach (var e in extensionsToTry)
+            {
+                // Try sym.so extension
+                fullPath = Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + e);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
+        }
     }
 
     internal class AndroidLogcatJsonSerialization

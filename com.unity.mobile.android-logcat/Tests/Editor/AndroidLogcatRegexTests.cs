@@ -206,4 +206,25 @@ class AndroidLogcatRegexTests
         Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
         Assert.AreEqual(result.Groups[2].Value, "libunity.so");
     }
+
+    [Test]
+    public void ParseBuildInfo()
+    {
+        var buildType = "Release";
+        var cpu = "armeabi-v7a";
+        var backend = "mono";
+        var buildInfos = new[]
+        {
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "', Stripping 'Disabled'",
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "'"
+        };
+        foreach (var b in buildInfos)
+        {
+            var buildInfo = AndroidLogcatUtilities.ParseBuildInfo(b);
+            UnityEngine.Debug.Log("Parsing:\n" + b);
+            Assert.AreEqual(buildInfo.buildType, buildType.ToLower());
+            Assert.AreEqual(buildInfo.cpu, cpu);
+            Assert.AreEqual(buildInfo.scriptingImplementation, backend);
+        }
+    }
 }
