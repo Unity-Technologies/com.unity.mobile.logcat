@@ -251,7 +251,7 @@ namespace Unity.Android.Logcat
                 case WindowMode.ResolvedLog:
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
                     EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
-					// Keep this commented, otherwise, it's not possible to select text in this text area and copy it.
+                    // Keep this commented, otherwise, it's not possible to select text in this text area and copy it.
                     //GUIUtility.keyboardControl = 0;
                     break;
                 case WindowMode.OriginalLog:
