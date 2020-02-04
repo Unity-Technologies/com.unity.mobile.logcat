@@ -9,7 +9,7 @@ test_platforms:
     flavor: b1.large
   - name: mac
     type: Unity::VM::osx
-    image: mobile/android-macos-execution
+    image: buildfarm/mac:stable
     flavor: m1.mac
 ---
 pack:
