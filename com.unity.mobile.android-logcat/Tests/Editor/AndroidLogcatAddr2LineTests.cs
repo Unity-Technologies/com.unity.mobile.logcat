@@ -48,7 +48,7 @@ public class AndroidLogcatAddr2LineTests
     {
         if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
         {
-            UnityEngine.Debug.LogError("Test ignored");
+            System.Console.WriteLine("Test ignored");
             return;
         }
         var tools = new AndroidTools();
