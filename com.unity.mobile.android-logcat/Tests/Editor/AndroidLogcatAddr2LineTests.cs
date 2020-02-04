@@ -46,6 +46,11 @@ public class AndroidLogcatAddr2LineTests
 
     private void CanResolveStacktraces(string abi)
     {
+        if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
+        {
+            UnityEngine.Debug.LogError("Test ignored");
+            return;
+        }
         var tools = new AndroidTools();
         const string symbolName = "JNI_OnLoad";
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
