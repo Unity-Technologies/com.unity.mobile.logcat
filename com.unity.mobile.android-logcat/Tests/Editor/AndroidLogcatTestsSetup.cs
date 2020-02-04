@@ -14,6 +14,7 @@ public class AndroidLogcatTestsSetup
     /// </summary>
     static AndroidLogcatTestsSetup()
     {
+#if UNITY_2019_3_OR_NEWER
         var sdkPath = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
         if (sdkPath != string.Empty)
         {
@@ -35,6 +36,7 @@ public class AndroidLogcatTestsSetup
         {
             Debug.LogWarning($"ANDROID_NDK_ROOT was not set.\nCurrently using NDK from here: {UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath}");
         }
+#endif
     }
 
     public static bool AndroidSDKAndNDKAvailable()
