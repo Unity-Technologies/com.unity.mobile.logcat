@@ -22,6 +22,7 @@ Android Logcat Package is a utility for displaying log messages coming from Andr
 	- Filter by
 		- Priority
 		- Tag
+        - Process Id
 	- Search by
 		- Text
 		- Regex
@@ -99,6 +100,8 @@ You can input text in the text field on the toolbar to search logs by text. You 
   	1. Click the **Tag** column to show the menu.
 	2. Click **Tag Control** menu item to show the **Tag Control Window**.  
 	!![Tag Control Window](images/tag_control_window.png)
+- By Process Id
+    1. Right click on the message and select **Filter by process id** 
 
 ### Screen Capture
 You can use **Capture Screen** button on the toolbar to capture a screenshot of the selected device. You can also **Save** the screenshot as file.  
