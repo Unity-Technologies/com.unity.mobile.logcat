@@ -15,9 +15,12 @@ namespace Unity.Android.Logcat
 
         internal AndroidTools()
         {
+            string platformTag = "windows-x86_64";
+            if (Application.platform != RuntimePlatform.WindowsEditor)
+                platformTag = "darwin-x86_64";
 #if UNITY_2019_3_OR_NEWER
             m_NDKDirectory = UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath;
-            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", "windows-x86_64", "bin");
+            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "llvm-nm");
 #else
             m_NDKDirectory = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(UnityEditor.Android.ADB.GetInstance().GetADBPath()), @"..\..\NDK"));
@@ -31,7 +34,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", "windows-x86_64", "bin");
+            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "aarch64-linux-android-nm");
 #endif
             m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
