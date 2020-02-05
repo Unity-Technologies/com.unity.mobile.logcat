@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fix & Improvements.
  - Added feature 'Filter by process id'
  - Fixed addr2line functionality, when we try to resolve stacktrace
+ - Correctly open Terminal on macOS Catalina
 
 ## [1.0.3-preview] - 2019-11-17
 
