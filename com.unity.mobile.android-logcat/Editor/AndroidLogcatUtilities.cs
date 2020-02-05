@@ -244,8 +244,21 @@ namespace Unity.Android.Logcat
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") {WorkingDirectory = workingDirectory});
                     break;
                 case RuntimePlatform.OSXEditor:
-                    System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
-                    break;
+                    var pathsToCheck = new[]
+                    {
+                        "/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+                        "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal"
+                    };
+                    foreach (var p in pathsToCheck)
+                    {
+                        if (File.Exists(p))
+                        {
+                            System.Diagnostics.Process.Start(p, workingDirectory);
+                            return;
+                        }
+                    }
+        
+                    throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n",  pathsToCheck)));
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
