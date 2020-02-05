@@ -257,7 +257,7 @@ namespace Unity.Android.Logcat
                             return;
                         }
                     }
-        
+
                     throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n",  pathsToCheck)));
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
