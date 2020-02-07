@@ -117,6 +117,42 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static string GetPackageNameFromPid(ADB adb, string deviceId, int processId)
+        {
+            if (string.IsNullOrEmpty(deviceId))
+                return string.Empty;
+
+            try
+            {
+                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", deviceId, processId);
+
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);
+                if (string.IsNullOrEmpty(output))
+                    return string.Empty;
+
+                using (var sr = new StringReader(output))
+                {
+                    string line;
+                    while ((line = sr.ReadLine().Trim()) != null)
+                    {
+                        if (line.Equals("NAME"))
+                            continue;
+
+                        return line;
+                    }
+                }
+
+                AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return string.Empty;
+            }
+        }
+
         /// <summary>
         /// Return the detail info of the given device.
         /// </summary>
@@ -208,8 +244,21 @@ namespace Unity.Android.Logcat
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") {WorkingDirectory = workingDirectory});
                     break;
                 case RuntimePlatform.OSXEditor:
-                    System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
-                    break;
+                    var pathsToCheck = new[]
+                    {
+                        "/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+                        "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal"
+                    };
+                    foreach (var p in pathsToCheck)
+                    {
+                        if (File.Exists(p))
+                        {
+                            System.Diagnostics.Process.Start(p, workingDirectory);
+                            return;
+                        }
+                    }
+
+                    throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n",  pathsToCheck)));
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
@@ -265,6 +314,46 @@ namespace Unity.Android.Logcat
             }
             return version;
 #endif
+        }
+
+        public static BuildInfo ParseBuildInfo(string msg)
+        {
+            BuildInfo buildInfo;
+
+            var reg = new Regex(@"Build type '(\S+)',\s+Scripting Backend '(\S+)',\s+CPU '(\S+)'");
+            Match match = reg.Match(msg);
+
+            buildInfo.buildType = match.Groups[1].Value.ToLower();
+            buildInfo.scriptingImplementation = match.Groups[2].Value.ToLower();
+            buildInfo.cpu = match.Groups[3].Value.ToLower();
+            return buildInfo;
+        }
+
+        /// <summary>
+        /// Returns symbol file by checking following extensions, for ex., if you're searching for libunity.so symbol file, it will first try to:
+        /// - libunity.so
+        /// - libunity.sym.so
+        /// - libunity.dbg.so
+        /// </summary>
+        /// <param name="symbolPath"></param>
+        /// <param name="libraryFile"></param>
+        /// <returns></returns>
+        public static string GetSymbolFile(string symbolPath, string libraryFile)
+        {
+            var fullPath = Path.Combine(symbolPath, libraryFile);
+            if (File.Exists(fullPath))
+                return fullPath;
+
+            var extensionsToTry = new[] { ".sym.so", ".dbg.so" };
+            foreach (var e in extensionsToTry)
+            {
+                // Try sym.so extension
+                fullPath = Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + e);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
     }
 

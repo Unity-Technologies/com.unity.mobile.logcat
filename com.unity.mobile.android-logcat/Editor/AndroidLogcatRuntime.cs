@@ -18,6 +18,8 @@ namespace Unity.Android.Logcat
 
         AndroidLogcatSettings Settings { get; }
 
+        AndroidTools Tools { get; }
+
         IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
 
         void Initialize();
@@ -31,6 +33,7 @@ namespace Unity.Android.Logcat
     {
         private AndroidLogcatDispatcher m_Dispatcher;
         private AndroidLogcatSettings m_Settings;
+        private AndroidTools m_Tools;
 
         public event Action OnUpdate;
 
@@ -50,6 +53,11 @@ namespace Unity.Android.Logcat
             get { return m_Settings; }
         }
 
+        public AndroidTools Tools
+        {
+            get { return m_Tools; }
+        }
+
         public void Initialize()
         {
             EditorApplication.update += Update;
@@ -58,6 +66,8 @@ namespace Unity.Android.Logcat
             m_Dispatcher.Initialize();
 
             m_Settings = AndroidLogcatSettings.Load();
+
+            m_Tools = new AndroidTools();
         }
 
         public void Shutdown()

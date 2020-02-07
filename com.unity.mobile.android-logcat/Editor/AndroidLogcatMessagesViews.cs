@@ -478,6 +478,8 @@ namespace Unity.Android.Logcat
                 menuItems.Add("");
                 menuItems.Add("Add tag '" + entries[0].tag + "'");
                 menuItems.Add("Remove tag '" + entries[0].tag + "'");
+                menuItems.Add("");
+                menuItems.Add("Filter by process id '" + entries[0].processId + "'");
             }
 
             var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
@@ -644,6 +646,10 @@ namespace Unity.Android.Logcat
                 // Remove tag
                 case 6:
                     RemoveTag(((AndroidLogcat.LogEntry[])userData)[0].tag);
+                    break;
+                // Filter by process id
+                case 8:
+                    FilterByProcessId(((AndroidLogcat.LogEntry[])userData)[0].processId);
                     break;
             }
         }

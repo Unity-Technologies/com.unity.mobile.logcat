@@ -1,13 +1,13 @@
 test_editors:
   - version: 2019.1
-  - version: 2019.2
+  - version: 2019.3
   - version: trunk
 test_platforms:
   - name: win
     type: Unity::VM
-    image: package-ci/win10:stable
+    image: mobile/android-execution-r19:latest
     flavor: b1.large
-    unity-downloader-cli: c:\python27\Scripts\unity-downloader-cli.exe
+    unity-downloader-cli: unity-downloader-cli
   - name: mac
     type: Unity::VM::osx
     image: buildfarm/mac:stable
