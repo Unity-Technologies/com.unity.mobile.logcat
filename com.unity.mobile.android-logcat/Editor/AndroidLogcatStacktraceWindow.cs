@@ -194,7 +194,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
-        void DoRegex(float labelWidth, Regex regex)
+        void DoRegex(float labelWidth)
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.BeginVertical();
@@ -202,6 +202,19 @@ namespace Unity.Android.Logcat
             GUILayout.Label("Address regex:", EditorStyles.boldLabel, GUILayout.Width(labelWidth));
             m_AddressRegex = GUILayout.TextField(m_AddressRegex);
             EditorGUILayout.EndHorizontal();
+            Regex regex;
+            try
+            {
+                regex = new Regex(m_AddressRegex);
+            }
+            catch (Exception ex)
+            {
+                var oldColor = GUI.color;
+                GUI.color = Color.red;
+                GUILayout.Label(ex.GetType().Name + " : " + ex.Message, AndroidLogcatStyles.errorStyle);
+                regex = null;
+                GUI.color = oldColor;
+            }
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.BeginVertical();
@@ -211,7 +224,7 @@ namespace Unity.Android.Logcat
             }
 
             EditorGUI.BeginDisabledGroup(m_SelectedSymbolPath < 0);
-            if (GUILayout.Button("Resolve Stacktraces", EditorStyles.miniButton))
+            if (GUILayout.Button("Resolve Stacktraces", EditorStyles.miniButton) && regex != null)
             {
                 m_WindowMode = WindowMode.ResolvedLog;
                 ResolveStacktraces(m_RecentSymbolPaths[m_SelectedSymbolPath], regex);
@@ -226,13 +239,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            var regex = new Regex(m_AddressRegex);
             const float kLabelWidth = 120.0f;
             const float kInfoAreaHeight = 60.0f;
             GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
             GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
             DoSymbolPath(kLabelWidth);
-            DoRegex(kLabelWidth, regex);
+            DoRegex(kLabelWidth);
             GUILayout.EndArea();
 
             EditorGUI.BeginChangeCheck();
