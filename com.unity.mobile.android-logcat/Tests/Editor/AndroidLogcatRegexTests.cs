@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 
 class AndroidLogcatRegexTests
@@ -22,6 +23,7 @@ class AndroidLogcatRegexTests
         "01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
         "01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
         "01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
+        "01-19 14:58:16.725  3966  3966 D EPDG -- SIM0 [EpdgSubScription]: getCurrentNetTypeId, current net type: null"
         // Add more as needed
     };
 
@@ -45,6 +47,7 @@ class AndroidLogcatRegexTests
         "2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
         "2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
         "2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
+        "2020-02-06 12:48:19.406  2579  2813 D EPDG -- SIM0 [EpdgSubScription]: getMnoNameFromDB() hassim :true"
         // Add more as needed
     };
     [Test]
@@ -61,7 +64,7 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithYearFormat)
         {
-            Assert.IsTrue(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l));
+            Assert.IsTrue(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l), "Regex failure with message\n" + l);
         }
     }
 
@@ -185,5 +188,45 @@ class AndroidLogcatRegexTests
         pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
         Assert.IsTrue(pid == -1, "Expected top activity process id to be -1 but was " + pid);
         Assert.IsTrue(packageName == "", "Expected top activity package to be empty, but was " + packageName);
+    }
+
+    [Test]
+    public void ParseCrashStackrace()
+    {
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_DefaultAddressRegex);
+
+        string crash32 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+        string crash64 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+
+        var result = regex.Match(crash32);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+
+        result = regex.Match(crash64);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+    }
+
+    [Test]
+    public void ParseBuildInfo()
+    {
+        var buildType = "Release";
+        var cpu = "armeabi-v7a";
+        var backend = "mono";
+        var buildInfos = new[]
+        {
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "', Stripping 'Disabled'",
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "'"
+        };
+        foreach (var b in buildInfos)
+        {
+            var buildInfo = AndroidLogcatUtilities.ParseBuildInfo(b);
+            UnityEngine.Debug.Log("Parsing:\n" + b);
+            Assert.AreEqual(buildInfo.buildType, buildType.ToLower());
+            Assert.AreEqual(buildInfo.cpu, cpu);
+            Assert.AreEqual(buildInfo.scriptingImplementation, backend);
+        }
     }
 }

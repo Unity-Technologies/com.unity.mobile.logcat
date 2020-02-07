@@ -295,6 +295,25 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
+        private void FilterByProcessId(int processId)
+        {
+            var packages = m_PackagesForAllDevices[m_SelectedDeviceId];
+            foreach (var p in packages)
+            {
+                if (p.processId == processId)
+                {
+                    SelectPackage(p);
+                    return;
+                }
+            }
+
+            var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Adb, m_SelectedDeviceId, processId);
+
+            var package = CreatePackageInformation(packageName, processId, m_SelectedDeviceId);
+
+            SelectPackage(package);
+        }
+
         private void Update()
         {
             if (m_DeviceIds != null && m_DeviceIds.Count == 0)
