@@ -66,6 +66,14 @@ namespace Unity.Android.Logcat
             wordWrap = false
         };
 
+        public static GUIStyle errorStyle = new GUIStyle("label")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont(),
+            normal = new GUIStyleState() { textColor = Color.red }
+        };
+
+
         public static Font GetFont()
         {
             return (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
