@@ -3,7 +3,7 @@ test_editors:
   - version: 2019.3
   - version: 2020.1
   - version: trunk
-  test_warnings_editors:
+test_warnings_editors:
   - version: 2019.3
   - version: trunk
 test_platforms:
