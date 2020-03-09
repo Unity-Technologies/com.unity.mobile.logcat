@@ -9,8 +9,8 @@ class AndroidLogcatRegexTests
         string fullMessage;
         string expectedTag;
 
-        internal string FullMessage { get => fullMessage; }
-        internal string ExpectedTag { get => expectedTag; }
+        internal string FullMessage { get { return fullMessage; } }
+        internal string ExpectedTag { get { return expectedTag; } }
 
         internal LogcatMessage(string _fullMessage, string _expectedTag)
         {
