@@ -4,50 +4,68 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatRegexTests
 {
-    // Messages produced via adb logcat -s -v threadtime *:V
-    private string[] kLogMessagesWithThreadTimeFormat = new[]
+    struct LogcatMessage
     {
-        "10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1",
-        "10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13",
-        "10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
-        "10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
-        "10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
-        "01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
-        "01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
-        "01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
-        "01-19 14:58:16.725  3966  3966 D EPDG -- SIM0 [EpdgSubScription]: getCurrentNetTypeId, current net type: null"
+        string fullMessage;
+        string expectedTag;
+
+        internal string FullMessage { get { return fullMessage; } }
+        internal string ExpectedTag { get { return expectedTag; } }
+
+        internal LogcatMessage(string _fullMessage, string _expectedTag)
+        {
+            fullMessage = _fullMessage;
+            expectedTag = _expectedTag;
+        }
+    }
+
+    // Messages produced via adb logcat -s -v threadtime *:V
+    private LogcatMessage[] kLogMessagesWithThreadTimeFormat = new[]
+    {
+        new LogcatMessage("10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1", "ctxmgr"),
+        new LogcatMessage("10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2", "chromium"),
+        new LogcatMessage("10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]", "chromium"),
+        new LogcatMessage("10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8", "chromium"),
+        new LogcatMessage("01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed", "BarTender:BatteryStatsDumper"),
+        new LogcatMessage("01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57", "SSRM:k"),
+        new LogcatMessage("01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null", "u"),
+        new LogcatMessage("01-19 14:58:16.725  3966  3966 D EPDG -- SIM0 [EpdgSubScription]: getCurrentNetTypeId, current net type: null", "EPDG -- SIM0 [EpdgSubScription]"),
+        new LogcatMessage("03-10 14:33:13.505 11287 11287 D Unity   : NewInput[0xFFFFFFFFEA4E9DC0]: Incoming event with sources 'Touchscreen' from android device 3, isGameController: No, unity devices: 4", "Unity"),
+        new LogcatMessage("03-10 14:33:13.505 11287 11287 D Unity   :     NewInput[0xFFFFFFFFEA4E9DC0]: Touch 1454.000000 x 343.000000, touchId = 6 (0), phase = kEnded, time = 125.525207 (594002743)", "Unity")
         // Add more as needed
     };
 
+
     // Note: -v year is not available on Android 6.0 and below
     // Messages produced via adb logcat -s -v year *:V
-    private string[] kLogMessagesWithYearFormat = new[]
+    private LogcatMessage[] kLogMessagesWithYearFormat = new[]
     {
-        "2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1",
-        "2018-10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
-        "2018-10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
-        "2018-10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
-        "2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
-        "2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
-        "2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
-        "2020-02-06 12:48:19.406  2579  2813 D EPDG -- SIM0 [EpdgSubScription]: getMnoNameFromDB() hassim :true"
+        new LogcatMessage("2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1", "ctxmgr"),
+        new LogcatMessage("2018-10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2", "chromium"),
+        new LogcatMessage("2018-10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]", "chromium"),
+        new LogcatMessage("2018-10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8", "chromium"),
+        new LogcatMessage("2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed", "BarTender:BatteryStatsDumper"),
+        new LogcatMessage("2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57", "SSRM:k"),
+        new LogcatMessage("2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null", "u"),
+        new LogcatMessage("2020-02-06 12:48:19.406  2579  2813 D EPDG -- SIM0 [EpdgSubScription]: getMnoNameFromDB() hassim :true", "EPDG -- SIM0 [EpdgSubScription]"),
         // Add more as needed
     };
     [Test]
@@ -55,7 +73,10 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithThreadTimeFormat)
         {
-            Assert.IsTrue(AndroidLogcat.m_LogCatEntryThreadTimeRegex.IsMatch(l));
+            var result = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(l.FullMessage);
+            Assert.IsTrue(result.Success);
+            var tagValue = result.Groups["tag"].Value;
+            Assert.AreEqual(l.ExpectedTag, tagValue);
         }
     }
 
@@ -64,7 +85,10 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithYearFormat)
         {
-            Assert.IsTrue(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l), "Regex failure with message\n" + l);
+            var result = AndroidLogcat.m_LogCatEntryYearRegex.Match(l.FullMessage);
+            Assert.IsTrue(result.Success, l.FullMessage);
+            var tagValue = result.Groups["tag"].Value;
+            Assert.AreEqual(l.ExpectedTag, tagValue);
         }
     }
 
