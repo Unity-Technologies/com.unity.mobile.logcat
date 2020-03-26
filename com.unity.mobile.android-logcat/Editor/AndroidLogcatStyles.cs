@@ -73,6 +73,12 @@ namespace Unity.Android.Logcat
             normal = new GUIStyleState() { textColor = Color.red }
         };
 
+        public static GUIStyle internalLogStyle = new GUIStyle("textArea")
+        {
+            fontSize = 13,
+            font = GetFont()
+        };
+
 
         public static Font GetFont()
         {

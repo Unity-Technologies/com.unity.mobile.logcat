@@ -61,7 +61,7 @@ namespace Unity.Android.Logcat
             }
 
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);
-            GUILayout.TextArea(ms_LogEntries.ToString(), GUILayout.ExpandHeight(true));
+            GUILayout.TextArea(ms_LogEntries.ToString(), AndroidLogcatStyles.internalLogStyle, GUILayout.ExpandHeight(true));
             GUILayout.EndScrollView();
         }
 
