@@ -105,10 +105,13 @@ namespace Unity.Android.Logcat
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
         private const int kMillisecondsMaxAutoconnectTimeOut = 5000;
+        private const int kMillisecondsBetweenMemoryRequests = 100;
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
         private bool m_ApplySettings;
+        private AndroidLogcatMemoryViewer m_MemoryViewer;
+        private DateTime m_TimeOfLastMemoryRequest;
 
         private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
 
@@ -369,6 +372,16 @@ namespace Unity.Android.Logcat
                     SelectPackage(selectedPackage);
                 }
             }
+
+            if (m_MemoryViewer != null)
+            {
+                if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
+                {
+                    m_TimeOfLastMemoryRequest = DateTime.Now;
+                    m_MemoryViewer.QueueMemoryRequest();
+                }
+            }
+
         }
 
         private void GetSelectedDeviceIndex(out int selectedDeviceIndex, out PackageInformation selectedPackage)
@@ -520,6 +533,9 @@ namespace Unity.Android.Logcat
             if (m_StatusBar != null)
                 m_StatusBar.DoGUI();
 
+            if (m_MemoryViewer != null)
+                m_MemoryViewer.DoGUI();
+
             EditorGUILayout.EndVertical();
         }
 
@@ -609,6 +625,8 @@ namespace Unity.Android.Logcat
 
             m_AutoSelectPackage = false;
             m_SelectedPackage = newPackage;
+
+            m_MemoryViewer = new AndroidLogcatMemoryViewer(newPackage.name);
 
             RestartLogCat();
 
