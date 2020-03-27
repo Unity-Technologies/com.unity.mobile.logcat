@@ -53,6 +53,13 @@ namespace Unity.Android.Logcat
 
         public void OnGUI()
         {
+            if (GUILayout.Button("Clear"))
+            {
+                lock (ms_LogEntries)
+                {
+                    ms_LogEntries.Clear();
+                }
+            }
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
