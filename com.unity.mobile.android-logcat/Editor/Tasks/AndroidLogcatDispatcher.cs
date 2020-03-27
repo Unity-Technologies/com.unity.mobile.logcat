@@ -92,24 +92,28 @@ namespace Unity.Android.Logcat
 
             while (m_AutoResetEvent.WaitOne() && m_Running)
             {
-                //Debug.Log("Executing");
-                AsyncTask task = null;
-                lock (m_AsyncTaskQueue)
+                bool remainingOperations = true;
+                while (remainingOperations)
                 {
-                    if (m_AsyncTaskQueue.Count > 0)
+                    AsyncTask task = null;
+                    lock (m_AsyncTaskQueue)
                     {
-                        task = m_AsyncTaskQueue.Dequeue();
-                    }
-                }
-                if (task != null && task.asyncAction != null)
-                {
-                    m_Sampler.Begin();
-                    var result = task.asyncAction.Invoke(task.taskData);
-                    m_Sampler.End();
+                        if (m_AsyncTaskQueue.Count > 0)
+                        {
+                            task = m_AsyncTaskQueue.Dequeue();
+                        }
 
-                    lock (m_IntegrateTaskQueue)
+                        remainingOperations = m_AsyncTaskQueue.Count > 0;
+                    }
+                    if (task != null && task.asyncAction != null)
                     {
-                        m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                        m_Sampler.Begin();
+                        var result = task.asyncAction.Invoke(task.taskData);
+                        m_Sampler.End();
+
+                        lock (m_IntegrateTaskQueue)
+                        {
+                            m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
                     }
                 }
             }

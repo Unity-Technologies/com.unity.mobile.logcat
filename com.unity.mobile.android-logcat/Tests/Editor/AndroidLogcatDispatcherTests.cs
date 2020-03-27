@@ -70,4 +70,47 @@ public class AndroidLogcatDispatcherTests
 
         runtime.Shutdown();
     }
+
+    [UnityTest]
+    public IEnumerator SchedulingHappensInCorrectOrder([Values(true, false)] bool synchronousTask)
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+
+        const int kMaxCount = 20;
+        var itemsReceived = new System.Collections.Generic.List<int>();
+
+        for (int i = 0; i < kMaxCount; i++)
+        {
+            runtime.Dispatcher.Schedule(
+                new TaskInputData() { mainThreadId = i },
+                PerformAsycnTask, 
+                (IAndroidLogcatTaskResult r) =>
+                {
+                    Debug.Log("Received " + ((TaskResultData)r).mainThreadId);
+                    itemsReceived.Add(((TaskResultData)r).mainThreadId);
+                }, synchronousTask);
+        }
+
+
+        var startTime = Time.realtimeSinceStartup;
+        const float kMaxWaitTime = 4.0f;
+        do
+        {
+            runtime.Update();
+            yield return null;
+        }
+        while (itemsReceived.Count < kMaxCount && Time.realtimeSinceStartup - startTime < kMaxWaitTime);
+
+        Assert.AreEqual(kMaxCount, itemsReceived.Count,
+            string.Format("Timeout while waiting for task to be finished, waited {0} seconds. Received {1} items, expected {2} items", Time.realtimeSinceStartup - startTime,
+            itemsReceived.Count, kMaxCount));
+
+        for (int i = 0; i < kMaxCount; i++)
+        {
+            Assert.AreEqual(i, itemsReceived[i]);
+        }
+
+        runtime.Shutdown();
+    }
 }
