@@ -381,7 +381,6 @@ namespace Unity.Android.Logcat
                     m_MemoryViewer.QueueMemoryRequest();
                 }
             }
-
         }
 
         private void GetSelectedDeviceIndex(out int selectedDeviceIndex, out PackageInformation selectedPackage)
@@ -575,7 +574,13 @@ namespace Unity.Android.Logcat
                     RemoveMessages(1);
                 Repaint();
             }
-            GUILayout.Label("Async Operations in Queue: " + m_Runtime.Dispatcher.AsyncOperationsInQueue);
+
+            var cantKeepUp = m_Runtime.Dispatcher.AsyncOperationsInQueue > 100;
+            var style = cantKeepUp ? AndroidLogcatStyles.errorStyle : AndroidLogcatStyles.infoStyle;
+            var message = "Async Operation In Queue: " + m_Runtime.Dispatcher.AsyncOperationsInQueue + ", Executed: " + m_Runtime.Dispatcher.AsyncOperationsExecuted;
+            if (cantKeepUp)
+                message += " (CAN'T KEEP UP!!!!)";
+            GUILayout.Label(message, style);
             EditorGUILayout.EndHorizontal();
         }
 

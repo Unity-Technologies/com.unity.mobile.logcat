@@ -66,6 +66,12 @@ namespace Unity.Android.Logcat
             wordWrap = false
         };
 
+        public static GUIStyle infoStyle = new GUIStyle("label")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont()
+        };
+
         public static GUIStyle errorStyle = new GUIStyle("label")
         {
             fontSize = kLogEntryFontSize,

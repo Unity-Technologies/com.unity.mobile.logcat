@@ -32,10 +32,12 @@ namespace Unity.Android.Logcat
         private volatile bool m_Running;
         private static Thread s_MainThread;
         private IAndroidLogcatRuntime m_Runtime;
+        private int m_AsyncOperationsExecuted;
 
         internal AndroidLogcatDispatcher(IAndroidLogcatRuntime runtime)
         {
             m_Runtime = runtime;
+            m_AsyncOperationsExecuted = 0;
         }
 
         internal void Initialize()
@@ -111,6 +113,7 @@ namespace Unity.Android.Logcat
                         var result = task.asyncAction.Invoke(task.taskData);
                         m_Sampler.End();
 
+                        m_AsyncOperationsExecuted++;
                         lock (m_IntegrateTaskQueue)
                         {
                             m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
@@ -171,6 +174,13 @@ namespace Unity.Android.Logcat
                 {
                     return m_AsyncTaskQueue.Count;
                 }
+            }
+        }
+        internal int AsyncOperationsExecuted
+        {
+            get
+            {
+                return m_AsyncOperationsExecuted;
             }
         }
     }

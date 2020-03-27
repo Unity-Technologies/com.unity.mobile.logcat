@@ -84,7 +84,7 @@ public class AndroidLogcatDispatcherTests
         {
             runtime.Dispatcher.Schedule(
                 new TaskInputData() { mainThreadId = i },
-                PerformAsycnTask, 
+                PerformAsycnTask,
                 (IAndroidLogcatTaskResult r) =>
                 {
                     Debug.Log("Received " + ((TaskResultData)r).mainThreadId);
@@ -104,7 +104,7 @@ public class AndroidLogcatDispatcherTests
 
         Assert.AreEqual(kMaxCount, itemsReceived.Count,
             string.Format("Timeout while waiting for task to be finished, waited {0} seconds. Received {1} items, expected {2} items", Time.realtimeSinceStartup - startTime,
-            itemsReceived.Count, kMaxCount));
+                itemsReceived.Count, kMaxCount));
 
         for (int i = 0; i < kMaxCount; i++)
         {
