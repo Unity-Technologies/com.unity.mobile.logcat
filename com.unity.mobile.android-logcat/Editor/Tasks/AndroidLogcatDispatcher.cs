@@ -114,6 +114,7 @@ namespace Unity.Android.Logcat
                         lock (m_IntegrateTaskQueue)
                         {
                             m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                        }
                     }
                 }
             }
