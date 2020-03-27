@@ -105,7 +105,9 @@ namespace Unity.Android.Logcat
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
         private const int kMillisecondsMaxAutoconnectTimeOut = 5000;
-        private const int kMillisecondsBetweenMemoryRequests = 100;
+        // Warning: Setting this number to low, will make memory request to be delayed
+        // Since querying memory from device is a lengthy operation
+        private const int kMillisecondsBetweenMemoryRequests = 500;
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;

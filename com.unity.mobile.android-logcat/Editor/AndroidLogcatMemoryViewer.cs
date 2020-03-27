@@ -46,11 +46,6 @@ namespace Unity.Android.Logcat
                 {
                     var name = match.Groups[1].Value.Trim().ToLower();
                     var sizeInKBytes = Int32.Parse(match.Groups[2].Value);
-
-                    if (m_AppSummary.TryGetValue(name, out dummy))
-                    {
-                        throw new Exception("Error parsing app summary, value " + name + " was already parsed");
-                    }
                     m_AppSummary[name] = sizeInKBytes * 1024;
                 }
 
@@ -65,14 +60,12 @@ namespace Unity.Android.Logcat
             /// </summary>
             /// <param name="contents"></param>
             /// <returns></returns>
-            public static AndroidMemoryStatistics Parse(string contents)
+            public void Parse(string contents)
             {
-                var statistics = new AndroidMemoryStatistics();
                 string[] sections = contents.Split(new string[] { "MEMINFO", "App Summary", "Objects", "SQL" }, StringSplitOptions.RemoveEmptyEntries);
                 if (sections.Length != 5)
                     throw new Exception("Expected 5 sections when parsing memory statistics:\n" + contents);
-                statistics.ParseAppSummary(sections[2]);
-                return statistics;
+                ParseAppSummary(sections[2]);
             }
         }
 
@@ -87,28 +80,42 @@ namespace Unity.Android.Logcat
             internal string contents;
         }
 
+        private EditorWindow m_Parent;
         private IAndroidLogcatRuntime m_Runtime;
         private Material m_Material;
         private string m_PackageName;
         private Rect m_WindowSize;
 
 
-        const int kMaxEntries = 1000;
-        private int[] m_Entries = new int[1000];
+        const int kMaxEntries = 500;
+        private AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
         private int m_CurrentEntry = 0;
+        private int m_EntryCount = 0;
         private int m_MaxMemorySize = int.MinValue;
         private int m_MinMemorySize = int.MaxValue;
+        private int m_RequestsInQueue;
 
-        public AndroidLogcatMemoryViewer(string packageName)
+        public AndroidLogcatMemoryViewer(EditorWindow parent, string packageName)
         {
+            m_Parent = parent;
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Material = (Material)EditorGUIUtility.LoadRequired("SceneView/HandleLines.mat");
             m_PackageName = packageName;
-        }
 
+            for (int i = 0; i < kMaxEntries; i++)
+                m_Entries[i] = new AndroidMemoryStatistics();
+
+            m_RequestsInQueue = 0;
+        }
 
         public void QueueMemoryRequest()
         {
+            // Don't make a memory request, if previous requests haven't finished yet
+            // Otherwise async queue will grow bigger and bigger
+            const int kMaxRequestsInQueue = 3;
+            if (m_RequestsInQueue > kMaxRequestsInQueue)
+                return;
+            m_RequestsInQueue++;
             m_Runtime.Dispatcher.Schedule(
                 new AndroidLogcatQueryMemoryInput()
                 {
@@ -118,6 +125,25 @@ namespace Unity.Android.Logcat
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
                 false);
+        }
+
+        private static string IntToSizeString(int value)
+        {
+            if (value < 0)
+                return "unknown";
+            float val = (float)value;
+            string[] scale = new string[] { "TB", "GB", "MB", "KB", "Bytes" };
+            int idx = scale.Length - 1;
+            while (val > 1000.0f && idx >= 0)
+            {
+                val /= 1000f;
+                idx--;
+            }
+
+            if (idx < 0)
+                return "<error>";
+
+            return string.Format("{0:#.##} {1}", val, scale[idx]);
         }
 
         private static IAndroidLogcatTaskResult QueryMemoryAsync(IAndroidLogcatTaskInput input)
@@ -141,29 +167,37 @@ namespace Unity.Android.Logcat
 
         private void IntegrateQueryMemory(IAndroidLogcatTaskResult result)
         {
+            m_RequestsInQueue--;
+            if (m_RequestsInQueue < 0)
+            {
+                m_RequestsInQueue = 0;
+                throw new Exception("Receiving more memory results than requested ?");
+            }
             var memoryResult = (AndroidLogcatQueryMemoryResult)result;
-            var statistics = AndroidMemoryStatistics.Parse(memoryResult.contents);
-            //statistics.Total;
-            var memory = statistics.Total;
-            m_Entries[m_CurrentEntry++] = memory;// statistics.Total;
+            var stats = m_Entries[m_CurrentEntry++];
+            stats.Parse(memoryResult.contents);
+
             if (m_CurrentEntry >= kMaxEntries)
                 m_CurrentEntry = 0;
-            if (memory > m_MaxMemorySize)
-                m_MaxMemorySize = memory;
-            if (memory < m_MinMemorySize)
-                m_MinMemorySize = memory;
+            m_EntryCount = Math.Min(m_EntryCount + 1, kMaxEntries);
+            var totalMemory = stats.Total;
+            if (totalMemory > m_MaxMemorySize)
+                m_MaxMemorySize = totalMemory;
+            if (totalMemory < m_MinMemorySize)
+                m_MinMemorySize = totalMemory;
 
-           // UnityEngine.Debug.Log(statistics.Total);
+            m_Parent.Repaint();
         }
 
         internal void DoGUI()
         {
-
+            GUILayout.Label("Total Memory: " + IntToSizeString(m_MaxMemorySize));
+            GUILayout.Label("Total MemoryMin: " + IntToSizeString(m_MinMemorySize));
             // TODO: handle case where m_MaxMemorySize equals min
-            if (m_CurrentEntry == 0 || m_MinMemorySize > m_MaxMemorySize || m_MaxMemorySize == m_MinMemorySize)
+            if (m_EntryCount == 0 || m_MinMemorySize > m_MaxMemorySize || m_MaxMemorySize == m_MinMemorySize)
                 return;
             var e = Event.current.type;
-           
+
             m_WindowSize = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(400));
 
             if (e != EventType.Repaint)
@@ -175,26 +209,32 @@ namespace Unity.Android.Logcat
             // | /|
             // |/ |
             // 1  3
-            var width = m_WindowSize.width / kMaxEntries;
+            var width = m_WindowSize.width / (kMaxEntries - 1);
             var multiplier = m_WindowSize.height / (m_MaxMemorySize - m_MinMemorySize);
             var b = m_WindowSize.height + m_WindowSize.y;
+            var xOffset = m_WindowSize.width - (m_EntryCount - 1) * width;
+
+            var a0 = Mathf.Repeat(-1, 3);
+            var a1 = Mathf.Repeat(0, 3);
+            var a2 = Mathf.Repeat(1, 3);
+            var a3 = Mathf.Repeat(2, 3);
+            var a4 = Mathf.Repeat(3, 3);
+            var a5 = Mathf.Repeat(4, 3);
 
             GL.Begin(GL.TRIANGLE_STRIP);
             GL.Color(Color.red);
             float y = 0.0f;
             float x = 0.0f;
-            for (int i = 0; i < m_CurrentEntry; i++)
+            for (int i = 0; i < m_EntryCount; i++)
             {
-                var val = m_Entries[i] - m_MinMemorySize;
-                x = i * width;
+                var idx = (int)Mathf.Repeat(i + m_CurrentEntry - m_EntryCount, kMaxEntries);
+                var val = m_Entries[idx].Total - m_MinMemorySize;
+                x = xOffset + i * width;
                 y = b - multiplier * val;
                 GL.Vertex3(x, y, 0);
                 GL.Vertex3(x, b, 0);
             }
 
-            // Finalize strip
-            GL.Vertex3(x + width, y, 0);
-            GL.Vertex3(x + width, b, 0);
             GL.End();
         }
     }
