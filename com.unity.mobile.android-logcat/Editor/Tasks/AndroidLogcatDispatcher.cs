@@ -162,6 +162,17 @@ namespace Unity.Android.Logcat
                     throw new Exception("Failed to signal auto reset event in dispatcher.");
             }
         }
+
+        internal int AsyncOperationsInQueue
+        {
+            get
+            {
+                lock (m_AsyncTaskQueue)
+                {
+                    return m_AsyncTaskQueue.Count;
+                }
+            }
+        }
     }
 }
 #endif

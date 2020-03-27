@@ -373,7 +373,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_MemoryViewer != null)
+            if (m_MemoryViewer != null && m_LogCat != null && m_LogCat.IsConnected)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
                 {
@@ -530,11 +530,11 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            if (m_StatusBar != null)
-                m_StatusBar.DoGUI();
-
             if (m_MemoryViewer != null)
                 m_MemoryViewer.DoGUI();
+
+            if (m_StatusBar != null)
+                m_StatusBar.DoGUI();
 
             EditorGUILayout.EndVertical();
         }
@@ -575,6 +575,7 @@ namespace Unity.Android.Logcat
                     RemoveMessages(1);
                 Repaint();
             }
+            GUILayout.Label("Async Operations in Queue: " + m_Runtime.Dispatcher.AsyncOperationsInQueue);
             EditorGUILayout.EndHorizontal();
         }
 
@@ -626,7 +627,10 @@ namespace Unity.Android.Logcat
             m_AutoSelectPackage = false;
             m_SelectedPackage = newPackage;
 
-            m_MemoryViewer = new AndroidLogcatMemoryViewer(newPackage.name);
+            if (newPackage == null)
+                m_MemoryViewer = null;
+            else
+                m_MemoryViewer = new AndroidLogcatMemoryViewer(this, newPackage.name);
 
             RestartLogCat();
 
