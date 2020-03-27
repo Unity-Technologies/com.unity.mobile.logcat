@@ -57,6 +57,7 @@ namespace Unity.Android.Logcat
         public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedWidth = ktagToggleFixedWidth, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle tagButtonStyle = new GUIStyle(EditorStyles.miniButton) { fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle removeTextStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = 8, fixedHeight = kTagEntryFixedHeight };
+        public static readonly GUIStyle kSeriesLabel = "ProfilerPaneSubLabel";
 
         public static GUIStyle stacktraceStyle = new GUIStyle("textArea")
         {

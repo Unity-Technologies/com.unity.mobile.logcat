@@ -99,6 +99,7 @@ namespace Unity.Android.Logcat
             public void SetFakeData(int totalMemory)
             {
                 m_AppSummary["total"] = totalMemory;
+                m_AppSummary["native heap"] = totalMemory;
             }
         }
 
@@ -118,7 +119,6 @@ namespace Unity.Android.Logcat
         private Material m_Material;
         private string m_PackageName;
         private Rect m_WindowSize;
-
 
         const int kMaxEntries = 300;
         const int k16MB = 16 * 1024 * 1024;
@@ -142,17 +142,18 @@ namespace Unity.Android.Logcat
             m_RequestsInQueue = 0;
             m_SelectedEntry = -1;
 
-            /*
+            //*
             // For Debugging purposes
-            for (int i = 0; i < kMaxEntries / 2; i++)
+            for (int i = 0; i < kMaxEntries; i++)
             {
-                InjectFakeMemoryStatistics((int)(UnityEngine.Random.value * 100.0f));
+                InjectFakeMemoryStatistics((int)(UnityEngine.Random.value * k16MB * 2.0f));
             }
             //**/
         }
 
         public void QueueMemoryRequest()
         {
+            return;
             // Don't make a memory request, if previous requests haven't finished yet
             // Otherwise async queue will grow bigger and bigger
             const int kMaxRequestsInQueue = 3;
@@ -278,39 +279,6 @@ namespace Unity.Android.Logcat
             } 
         }
 
-        internal void DoGUI()
-        {
-            // GUILayout.Label("Total Memory: " + IntToSizeString(m_UpperMemoryBoundry));
-            // Note: GUILayoutUtility.GetRect must be called for Layout event always
-            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(400));
-
-            if (m_EntryCount == 0)
-                return;
-            var e = Event.current.type;
-
-            SelectStats();
-
-
-            if (e == EventType.Repaint)
-                m_WindowSize = size;
-
-            DoEntriesGUI();
-            DoSelectedStatsGUI();
-        }
-
-        private int AggregateMemorySize(AndroidMemoryStatistics stats, MemoryType[] orderedMemoryTypes, MemoryType type)
-        {
-            int total = 0;
-            for (int i = 0; i < orderedMemoryTypes.Length; i++)
-            {
-                if (orderedMemoryTypes[i] == type)
-                    return total;
-                total += stats.GetValue(orderedMemoryTypes[i]);
-            }
-
-            throw new Exception("Unhandled memory type: " + type);
-        }
-
         private Color GetMemoryColor(MemoryType type)
         {
             switch (type)
@@ -325,6 +293,70 @@ namespace Unity.Android.Logcat
                 default:
                     throw new NotImplementedException(type.ToString());
             }
+        }
+
+        private void DoMemoryToggle(MemoryType type)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(10);
+            Color oldColor = GUI.backgroundColor;
+            GUI.backgroundColor = GetMemoryColor(type);
+            GUILayout.Toggle(true, type.ToString(), AndroidLogcatStyles.kSeriesLabel);
+            GUI.backgroundColor = oldColor;
+
+           // EditorGUILayout.LabelField();
+            GUILayout.EndHorizontal();
+        }
+
+        internal void DoGUI()
+        {
+            GUILayout.BeginHorizontal();
+
+            GUILayout.BeginVertical(GUILayout.Width(130), GUILayout.Height(m_WindowSize.height));
+
+            foreach (var m in (MemoryType[])Enum.GetValues(typeof(MemoryType)))
+            {
+                GUILayout.Space(10);
+                DoMemoryToggle(m);
+            }
+
+            GUILayout.EndVertical();
+            var rc = GUILayoutUtility.GetLastRect();
+            GUI.Box(new Rect(rc.x + 4, rc.y, rc.width - 4, rc.height - 10), GUIContent.none, EditorStyles.helpBox);
+
+            GUILayout.BeginVertical();
+            // GUILayout.Label("Total Memory: " + IntToSizeString(m_UpperMemoryBoundry));
+            // Note: GUILayoutUtility.GetRect must be called for Layout event always
+            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(300));
+
+            if (m_EntryCount == 0)
+                return;
+            var e = Event.current.type;
+
+            SelectStats();
+
+
+            if (e == EventType.Repaint)
+                m_WindowSize = size;
+
+            DoEntriesGUI();
+            DoSelectedStatsGUI();
+            GUILayout.EndVertical();
+
+            GUILayout.EndHorizontal();
+        }
+
+        private int AggregateMemorySize(AndroidMemoryStatistics stats, MemoryType[] orderedMemoryTypes, MemoryType type)
+        {
+            int total = 0;
+            for (int i = 0; i < orderedMemoryTypes.Length; i++)
+            {
+                if (orderedMemoryTypes[i] == type)
+                    return total;
+                total += stats.GetValue(orderedMemoryTypes[i]);
+            }
+
+            throw new Exception("Unhandled memory type: " + type);
         }
 
         internal void DoEntriesGUI()
@@ -356,7 +388,7 @@ namespace Unity.Android.Logcat
             var multiplier = m_WindowSize.height / m_UpperMemoryBoundry;
             var t = m_WindowSize.y;
             var b = m_WindowSize.height + m_WindowSize.y;
-            var xOffset = m_WindowSize.width - (m_EntryCount - 1) * width;
+            var xOffset = m_WindowSize.x + m_WindowSize.width - (m_EntryCount - 1) * width;
 
             foreach (var m in orderedMemoryTypes)
             {
@@ -383,7 +415,7 @@ namespace Unity.Android.Logcat
             if (m_SelectedEntry < 0)
                 return;
             var width = GetEntryWidth();
-            var x = m_WindowSize.width - (m_EntryCount - 1) * width + m_SelectedEntry * width;
+            var x = m_WindowSize.x + m_WindowSize.width - (m_EntryCount - 1) * width + m_SelectedEntry * width;
             var x1 = x - 2;
             var x2 = x + 2;
             var t = m_WindowSize.y;
