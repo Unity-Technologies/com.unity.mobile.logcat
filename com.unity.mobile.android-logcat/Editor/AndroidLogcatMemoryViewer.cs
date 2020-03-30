@@ -84,6 +84,11 @@ namespace Unity.Android.Logcat
                 }
             }
 
+            public void Clear()
+            {
+                m_AppSummary.Clear();
+            }
+
             /// <summary>
             /// Parses contents from command 'adb shell dumpsys meminfo package_name'
             /// </summary>
@@ -91,10 +96,11 @@ namespace Unity.Android.Logcat
             /// <returns></returns>
             public void Parse(string contents)
             {
-                string[] sections = contents.Split(new string[] { "MEMINFO", "App Summary", "Objects", "SQL" }, StringSplitOptions.RemoveEmptyEntries);
-                if (sections.Length != 5)
-                    throw new Exception("Expected 5 sections when parsing memory statistics:\n" + contents);
-                ParseAppSummary(sections[2]);
+                int appSummary = contents.IndexOf("App Summary");
+                if (appSummary == -1)
+                    throw new Exception("Failed to find App Summary:\n" + contents);
+                contents = contents.Substring(appSummary);
+                ParseAppSummary(contents);
             }
 
             public void SetFakeData(int totalMemory)
@@ -289,7 +295,15 @@ namespace Unity.Android.Logcat
                 return;
 
             var stats = AllocateMemoryStatistics();
-            stats.Parse(memoryResult.contents);
+            try
+            {
+                stats.Parse(memoryResult.contents);
+            }
+            catch (Exception ex)
+            {
+                stats.Clear();
+                Debug.LogError(ex.Message);
+            }
             UpdateGeneralStats(stats);
 
             m_Parent.Repaint();
