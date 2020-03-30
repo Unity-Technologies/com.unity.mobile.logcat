@@ -239,6 +239,8 @@ namespace Unity.Android.Logcat
 
             m_Runtime.Settings.OnSettingsChanged += OnSettingsChanged;
 
+            m_MemoryViewer = new AndroidLogcatMemoryViewer(this);
+
             // Can't apply settings here, apparently EditorStyles aren't initialized yet.
             m_ApplySettings = true;
         }
@@ -375,12 +377,12 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_MemoryViewer != null && m_LogCat != null && m_LogCat.IsConnected)
+            if (m_LogCat != null && m_LogCat.IsConnected)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
-                    m_MemoryViewer.QueueMemoryRequest();
+                    m_MemoryViewer.QueueMemoryRequest(m_SelectedPackage);
                 }
             }
         }
@@ -531,8 +533,7 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            if (m_MemoryViewer != null)
-                m_MemoryViewer.DoGUI();
+            m_MemoryViewer.DoGUI();
 
             if (m_StatusBar != null)
                 m_StatusBar.DoGUI();
@@ -634,10 +635,9 @@ namespace Unity.Android.Logcat
             m_AutoSelectPackage = false;
             m_SelectedPackage = newPackage;
 
-            if (newPackage == null)
-                m_MemoryViewer = null;
-            else
-                m_MemoryViewer = new AndroidLogcatMemoryViewer(this, newPackage.name);
+            m_MemoryViewer.ClearEntries();
+            // Need to call this at least once, so we can update expected package name
+            m_MemoryViewer.QueueMemoryRequest(m_SelectedPackage);
 
             RestartLogCat();
 

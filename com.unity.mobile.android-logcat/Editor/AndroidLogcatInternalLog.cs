@@ -53,6 +53,13 @@ namespace Unity.Android.Logcat
 
         public void OnGUI()
         {
+            GUILayout.BeginHorizontal();
+            int count;
+            lock (ms_LogEntries)
+            {
+                count = ms_LogEntries.Length;
+            }
+            GUILayout.Label("Entries: " + count);
             if (GUILayout.Button("Clear"))
             {
                 lock (ms_LogEntries)
@@ -60,6 +67,7 @@ namespace Unity.Android.Logcat
                     ms_LogEntries.Clear();
                 }
             }
+            GUILayout.EndHorizontal();
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
