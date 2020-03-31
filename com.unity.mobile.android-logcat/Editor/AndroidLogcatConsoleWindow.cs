@@ -42,13 +42,6 @@ namespace Unity.Android.Logcat
             TopActivityPackage
         }
 
-        private enum MemoryViewerState
-        {
-            Hidden,
-            Auto,
-            Manual
-        }
-
         [Serializable]
         internal class PackageInformation
         {
@@ -120,7 +113,6 @@ namespace Unity.Android.Logcat
         private bool m_FinishedAutoselectingPackage;
         private bool m_ApplySettings;
 
-        private MemoryViewerState m_MemoryViewerState;
         private AndroidLogcatMemoryViewer m_MemoryViewer;
         private DateTime m_TimeOfLastMemoryRequest;
 
@@ -390,7 +382,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_LogCat != null && m_LogCat.IsConnected)
+            if (m_LogCat != null && m_LogCat.IsConnected && m_MemoryViewer.State == MemoryViewerState.Auto)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
                 {
@@ -494,8 +486,30 @@ namespace Unity.Android.Logcat
                 case 2:
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                     break;
-
+                case 3:
+                    m_MemoryViewer.State = MemoryViewerState.Auto;
+                    break;
+                case 4:
+                    m_MemoryViewer.State = MemoryViewerState.Manual;
+                    break;
+                case 5:
+                    m_MemoryViewer.State = MemoryViewerState.Hidden;
+                    break;
             }
+        }
+
+        private bool MenuToolsItemSelected(int selected)
+        {
+            switch (selected)
+            {
+                case 3:
+                    return m_MemoryViewer.State == MemoryViewerState.Auto;
+                case 4:
+                    return m_MemoryViewer.State == MemoryViewerState.Manual;
+                case 5:
+                    return m_MemoryViewer.State == MemoryViewerState.Hidden;
+            }
+            return false;
         }
 
         private void DoToolsGUI()
@@ -509,10 +523,21 @@ namespace Unity.Android.Logcat
                 {
                     "Capture Screen",
                     "Open Terminal",
-                    "Stacktrace Utility"
+                    "Stacktrace Utility",
+                    "Memory Window/Auto Capture",
+                    "Memory Window/Manual Capture",
+                    "Memory Window/Disabled"
                 }.Select(m => new GUIContent(m)).ToArray();
 
-                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names, -1, MenuToolsSelection, null);
+                int selected = -1;
+                switch (m_MemoryViewer.State)
+                {
+                    case MemoryViewerState.Auto: selected = 3; break;
+                    case MemoryViewerState.Manual: selected = 4; break;
+                    case MemoryViewerState.Hidden: selected = 5; break;
+                }
+
+                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names, selected, MenuToolsSelection, null);
             }
         }
 

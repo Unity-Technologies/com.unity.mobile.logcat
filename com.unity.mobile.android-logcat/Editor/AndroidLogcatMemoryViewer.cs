@@ -11,6 +11,13 @@ using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 namespace Unity.Android.Logcat
 {
+    internal enum MemoryViewerState
+    {
+        Hidden,
+        Auto,
+        Manual
+    }
+
     internal class AndroidLogcatMemoryViewer
     {
         internal enum MemoryType
@@ -83,10 +90,6 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            //TESTS
-            //STOP REQUESTS to MEMORY
-            //    SAVE STATE memory, window height
-            //    CAP INTERNAL LOG
             public void Clear()
             {
                 m_AppSummary.Clear();
@@ -152,6 +155,9 @@ namespace Unity.Android.Logcat
 
         private string m_ExpectedPackageNameFromRequest;
 
+        [SerializeField]
+        private MemoryViewerState m_MemoryViewerState;
+
         public AndroidLogcatMemoryViewer(EditorWindow parent)
         {
             m_Parent = parent;
@@ -173,10 +179,24 @@ namespace Unity.Android.Logcat
 
             m_SplitterStart = 0;
             m_SplitterDragging = false;
+            m_MemoryViewerState = MemoryViewerState.Auto;
 
             ValidateSettings();
 
             ClearEntries();
+        }
+
+        internal MemoryViewerState State
+        {
+            set
+            {
+                m_MemoryViewerState = value;
+            }
+
+            get
+            {
+                return m_MemoryViewerState;
+            }
         }
 
         /// <summary>
@@ -192,7 +212,7 @@ namespace Unity.Android.Logcat
             }
 
             if (m_MemoryWindowHeight < kMinMemoryWindowHeight)
-                m_MemoryWindowHeight = kMinMemoryWindowHeight;
+                m_MemoryWindowHeight = 300.0f;
         }
 
         internal void ClearEntries()
@@ -204,15 +224,15 @@ namespace Unity.Android.Logcat
             m_ExpectedPackageNameFromRequest = string.Empty;
         }
 
-        internal void QueueMemoryRequest(PackageInformation package)
+        private void QueueMemoryRequest(string packageName)
         {
-            if (package == null || string.IsNullOrEmpty(package.name))
+            if (string.IsNullOrEmpty(packageName))
             {
                 m_ExpectedPackageNameFromRequest = string.Empty;
                 return;
             }
 
-            m_ExpectedPackageNameFromRequest = package.name;
+            m_ExpectedPackageNameFromRequest = packageName;
             // Don't make a memory request, if previous requests haven't finished yet
             // Otherwise async queue will grow bigger and bigger
             const int kMaxRequestsInQueue = 3;
@@ -228,6 +248,12 @@ namespace Unity.Android.Logcat
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
                 false);
+        }
+
+        internal void QueueMemoryRequest(PackageInformation package)
+        {
+            var packageName = package == null ? string.Empty : package.name;
+            QueueMemoryRequest(packageName);
         }
 
         private static string IntToSizeString(int value)
@@ -415,6 +441,9 @@ namespace Unity.Android.Logcat
 
         internal void DoGUI()
         {
+            if (m_MemoryViewerState == MemoryViewerState.Hidden)
+                return;
+
             var splitterRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
             DoSplitter(splitterRect);
             GUILayout.BeginHorizontal();
@@ -427,6 +456,13 @@ namespace Unity.Android.Logcat
             }
 
             DoMemoryToggle(MemoryType.Total);
+
+            if (m_MemoryViewerState == MemoryViewerState.Manual)
+            {
+                GUILayout.Space(10);
+                if (GUILayout.Button("Capture", EditorStyles.miniButton))
+                    QueueMemoryRequest(m_ExpectedPackageNameFromRequest);
+            }
 
             GUILayout.EndVertical();
             var rc = GUILayoutUtility.GetLastRect();
@@ -445,6 +481,9 @@ namespace Unity.Android.Logcat
 
             GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height), GUIContent.none, EditorStyles.helpBox);
             GUI.Box(new Rect(size.x, size.y, size.width, size.height), GUIContent.none, EditorStyles.helpBox);
+
+            if (string.IsNullOrEmpty(m_ExpectedPackageNameFromRequest))
+                EditorGUI.HelpBox(size, "Select a package", MessageType.Info);
 
             GUILayout.EndVertical();
 
