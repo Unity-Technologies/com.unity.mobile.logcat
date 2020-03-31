@@ -146,6 +146,7 @@ namespace Unity.Android.Logcat
             m_JsonSerialization.m_SelectedPackage = m_SelectedPackage;
             m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
             m_JsonSerialization.m_TagControl = m_TagControl;
+            m_JsonSerialization.m_MemoryViewerJson = JsonUtility.ToJson(m_MemoryViewer);
 
             // Convert Dictionary to List for serialization.
             var packagesForSerialization = new List<PackageInformation>();
@@ -191,6 +192,9 @@ namespace Unity.Android.Logcat
                 m_JsonSerialization = null;
                 return;
             }
+
+            JsonUtility.FromJsonOverwrite(m_JsonSerialization.m_MemoryViewerJson, m_MemoryViewer);
+            m_MemoryViewer.ValidateSettings();
 
             // We can only restore Priority, TagControl & PackageForSerialization here.
             // For selected device & package, we have to delay it when we first launch the window.

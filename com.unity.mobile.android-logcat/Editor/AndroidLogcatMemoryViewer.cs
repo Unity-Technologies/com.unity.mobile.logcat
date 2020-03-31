@@ -25,7 +25,6 @@ namespace Unity.Android.Logcat
             Total
         }
 
-
         internal class AndroidMemoryStatistics
         {
             private Dictionary<string, int> m_AppSummary = new Dictionary<string, int>();
@@ -132,6 +131,7 @@ namespace Unity.Android.Logcat
 
         const int kMaxEntries = 300;
         const int k16MB = 16 * 1024 * 1024;
+        const float kMinMemoryWindowHeight = 200.0f;
         private AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
         private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
         private int m_CurrentEntry = 0;
@@ -139,6 +139,7 @@ namespace Unity.Android.Logcat
         private int m_UpperMemoryBoundry = 32 * 1024 * 1024;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
+        [SerializeField]
         private float m_MemoryWindowHeight;
 
         private bool m_SplitterDragging;
@@ -146,6 +147,7 @@ namespace Unity.Android.Logcat
         private float m_OldMemoryWindowHeight;
 
         private MemoryType[] m_OrderMemoryTypes = ((MemoryType[])Enum.GetValues(typeof(MemoryType))).Where(m => m != MemoryType.Total).ToArray();
+        [SerializeField]
         private bool[] m_MemoryTypeEnabled;
 
         private string m_ExpectedPackageNameFromRequest;
@@ -169,15 +171,28 @@ namespace Unity.Android.Logcat
             }
             //**/
 
-            m_MemoryWindowHeight = 300;
             m_SplitterStart = 0;
             m_SplitterDragging = false;
 
-            m_MemoryTypeEnabled = new bool[m_OrderMemoryTypes.Length];
-            for (int i = 0; i < m_MemoryTypeEnabled.Length; i++)
-                m_MemoryTypeEnabled[i] = true;
+            ValidateSettings();
 
             ClearEntries();
+        }
+
+        /// <summary>
+        /// Validate serialized settings here
+        /// </summary>
+        internal void ValidateSettings()
+        {
+            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != m_OrderMemoryTypes.Length)
+            {
+                m_MemoryTypeEnabled = new bool[m_OrderMemoryTypes.Length];
+                for (int i = 0; i < m_MemoryTypeEnabled.Length; i++)
+                    m_MemoryTypeEnabled[i] = true;
+            }
+
+            if (m_MemoryWindowHeight < kMinMemoryWindowHeight)
+                m_MemoryWindowHeight = kMinMemoryWindowHeight;
         }
 
         internal void ClearEntries()
@@ -382,7 +397,7 @@ namespace Unity.Android.Logcat
                 case EventType.MouseUp:
                     if (m_SplitterDragging)
                     {
-                        m_MemoryWindowHeight = Math.Max(m_OldMemoryWindowHeight + m_SplitterStart - e.mousePosition.y, 200.0f);
+                        m_MemoryWindowHeight = Math.Max(m_OldMemoryWindowHeight + m_SplitterStart - e.mousePosition.y, kMinMemoryWindowHeight);
 
                         if (e.type == EventType.MouseUp)
                         {
