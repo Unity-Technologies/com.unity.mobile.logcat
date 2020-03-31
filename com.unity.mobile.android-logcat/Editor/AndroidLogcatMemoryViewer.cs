@@ -13,7 +13,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatMemoryViewer
     {
-        enum MemoryType
+        internal enum MemoryType
         {
             NativeHeap,
             JavaHeap,
@@ -26,7 +26,7 @@ namespace Unity.Android.Logcat
         }
 
 
-        class AndroidMemoryStatistics
+        internal class AndroidMemoryStatistics
         {
             private Dictionary<string, int> m_AppSummary = new Dictionary<string, int>();
 
@@ -39,7 +39,7 @@ namespace Unity.Android.Logcat
             public int System { get { return GetValue("system"); } }
             public int Total { get { return GetValue("total"); } }
 
-            public int GetValue(MemoryType type)
+            internal int GetValue(MemoryType type)
             {
                 switch (type)
                 {
@@ -77,13 +77,17 @@ namespace Unity.Android.Logcat
                     var sizeInKBytes = Int32.Parse(match.Groups[2].Value);
                     m_AppSummary[name] = sizeInKBytes * 1024;
                 }
-
+                AndroidJavaClass s;
                 if (!m_AppSummary.TryGetValue("native heap", out dummy))
                 {
                     throw new Exception("Failed to find native heap size in\n" + appSummary);
                 }
             }
 
+            //TESTS
+            //STOP REQUESTS to MEMORY
+            //    SAVE STATE memory, window height
+            //    CAP INTERNAL LOG
             public void Clear()
             {
                 m_AppSummary.Clear();
@@ -455,7 +459,7 @@ namespace Unity.Android.Logcat
             m_Material.SetPass(0);
 
             // Triangle strip
-            // 0  2,4
+            // 0  2
             // | /|
             // |/ |
             // 1  3
@@ -516,7 +520,6 @@ namespace Unity.Android.Logcat
 
             var idx = ResolveEntryIndex(m_SelectedEntry);
             var info = new StringBuilder();
-            info.AppendLine("Total: " + IntToSizeString(m_Entries[idx].Total));
 
             foreach (var m in m_OrderMemoryTypes)
             {
@@ -524,6 +527,8 @@ namespace Unity.Android.Logcat
                     continue;
                 info.AppendLine(m.ToString() + " : " + IntToSizeString(m_Entries[idx].GetValue(m)));
             }
+
+            info.AppendLine("Total: " + IntToSizeString(m_Entries[idx].Total));
 
             const float kInfoWidth = 150;
             var infoX = x + 5;
