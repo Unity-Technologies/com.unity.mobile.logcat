@@ -42,6 +42,13 @@ namespace Unity.Android.Logcat
             TopActivityPackage
         }
 
+        private enum MemoryViewerState
+        {
+            Hidden,
+            Auto,
+            Manual
+        }
+
         [Serializable]
         internal class PackageInformation
         {
@@ -112,6 +119,8 @@ namespace Unity.Android.Logcat
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
         private bool m_ApplySettings;
+
+        private MemoryViewerState m_MemoryViewerState;
         private AndroidLogcatMemoryViewer m_MemoryViewer;
         private DateTime m_TimeOfLastMemoryRequest;
 
@@ -469,6 +478,44 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private void MenuToolsSelection(object userData, string[] options, int selected)
+        {
+            switch (selected)
+            {
+                case 0:
+                    var screenFilePath = AndroidLogcatUtilities.CaptureScreen(GetCachedAdb(), m_SelectedDeviceId);
+                    if (!string.IsNullOrEmpty(screenFilePath))
+                        AndroidLogcatScreenCaptureWindow.Show(screenFilePath);
+                    Repaint();
+                    break;
+                case 1:
+                    AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
+                    break;
+                case 2:
+                    AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
+                    break;
+
+            }
+        }
+
+        private void DoToolsGUI()
+        {
+            GUILayout.Label(new GUIContent("Tools"), AndroidLogcatStyles.toolbarPopupCenter);
+            var rect = GUILayoutUtility.GetLastRect();
+
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
+            {
+                var names = new[]
+                {
+                    "Capture Screen",
+                    "Open Terminal",
+                    "Stacktrace Utility"
+                }.Select(m => new GUIContent(m)).ToArray();
+
+                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names, -1, MenuToolsSelection, null);
+            }
+        }
+
         internal void OnGUI()
         {
             if (m_ApplySettings)
@@ -507,25 +554,7 @@ namespace Unity.Android.Logcat
                     Repaint();
                 }
 
-                GUILayout.Space(kSpace);
-                if (GUILayout.Button(kCaptureScreenText, AndroidLogcatStyles.toolbarButton))
-                {
-                    var screenFilePath = AndroidLogcatUtilities.CaptureScreen(GetCachedAdb(), m_SelectedDeviceId);
-                    if (!string.IsNullOrEmpty(screenFilePath))
-                        AndroidLogcatScreenCaptureWindow.Show(screenFilePath);
-                    Repaint();
-                }
-
-                GUILayout.Space(kSpace);
-                if (GUILayout.Button(kOpenTerminal, AndroidLogcatStyles.toolbarButton))
-                {
-                    AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
-                }
-                GUILayout.Space(kSpace);
-                if (GUILayout.Button(kStacktraceUtility, AndroidLogcatStyles.toolbarButton))
-                {
-                    AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
-                }
+                DoToolsGUI();
             }
             EditorGUILayout.EndHorizontal();
 
