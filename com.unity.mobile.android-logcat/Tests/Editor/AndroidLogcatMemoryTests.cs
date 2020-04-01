@@ -64,8 +64,8 @@ Uptime: 278194816 Realtime: 525880208
                    Pss  Private  Private  SwapPss     Heap     Heap     Heap
                  Total    Dirty    Clean    Dirty     Size    Alloc     Free
                 ------   ------   ------   ------   ------   ------   ------
-  Native Heap      156      156        0      156        0        0        0
-  Dalvik Heap        0        0        0        0        0        0        0
+  Native Heap      156      156        0      156        0        2(6)        0
+  Dalvik Heap        0        0        0        0        0        3(6)       0
         Stack        4        4        0       32
     Other dev        0        0        0        0
      .so mmap       80       60        0      320
@@ -90,32 +90,39 @@ Uptime: 278194816 Realtime: 525880208
     [Test]
     public void CanParseMemoryDumpFromPackage()
     {
-        var stats = new AndroidLogcatMemoryViewer.AndroidMemoryStatistics();
+        var stats = new AndroidMemoryStatistics();
         stats.Parse(kPackageMemoryDump);
 
         const int kKiloBytes = 1024;
 
-        Assert.AreEqual(312674 * kKiloBytes, stats.Total);
-        Assert.AreEqual(169230 * kKiloBytes, stats.System);
-        Assert.AreEqual(43210 * kKiloBytes, stats.NativeHeap);
-        Assert.AreEqual(107884 * kKiloBytes, stats.Graphics);
-        Assert.AreEqual(36 * kKiloBytes, stats.Stack);
-        Assert.AreEqual(1234 * kKiloBytes, stats.JavaHeap);
+        Assert.AreEqual(312674 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Total));
+        Assert.AreEqual(169230 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.System));
+        Assert.AreEqual(43210 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.NativeHeap));
+        Assert.AreEqual(107884 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Graphics));
+        Assert.AreEqual(36 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Stack));
+        Assert.AreEqual(1234 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.JavaHeap));
+
+        Assert.AreEqual(157805 * kKiloBytes, stats.GetValue(MemoryGroup.HeapAlloc, MemoryType.NativeHeap));
+        Assert.AreEqual(1184 * kKiloBytes, stats.GetValue(MemoryGroup.HeapAlloc, MemoryType.JavaHeap));
     }
 
     [Test]
     public void CanParseMemoryDumpFromProcess()
     {
-        var stats = new AndroidLogcatMemoryViewer.AndroidMemoryStatistics();
+        var stats = new AndroidMemoryStatistics();
         stats.Parse(kSystemProcessDump);
 
         const int kKiloBytes = 1024;
 
-        Assert.AreEqual(1383 * kKiloBytes, stats.Total);
-        Assert.AreEqual(903 * kKiloBytes, stats.System);
-        Assert.AreEqual(156 * kKiloBytes, stats.NativeHeap);
-        Assert.AreEqual(2 * kKiloBytes, stats.Graphics);
-        Assert.AreEqual(4 * kKiloBytes, stats.Stack);
-        Assert.AreEqual(1 * kKiloBytes, stats.JavaHeap);
+        Assert.AreEqual(1383 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Total));
+        Assert.AreEqual(903 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.System));
+        Assert.AreEqual(156 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.NativeHeap));
+        Assert.AreEqual(2 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Graphics));
+        Assert.AreEqual(4 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.Stack));
+        Assert.AreEqual(1 * kKiloBytes, stats.GetValue(MemoryGroup.ProportionalSetSize, MemoryType.JavaHeap));
+
+        Assert.AreEqual(2 * kKiloBytes, stats.GetValue(MemoryGroup.HeapAlloc, MemoryType.NativeHeap));
+        Assert.AreEqual(3 * kKiloBytes, stats.GetValue(MemoryGroup.HeapAlloc, MemoryType.JavaHeap));
+        Assert.AreEqual(5 * kKiloBytes, stats.GetValue(MemoryGroup.HeapAlloc, MemoryType.Total));
     }
 }

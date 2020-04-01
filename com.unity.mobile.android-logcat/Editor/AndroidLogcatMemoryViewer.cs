@@ -20,102 +20,6 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatMemoryViewer
     {
-        internal enum MemoryType
-        {
-            NativeHeap,
-            JavaHeap,
-            Code,
-            Stack,
-            Graphics,
-            PrivateOther,
-            System,
-            Total
-        }
-
-        internal class AndroidMemoryStatistics
-        {
-            private Dictionary<string, int> m_AppSummary = new Dictionary<string, int>();
-
-            public int NativeHeap { get { return GetValue("native heap"); } }
-            public int JavaHeap { get { return GetValue("java heap"); } }
-            public int Code { get { return GetValue("code"); } }
-            public int Stack { get { return GetValue("stack"); } }
-            public int Graphics { get { return GetValue("graphics"); } }
-            public int PrivateOther { get { return GetValue("private other"); } }
-            public int System { get { return GetValue("system"); } }
-            public int Total { get { return GetValue("total"); } }
-
-            internal int GetValue(MemoryType type)
-            {
-                switch (type)
-                {
-                    case MemoryType.NativeHeap: return NativeHeap;
-                    case MemoryType.JavaHeap: return JavaHeap;
-                    case MemoryType.Code: return Code;
-                    case MemoryType.Stack: return Stack;
-                    case MemoryType.Graphics: return Graphics;
-                    case MemoryType.PrivateOther: return PrivateOther;
-                    case MemoryType.System: return System;
-                    case MemoryType.Total: return Total;
-                    default:
-                        throw new NotImplementedException(type.ToString());
-                }
-            }
-
-            private int GetValue(string key)
-            {
-                int value;
-                if (m_AppSummary.TryGetValue(key, out value))
-                    return value;
-                return 0;
-            }
-
-            void ParseAppSummary(string appSummary)
-            {
-                string pattern = @"([\w\s]+):\s+(\d+)";
-
-                Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-                MatchCollection matches = r.Matches(appSummary);
-                int dummy;
-                foreach (Match match in matches)
-                {
-                    var name = match.Groups[1].Value.Trim().ToLower();
-                    var sizeInKBytes = Int32.Parse(match.Groups[2].Value);
-                    m_AppSummary[name] = sizeInKBytes * 1024;
-                }
-                AndroidJavaClass s;
-                if (!m_AppSummary.TryGetValue("native heap", out dummy))
-                {
-                    throw new Exception("Failed to find native heap size in\n" + appSummary);
-                }
-            }
-
-            public void Clear()
-            {
-                m_AppSummary.Clear();
-            }
-
-            /// <summary>
-            /// Parses contents from command 'adb shell dumpsys meminfo package_name'
-            /// </summary>
-            /// <param name="contents"></param>
-            /// <returns></returns>
-            public void Parse(string contents)
-            {
-                int appSummary = contents.IndexOf("App Summary");
-                if (appSummary == -1)
-                    throw new Exception("Failed to find App Summary:\n" + contents);
-                contents = contents.Substring(appSummary);
-                ParseAppSummary(contents);
-            }
-
-            public void SetFakeData(int totalMemory)
-            {
-                m_AppSummary["total"] = totalMemory;
-                m_AppSummary["native heap"] = totalMemory;
-            }
-        }
-
         class AndroidLogcatQueryMemoryInput : IAndroidLogcatTaskInput
         {
             internal ADB adb;
@@ -149,14 +53,37 @@ namespace Unity.Android.Logcat
         private float m_SplitterStart;
         private float m_OldMemoryWindowHeight;
 
-        private MemoryType[] m_OrderMemoryTypes = ((MemoryType[])Enum.GetValues(typeof(MemoryType))).Where(m => m != MemoryType.Total).ToArray();
+        private MemoryType[] m_OrderMemoryTypesPSS = new[]
+        {
+            MemoryType.NativeHeap,
+            MemoryType.JavaHeap,
+            MemoryType.Code,
+            MemoryType.Stack,
+            MemoryType.Graphics,
+            MemoryType.PrivateOther,
+            MemoryType.System
+        };
+
+        private MemoryType[] m_OrderMemoryTypesHeap = new[]
+        {
+            MemoryType.NativeHeap,
+            MemoryType.JavaHeap,
+        };
+
         [SerializeField]
         private bool[] m_MemoryTypeEnabled;
+
+        private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
         private string m_ExpectedPackageNameFromRequest;
 
         [SerializeField]
         private MemoryViewerState m_MemoryViewerState;
+
+        private MemoryType[] GetOrderMemoryTypes()
+        {
+            return m_MemoryGroup == MemoryGroup.HeapAlloc ? m_OrderMemoryTypesHeap : m_OrderMemoryTypesPSS;
+        }
 
         public AndroidLogcatMemoryViewer(EditorWindow parent)
         {
@@ -204,9 +131,10 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void ValidateSettings()
         {
-            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != m_OrderMemoryTypes.Length)
+            // TODO
+            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != GetOrderMemoryTypes().Length)
             {
-                m_MemoryTypeEnabled = new bool[m_OrderMemoryTypes.Length];
+                m_MemoryTypeEnabled = new bool[GetOrderMemoryTypes().Length];
                 for (int i = 0; i < m_MemoryTypeEnabled.Length; i++)
                     m_MemoryTypeEnabled[i] = true;
             }
@@ -311,7 +239,7 @@ namespace Unity.Android.Logcat
 
         private void UpdateGeneralStats(AndroidMemoryStatistics lastMemoryStatistics)
         {
-            var totalMemory = lastMemoryStatistics.Total;
+            var totalMemory = lastMemoryStatistics.GetValue(m_MemoryGroup, MemoryType.Total);
 
             // 1.1f ensures that there's a small gap between graph an upper windows boundry
             while (totalMemory * 1.1f > m_UpperMemoryBoundry)
@@ -321,7 +249,7 @@ namespace Unity.Android.Logcat
         private void InjectFakeMemoryStatistics(int totalMemory)
         {
             var stats = AllocateMemoryStatistics();
-            stats.SetFakeData(totalMemory);
+            stats.SetPSSFakeData(totalMemory, totalMemory);
             UpdateGeneralStats(stats);
         }
 
@@ -387,7 +315,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.Space(10);
             Color oldColor = GUI.backgroundColor;
-            var name = String.Format("{0} ({1})", type, IntToSizeString(m_LastAllocatedEntry.GetValue(type)));
+            var name = String.Format("{0} ({1})", type, IntToSizeString(m_LastAllocatedEntry.GetValue(m_MemoryGroup, type)));
             if (type == MemoryType.Total)
             {
                 GUI.backgroundColor = Color.white;
@@ -450,7 +378,7 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginVertical(GUILayout.Width(170), GUILayout.Height(m_MemoryWindowHeight));
 
-            foreach (var m in m_OrderMemoryTypes)
+            foreach (var m in GetOrderMemoryTypes())
             {
                 DoMemoryToggle(m);
             }
@@ -493,13 +421,14 @@ namespace Unity.Android.Logcat
         private int AggregateMemorySize(AndroidMemoryStatistics stats, MemoryType type)
         {
             int total = 0;
-            for (int i = m_OrderMemoryTypes.Length - 1; i >= 0; i--)
+            MemoryType[] types = GetOrderMemoryTypes();
+            for (int i = types.Length - 1; i >= 0; i--)
             {
-                if (m_OrderMemoryTypes[i] == type)
+                if (types[i] == type)
                     return total;
                 if (!m_MemoryTypeEnabled[i])
                     continue;
-                total += stats.GetValue(m_OrderMemoryTypes[i]);
+                total += stats.GetValue(m_MemoryGroup, types[i]);
             }
 
             throw new Exception("Unhandled memory type: " + type);
@@ -523,7 +452,7 @@ namespace Unity.Android.Logcat
             var b = windowSize.height + windowSize.y;
             var xOffset = windowSize.x + windowSize.width - (m_EntryCount - 1) * width;
 
-            foreach (var m in m_OrderMemoryTypes)
+            foreach (var m in GetOrderMemoryTypes())
             {
                 if (!m_MemoryTypeEnabled[(int)m])
                     continue;
@@ -534,7 +463,7 @@ namespace Unity.Android.Logcat
                 {
                     var idx = ResolveEntryIndex(i);
                     var agr = AggregateMemorySize(m_Entries[idx], m);
-                    var val = m_Entries[idx].GetValue(m);
+                    var val = m_Entries[idx].GetValue(m_MemoryGroup, m);
                     var x = xOffset + i * width;
                     var y1 = b - multiplier * (val + agr);
                     var y2 = b - multiplier * agr;
@@ -575,14 +504,14 @@ namespace Unity.Android.Logcat
             var idx = ResolveEntryIndex(m_SelectedEntry);
             var info = new StringBuilder();
 
-            foreach (var m in m_OrderMemoryTypes)
+            foreach (var m in GetOrderMemoryTypes())
             {
                 if (!m_MemoryTypeEnabled[(int)m])
                     continue;
-                info.AppendLine(m.ToString() + " : " + IntToSizeString(m_Entries[idx].GetValue(m)));
+                info.AppendLine(m.ToString() + " : " + IntToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, m)));
             }
 
-            info.AppendLine("Total: " + IntToSizeString(m_Entries[idx].Total));
+            info.AppendLine("Total: " + IntToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, MemoryType.Total)));
 
             const float kInfoWidth = 150;
             var infoX = x + 5;
