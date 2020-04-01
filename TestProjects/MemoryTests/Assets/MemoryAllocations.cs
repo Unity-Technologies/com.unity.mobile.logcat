@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -28,7 +28,6 @@ public class MemoryAllocations : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
     }
 
     private void OnDisable()
