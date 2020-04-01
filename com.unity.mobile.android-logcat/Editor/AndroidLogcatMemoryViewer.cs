@@ -241,11 +241,15 @@ namespace Unity.Android.Logcat
 
         private void UpdateGeneralStats(AndroidMemoryStatistics lastMemoryStatistics)
         {
-            var totalMemory = lastMemoryStatistics.GetValue(m_MemoryGroup, MemoryType.Total);
+            // Set the upper boundry depending on total memory from all groups
+            foreach (var m in (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup)))
+            {
+                var totalMemory = lastMemoryStatistics.GetValue(m, MemoryType.Total);
 
-            // 1.1f ensures that there's a small gap between graph an upper windows boundry
-            while (totalMemory * 1.1f > m_UpperMemoryBoundry)
-                m_UpperMemoryBoundry += k16MB;
+                // 1.1f ensures that there's a small gap between graph an upper windows boundry
+                while (totalMemory * 1.1f > m_UpperMemoryBoundry)
+                    m_UpperMemoryBoundry += k16MB;
+            }
         }
 
         private void InjectFakeMemoryStatistics(int totalMemory)
