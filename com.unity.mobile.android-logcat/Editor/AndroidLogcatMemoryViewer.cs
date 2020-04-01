@@ -73,6 +73,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private bool[] m_MemoryTypeEnabled;
 
+        [SerializeField]
         private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
         private string m_ExpectedPackageNameFromRequest;
@@ -131,10 +132,11 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void ValidateSettings()
         {
-            // TODO
-            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != GetOrderMemoryTypes().Length)
+            var allMemoryTypes = (MemoryType[])Enum.GetValues(typeof(MemoryType));
+
+            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != allMemoryTypes.Length)
             {
-                m_MemoryTypeEnabled = new bool[GetOrderMemoryTypes().Length];
+                m_MemoryTypeEnabled = new bool[allMemoryTypes.Length];
                 for (int i = 0; i < m_MemoryTypeEnabled.Length; i++)
                     m_MemoryTypeEnabled[i] = true;
             }
@@ -378,6 +380,12 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginVertical(GUILayout.Width(170), GUILayout.Height(m_MemoryWindowHeight));
 
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Group:");
+            m_MemoryGroup = (MemoryGroup)EditorGUILayout.EnumPopup(m_MemoryGroup);
+            GUILayout.EndHorizontal();
+
             foreach (var m in GetOrderMemoryTypes())
             {
                 DoMemoryToggle(m);
@@ -504,11 +512,13 @@ namespace Unity.Android.Logcat
             var idx = ResolveEntryIndex(m_SelectedEntry);
             var info = new StringBuilder();
 
+            int enabledCount = 0;
             foreach (var m in GetOrderMemoryTypes())
             {
                 if (!m_MemoryTypeEnabled[(int)m])
                     continue;
                 info.AppendLine(m.ToString() + " : " + IntToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, m)));
+                enabledCount++;
             }
 
             info.AppendLine("Total: " + IntToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, MemoryType.Total)));
@@ -517,7 +527,7 @@ namespace Unity.Android.Logcat
             var infoX = x + 5;
             if (infoX + kInfoWidth > windowSize.x + windowSize.width)
                 infoX -= kInfoWidth + 10;
-            var rc = new Rect(infoX, t + 10, kInfoWidth, 150);
+            var rc = new Rect(infoX, t + 10, kInfoWidth, 19 * enabledCount + 30);
             GUI.Box(rc, GUIContent.none, GUI.skin.window);
             GUI.Label(rc, info.ToString());
         }
