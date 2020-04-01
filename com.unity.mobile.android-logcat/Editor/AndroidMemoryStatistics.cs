@@ -18,7 +18,8 @@ namespace Unity.Android.Logcat
     internal enum MemoryGroup
     {
         ProportionalSetSize,
-        HeapAlloc
+        HeapAlloc,
+        HeapSize
     }
 
     internal enum MemoryType
@@ -126,31 +127,35 @@ namespace Unity.Android.Logcat
             return index == -1 ? value : value.Substring(0, index);
         }
 
-        internal void ParseHeapAlloc(string heapAlloc)
+        internal void ParseHeapInformation(string heapInformation)
         {
-            var postFix = @"\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(?<allocSize>\S+)\s+\S+";
+            var postFix = @"\s+\S+\s+\S+\s+\S+\s+\S+\s+(?<heapSize>\S+)\s+(?<heapAlloc>\S+)\s+\S+";
 
             Regex native = new Regex("Native Heap" + postFix, RegexOptions.IgnoreCase);
             Regex java = new Regex("Dalvik Heap" + postFix, RegexOptions.IgnoreCase);
 
-            int total = 0;
-            var nativeMatch = native.Match(heapAlloc);
-            if (nativeMatch.Success)
+            var regexes = new[] { native, java };
+            var types = new[] { MemoryType.NativeHeap, MemoryType.JavaHeap };
+
+            var totalHeapAlloc = 0;
+            var totalHeapSize = 0;
+            for (int i = 0; i < regexes.Length; i++)
             {
-                var value = int.Parse(FixNumberValue(nativeMatch.Groups["allocSize"].Value)) * 1024;
-                SetValue(MemoryGroup.HeapAlloc, MemoryType.NativeHeap, value);
-                total += value;
+                var match = regexes[i].Match(heapInformation);
+                if (match.Success)
+                {
+                    var value = int.Parse(FixNumberValue(match.Groups["heapAlloc"].Value)) * 1024;
+                    SetValue(MemoryGroup.HeapAlloc, types[i], value);
+                    totalHeapAlloc += value;
+
+                    value = int.Parse(FixNumberValue(match.Groups["heapSize"].Value)) * 1024;
+                    SetValue(MemoryGroup.HeapSize, types[i], value);
+                    totalHeapSize += value;
+                }
             }
 
-            var javaMatch = java.Match(heapAlloc);
-            if (javaMatch.Success)
-            {
-                var value = int.Parse(FixNumberValue(javaMatch.Groups["allocSize"].Value)) * 1024;
-                SetValue(MemoryGroup.HeapAlloc, MemoryType.JavaHeap, value);
-                total += value;
-            }
-
-            SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, total);
+            SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, totalHeapAlloc);
+            SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, totalHeapSize);
         }
 
         internal int GetValue(MemoryGroup group, MemoryType type)
@@ -176,7 +181,7 @@ namespace Unity.Android.Logcat
             int appSummary = contents.IndexOf("App Summary");
             if (appSummary == -1)
                 throw new Exception("Failed to find App Summary:\n" + contents);
-            ParseHeapAlloc(contents.Substring(0, appSummary));
+            ParseHeapInformation(contents.Substring(0, appSummary));
             ParseAppSummary(contents.Substring(appSummary));
         }
 

@@ -83,7 +83,7 @@ namespace Unity.Android.Logcat
 
         private MemoryType[] GetOrderMemoryTypes()
         {
-            return m_MemoryGroup == MemoryGroup.HeapAlloc ? m_OrderMemoryTypesHeap : m_OrderMemoryTypesPSS;
+            return m_MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
         }
 
         public AndroidLogcatMemoryViewer(EditorWindow parent)
