@@ -1,5 +1,3 @@
-# **_Android Logcat Guide_**
-
 ## **Overview**
 
 Android Logcat Package is a utility for displaying log messages coming from Android device in Unity Editor. Read more about [Android Logcat Document](https://developer.android.com/studio/command-line/logcat).
@@ -30,44 +28,10 @@ Android Logcat Package is a utility for displaying log messages coming from Andr
 - Screen capture
 - Stacktrace resolving
 
-## **Installing Android Logcat** 
-To install Android Logcat package, follow the instructions in the [Package Manager documentation](https://docs.unity3d.com/Packages/com.unity.package-manager-ui@latest/index.html). 
-
-You can access Android Logcat window in Unity Editor via
-- Menu: **Window \> Analysis \> Android Logcat**
-- Shortcut: **Alt+6** on Windows, **Option+6** on macOS.
-
-![Android Logcat Window](images/android_logcat_window.png)
-
 ## **Using Android Logcat**
 
 The toolbar is on the top of the window. Most Android Logcat controls can be found here.  
 ![Toolbar](images/android_logcat_toolbar.png)
-
-### Device Connection
-Connecting devices through USB and Wifi are both supported.
-
-**Connect via USB**  
-The devices connected through USB will be added to the device list automatically when starting Android logcat window. 
-
-**Connect via Wifi**  
-Before connecting, please follow the instructions in the [Android ADB Document](https://developer.android.com/studio/command-line/adb#wireless) to switch your device to TCP mode. 
-
-Go to the devices list and click **\<Enter IP>** as below.  
-![Connect via Wifi](images/connect_via_wifi.png)
-
-And a window to enter an ip address will be popped up as below.  
-![Enter IP](images/enter_ip_window.png)
-
-**Device Selection**  
-The device list contains all the connnected devices, but you can only select one device at a time from the list.
-
-### Package Selection
-The package selection list contains:
-- Package of the top activity which is currently running on the selected device.
-- Package from the player settings if it's running on the selected device (Doesn't have to be the the top running activity).
-
-You can only select one package at a time, only the log messages come from the selected package will be shown in the logcat console window. Alternatively you can select **No Filter**, messages coming from all package will be shown.
 
 ### Log Controls
 
