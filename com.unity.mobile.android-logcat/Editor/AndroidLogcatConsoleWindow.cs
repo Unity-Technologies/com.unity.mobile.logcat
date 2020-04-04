@@ -64,6 +64,14 @@ namespace Unity.Android.Logcat
                 processId = 0;
                 exited = false;
             }
+
+            public void SetExited()
+            {
+                if (exited)
+                    return;
+                exited = true;
+                displayName += " [Exited]";
+            }
         }
 
         private PackageInformation m_SelectedPackage = null;
@@ -883,8 +891,7 @@ namespace Unity.Android.Logcat
 
                 if (GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
                 {
-                    package.exited = true;
-                    package.displayName += " [Exited]";
+                    package.SetExited();
                 }
             }
         }

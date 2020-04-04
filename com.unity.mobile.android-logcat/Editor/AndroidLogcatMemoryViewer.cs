@@ -23,11 +23,13 @@ namespace Unity.Android.Logcat
         class AndroidLogcatQueryMemoryInput : IAndroidLogcatTaskInput
         {
             internal ADB adb;
+            internal int packageProcessId;
             internal string packageName;
         }
 
         class AndroidLogcatQueryMemoryResult : IAndroidLogcatTaskResult
         {
+            internal int packageProcessId;
             internal string packageName;
             internal string contents;
         }
@@ -76,7 +78,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
-        private string m_ExpectedPackageNameFromRequest;
+        private PackageInformation m_ExpectedPackageFromRequest;
 
         [SerializeField]
         private MemoryViewerState m_MemoryViewerState;
@@ -151,18 +153,14 @@ namespace Unity.Android.Logcat
             m_EntryCount = 0;
             m_CurrentEntry = 0;
             m_UpperMemoryBoundry = 32 * 1024 * 1024;
-            m_ExpectedPackageNameFromRequest = string.Empty;
+            m_ExpectedPackageFromRequest = null;
         }
 
-        private void QueueMemoryRequest(string packageName)
+        internal void QueueMemoryRequest(PackageInformation package)
         {
-            if (string.IsNullOrEmpty(packageName))
-            {
-                m_ExpectedPackageNameFromRequest = string.Empty;
+            m_ExpectedPackageFromRequest = package;
+            if (m_ExpectedPackageFromRequest == null || m_ExpectedPackageFromRequest.exited)
                 return;
-            }
-
-            m_ExpectedPackageNameFromRequest = packageName;
             // Don't make a memory request, if previous requests haven't finished yet
             // Otherwise async queue will grow bigger and bigger
             const int kMaxRequestsInQueue = 3;
@@ -173,17 +171,12 @@ namespace Unity.Android.Logcat
                 new AndroidLogcatQueryMemoryInput()
                 {
                     adb = ADB.GetInstance(),
-                    packageName = m_ExpectedPackageNameFromRequest
+                    packageProcessId = m_ExpectedPackageFromRequest.processId,
+                    packageName = m_ExpectedPackageFromRequest.name
                 },
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
-                false);
-        }
-
-        internal void QueueMemoryRequest(PackageInformation package)
-        {
-            var packageName = package == null ? string.Empty : package.name;
-            QueueMemoryRequest(packageName);
+                false);;
         }
 
         private static string IntToSizeString(int value)
@@ -221,6 +214,7 @@ namespace Unity.Android.Logcat
             var outputMsg = adb.Run(new[] { cmd }, "Failed to query memory for " + workInput.packageName);
             var result = new AndroidLogcatQueryMemoryResult();
             result.packageName = workInput.packageName;
+            result.packageProcessId = workInput.packageProcessId;
             result.contents = outputMsg;
             //AndroidLogcatInternalLog.Log(outputMsg);
 
@@ -268,10 +262,21 @@ namespace Unity.Android.Logcat
                 throw new Exception("Receiving more memory results than requested ?");
             }
             var memoryResult = (AndroidLogcatQueryMemoryResult)result;
+
             // When selecting a new package, there might be still few requests for other packages running on other threads
             // Ignore those
-            if (!memoryResult.packageName.Equals(m_ExpectedPackageNameFromRequest))
+            if (m_ExpectedPackageFromRequest == null)
                 return;
+
+            if (memoryResult.packageProcessId != m_ExpectedPackageFromRequest.processId)
+                return;
+
+            if (memoryResult.contents.Contains("No process found for:"))
+            {
+                m_ExpectedPackageFromRequest.SetExited();
+                m_Parent.Repaint();
+                return;
+            }
 
             var stats = AllocateMemoryStatistics();
             try
@@ -401,7 +406,7 @@ namespace Unity.Android.Logcat
             {
                 GUILayout.Space(10);
                 if (GUILayout.Button("Capture", EditorStyles.miniButton))
-                    QueueMemoryRequest(m_ExpectedPackageNameFromRequest);
+                    QueueMemoryRequest(m_ExpectedPackageFromRequest);
             }
 
             GUILayout.EndVertical();
@@ -422,7 +427,7 @@ namespace Unity.Android.Logcat
             GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height), GUIContent.none, EditorStyles.helpBox);
             GUI.Box(new Rect(size.x, size.y, size.width, size.height), GUIContent.none, EditorStyles.helpBox);
 
-            if (string.IsNullOrEmpty(m_ExpectedPackageNameFromRequest))
+            if (m_ExpectedPackageFromRequest == null)
                 EditorGUI.HelpBox(size, "Select a package", MessageType.Info);
 
             GUILayout.EndVertical();
