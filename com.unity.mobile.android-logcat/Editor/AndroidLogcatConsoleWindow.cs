@@ -143,11 +143,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void OnDestroy()
-        {
-            SaveStates();
-        }
-
         internal void SaveStates()
         {
             m_JsonSerialization = new AndroidLogcatJsonSerialization();
@@ -256,10 +251,14 @@ namespace Unity.Android.Logcat
 
             // Can't apply settings here, apparently EditorStyles aren't initialized yet.
             m_ApplySettings = true;
+
+            LoadStates();
         }
 
         private void OnDisable()
         {
+            SaveStates();
+
             if (m_Runtime.Settings != null)
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
 
@@ -1073,7 +1072,6 @@ namespace Unity.Android.Logcat
             wnd.titleContent = new GUIContent("Android Logcat");
 #if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
-            wnd.LoadStates();
 #endif
             wnd.Show();
             wnd.Focus();
