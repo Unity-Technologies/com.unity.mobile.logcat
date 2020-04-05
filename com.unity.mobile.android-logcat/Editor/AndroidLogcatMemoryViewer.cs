@@ -159,7 +159,7 @@ namespace Unity.Android.Logcat
         internal void QueueMemoryRequest(PackageInformation package)
         {
             m_ExpectedPackageFromRequest = package;
-            if (m_ExpectedPackageFromRequest == null || m_ExpectedPackageFromRequest.exited)
+            if (m_ExpectedPackageFromRequest == null || m_ExpectedPackageFromRequest.exited || m_ExpectedPackageFromRequest.processId == 0)
                 return;
             // Don't make a memory request, if previous requests haven't finished yet
             // Otherwise async queue will grow bigger and bigger
