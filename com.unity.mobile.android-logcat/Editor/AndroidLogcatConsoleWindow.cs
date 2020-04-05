@@ -72,6 +72,11 @@ namespace Unity.Android.Logcat
                 exited = true;
                 displayName += " [Exited]";
             }
+
+            public bool IsAlive()
+            {
+                return !exited && processId != 0;
+            }
         }
 
         private PackageInformation m_SelectedPackage = null;
