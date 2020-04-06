@@ -8,7 +8,7 @@ Quick Steps:
     - **2019-05-17 12:00:58.823 30759-30803/? E/CRASH: Build type 'Release', Scripting Backend 'mono', CPU 'armeabi-v7a'"**
   - The build will be **Release/mono/armeabi-v7a**
   - The symbol path will be **Unity_Version/Editor/Data/PlaybackEngines/AndroidPlayer/Variations/mono/Release/Symbols/armeabi-v7a**
-- (Optional)Adjust address resolving regex, the default regex is set to resolve addresses from following line:
+- (Optional) Adjust the address resolving regex - the default regex is set to resolve addresses from the following line:
   - **#00  pc 002983fc  /data/app/air.com.games2win.internationalfashionstylist-K3NlW-1enTfyTaSF59VaHA==/lib/arm/libunity.so**
   - You should adjust the regex if your addresses are printed in a different format
 - Click Resolve Stacktraces

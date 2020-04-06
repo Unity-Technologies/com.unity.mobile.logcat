@@ -15,9 +15,9 @@ Go to the devices list and click **\<Enter IP>**.
 
 Window to enter an ip address will open.
 
-If you want to manually enter device IP, please follow the instructions in the [Android ADB Document](https://developer.android.com/studio/command-line/adb#wireless) to switch your device to TCP mode first.
+If you want to manually enter the device IP, please follow the instructions in the [Android ADB Document](https://developer.android.com/studio/command-line/adb#wireless) to switch your device to TCP mode first.
 
-If the device you want to connect through Wifi, is already connected through USB, you can simply click **Connect** .
+If the device you want to connect through Wifi is already connected through USB you can simply click **Connect** .
 
 ![Enter IP](images/enter_ip_window.png)
 

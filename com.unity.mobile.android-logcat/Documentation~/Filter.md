@@ -3,7 +3,7 @@
   You can right click on the **Priority** column to select or deselect priorities. Priorities are predefined according to the [Android Logcat Document](https://developer.android.com/studio/command-line/logcat#filteringOutput).
 
 - By Tag  
-  Right click on the **Tag** column to select or deselect tags. You can also add or remove a tag by following steps:
+  Right click on the **Tag** column to select or deselect tags. You can also add or remove a tag by following these steps:
   	1. Find a message with the tag you want to add.
 	2. Right click on the message and select **Add Tag** or **Remove Tag**.  
 	![Tag Control](images/tag_control.png)

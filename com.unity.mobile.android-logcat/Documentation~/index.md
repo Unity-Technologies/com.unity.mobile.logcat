@@ -1,6 +1,6 @@
 ## **Overview**
 
-Android Logcat Package is a utility for displaying log messages coming from Android device in Unity Editor. Read more about [Android Logcat Document](https://developer.android.com/studio/command-line/logcat).
+Android Logcat Package is a utility for displaying log messages coming from an Android device in the Unity Editor. Read more about [Android Logcat Document](https://developer.android.com/studio/command-line/logcat).
 
 **Requirements**
 - Compatible with Unity 2019.1 or above.
@@ -37,13 +37,13 @@ The toolbar is on the top of the window. Most Android Logcat controls can be fou
 When **Auto Run** is toggled, Android Logcat window will be launched automatically if you do **Build And Run** in **Build Settings** window.
 
 ### Stacktrace Resolving
-One benefit of using Android Logcat package is automatic stacktrace resolving. The **addr2line** tool in Android NDK is used to convert the addresses in the crash logs to the file names and line numbers. Below is an example of what's added to log.
+One benefit of using Android Logcat package is automatic stacktrace resolving. The **addr2line** tool in Android NDK is used to convert the addresses in the crash logs to the file names and line numbers. Below is an example of what's added to the log.
 
 **_The original log from Android logcat_**
 
 	E CRASH   :      #01  pc 01c65330  /data/app/com.CrashComp.Crash-J2Z_L0XSsSAZPkt9lab2rQ==/lib/arm/libunity.so(DiagnosticsUtils_Bindings::ForceCrash(DiagnosticsUtils_Bindings::ForcedCrashCategory, ScriptingExceptionPtr*)+48)
 
-**_The log shown in Android Logcat window in Unity Editor_**
+**_The log shown in Android Logcat window in the Unity Editor_**
 
 	Error CRASH: 	#01  pc 01c65330  /data/app/com.CrashComp.Crash-J2Z_L0XSsSAZPkt9lab2rQ==/lib/arm/libunity.so DiagnosticsUtils_Bindings::ForceCrash(DiagnosticsUtils_Bindings::ForcedCrashCategory, ScriptingExceptionPtr*) at ../Runtime/Export/Diagnostics/DiagnosticsUtils.bindings.cpp:25
 

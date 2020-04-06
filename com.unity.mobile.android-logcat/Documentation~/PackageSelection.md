@@ -5,4 +5,4 @@ The package selection list contains:
 
 You can only select one package at a time, only the log messages coming from the selected package will be shown in the logcat console window. 
 
-Alternatively you can select **No Filter**, messages coming from all package will be shown.
+Alternatively you can select **No Filter** - messages coming from all package will be shown.
