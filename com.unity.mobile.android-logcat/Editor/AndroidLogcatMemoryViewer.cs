@@ -40,7 +40,7 @@ namespace Unity.Android.Logcat
 
         const int kMaxEntries = 300;
         const int k16MB = 16 * 1024 * 1024;
-        const float kMinMemoryWindowHeight = 200.0f;
+        const float kMinMemoryWindowHeight = 225.0f;
         private AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
         private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
         private int m_CurrentEntry = 0;
