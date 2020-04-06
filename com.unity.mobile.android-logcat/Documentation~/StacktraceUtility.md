@@ -1,5 +1,5 @@
 ### Stacktrace Utility
-Allows you to copy paste custom log and resolve stacktrace.
+Allows you to copy and paste custom log and resolve stacktrace.
 
 Quick Steps:
 - Copy paste a crash log from the application logcat.
@@ -15,4 +15,4 @@ Quick Steps:
 
 ![Device Screen Capture](images/stacktraceUtility.png)
 
-**Note: If you provide invalid symbol path, the function names will still be resolved, but they will not be correct. Android tools don't validate if specific address belongs to specific symbol file.**
+**Note: If you provide an invalid symbol path, the function names will still be resolved, but they will not be correct. Android tools don't validate if a specific address belongs to a specific symbol file.**
