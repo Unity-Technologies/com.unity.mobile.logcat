@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
         private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
-        private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Capture Screen"), L10n.Tr("Capture the current screen on the device."));
+        private GUIContent kCaptureScreenText = new GUIContent(L10n.Tr("Screen Capture"), L10n.Tr("Capture the current screen on the device."));
         private GUIContent kStacktraceUtility = new GUIContent(L10n.Tr("Stacktrace Utility"), L10n.Tr("Utility for resolving custom stacktrace addresses"));
         private GUIContent kOpenTerminal = new GUIContent(L10n.Tr("Open Terminal"), L10n.Tr("Opens operating system's terminal emulator with Android SDK as working directory. Allows manual execution of ADB commands."));
 
@@ -533,7 +533,7 @@ namespace Unity.Android.Logcat
             {
                 var names = new[]
                 {
-                    "Capture Screen",
+                    "Screen Capture",
                     "Open Terminal",
                     "Stacktrace Utility",
                     "Memory Window/Auto Capture",
