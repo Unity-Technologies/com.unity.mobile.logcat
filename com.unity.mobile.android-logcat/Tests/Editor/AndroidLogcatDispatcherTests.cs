@@ -144,6 +144,7 @@ public class AndroidLogcatDispatcherTests
         }
         while (runtime.Dispatcher.AsyncOperationsExecuted < 1);
 
+        // Check if we can still schedule stuff, even though previous operation threw exception
         int iWasExecuted = 0;
         runtime.Dispatcher.Schedule(
             new TaskInputData(),
