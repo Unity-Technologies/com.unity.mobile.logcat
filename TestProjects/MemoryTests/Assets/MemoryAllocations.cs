@@ -81,7 +81,9 @@ public class MemoryAllocations : MonoBehaviour
 
     void OnGUI()
     {
+#if !UNITY_EDITOR
         GUI.matrix = Matrix4x4.Scale(Vector3.one * 5);
+#endif
         GUILayout.Label($"Native Memory allocated {GetAllocatedNativeMemoryMB()} MB");
         if (GUILayout.Button($"Allocate {kAllocationUnityInMb}MB of Native Memory"))
         {
