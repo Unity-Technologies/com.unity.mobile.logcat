@@ -1,4 +1,13 @@
 ### Stacktrace Utility
+
+**Stacktrace Utility** is available from Tools menu.
+
+<br>
+
+![Tools Menu](images/toolsmenu.png)
+
+<br>
+
 Allows you to copy and paste custom log and resolve stacktrace.
 
 Quick Steps:

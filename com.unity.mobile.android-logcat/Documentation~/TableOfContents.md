@@ -5,5 +5,8 @@
   * [Package Selection](PackageSelection.md)
   * [Log Controls](LogControls.md)
   * [Filter](Filter.md)
-  * [Screen Capture](ScreenCapture.md)
-  * [Stacktrace Utility](StacktraceUtility.md)
+  * Tools
+    * [Screen Capture](ScreenCapture.md)
+    * [Stacktrace Utility](StacktraceUtility.md)
+    * [Memory Window](MemoryWindow.md)
+
