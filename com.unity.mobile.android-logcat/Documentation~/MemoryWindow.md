@@ -49,7 +49,7 @@ Here's an example of memory dump:
 
 * **Heap Alloc**
   
- The total memory allocated using Dalvik and native heap allocators. This includes both memory which is in RAM or is paged in the storage.
+ The total memory allocated using Dalvik (Java allocators) and native heap allocators. This includes both memory which is in RAM or is paged in the storage.
  This is the best metric when checking out if your application is leaking Native or Java memory.
  
 * **Heap Size**
