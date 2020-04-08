@@ -87,6 +87,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Worker thread for async operations.
+        /// Note: If there's an exception, very bad happen which don't get reported anywhere, this is way we're try/catching async operation invoke
+        /// </summary>
+        /// <param name="o"></param>
         private void WorkerThread(object o)
         {
             AndroidLogcatInternalLog.Log("Worker thread started");
@@ -109,14 +114,23 @@ namespace Unity.Android.Logcat
                     }
                     if (task != null && task.asyncAction != null)
                     {
-                        m_Sampler.Begin();
-                        var result = task.asyncAction.Invoke(task.taskData);
-                        m_Sampler.End();
-
                         m_AsyncOperationsExecuted++;
-                        lock (m_IntegrateTaskQueue)
+
+                        try
                         {
-                            m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                            m_Sampler.Begin();
+                            var result = task.asyncAction.Invoke(task.taskData);
+                            m_Sampler.End();
+
+
+                            lock (m_IntegrateTaskQueue)
+                            {
+                                m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            AndroidLogcatInternalLog.Log("\nERROR while invoking async operation: \n" + ex.Message);
                         }
                     }
                 }
