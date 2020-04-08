@@ -21,6 +21,15 @@ public class JavaMemory
         System.gc();
     }
 
+    public static  void dirtyMemory()
+    {
+        for (byte[] data: allocations)
+        {
+            for (int i = 0; i < data.length; i++)
+                data[i] = (byte)( i % 255);
+        }
+    }
+
     public static void clearMemory()
     {
         allocations.clear();

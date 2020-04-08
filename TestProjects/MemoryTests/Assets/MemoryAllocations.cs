@@ -64,6 +64,11 @@ public class MemoryAllocations : MonoBehaviour
         m_JavaClass.CallStatic("deallocateMemory");
     }
 
+    private void DirtyJavaMemory()
+    {
+        m_JavaClass.CallStatic("dirtyMemory");
+    }
+
     private void ClearJavaMemory()
     {
         m_JavaClass.CallStatic("clearMemory");
@@ -98,6 +103,18 @@ public class MemoryAllocations : MonoBehaviour
         }
         GUILayout.Space(20);
 
+        if (GUILayout.Button($"Dirty Native Memory"))
+        {
+            foreach (var n in m_NativeAllocations)
+            {
+                for (int i = 0; i < n.size - sizeof(UInt64); i += sizeof(UInt64))
+                {
+                    Marshal.WriteInt64(n.pointer, i, 1234);
+                }
+            }
+        }
+        GUILayout.Space(20);
+
         if (GUILayout.Button("Clear Native Memory"))
         {
             ClearNativeMemory();
@@ -112,6 +129,12 @@ public class MemoryAllocations : MonoBehaviour
         if (GUILayout.Button($"Deallocate {kAllocationUnityInMb}MB of Java Memory"))
         {
             DeallocateJavaMemory();
+        }
+        GUILayout.Space(20);
+
+        if (GUILayout.Button($"Dirty Java Memory"))
+        {
+            DirtyJavaMemory();
         }
         GUILayout.Space(20);
 
