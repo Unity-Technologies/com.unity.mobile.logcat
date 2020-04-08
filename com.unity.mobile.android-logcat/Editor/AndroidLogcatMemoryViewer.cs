@@ -326,7 +326,8 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.Space(10);
             Color oldColor = GUI.backgroundColor;
-            var name = String.Format("{0} ({1})", type, IntToSizeString(m_LastAllocatedEntry.GetValue(m_MemoryGroup, type)));
+            var memory = m_ExpectedPackageFromRequest == null ? "0" : IntToSizeString(m_LastAllocatedEntry.GetValue(m_MemoryGroup, type));
+            var name = String.Format("{0} ({1})", type, memory);
             if (type == MemoryType.Total)
             {
                 GUI.backgroundColor = Color.white;
