@@ -167,7 +167,16 @@ namespace Unity.Android.Logcat
 
             if (synchronous)
             {
-                integrateAction(asyncAction.Invoke(taskData));
+                m_AsyncOperationsExecuted++;
+
+                try
+                {
+                    integrateAction(asyncAction.Invoke(taskData));
+                }
+                catch (Exception ex)
+                {
+                    AndroidLogcatInternalLog.Log("\nERROR while invoking async operation: \n" + ex.Message);
+                }
                 return;
             }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.IO;
 using System.Threading;
@@ -110,6 +111,59 @@ public class AndroidLogcatDispatcherTests
         {
             Assert.AreEqual(i, itemsReceived[i]);
         }
+
+        runtime.Shutdown();
+    }
+
+    IAndroidLogcatTaskResult PerformAsycnTaskThrowException(IAndroidLogcatTaskInput input)
+    {
+        throw new Exception("Purposely throwing");
+    }
+
+    [UnityTest]
+    public IEnumerator DispatcherCanSuriveExceptions([Values(true, false)] bool synchronousTask)
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+
+        Assert.AreEqual(0, runtime.Dispatcher.AsyncOperationsExecuted);
+
+        runtime.Dispatcher.Schedule(
+            new TaskInputData(),
+            PerformAsycnTaskThrowException,
+            (IAndroidLogcatTaskResult r) =>
+            {
+                // Shouldn't be called, since there was exception in async operation
+                Assert.Fail();
+            }, synchronousTask);
+
+        do
+        {
+            runtime.Update();
+            yield return null;
+        }
+        while (runtime.Dispatcher.AsyncOperationsExecuted < 1);
+
+        int iWasExecuted = 0;
+        runtime.Dispatcher.Schedule(
+            new TaskInputData(),
+            PerformAsycnTask,
+            (IAndroidLogcatTaskResult r) =>
+            {
+                iWasExecuted = 256;
+            }, synchronousTask);
+
+        const float kMaxWaitTime = 4.0f;
+        var startTime = Time.realtimeSinceStartup;
+        do
+        {
+            runtime.Update();
+            yield return null;
+        }
+        while ((runtime.Dispatcher.AsyncOperationsExecuted < 2 || iWasExecuted == 0) && Time.realtimeSinceStartup - startTime < kMaxWaitTime);
+
+        Assert.AreEqual(2, runtime.Dispatcher.AsyncOperationsExecuted);
+        Assert.AreEqual(256, iWasExecuted);
 
         runtime.Shutdown();
     }
