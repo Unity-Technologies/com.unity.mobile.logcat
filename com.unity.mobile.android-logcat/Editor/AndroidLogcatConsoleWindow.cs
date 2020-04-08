@@ -399,7 +399,7 @@ namespace Unity.Android.Logcat
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
-                    m_MemoryViewer.QueueMemoryRequest(m_SelectedPackage);
+                    m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
                 }
             }
         }
@@ -707,7 +707,7 @@ namespace Unity.Android.Logcat
 
             m_MemoryViewer.ClearEntries();
             // Need to call this at least once, so we can update expected package name
-            m_MemoryViewer.QueueMemoryRequest(m_SelectedPackage);
+            m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
 
             RestartLogCat();
 
