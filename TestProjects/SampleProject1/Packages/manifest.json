@@ -6,6 +6,7 @@
     "com.unity.ide.rider": "1.1.4",
     "com.unity.ide.vscode": "1.1.4",
     "com.unity.mobile.android-logcat": "file:../../../com.unity.mobile.android-logcat",
+    "com.unity.package-manager-doctools": "1.1.1-preview.5",
     "com.unity.test-framework": "1.1.11",
     "com.unity.test-framework.performance": "1.2.5-preview",
     "com.unity.ugui": "1.0.0",
