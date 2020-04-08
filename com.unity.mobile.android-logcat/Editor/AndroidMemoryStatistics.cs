@@ -155,7 +155,7 @@ namespace Unity.Android.Logcat
             }
 
             SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, totalHeapAlloc);
-            SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, totalHeapSize);
+            SetValue(MemoryGroup.HeapSize, MemoryType.Total, totalHeapSize);
         }
 
         internal int GetValue(MemoryGroup group, MemoryType type)

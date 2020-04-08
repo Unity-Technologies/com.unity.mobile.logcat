@@ -720,6 +720,37 @@ namespace Unity.Android.Logcat
             SelectPackage(packages[selected]);
         }
 
+        /// <summary>
+        /// Removes dead packages from the list. Otherwise the list will grow forever
+        /// </summary>
+        /// <param name="packages"></param>
+        private void CleanupDeadPackages()
+        {
+            List<PackageInformation> packages = PackagesForSelectedDevice;
+            const int kMaxExitedPackages = 5;
+            int deadPackageCount = 0;
+
+            for (int i = 0; i < packages.Count; i++)
+            {
+                if (packages[i].IsAlive() == false)
+                    deadPackageCount++;
+            }
+
+            // Need to remove the package which were added first, since they are the oldest packages
+            int deadPackagesToRemove = deadPackageCount - kMaxExitedPackages;
+            for (int i = 0; i < packages.Count && deadPackagesToRemove > 0;)
+            {
+                if (packages[i].IsAlive())
+                {
+                    i++;
+                    continue;
+                }
+
+                deadPackagesToRemove--;
+                packages.RemoveAt(i);
+            }
+        }
+
         private void ResetPackages(string deviceId)
         {
             m_SelectedPackage = null;
@@ -942,6 +973,8 @@ namespace Unity.Android.Logcat
                 int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
+
+            CleanupDeadPackages();
         }
 
         private int GetPidFromPackageName(string packageName, string deviceId)
