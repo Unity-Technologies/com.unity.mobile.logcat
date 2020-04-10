@@ -182,7 +182,7 @@ namespace Unity.Android.Logcat
                 },
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
-                false);;
+                false);
         }
 
         private static string IntToSizeString(int value)
