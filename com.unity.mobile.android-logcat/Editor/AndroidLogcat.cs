@@ -308,7 +308,7 @@ namespace Unity.Android.Logcat
             {
                 dateTime = DateTime.Parse(dateValue);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 dateTime = new DateTime();
                 AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
