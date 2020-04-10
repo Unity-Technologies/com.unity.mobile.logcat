@@ -424,7 +424,7 @@ namespace Unity.Android.Logcat
         private void OnDeviceDisconnected(string deviceId)
         {
             StopLogCat();
-            var msg = "Either adb.exe crashed or device disconnected (device id: " + GetDeviceDetailsFor(deviceId) + ")";
+            var msg = "Either adb application crashed or device disconnected (device id: " + GetDeviceDetailsFor(deviceId) + ")";
             AndroidLogcatInternalLog.Log(msg);
             var index = m_DeviceIds.IndexOf(deviceId);
             if (index == -1)
