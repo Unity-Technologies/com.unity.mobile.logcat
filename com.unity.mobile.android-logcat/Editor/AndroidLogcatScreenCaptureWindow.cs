@@ -44,6 +44,9 @@ namespace Unity.Android.Logcat
 
         private void QueueScreenCapture()
         {
+            if (string.IsNullOrEmpty(m_DeviceId))
+                return;
+
             m_Runtime.Dispatcher.Schedule(
                 new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = m_DeviceId},
                 ExecuteScreenCapture,
@@ -110,10 +113,15 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(10);
-            if (m_ImageTexture != null)
+            if (string.IsNullOrEmpty(m_DeviceId))
+                EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
+            else
             {
-                Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
+                if (m_ImageTexture != null)
+                {
+                    Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                    GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
+                }
             }
             EditorGUILayout.EndVertical();
         }
