@@ -47,9 +47,19 @@ namespace Unity.Android.Logcat
         {
             public string deviceId;
             public string name;
-            public string displayName;
             public int processId;
             public bool exited;
+
+            public string DisplayName
+            {
+                get
+                {
+                    var result = name + " (" + processId + ")";
+                    if (exited)
+                        result += " [Exited]";
+                    return result;
+                }
+            }
 
             public PackageInformation()
             {
@@ -60,17 +70,18 @@ namespace Unity.Android.Logcat
             {
                 deviceId = string.Empty;
                 name = string.Empty;
-                displayName = string.Empty;
                 processId = 0;
                 exited = false;
             }
 
             public void SetExited()
             {
-                if (exited)
-                    return;
                 exited = true;
-                displayName += " [Exited]";
+            }
+
+            public void SetAlive()
+            {
+                exited = false;
             }
 
             public bool IsAlive()
@@ -708,7 +719,7 @@ namespace Unity.Android.Logcat
 
             RestartLogCat();
 
-            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.displayName);
+            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
         }
 
         private void PackageSelection(object userData, string[] options, int selected)
@@ -765,7 +776,7 @@ namespace Unity.Android.Logcat
             // * No Filter
             // * Package defined from player settings
             // * Package which is from top activity on phone and if it's not the one from player settings
-            var displayName = m_SelectedPackage != null && m_SelectedPackage.processId != 0 ? m_SelectedPackage.displayName : "No Filter";
+            var displayName = m_SelectedPackage != null && m_SelectedPackage.processId != 0 ? m_SelectedPackage.DisplayName : "No Filter";
             GUILayout.Label(new GUIContent(displayName, "Select package name"), AndroidLogcatStyles.toolbarPopup);
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
@@ -798,7 +809,7 @@ namespace Unity.Android.Logcat
                 int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
-                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].displayName);
+                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName);
 
                     if (packages[i] != null && m_SelectedPackage != null && m_SelectedPackage.name == packages[i].name && m_SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
@@ -918,12 +929,16 @@ namespace Unity.Android.Logcat
         {
             foreach (var package in PackagesForSelectedDevice)
             {
-                if (package == null || package.processId <= 0 || package.exited)
+                if (package == null || package.processId <= 0)
                     continue;
 
                 if (GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
                 {
                     package.SetExited();
+                }
+                else
+                {
+                    package.SetAlive();
                 }
             }
         }
@@ -941,7 +956,6 @@ namespace Unity.Android.Logcat
             var newPackage = new PackageInformation()
             {
                 name = packageName,
-                displayName = packageName + " (" + pid + ")",
                 processId = pid,
                 deviceId = deviceId
             };
