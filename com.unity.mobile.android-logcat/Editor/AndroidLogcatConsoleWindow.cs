@@ -129,9 +129,6 @@ namespace Unity.Android.Logcat
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
         private const int kMillisecondsMaxAutoconnectTimeOut = 5000;
-        // Warning: Setting this number to low, will make memory request to be delayed
-        // Since querying memory from device is a lengthy operation
-        private const int kMillisecondsBetweenMemoryRequests = 500;
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
@@ -367,7 +364,7 @@ namespace Unity.Android.Logcat
 
                 ResetPackages(m_DeviceIds[0]);
 
-                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
+                int projectApplicationPid = GetPidFromPackageName(null, PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_DeviceIds[0]);
                 if (package != null)
                 {
@@ -407,7 +404,7 @@ namespace Unity.Android.Logcat
 
             if (m_LogCat != null && m_LogCat.IsConnected && m_MemoryViewer.State == MemoryViewerState.Auto)
             {
-                if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
+                if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
                     m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
@@ -925,14 +922,14 @@ namespace Unity.Android.Logcat
             m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
-        private void CheckIfPackagesExited()
+        private void CheckIfPackagesExited(Dictionary<string, int> cache)
         {
             foreach (var package in PackagesForSelectedDevice)
             {
                 if (package == null || package.processId <= 0)
                     continue;
 
-                if (GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
+                if (GetPidFromPackageName(cache, package.name, m_SelectedDeviceId) != package.processId)
                 {
                     package.SetExited();
                 }
@@ -966,7 +963,8 @@ namespace Unity.Android.Logcat
 
         private void UpdateDebuggablePackages()
         {
-            CheckIfPackagesExited();
+            var packagePIDCache = new Dictionary<string, int>();
+            CheckIfPackagesExited(packagePIDCache);
 
             int topActivityPid = 0;
             string topActivityPackageName = string.Empty;
@@ -981,19 +979,27 @@ namespace Unity.Android.Logcat
 
             if (checkProjectPackage)
             {
-                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
+                int projectApplicationPid = GetPidFromPackageName(packagePIDCache, PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
 
             CleanupDeadPackages();
         }
 
-        private int GetPidFromPackageName(string packageName, string deviceId)
+        private int GetPidFromPackageName(Dictionary<string, int> cache, string packageName, string deviceId)
         {
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
+            // Getting pid for packages is a very costly operation, use cache to make less queries
+            int pid;
+            if (cache != null && cache.TryGetValue(packageName, out pid))
+                return pid;
+
+            pid = AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
+            if (cache != null)
+                cache[packageName] = pid;
+            return pid;
         }
 
         private string GetDeviceDetailsFor(string deviceId)
