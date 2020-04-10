@@ -487,10 +487,7 @@ namespace Unity.Android.Logcat
             switch (selected)
             {
                 case 0:
-                    var screenFilePath = AndroidLogcatUtilities.CaptureScreen(GetCachedAdb(), m_SelectedDeviceId);
-                    if (!string.IsNullOrEmpty(screenFilePath))
-                        AndroidLogcatScreenCaptureWindow.Show(screenFilePath);
-                    Repaint();
+                    AndroidLogcatScreenCaptureWindow.Show(m_SelectedDeviceId);
                     break;
                 case 1:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
