@@ -300,17 +300,20 @@ namespace Unity.Android.Logcat
         private LogEntry ParseLogEntry(Match m)
         {
             DateTime dateTime;
-            switch (LogPrintFormat)
+            var dateValue = m.Groups["date"].Value;
+            if (LogPrintFormat == kThreadTime)
+                dateValue = "1999-" + dateValue;
+
+            try
             {
-                case kThreadTime:
-                    dateTime = DateTime.Parse("1999-" + m.Groups["date"].Value);
-                    break;
-                case kYearTime:
-                    dateTime = DateTime.Parse(m.Groups["date"].Value);
-                    break;
-                default:
-                    throw new NotImplementedException("Please implement date parsing for log format: " + LogPrintFormat);
+                dateTime = DateTime.Parse(dateValue);
             }
+            catch(Exception ex)
+            {
+                dateTime = new DateTime();
+                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
+            }
+
             var entry = new LogEntry(
                 dateTime,
                 Int32.Parse(m.Groups["pid"].Value),
