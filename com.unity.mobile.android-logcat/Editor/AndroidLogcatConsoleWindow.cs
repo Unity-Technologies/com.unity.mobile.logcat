@@ -963,6 +963,7 @@ namespace Unity.Android.Logcat
 
         private void UpdateDebuggablePackages()
         {
+            var startTime = DateTime.Now;
             var packagePIDCache = new Dictionary<string, int>();
             CheckIfPackagesExited(packagePIDCache);
 
@@ -984,17 +985,18 @@ namespace Unity.Android.Logcat
             }
 
             CleanupDeadPackages();
+            AndroidLogcatInternalLog.Log("UpdateDebuggablePackages finished in " + (DateTime.Now - startTime).Milliseconds + " ms");
         }
 
         private int GetPidFromPackageName(Dictionary<string, int> cache, string packageName, string deviceId)
         {
-            var adb = GetCachedAdb();
-            var device = GetAndroidDeviceFromCache(adb, deviceId);
-
             // Getting pid for packages is a very costly operation, use cache to make less queries
             int pid;
             if (cache != null && cache.TryGetValue(packageName, out pid))
                 return pid;
+
+            var adb = GetCachedAdb();
+            var device = GetAndroidDeviceFromCache(adb, deviceId);
 
             pid = AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
             if (cache != null)
