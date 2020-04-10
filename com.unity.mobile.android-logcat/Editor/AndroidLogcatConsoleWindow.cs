@@ -173,12 +173,12 @@ namespace Unity.Android.Logcat
             }
             m_JsonSerialization.m_PackagesForSerialization = packagesForSerialization;
 
-            var jsonString = JsonUtility.ToJson(m_JsonSerialization);
+            var jsonString = JsonUtility.ToJson(m_JsonSerialization, true);
             m_JsonSerialization = null;
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            var jsonFilePath = Path.Combine(Application.persistentDataPath, kJsonFileName);
+            var jsonFilePath = Path.Combine("ProjectSettings", kJsonFileName);
             if (File.Exists(jsonFilePath))
                 File.Delete(jsonFilePath);
             File.WriteAllText(jsonFilePath, jsonString);
