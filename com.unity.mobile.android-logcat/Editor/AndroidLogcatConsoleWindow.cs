@@ -30,13 +30,6 @@ namespace Unity.Android.Logcat
 
         private Rect m_IpWindowScreenRect;
 
-        private enum PackageType
-        {
-            None,
-            DefinedFromPlayerSettings,
-            TopActivityPackage
-        }
-
         [Serializable]
         internal class PackageInformation
         {
