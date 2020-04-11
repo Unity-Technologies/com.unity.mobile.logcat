@@ -47,9 +47,19 @@ namespace Unity.Android.Logcat
         {
             public string deviceId;
             public string name;
-            public string displayName;
             public int processId;
             public bool exited;
+
+            public string DisplayName
+            {
+                get
+                {
+                    var result = name + " (" + processId + ")";
+                    if (exited)
+                        result += " [Exited]";
+                    return result;
+                }
+            }
 
             public PackageInformation()
             {
@@ -60,17 +70,18 @@ namespace Unity.Android.Logcat
             {
                 deviceId = string.Empty;
                 name = string.Empty;
-                displayName = string.Empty;
                 processId = 0;
                 exited = false;
             }
 
             public void SetExited()
             {
-                if (exited)
-                    return;
                 exited = true;
-                displayName += " [Exited]";
+            }
+
+            public void SetAlive()
+            {
+                exited = false;
             }
 
             public bool IsAlive()
@@ -118,9 +129,6 @@ namespace Unity.Android.Logcat
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
         private const int kMillisecondsMaxAutoconnectTimeOut = 5000;
-        // Warning: Setting this number to low, will make memory request to be delayed
-        // Since querying memory from device is a lengthy operation
-        private const int kMillisecondsBetweenMemoryRequests = 500;
 
         private bool m_AutoSelectPackage;
         private bool m_FinishedAutoselectingPackage;
@@ -165,12 +173,12 @@ namespace Unity.Android.Logcat
             }
             m_JsonSerialization.m_PackagesForSerialization = packagesForSerialization;
 
-            var jsonString = JsonUtility.ToJson(m_JsonSerialization);
+            var jsonString = JsonUtility.ToJson(m_JsonSerialization, true);
             m_JsonSerialization = null;
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            var jsonFilePath = Path.Combine(Application.persistentDataPath, kJsonFileName);
+            var jsonFilePath = Path.Combine("ProjectSettings", kJsonFileName);
             if (File.Exists(jsonFilePath))
                 File.Delete(jsonFilePath);
             File.WriteAllText(jsonFilePath, jsonString);
@@ -356,7 +364,7 @@ namespace Unity.Android.Logcat
 
                 ResetPackages(m_DeviceIds[0]);
 
-                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
+                int projectApplicationPid = GetPidFromPackageName(null, PlayerSettings.applicationIdentifier, m_DeviceIds[0]);
                 var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_DeviceIds[0]);
                 if (package != null)
                 {
@@ -396,7 +404,7 @@ namespace Unity.Android.Logcat
 
             if (m_LogCat != null && m_LogCat.IsConnected && m_MemoryViewer.State == MemoryViewerState.Auto)
             {
-                if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > kMillisecondsBetweenMemoryRequests)
+                if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
                     m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
@@ -424,7 +432,7 @@ namespace Unity.Android.Logcat
         private void OnDeviceDisconnected(string deviceId)
         {
             StopLogCat();
-            var msg = "Either adb.exe crashed or device disconnected (device id: " + GetDeviceDetailsFor(deviceId) + ")";
+            var msg = "Either adb application crashed or device disconnected (device id: " + GetDeviceDetailsFor(deviceId) + ")";
             AndroidLogcatInternalLog.Log(msg);
             var index = m_DeviceIds.IndexOf(deviceId);
             if (index == -1)
@@ -487,10 +495,7 @@ namespace Unity.Android.Logcat
             switch (selected)
             {
                 case 0:
-                    var screenFilePath = AndroidLogcatUtilities.CaptureScreen(GetCachedAdb(), m_SelectedDeviceId);
-                    if (!string.IsNullOrEmpty(screenFilePath))
-                        AndroidLogcatScreenCaptureWindow.Show(screenFilePath);
-                    Repaint();
+                    AndroidLogcatScreenCaptureWindow.Show(m_SelectedDeviceId);
                     break;
                 case 1:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
@@ -711,7 +716,7 @@ namespace Unity.Android.Logcat
 
             RestartLogCat();
 
-            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.displayName);
+            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
         }
 
         private void PackageSelection(object userData, string[] options, int selected)
@@ -768,7 +773,7 @@ namespace Unity.Android.Logcat
             // * No Filter
             // * Package defined from player settings
             // * Package which is from top activity on phone and if it's not the one from player settings
-            var displayName = m_SelectedPackage != null && m_SelectedPackage.processId != 0 ? m_SelectedPackage.displayName : "No Filter";
+            var displayName = m_SelectedPackage != null && m_SelectedPackage.processId != 0 ? m_SelectedPackage.DisplayName : "No Filter";
             GUILayout.Label(new GUIContent(displayName, "Select package name"), AndroidLogcatStyles.toolbarPopup);
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
@@ -801,7 +806,7 @@ namespace Unity.Android.Logcat
                 int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
-                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].displayName);
+                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName);
 
                     if (packages[i] != null && m_SelectedPackage != null && m_SelectedPackage.name == packages[i].name && m_SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
@@ -917,16 +922,20 @@ namespace Unity.Android.Logcat
             m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
         }
 
-        private void CheckIfPackagesExited()
+        private void CheckIfPackagesExited(Dictionary<string, int> cache)
         {
             foreach (var package in PackagesForSelectedDevice)
             {
-                if (package == null || package.processId <= 0 || package.exited)
+                if (package == null || package.processId <= 0)
                     continue;
 
-                if (GetPidFromPackageName(package.name, m_SelectedDeviceId) != package.processId)
+                if (GetPidFromPackageName(cache, package.name, m_SelectedDeviceId) != package.processId)
                 {
                     package.SetExited();
+                }
+                else
+                {
+                    package.SetAlive();
                 }
             }
         }
@@ -944,7 +953,6 @@ namespace Unity.Android.Logcat
             var newPackage = new PackageInformation()
             {
                 name = packageName,
-                displayName = packageName + " (" + pid + ")",
                 processId = pid,
                 deviceId = deviceId
             };
@@ -955,7 +963,9 @@ namespace Unity.Android.Logcat
 
         private void UpdateDebuggablePackages()
         {
-            CheckIfPackagesExited();
+            var startTime = DateTime.Now;
+            var packagePIDCache = new Dictionary<string, int>();
+            CheckIfPackagesExited(packagePIDCache);
 
             int topActivityPid = 0;
             string topActivityPackageName = string.Empty;
@@ -970,19 +980,28 @@ namespace Unity.Android.Logcat
 
             if (checkProjectPackage)
             {
-                int projectApplicationPid = GetPidFromPackageName(PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
+                int projectApplicationPid = GetPidFromPackageName(packagePIDCache, PlayerSettings.applicationIdentifier, m_SelectedDeviceId);
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDeviceId);
             }
 
             CleanupDeadPackages();
+            AndroidLogcatInternalLog.Log("UpdateDebuggablePackages finished in " + (DateTime.Now - startTime).Milliseconds + " ms");
         }
 
-        private int GetPidFromPackageName(string packageName, string deviceId)
+        private int GetPidFromPackageName(Dictionary<string, int> cache, string packageName, string deviceId)
         {
+            // Getting pid for packages is a very costly operation, use cache to make less queries
+            int pid;
+            if (cache != null && cache.TryGetValue(packageName, out pid))
+                return pid;
+
             var adb = GetCachedAdb();
             var device = GetAndroidDeviceFromCache(adb, deviceId);
 
-            return AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
+            pid = AndroidLogcatUtilities.GetPidFromPackageName(adb, device, deviceId, packageName);
+            if (cache != null)
+                cache[packageName] = pid;
+            return pid;
         }
 
         private string GetDeviceDetailsFor(string deviceId)

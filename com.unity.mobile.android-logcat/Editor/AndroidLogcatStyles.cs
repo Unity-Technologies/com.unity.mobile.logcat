@@ -92,6 +92,40 @@ namespace Unity.Android.Logcat
         {
             return (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
         }
+
+        internal class StatusWheel
+        {
+            GUIContent[] m_StatusWheel = new GUIContent[12];
+            public StatusWheel()
+            {
+                for (int i = 0; i < m_StatusWheel.Length; i++)
+                    m_StatusWheel[i] = EditorGUIUtility.IconContent("WaitSpin" + i.ToString("00"));
+            }
+
+            public GUIContent GetContent(int index)
+            {
+                return m_StatusWheel[index];
+            }
+
+            public int GetMaxIndex()
+            {
+                return m_StatusWheel.Length - 1;
+            }
+        }
+
+        private static StatusWheel m_StatusWheel;
+        internal static StatusWheel Status
+        {
+            get
+            {
+                if (m_StatusWheel == null)
+                    m_StatusWheel = new StatusWheel();
+
+                return m_StatusWheel;
+            }
+        }
+
+        public static readonly GUIStyle StatusIcon = "StatusBarIcon";
     }
 }
 #endif
