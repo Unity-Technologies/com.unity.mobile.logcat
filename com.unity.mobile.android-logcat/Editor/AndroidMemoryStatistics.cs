@@ -7,7 +7,6 @@ using UnityEditor;
 using UnityEditor.Android;
 using System.Text;
 using UnityEngine;
-using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 
 namespace Unity.Android.Logcat

@@ -7,7 +7,6 @@ using UnityEditor;
 using UnityEditor.Android;
 using System.Text;
 using UnityEngine;
-using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 namespace Unity.Android.Logcat
 {
@@ -81,7 +80,7 @@ namespace Unity.Android.Logcat
         private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
         private string m_ExpectedDeviceId;
-        private PackageInformation m_ExpectedPackageFromRequest;
+        private AndroidLogcatConsoleWindow.PackageInformation m_ExpectedPackageFromRequest;
 
         [SerializeField]
         private MemoryViewerState m_MemoryViewerState;
@@ -160,7 +159,7 @@ namespace Unity.Android.Logcat
             m_ExpectedDeviceId = null;
         }
 
-        internal void QueueMemoryRequest(string deviceId, PackageInformation package)
+        internal void QueueMemoryRequest(string deviceId, AndroidLogcatConsoleWindow.PackageInformation package)
         {
             m_ExpectedDeviceId = deviceId;
             m_ExpectedPackageFromRequest = package;

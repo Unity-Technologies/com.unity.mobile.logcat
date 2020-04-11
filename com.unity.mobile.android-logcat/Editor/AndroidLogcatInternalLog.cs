@@ -64,7 +64,7 @@ namespace Unity.Android.Logcat
             {
                 lock (ms_LogEntries)
                 {
-                    ms_LogEntries.Clear();
+                    ms_LogEntries = new StringBuilder();
                 }
             }
             GUILayout.EndHorizontal();
