@@ -56,7 +56,7 @@ namespace Unity.Android.Logcat
         private int m_CurrentEntry = 0;
         private int m_EntryCount = 0;
         static readonly int kMemoryGroupCount = Enum.GetValues(typeof(MemoryGroup)).Length;
-        private UInt64[] m_UpperMemoryBoundry = new UInt64[kMemoryGroupCount];// 32 * 1000 * 1000;
+        private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
         [SerializeField]
@@ -136,10 +136,9 @@ namespace Unity.Android.Logcat
             m_MemoryTypeColors[MemoryType.System] = Color.magenta;
             m_MemoryTypeColors[MemoryType.Total] = Color.white;
 
-            for (int g = 0; g < kMemoryGroupCount; g++)
-            {
-                m_UpperMemoryBoundry[g] = 32 * 1000 * 1000;
-            }
+
+            m_UpperMemoryBoundry = 32 * 1000 * 1000;
+
 
             ValidateSettings();
 
@@ -183,10 +182,8 @@ namespace Unity.Android.Logcat
             m_SelectedEntry = -1;
             m_EntryCount = 0;
             m_CurrentEntry = 0;
-            for (int g = 0; g < kMemoryGroupCount; g++)
-            {
-                m_UpperMemoryBoundry[g] = 32 * 1000 * 1000;
-            }
+
+            m_UpperMemoryBoundry = 32 * 1000 * 1000;
             m_ExpectedPackageFromRequest = null;
             m_ExpectedDeviceId = null;
         }
@@ -297,7 +294,7 @@ namespace Unity.Android.Logcat
                     maxMemory = Math.Max(maxMemory, localTotal);
                 }
                 // Keep boundry by 10% higher, so there would be visible room from the top of the window
-                m_UpperMemoryBoundry[(int)m_MemoryGroup] = (UInt64)(1.1f * maxMemory);
+                m_UpperMemoryBoundry = (UInt64)(1.1f * maxMemory);
             }
         }
 
@@ -467,7 +464,10 @@ namespace Unity.Android.Logcat
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Group:");
+            EditorGUI.BeginChangeCheck();
             m_MemoryGroup = (MemoryGroup)EditorGUILayout.EnumPopup(m_MemoryGroup);
+            if (EditorGUI.EndChangeCheck())
+                UpdateGeneralStats();
             GUILayout.EndHorizontal();
 
             foreach (var m in GetOrderMemoryTypes())
@@ -501,7 +501,7 @@ namespace Unity.Android.Logcat
             if (m_EntryCount > 0)
                 DoEntriesGUI(size);
 
-            DoGuidelinesGUI(size, m_UpperMemoryBoundry[(int)m_MemoryGroup]);
+            DoGuidelinesGUI(size, m_UpperMemoryBoundry);
 
             if (m_EntryCount > 0)
                 DoSelectedStatsGUI(size);
@@ -574,7 +574,7 @@ namespace Unity.Android.Logcat
             // |/ |
             // 1  3
             var width = GetEntryWidth(windowSize);
-            var multiplier = windowSize.height / m_UpperMemoryBoundry[(int)m_MemoryGroup];
+            var multiplier = windowSize.height / m_UpperMemoryBoundry;
             var t = windowSize.y;
             var b = windowSize.height + windowSize.y;
             var xOffset = windowSize.x + windowSize.width - (m_EntryCount - 1) * width;
