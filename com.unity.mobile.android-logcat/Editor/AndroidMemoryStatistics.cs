@@ -38,15 +38,16 @@ namespace Unity.Android.Logcat
 
     internal class AndroidMemoryStatistics
     {
+        const UInt64 kOneKiloByte = 1000;
         private MemoryGroup[] m_MemoryGroups = (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup));
-        private Dictionary<MemoryType, int>[] m_Data = new Dictionary<MemoryType, int>[Enum.GetValues(typeof(MemoryGroup)).Length];
+        private Dictionary<MemoryType, UInt64>[] m_Data = new Dictionary<MemoryType, UInt64>[Enum.GetValues(typeof(MemoryGroup)).Length];
 
-        private Dictionary<MemoryType, int> GetPSSMemoryGroup()
+        private Dictionary<MemoryType, UInt64> GetPSSMemoryGroup()
         {
             return m_Data[(int)MemoryGroup.ProportionalSetSize];
         }
 
-        private Dictionary<MemoryType, int> GetHeapAllocGroup()
+        private Dictionary<MemoryType, UInt64> GetHeapAllocGroup()
         {
             return m_Data[(int)MemoryGroup.HeapAlloc];
         }
@@ -79,7 +80,7 @@ namespace Unity.Android.Logcat
         {
             foreach (var g in m_MemoryGroups)
             {
-                m_Data[(int)g] = new Dictionary<MemoryType, int>();
+                m_Data[(int)g] = new Dictionary<MemoryType, UInt64>();
             }
         }
 
@@ -93,19 +94,19 @@ namespace Unity.Android.Logcat
 
         internal void ParseAppSummary(string appSummary)
         {
-            Dictionary<MemoryType, int> data = GetPSSMemoryGroup();
+            Dictionary<MemoryType, UInt64> data = GetPSSMemoryGroup();
             string pattern = @"([\w\s]+):\s+(\d+)";
 
             Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
             MatchCollection matches = r.Matches(appSummary);
-            int dummy;
+            UInt64 dummy;
             foreach (Match match in matches)
             {
                 var name = match.Groups[1].Value.Trim().ToLower();
-                var sizeInKBytes = Int32.Parse(match.Groups[2].Value);
+                var sizeInKBytes = UInt64.Parse(match.Groups[2].Value);
                 MemoryType type = NameToMemoryType(name);
                 if (type != MemoryType.Unknown)
-                    data[type] = sizeInKBytes * 1024;
+                    data[type] = sizeInKBytes * kOneKiloByte;
             }
 
             if (!data.TryGetValue(MemoryType.NativeHeap, out dummy))
@@ -136,18 +137,18 @@ namespace Unity.Android.Logcat
             var regexes = new[] { native, java };
             var types = new[] { MemoryType.NativeHeap, MemoryType.JavaHeap };
 
-            var totalHeapAlloc = 0;
-            var totalHeapSize = 0;
+            var totalHeapAlloc = (UInt64)0;
+            var totalHeapSize = (UInt64)0;
             for (int i = 0; i < regexes.Length; i++)
             {
                 var match = regexes[i].Match(heapInformation);
                 if (match.Success)
                 {
-                    var value = int.Parse(FixNumberValue(match.Groups["heapAlloc"].Value)) * 1024;
+                    var value = UInt64.Parse(FixNumberValue(match.Groups["heapAlloc"].Value)) * kOneKiloByte;
                     SetValue(MemoryGroup.HeapAlloc, types[i], value);
                     totalHeapAlloc += value;
 
-                    value = int.Parse(FixNumberValue(match.Groups["heapSize"].Value)) * 1024;
+                    value = UInt64.Parse(FixNumberValue(match.Groups["heapSize"].Value)) * kOneKiloByte;
                     SetValue(MemoryGroup.HeapSize, types[i], value);
                     totalHeapSize += value;
                 }
@@ -157,15 +158,15 @@ namespace Unity.Android.Logcat
             SetValue(MemoryGroup.HeapSize, MemoryType.Total, totalHeapSize);
         }
 
-        internal int GetValue(MemoryGroup group, MemoryType type)
+        internal UInt64 GetValue(MemoryGroup group, MemoryType type)
         {
-            int value;
+            UInt64 value;
             if (m_Data[(int)group].TryGetValue(type, out value))
                 return value;
             return 0;
         }
 
-        internal void SetValue(MemoryGroup group, MemoryType type, int value)
+        internal void SetValue(MemoryGroup group, MemoryType type, UInt64 value)
         {
             m_Data[(int)group][type] = value;
         }
@@ -184,10 +185,22 @@ namespace Unity.Android.Logcat
             ParseAppSummary(contents.Substring(appSummary));
         }
 
-        internal void SetPSSFakeData(int totalMemory, int nativeHeap)
+        internal void SetPSSFakeData(UInt64 totalMemory, UInt64 nativeHeap)
         {
             SetValue(MemoryGroup.ProportionalSetSize, MemoryType.Total, totalMemory);
             SetValue(MemoryGroup.ProportionalSetSize, MemoryType.NativeHeap, nativeHeap);
+        }
+
+        internal void SetHeapAllocData(UInt64 totalMemory, UInt64 nativeHeap)
+        {
+            SetValue(MemoryGroup.HeapAlloc, MemoryType.Total, totalMemory);
+            SetValue(MemoryGroup.HeapAlloc, MemoryType.NativeHeap, nativeHeap);
+        }
+
+        internal void SetHeapSizeData(UInt64 totalMemory, UInt64 nativeHeap)
+        {
+            SetValue(MemoryGroup.HeapSize, MemoryType.Total, totalMemory);
+            SetValue(MemoryGroup.HeapSize, MemoryType.NativeHeap, nativeHeap);
         }
     }
 }
