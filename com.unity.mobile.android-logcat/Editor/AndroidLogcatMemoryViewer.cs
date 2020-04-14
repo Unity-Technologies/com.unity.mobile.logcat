@@ -89,7 +89,7 @@ namespace Unity.Android.Logcat
         {
             return m_MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
         }
-        
+
         Dictionary<MemoryType, Color> m_MemoryTypeColors = new Dictionary<MemoryType, Color>();
 
         public AndroidLogcatMemoryViewer(EditorWindow parent)
