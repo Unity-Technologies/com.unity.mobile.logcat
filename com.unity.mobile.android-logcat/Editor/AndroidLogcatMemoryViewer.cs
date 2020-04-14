@@ -279,17 +279,17 @@ namespace Unity.Android.Logcat
             return m_LastAllocatedEntry;
         }
 
-        private void UpdateGeneralStats(AndroidMemoryStatistics lastMemoryStatistics)
+        private void UpdateGeneralStats()
         {
             // Set the upper boundry depending on total memory from all groups
             foreach (var m in (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup)))
             {
-                var totalMemory = lastMemoryStatistics.GetValue(m, MemoryType.Total);
-
-                int idx = (int)m_MemoryGroup;
-                // 1.1f ensures that there's a small gap between graph an upper windows boundry
-                while (totalMemory * 1.1f > m_UpperMemoryBoundry[idx])
-                    m_UpperMemoryBoundry[idx] += k16MB;
+                UInt64 maxMemory = 0;
+                for (int i = 0; i < m_EntryCount; i++)
+                {
+                    maxMemory = Math.Max(maxMemory, m_Entries[ResolveEntryIndex(i)].GetValue(m_MemoryGroup, MemoryType.Total));
+                }
+                m_UpperMemoryBoundry[(int)m_MemoryGroup] = (UInt64)(1.1f * maxMemory) / k16MB * k16MB;
             }
         }
 
@@ -299,7 +299,7 @@ namespace Unity.Android.Logcat
             stats.SetPSSFakeData(totalMemory, totalMemory);
             stats.SetHeapAllocData(totalMemory, totalMemory);
             stats.SetHeapSizeData(totalMemory, totalMemory);
-            UpdateGeneralStats(stats);
+            UpdateGeneralStats();
         }
 
         private void IntegrateQueryMemory(IAndroidLogcatTaskResult result)
@@ -339,7 +339,7 @@ namespace Unity.Android.Logcat
                 stats.Clear();
                 Debug.LogError(ex.Message);
             }
-            UpdateGeneralStats(stats);
+            UpdateGeneralStats();
 
             m_Parent.Repaint();
         }
@@ -539,6 +539,9 @@ namespace Unity.Android.Logcat
             }
             GL.End();
 
+            if (m_ExpectedPackageFromRequest == null)
+                return;
+
             foreach (var p in percentages)
             {
                 float y = windowSize.y + windowSize.height * (1.0f - p);
@@ -645,6 +648,8 @@ namespace Unity.Android.Logcat
             const UInt64 kOneKiloByte = 1000;
             const UInt64 kOneMegaByte = kOneKiloByte * kOneKiloByte;
             const UInt64 kOneGigaByte = kOneKiloByte * kOneMegaByte;
+            if (GUILayout.Button("Add 400MB", EditorStyles.miniButton))
+                InjectFakeMemoryStatistics(400 * kOneMegaByte);
             if (GUILayout.Button("Add 2GB", EditorStyles.miniButton))
                 InjectFakeMemoryStatistics(2 * kOneGigaByte);
             if (GUILayout.Button("Add 1000GB", EditorStyles.miniButton))
