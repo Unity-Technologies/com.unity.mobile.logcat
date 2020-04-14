@@ -287,9 +287,17 @@ namespace Unity.Android.Logcat
                 UInt64 maxMemory = 0;
                 for (int i = 0; i < m_EntryCount; i++)
                 {
-                    maxMemory = Math.Max(maxMemory, m_Entries[ResolveEntryIndex(i)].GetValue(m_MemoryGroup, MemoryType.Total));
+                    UInt64 localTotal = 0;
+                    foreach (var t in GetOrderMemoryTypes())
+                    {
+                        if (!m_MemoryTypeEnabled[(int)t])
+                            continue;
+                        localTotal += m_Entries[ResolveEntryIndex(i)].GetValue(m_MemoryGroup, t);
+                    }
+                    maxMemory = Math.Max(maxMemory, localTotal);
                 }
-                m_UpperMemoryBoundry[(int)m_MemoryGroup] = (UInt64)(1.1f * maxMemory) / k16MB * k16MB;
+                // Keep boundry by 10% higher, so there would be visible room from the top of the window
+                m_UpperMemoryBoundry[(int)m_MemoryGroup] = (UInt64)(1.1f * maxMemory);
             }
         }
 
@@ -379,7 +387,10 @@ namespace Unity.Android.Logcat
             {
                 var enabled = m_MemoryTypeEnabled[(int)type];
                 GUI.backgroundColor = enabled ? GetMemoryColor(type) : Color.black;
+                EditorGUI.BeginChangeCheck();
                 m_MemoryTypeEnabled[(int)type] = GUILayout.Toggle(enabled, name, AndroidLogcatStyles.kSeriesLabel);
+                if (EditorGUI.EndChangeCheck())
+                    UpdateGeneralStats();
             }
             GUI.backgroundColor = oldColor;
             GUILayout.EndHorizontal();
@@ -490,7 +501,7 @@ namespace Unity.Android.Logcat
             if (m_EntryCount > 0)
                 DoEntriesGUI(size);
 
-            DoSizeMarkers(size, m_UpperMemoryBoundry[(int)m_MemoryGroup]);
+            DoGuidelinesGUI(size, m_UpperMemoryBoundry[(int)m_MemoryGroup]);
 
             if (m_EntryCount > 0)
                 DoSelectedStatsGUI(size);
@@ -522,7 +533,7 @@ namespace Unity.Android.Logcat
             throw new Exception("Unhandled memory type: " + type);
         }
 
-        private void DoSizeMarkers(Rect windowSize, UInt64 totalMemorySize)
+        private void DoGuidelinesGUI(Rect windowSize, UInt64 totalMemorySize)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
