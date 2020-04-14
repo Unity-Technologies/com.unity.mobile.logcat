@@ -482,7 +482,7 @@ namespace Unity.Android.Logcat
             }
 
             GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height), GUIContent.none, EditorStyles.helpBox);
-            GUI.Box(new Rect(size.x, size.y, size.width, size.height), GUIContent.none, EditorStyles.helpBox);
+            GUI.Box(new Rect(size.x, size.y, size.width + 1, size.height + 1), GUIContent.none, EditorStyles.helpBox);
 
             if (m_ExpectedPackageFromRequest == null)
                 EditorGUI.HelpBox(size, "Select a package", MessageType.Info);
@@ -607,6 +607,8 @@ namespace Unity.Android.Logcat
             const UInt64 kOneGigaByte = kOneKiloByte * kOneMegaByte;
             if (GUILayout.Button("Add 2GB", EditorStyles.miniButton))
                 InjectFakeMemoryStatistics(2 * kOneGigaByte);
+            if (GUILayout.Button("Add 1000GB", EditorStyles.miniButton))
+                InjectFakeMemoryStatistics(1000 * kOneGigaByte);
         }
     }
 }
