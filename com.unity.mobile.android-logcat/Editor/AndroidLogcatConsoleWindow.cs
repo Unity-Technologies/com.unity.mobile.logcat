@@ -493,7 +493,7 @@ namespace Unity.Android.Logcat
                     break;
             }
         }
-        
+
         private void DoToolsGUI()
         {
             GUILayout.Label(new GUIContent("Tools"), AndroidLogcatStyles.toolbarPopupCenter);
@@ -618,10 +618,13 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            var cantKeepUp = m_Runtime.Dispatcher.AsyncOperationsInQueue > 100;
-            var style = cantKeepUp ? AndroidLogcatStyles.errorStyle : AndroidLogcatStyles.infoStyle;
+            // Have a sane number which represents that we cannot keep up with async items in queue
+            // Usually this indicates a bug, since async operations starts being more and more delayed
+            const int kMaxAsyncItemsInQueue = 100;
+            var cannotKeepUp = m_Runtime.Dispatcher.AsyncOperationsInQueue > kMaxAsyncItemsInQueue;
+            var style = cannotKeepUp ? AndroidLogcatStyles.errorStyle : AndroidLogcatStyles.infoStyle;
             var message = "Async Operation In Queue: " + m_Runtime.Dispatcher.AsyncOperationsInQueue + ", Executed: " + m_Runtime.Dispatcher.AsyncOperationsExecuted;
-            if (cantKeepUp)
+            if (cannotKeepUp)
                 message += " (CAN'T KEEP UP!!!!)";
             GUILayout.Label(message, style);
             EditorGUILayout.EndHorizontal();
