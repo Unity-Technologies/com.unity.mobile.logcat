@@ -26,7 +26,7 @@ namespace Unity.Android.Logcat
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
         private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
-        private const string kJsonFileName = "AndroidLogcatJsonFile.json";
+        private readonly string kAndroidLogcatSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
 
         private Rect m_IpWindowScreenRect;
 
@@ -166,24 +166,15 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            var jsonFilePath = Path.Combine("ProjectSettings", kJsonFileName);
-            if (File.Exists(jsonFilePath))
-                File.Delete(jsonFilePath);
-            File.WriteAllText(jsonFilePath, jsonString);
-
-            EditorPrefs.SetString(kJsonFileEditorPrefKey, jsonFilePath);
+            File.WriteAllText(kAndroidLogcatSettingsPath, jsonString);
         }
 
         internal void LoadStates()
         {
-            if (!EditorPrefs.HasKey(kJsonFileEditorPrefKey))
+            if (!File.Exists(kAndroidLogcatSettingsPath))
                 return;
 
-            var jsonFile = EditorPrefs.GetString(kJsonFileEditorPrefKey);
-            if (string.IsNullOrEmpty(jsonFile) || !File.Exists(jsonFile))
-                return;
-
-            var jsonString = File.ReadAllText(jsonFile);
+            var jsonString = File.ReadAllText(kAndroidLogcatSettingsPath);
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
