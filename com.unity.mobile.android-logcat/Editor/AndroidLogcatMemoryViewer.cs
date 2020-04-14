@@ -118,18 +118,7 @@ namespace Unity.Android.Logcat
             ClearEntries();
         }
 
-        internal MemoryViewerState State
-        {
-            set
-            {
-                m_MemoryViewerState = value;
-            }
-
-            get
-            {
-                return m_MemoryViewerState;
-            }
-        }
+        internal MemoryViewerState State { set; get; }
 
         /// <summary>
         /// Validate serialized settings here
