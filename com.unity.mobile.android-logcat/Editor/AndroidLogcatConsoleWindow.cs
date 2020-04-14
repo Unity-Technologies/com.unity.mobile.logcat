@@ -493,21 +493,7 @@ namespace Unity.Android.Logcat
                     break;
             }
         }
-
-        private bool MenuToolsItemSelected(int selected)
-        {
-            switch (selected)
-            {
-                case 3:
-                    return m_MemoryViewer.State == MemoryViewerState.Auto;
-                case 4:
-                    return m_MemoryViewer.State == MemoryViewerState.Manual;
-                case 5:
-                    return m_MemoryViewer.State == MemoryViewerState.Hidden;
-            }
-            return false;
-        }
-
+        
         private void DoToolsGUI()
         {
             GUILayout.Label(new GUIContent("Tools"), AndroidLogcatStyles.toolbarPopupCenter);
