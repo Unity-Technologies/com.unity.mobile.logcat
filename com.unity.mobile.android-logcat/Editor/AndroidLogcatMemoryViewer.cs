@@ -345,7 +345,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 stats.Clear();
-                Debug.LogError(ex.Message);
+                AndroidLogcatInternalLog.Log(ex.Message);
             }
             UpdateGeneralStats();
 
