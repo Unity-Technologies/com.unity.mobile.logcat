@@ -56,6 +56,16 @@ Here's an example of memory dump:
 
  The total memory which is reserved by your application, this memory size will be always bigger than **Heap Alloc** size.
 
+#### Memory Types
+
+General information can be found [here](https://developer.android.com/studio/command-line/dumpsys#meminfo).
+
+Here are few examples which memory goes where:
+* If you allocate memory using native functions **malloc**, **new** or using C# **Marshal.AllocHGlobal**, such memory will appear in **Heap Alloc** and **Heap Size** groups under **Native Heap** type.
+* If you allocate memory using java functions like  **new**, such memory will appear in **Heap Alloc** and **Heap Size** groups under **Java Heap** type.
+* In both cases above both native and java memory won't appear in **PSS** group until you'll try to write or read from allocated native or java memory.
+* If you allocate memory using C# **new** function such memory will appear under **PSS** group **Private Other** memory type.
+
 #### Controls
 
 ![MemoryControls](images/MemoryControls.png)
