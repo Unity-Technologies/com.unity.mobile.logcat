@@ -55,7 +55,8 @@ namespace Unity.Android.Logcat
         private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
         private int m_CurrentEntry = 0;
         private int m_EntryCount = 0;
-        private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
+        static readonly int kMemoryGroupCount = Enum.GetValues(typeof(MemoryGroup)).Length;
+        private UInt64[] m_UpperMemoryBoundry = new UInt64[kMemoryGroupCount];// 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
         [SerializeField]
@@ -135,6 +136,11 @@ namespace Unity.Android.Logcat
             m_MemoryTypeColors[MemoryType.System] = Color.magenta;
             m_MemoryTypeColors[MemoryType.Total] = Color.white;
 
+            for (int g = 0; g < kMemoryGroupCount; g++)
+            {
+                m_UpperMemoryBoundry[g] = 32 * 1000 * 1000;
+            }
+
             ValidateSettings();
 
             ClearEntries();
@@ -177,7 +183,10 @@ namespace Unity.Android.Logcat
             m_SelectedEntry = -1;
             m_EntryCount = 0;
             m_CurrentEntry = 0;
-            m_UpperMemoryBoundry = 32 * 1000 * 1000;
+            for (int g = 0; g < kMemoryGroupCount; g++)
+            {
+                m_UpperMemoryBoundry[g] = 32 * 1000 * 1000;
+            }
             m_ExpectedPackageFromRequest = null;
             m_ExpectedDeviceId = null;
         }
@@ -277,9 +286,10 @@ namespace Unity.Android.Logcat
             {
                 var totalMemory = lastMemoryStatistics.GetValue(m, MemoryType.Total);
 
+                int idx = (int)m_MemoryGroup;
                 // 1.1f ensures that there's a small gap between graph an upper windows boundry
-                while (totalMemory * 1.1f > m_UpperMemoryBoundry)
-                    m_UpperMemoryBoundry += k16MB;
+                while (totalMemory * 1.1f > m_UpperMemoryBoundry[idx])
+                    m_UpperMemoryBoundry[idx] += k16MB;
             }
         }
 
@@ -475,13 +485,17 @@ namespace Unity.Android.Logcat
             var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(m_MemoryWindowHeight));
 
             size.height -= 4;
-            if (m_EntryCount > 0)
-            {
-                DoEntriesGUI(size);
-                DoSelectedStatsGUI(size);
-            }
 
-            GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height), GUIContent.none, EditorStyles.helpBox);
+
+            if (m_EntryCount > 0)
+                DoEntriesGUI(size);
+
+            DoSizeMarkers(size, m_UpperMemoryBoundry[(int)m_MemoryGroup]);
+
+            if (m_EntryCount > 0)
+                DoSelectedStatsGUI(size);
+
+            GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height + 1), GUIContent.none, EditorStyles.helpBox);
             GUI.Box(new Rect(size.x, size.y, size.width + 1, size.height + 1), GUIContent.none, EditorStyles.helpBox);
 
             if (m_ExpectedPackageFromRequest == null)
@@ -508,6 +522,31 @@ namespace Unity.Android.Logcat
             throw new Exception("Unhandled memory type: " + type);
         }
 
+        private void DoSizeMarkers(Rect windowSize, UInt64 totalMemorySize)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            m_Material.SetPass(0);
+            var percentages = new[] { 0.4f, 0.8f };
+            GL.Begin(GL.LINES);
+            foreach (var p in percentages)
+            {
+                float y = windowSize.y + windowSize.height * (1.0f - p);
+                GL.Color(Color.gray);
+                GL.Vertex3(windowSize.x, y, 0);
+                GL.Vertex3(windowSize.x + windowSize.width, y, 0);
+            }
+            GL.End();
+
+            foreach (var p in percentages)
+            {
+                float y = windowSize.y + windowSize.height * (1.0f - p);
+                var title = UInt64ToSizeString((UInt64)(totalMemorySize * p));
+                AndroidLogcatStyles.infoStyle.Draw(new Rect(windowSize.x, y, 100, 20), new GUIContent(title), 0);
+            }
+        }
+
         private void DoEntriesGUI(Rect windowSize)
         {
             if (Event.current.type != EventType.Repaint)
@@ -521,7 +560,7 @@ namespace Unity.Android.Logcat
             // |/ |
             // 1  3
             var width = GetEntryWidth(windowSize);
-            var multiplier = windowSize.height / m_UpperMemoryBoundry;
+            var multiplier = windowSize.height / m_UpperMemoryBoundry[(int)m_MemoryGroup];
             var t = windowSize.y;
             var b = windowSize.height + windowSize.y;
             var xOffset = windowSize.x + windowSize.width - (m_EntryCount - 1) * width;
@@ -568,6 +607,7 @@ namespace Unity.Android.Logcat
             var b = windowSize.height + windowSize.y;
             if (e.type == EventType.Repaint)
             {
+                m_Material.SetPass(0);
                 GL.Begin(GL.LINES);
                 GL.Color(Color.white);
                 GL.Vertex3(x, t, 0);
