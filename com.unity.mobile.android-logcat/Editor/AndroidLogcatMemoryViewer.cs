@@ -89,6 +89,8 @@ namespace Unity.Android.Logcat
         {
             return m_MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
         }
+        
+        Dictionary<MemoryType, Color> m_MemoryTypeColors = new Dictionary<MemoryType, Color>();
 
         public AndroidLogcatMemoryViewer(EditorWindow parent)
         {
@@ -113,12 +115,32 @@ namespace Unity.Android.Logcat
             m_SplitterDragging = false;
             m_MemoryViewerState = MemoryViewerState.Auto;
 
+            m_MemoryTypeColors[MemoryType.NativeHeap] = Color.red;
+            m_MemoryTypeColors[MemoryType.JavaHeap] = Color.yellow;
+            m_MemoryTypeColors[MemoryType.Code] = Color.blue;
+            m_MemoryTypeColors[MemoryType.Stack] = Color.cyan;
+            m_MemoryTypeColors[MemoryType.Graphics] = Color.green;
+            m_MemoryTypeColors[MemoryType.PrivateOther] = Color.grey;
+            m_MemoryTypeColors[MemoryType.System] = Color.magenta;
+            m_MemoryTypeColors[MemoryType.Total] = Color.white;
+
             ValidateSettings();
 
             ClearEntries();
         }
 
-        internal MemoryViewerState State { set; get; }
+        internal MemoryViewerState State
+        {
+            set
+            {
+                m_MemoryViewerState = value;
+            }
+
+            get
+            {
+                return m_MemoryViewerState;
+            }
+        }
 
         /// <summary>
         /// Validate serialized settings here
@@ -310,19 +332,10 @@ namespace Unity.Android.Logcat
 
         private Color GetMemoryColor(MemoryType type)
         {
-            switch (type)
-            {
-                case MemoryType.NativeHeap: return Color.red;
-                case MemoryType.JavaHeap: return Color.yellow;
-                case MemoryType.Code: return Color.blue;
-                case MemoryType.Stack: return Color.cyan;
-                case MemoryType.Graphics: return Color.green;
-                case MemoryType.PrivateOther: return Color.grey;
-                case MemoryType.System: return Color.magenta;
-                case MemoryType.Total: return Color.white;
-                default:
-                    throw new NotImplementedException(type.ToString());
-            }
+            Color color;
+            if (m_MemoryTypeColors.TryGetValue(type, out color))
+                return color;
+            throw new NotImplementedException(type.ToString());
         }
 
         private void DoMemoryToggle(MemoryType type)
