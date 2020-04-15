@@ -669,6 +669,14 @@ namespace Unity.Android.Logcat
             return true;
         }
 
+        private void SetPacakge(PackageInformation newPackage)
+        {
+            m_SelectedPackage = newPackage;
+            m_MemoryViewer.ClearEntries();
+            // Need to call this at least once, so we can update expected package name
+            m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
+        }
+
         private void SelectPackage(PackageInformation newPackage)
         {
             if ((m_SelectedPackage == null && newPackage == null) ||
@@ -676,12 +684,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_AutoSelectPackage = false;
-            m_SelectedPackage = newPackage;
-
-            m_MemoryViewer.ClearEntries();
-            // Need to call this at least once, so we can update expected package name
-            m_MemoryViewer.QueueMemoryRequest(m_SelectedDeviceId, m_SelectedPackage);
-
+            SetPacakge(newPackage);
             RestartLogCat();
 
             AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
@@ -726,7 +729,7 @@ namespace Unity.Android.Logcat
 
         private void ResetPackages(string deviceId)
         {
-            m_SelectedPackage = null;
+            SetPacakge(null);
             List<PackageInformation> packages;
             if (!m_PackagesForAllDevices.TryGetValue(deviceId, out packages))
             {
