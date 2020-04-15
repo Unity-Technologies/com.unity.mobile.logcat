@@ -4,6 +4,21 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.2.0-preview] - 2020-05-15
+
+### Fix & Improvements.
+ - Android Logcat per project settings are saved in ProjectSettings directory.
+ - Fix issue where sometimes Android Logcat would stop working if USB cable is unplugged and replugged.
+ - Properly save/restore Android Logcat settings, previously settings like tags were being lost during domain reload or Editor restart.
+ - Added Capture button in Capture Screen window, also capturing screen no longer will lock Unity thread.
+ - Fix issue where incorrect date format in incoming log message would break whole log parsing.
+ - Moved Stacktrace Utility, Capture Screen, Open Terminal under Tools menu.
+ - The package list will automatically clean itself, if there's more than 5 exited packages in the list;
+ - Improved documentation.
+ - Added Clear button in internal log window.
+### Memory Window
+ - Introduced a window for viewing application memory in real time, more information in the docs.
+
 ## [1.1.1] - 2020-03-12
 
 ### Fix & Improvements.
