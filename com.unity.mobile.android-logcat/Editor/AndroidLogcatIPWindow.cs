@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Android;
+using System.Text.RegularExpressions;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatIPWindow : EditorWindow
     {
+        internal static Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
         private IAndroidLogcatRuntime m_Runtime;
         private ADB m_Adb = null;
         private List<string> m_ConnectedDevices;
@@ -72,13 +74,22 @@ namespace Unity.Android.Logcat
             EditorUtility.DisplayDialog(r.success ? "Success" : "Failure", r.message, "Ok");
         }
 
+        internal static string ParseIPAddress(string input)
+        {
+            var result = kIPRegex.Match(input);
+            if (result.Success)
+                return result.Groups["ip"].Value;
+            return null;
+        }
+
         string CopyIP(string deviceId)
         {
-            var result = m_Adb.Run(new[] { "-s", deviceId, "shell", "ip", "route"}, "Failed to query ip");
-            var i = result.IndexOf("src ");
-            if (i > 0)
-                result = result.Substring(i + 4).Trim(new[] {' ', '\r', '\n'});
-            return string.IsNullOrEmpty(result) ? "Failed to get IP address" : result;
+            var command = "-s " + deviceId + " shell ip route";
+            AndroidLogcatInternalLog.Log("adb " + command);
+            var result = m_Adb.Run(new[] { command }, "Failed to query ip");
+            AndroidLogcatInternalLog.Log(result);
+            var ip = ParseIPAddress(result);
+            return string.IsNullOrEmpty(ip) ? "Failed to get IP address" : ip;
         }
 
         void OnGUI()
