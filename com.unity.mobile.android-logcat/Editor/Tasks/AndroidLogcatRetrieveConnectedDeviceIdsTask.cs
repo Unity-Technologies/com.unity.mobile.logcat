@@ -29,15 +29,23 @@ namespace Unity.Android.Logcat
             var result = new AndroidLogcatRetrieveDeviceIdsResult();
 
             AndroidLogcatInternalLog.Log("{0} devices", adb.GetADBPath());
-            var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
-            foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
+            try
             {
-                AndroidLogcatInternalLog.Log(" " + line);
-                if (line.EndsWith("device"))
+                var adbOutput = adb.Run(new[] { "devices" }, "Unable to list connected devices. ");
+                foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
                 {
-                    var deviceId = line.Split(new[] { '\t', ' ' })[0];
-                    result.deviceIds.Add(deviceId);
+                    AndroidLogcatInternalLog.Log(" " + line);
+                    if (line.EndsWith("device"))
+                    {
+                        var deviceId = line.Split(new[] { '\t', ' ' })[0];
+                        result.deviceIds.Add(deviceId);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                result.deviceIds = new List<string>();
             }
 
             return result;

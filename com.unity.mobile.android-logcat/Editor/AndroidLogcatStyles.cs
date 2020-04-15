@@ -11,6 +11,7 @@ namespace Unity.Android.Logcat
         public static GUIStyle toolbar = new GUIStyle(EditorStyles.toolbar) { fontSize = kFontSize, fixedHeight = kFixedHeight};
         public static GUIStyle toolbarButton = new GUIStyle(EditorStyles.toolbarButton) { fontSize = kFontSize, fixedHeight = kFixedHeight };
         public static GUIStyle toolbarPopup = new GUIStyle(EditorStyles.toolbarPopup) { fontSize = kFontSize, fixedHeight = kFixedHeight };
+        public static GUIStyle toolbarPopupCenter = new GUIStyle(EditorStyles.toolbarPopup) { fontSize = kFontSize, fixedHeight = kFixedHeight, alignment = TextAnchor.MiddleCenter };
 
         public static GUIStyle columnHeader = new GUIStyle("OL TITLE");
 
@@ -57,6 +58,7 @@ namespace Unity.Android.Logcat
         public static GUIStyle tagToggleStyle = new GUIStyle(EditorStyles.toggle) { fixedWidth = ktagToggleFixedWidth, fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle tagButtonStyle = new GUIStyle(EditorStyles.miniButton) { fixedHeight = kTagEntryFixedHeight };
         public static GUIStyle removeTextStyle = new GUIStyle(EditorStyles.miniLabel) { fontSize = 8, fixedHeight = kTagEntryFixedHeight };
+        public static readonly GUIStyle kSeriesLabel = "ProfilerPaneSubLabel";
 
         public static GUIStyle stacktraceStyle = new GUIStyle("textArea")
         {
@@ -66,6 +68,12 @@ namespace Unity.Android.Logcat
             wordWrap = false
         };
 
+        public static GUIStyle infoStyle = new GUIStyle("label")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont()
+        };
+
         public static GUIStyle errorStyle = new GUIStyle("label")
         {
             fontSize = kLogEntryFontSize,
@@ -73,11 +81,51 @@ namespace Unity.Android.Logcat
             normal = new GUIStyleState() { textColor = Color.red }
         };
 
+        public static GUIStyle internalLogStyle = new GUIStyle("textArea")
+        {
+            fontSize = 13,
+            font = GetFont()
+        };
+
 
         public static Font GetFont()
         {
             return (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
         }
+
+        internal class StatusWheel
+        {
+            GUIContent[] m_StatusWheel = new GUIContent[12];
+            public StatusWheel()
+            {
+                for (int i = 0; i < m_StatusWheel.Length; i++)
+                    m_StatusWheel[i] = EditorGUIUtility.IconContent("WaitSpin" + i.ToString("00"));
+            }
+
+            public GUIContent GetContent(int index)
+            {
+                return m_StatusWheel[index];
+            }
+
+            public int GetMaxIndex()
+            {
+                return m_StatusWheel.Length - 1;
+            }
+        }
+
+        private static StatusWheel m_StatusWheel;
+        internal static StatusWheel Status
+        {
+            get
+            {
+                if (m_StatusWheel == null)
+                    m_StatusWheel = new StatusWheel();
+
+                return m_StatusWheel;
+            }
+        }
+
+        public static readonly GUIStyle StatusIcon = "StatusBarIcon";
     }
 }
 #endif

@@ -253,4 +253,22 @@ class AndroidLogcatRegexTests
             Assert.AreEqual(buildInfo.scriptingImplementation, backend);
         }
     }
+
+    [Test]
+    public void ParseIPAddress()
+    {
+        // Data acquired using command adb -s <deviceId> shell ip route
+
+        const string kLGG4IPOutput = @"
+default via 192.168.50.1 dev wlan0  metric 205
+
+192.168.50.0/24 dev wlan0  proto kernel  scope link  src 192.168.50.40  metric 205
+";
+        var ip = AndroidLogcatIPWindow.ParseIPAddress(kLGG4IPOutput);
+        Assert.AreEqual("192.168.50.40", ip);
+
+        const string kGooglePixelXL2IPOutput = @"192.168.50.0/24 dev wlan0 proto kernel scope link src 192.168.50.91";
+        ip = AndroidLogcatIPWindow.ParseIPAddress(kGooglePixelXL2IPOutput);
+        Assert.AreEqual("192.168.50.91", ip);
+    }
 }

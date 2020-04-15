@@ -19,6 +19,9 @@ namespace Unity.Android.Logcat
         internal static string kSettingsName = "AndroidLogcatSettings";
 
         [SerializeField]
+        private int m_MemoryRequestInterval;
+
+        [SerializeField]
         private int m_MaxMessageCount;
 
         [SerializeField]
@@ -32,6 +35,26 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private List<Color> m_MessageColorsFreeSkin;
+
+        // Warning: Setting this number to low, will make memory request to be delayed
+        // Since querying memory from device is a lengthy operation. That's why there's a cap 500
+        internal int MemoryRequestIntervalMS
+        {
+            set
+            {
+                int correctedValue = value;
+                if (correctedValue < 500)
+                    correctedValue = 500;
+                if (m_MemoryRequestInterval == correctedValue)
+                    return;
+                m_MemoryRequestInterval = correctedValue;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_MemoryRequestInterval;
+            }
+        }
 
         internal int MaxMessageCount
         {
@@ -109,6 +132,7 @@ namespace Unity.Android.Logcat
 
         internal void Reset()
         {
+            m_MemoryRequestInterval = 500;
             m_MaxMessageCount = 60000;
             m_MessageFont = (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
             m_MessageFontSize = 11;
@@ -219,6 +243,8 @@ namespace Unity.Android.Logcat
                 settings.SetMessageColor(p, EditorGUILayout.ColorField(p.ToString(), settings.GetMessageColor(p)));
             }
 
+            EditorGUILayout.LabelField("Memory Window", EditorStyles.boldLabel);
+            settings.MemoryRequestIntervalMS = EditorGUILayout.IntField("Request Interval ms", settings.MemoryRequestIntervalMS);
             GUILayout.Space(20);
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();

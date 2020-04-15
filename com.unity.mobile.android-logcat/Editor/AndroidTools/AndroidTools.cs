@@ -12,6 +12,7 @@ namespace Unity.Android.Logcat
         private string m_Addr2LinePath;
         private string m_NMPath;
         private string m_ReadElfPath;
+        private UnityEditor.Android.ADB m_ADB;
 
         internal AndroidTools()
         {
@@ -90,6 +91,17 @@ namespace Unity.Android.Logcat
                 Path.GetDirectoryName(m_NMPath));
             ValidateResult(result);
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        internal UnityEditor.Android.ADB ADB
+        {
+            get
+            {
+                if (m_ADB == null)
+                    m_ADB = UnityEditor.Android.ADB.GetInstance();
+
+                return m_ADB;
+            }
         }
     }
 }

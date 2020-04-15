@@ -60,7 +60,12 @@ namespace Unity.Android.Logcat
 
         internal override int APILevel
         {
-            get { return int.Parse(m_Device.Properties["ro.build.version.sdk"]); }
+            get
+            {
+                int value = 0;
+                int.TryParse(m_Device.Properties["ro.build.version.sdk"], out value);
+                return value;
+            }
         }
 
         internal override string Manufacturer

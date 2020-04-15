@@ -368,6 +368,8 @@ namespace Unity.Android.Logcat
         public List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization = null;
 
         public AndroidLogcatTagsControl m_TagControl = null;
+
+        public string m_MemoryViewerJson;
     }
 }
 #else
