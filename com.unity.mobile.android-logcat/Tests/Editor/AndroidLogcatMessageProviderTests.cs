@@ -111,6 +111,8 @@ internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
     {
         get { return new Version(9, 0); }
     }
+
+    internal override string DisplayName => throw new NotImplementedException();
 }
 
 internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
@@ -123,6 +125,7 @@ internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
     {
         get { return new Version(6, 0); }
     }
+    internal override string DisplayName => throw new NotImplementedException();
 }
 
 

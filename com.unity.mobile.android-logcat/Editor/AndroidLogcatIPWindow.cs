@@ -12,8 +12,7 @@ namespace Unity.Android.Logcat
         internal static Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
         private IAndroidLogcatRuntime m_Runtime;
         private ADB m_Adb = null;
-        private List<string> m_ConnectedDevices;
-        private string[] m_ConnectedDeviceDetails;
+        private Dictionary<string, IAndroidLogcatDevice> m_Devices;
         internal string m_IpString;
         internal string m_PortString;
         private Vector2 m_DevicesScrollPosition = Vector2.zero;
@@ -24,11 +23,10 @@ namespace Unity.Android.Logcat
 
         private GUIContent kConnect = new GUIContent(L10n.Tr("Connect"), L10n.Tr("Sets the target device to listen for a TCP/IP connection on port 5555 and connects to it via IP address."));
 
-        public static void Show(IAndroidLogcatRuntime runtime, ADB adb, List<string> connectedDevices, string[] details, Rect screenRect)
+        public static void Show(IAndroidLogcatRuntime runtime, ADB adb, Dictionary<string, IAndroidLogcatDevice> devices, Rect screenRect)
         {
             AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Enter Device IP");
-            win.m_ConnectedDevices = connectedDevices;
-            win.m_ConnectedDeviceDetails = details;
+            win.m_Devices = devices;
             win.position = new Rect(screenRect.x, screenRect.y, 600, 200);
         }
 
@@ -99,19 +97,17 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.LabelField("Available devices:", EditorStyles.boldLabel);
                 GUI.Box(m_DeviceScrollRect, GUIContent.none, EditorStyles.helpBox);
                 m_DevicesScrollPosition = EditorGUILayout.BeginScrollView(m_DevicesScrollPosition);
-                for (int i = 0; i < m_ConnectedDevices.Count; i++)
+                foreach (var deviceValue in m_Devices)
                 {
+                    var device = deviceValue.Value;
                     EditorGUILayout.BeginHorizontal();
-                    var name = i < m_ConnectedDeviceDetails.Length && !string.IsNullOrEmpty(m_ConnectedDeviceDetails[i])
-                        ? m_ConnectedDeviceDetails[i]
-                        : m_ConnectedDevices[i];
 
 
-                    EditorGUILayout.LabelField(name, EditorStyles.label);
+                    EditorGUILayout.LabelField(device.DisplayName, EditorStyles.label);
 
                     if (GUILayout.Button(" Copy IP ", GUILayout.ExpandWidth(false)))
                     {
-                        m_IpString = CopyIP(m_ConnectedDevices[i]);
+                        m_IpString = CopyIP(device.Id);
                         EditorGUIUtility.systemCopyBuffer = m_IpString;
                         GUIUtility.keyboardControl = 0;
                         GUIUtility.hotControl = 0;
@@ -119,7 +115,7 @@ namespace Unity.Android.Logcat
                     }
                     if (GUILayout.Button(kConnect, GUILayout.ExpandWidth(false)))
                     {
-                        SetTCPIPAndConnectDevice(m_ConnectedDevices[i], CopyIP(m_ConnectedDevices[i]), "5555");
+                        SetTCPIPAndConnectDevice(device.Id, CopyIP(device.Id), "5555");
                         GUIUtility.keyboardControl = 0;
                         GUIUtility.hotControl = 0;
                         Repaint();

@@ -32,6 +32,8 @@ namespace Unity.Android.Logcat
 
         internal abstract string Id { get; }
 
+        internal abstract string DisplayName { get; }
+
         internal bool SupportsFilteringByRegex
         {
             get { return OSVersion >= kAndroidVersion70; }
@@ -52,10 +54,20 @@ namespace Unity.Android.Logcat
     {
         private AndroidDevice m_Device;
         private Version m_Version;
+        private string m_DisplayName;
 
-        internal AndroidLogcatDevice(AndroidDevice device)
+        internal AndroidLogcatDevice(ADB adb, string deviceId)
         {
-            m_Device = device;
+            try
+            {
+                m_Device = new AndroidDevice(adb, deviceId);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log("Exception caugth while trying to retrieve device details for device {0}. This is harmless and device id will be used. Details\r\n:{1}", deviceId, ex);
+                // device will be null in this case (and it will not be added to the cache)
+                m_Device = null;
+            }
         }
 
         internal override int APILevel
@@ -100,6 +112,22 @@ namespace Unity.Android.Logcat
         internal override string Id
         {
             get { return m_Device.Id; }
+        }
+
+        internal override string DisplayName
+        {
+            get
+            {
+                if (m_DisplayName != null)
+                    return m_DisplayName;
+
+                if (m_Device == null)
+                    m_DisplayName = Id;
+                else
+                    m_DisplayName = string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", Manufacturer, Model, OSVersion, ABI, APILevel, Id);
+
+                return m_DisplayName;
+            }
         }
     }
 }
