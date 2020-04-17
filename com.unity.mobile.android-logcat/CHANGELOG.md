@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - The package list will automatically clean itself, if there's more than 5 exited packages in the list;
  - Improved documentation.
  - Added Clear button in internal log window.
+ - Minimum Unity version was raised to 2019.2. The reason was to drop .NET 3.5 support.
 ### Memory Window
  - Introduced a window for viewing application memory in real time, more information in the docs.
 
