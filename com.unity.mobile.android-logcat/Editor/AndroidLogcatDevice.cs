@@ -8,12 +8,26 @@ using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.Android;
 using System.Text;
-
+using UnityEngine.iOS;
 
 namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatDevice
     {
+        internal enum DeviceConnectionType
+        {
+            USB,
+            Network
+        }
+
+        internal enum DeviceState
+        {
+            Connected,
+            Disconnected,
+            Unauthorized,
+            Unknown
+        }
+
         // Check if it is Android 7 or above due to the below options are only available on these devices:
         // 1) '--pid'
         // 2) 'logcat -v year'
@@ -34,6 +48,8 @@ namespace Unity.Android.Logcat
 
         internal abstract string DisplayName { get; }
 
+        internal abstract string ShortDisplayName { get; }
+
         internal bool SupportsFilteringByRegex
         {
             get { return OSVersion >= kAndroidVersion70; }
@@ -48,6 +64,13 @@ namespace Unity.Android.Logcat
         {
             get { return OSVersion >= kAndroidVersion70; }
         }
+
+        internal DeviceConnectionType ConnectionType
+        {
+            get { return Id.EndsWith(":5555") ? DeviceConnectionType.Network : DeviceConnectionType.USB; }
+        }
+
+        internal abstract DeviceState State { get; }
     }
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
@@ -55,9 +78,11 @@ namespace Unity.Android.Logcat
         private AndroidDevice m_Device;
         private Version m_Version;
         private string m_DisplayName;
+        private DeviceState m_State;
 
         internal AndroidLogcatDevice(ADB adb, string deviceId)
         {
+            m_State = DeviceState.Unknown;
             try
             {
                 m_Device = new AndroidDevice(adb, deviceId);
@@ -121,13 +146,34 @@ namespace Unity.Android.Logcat
                 if (m_DisplayName != null)
                     return m_DisplayName;
 
-                if (m_Device == null)
-                    m_DisplayName = Id;
+                if (m_Device == null || State != DeviceState.Connected)
+                    m_DisplayName = Id + " (" + State.ToString() + ")";
                 else
                     m_DisplayName = string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", Manufacturer, Model, OSVersion, ABI, APILevel, Id);
 
                 return m_DisplayName;
             }
+        }
+
+        internal override string ShortDisplayName
+        {
+            get
+            {
+                if (m_Device == null || State != DeviceState.Connected)
+                    return Id + " (" + State.ToString() + ")";
+                else
+                    return Id;
+            }
+        }
+
+        internal override DeviceState State
+        {
+            get { return m_State; }
+        }
+
+        internal void UpdateState(DeviceState state)
+        {
+            m_State = state;
         }
     }
 }

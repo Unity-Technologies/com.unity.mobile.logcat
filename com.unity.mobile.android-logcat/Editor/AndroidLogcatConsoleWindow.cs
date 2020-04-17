@@ -254,7 +254,7 @@ namespace Unity.Android.Logcat
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
 
             StopLogCat();
-            
+
             m_Runtime.OnUpdate -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
@@ -332,7 +332,7 @@ namespace Unity.Android.Logcat
 
             if (deviceQuery.FirstConnectedDevice == null)
                 deviceQuery.UpdateConnectedDevicesList(false);
-   
+
             if (deviceQuery.FirstConnectedDevice == null)
                 return;
 
@@ -665,7 +665,7 @@ namespace Unity.Android.Logcat
                 // Only update device list, when we select this UI item
                 m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
-                var names = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.Id)).ToList();
+                var names = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.ShortDisplayName)).ToList();
                 // Add <Enter IP> as last field to let user connect through wifi.
                 names.Add(new GUIContent("<Enter IP>"));
 
@@ -691,7 +691,11 @@ namespace Unity.Android.Logcat
 
         private bool CheckDeviceEnabled(int index)
         {
-            return true;
+            // Enable items like <Enter IP>
+            var devices = m_Runtime.DeviceQuery.Devices;
+            if (index >= devices.Count)
+                return true;
+            return devices.Values.ToArray()[index].State == IAndroidLogcatDevice.DeviceState.Connected;
         }
 
         private void SetPacakge(PackageInformation newPackage)
@@ -712,7 +716,7 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
 
             SetPacakge(newPackage);
-            RestartLogCat();            
+            RestartLogCat();
         }
 
         private void PackageSelection(object userData, string[] options, int selected)

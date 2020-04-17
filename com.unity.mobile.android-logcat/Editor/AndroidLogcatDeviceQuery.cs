@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
@@ -14,13 +15,21 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatRetrieveDeviceIdsResult : IAndroidLogcatTaskResult
     {
-        internal List<string> deviceIds = new List<string>();
+        internal struct DeviceInfo
+        {
+            internal string id;
+            internal IAndroidLogcatDevice.DeviceState state;
+        }
+
+        internal List<DeviceInfo> deviceInfo = new List<DeviceInfo>();
         internal bool notifyListeners;
     }
 
 
     class AndroidLogcatDeviceQuery
     {
+        internal static Regex kDeviceInfoRegex = new Regex(@"(?<id>^\S+)\s+(?<state>\S+$)");
+
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
 
         private IAndroidLogcatDevice m_SelectedDevice;
@@ -50,9 +59,14 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                if (m_Devices.Count == 0)
-                    return null;
-                return m_Devices.First().Value;
+                ;
+                foreach (var d in m_Devices)
+                {
+                    if (d.Value.State != IAndroidLogcatDevice.DeviceState.Connected)
+                        continue;
+                    return d.Value;
+                }
+                return null;
             }
         }
 
@@ -81,13 +95,44 @@ namespace Unity.Android.Logcat
             if (m_SelectedDevice == device)
                 return;
 
-            m_SelectedDevice = device;
+            if (device != null && device.State != IAndroidLogcatDevice.DeviceState.Connected)
+            {
+                AndroidLogcatInternalLog.Log("Trying to select device which is not connected: " + device.Id);
+                m_SelectedDevice = null;
+            }
+            else
+            {
+                m_SelectedDevice = device;
+            }
 
             if (m_SelectedDevice != null && !m_Devices.Keys.Contains(m_SelectedDevice.Id))
                 throw new Exception("Selected device is not among our listed devices");
 
             if (notifyListeners && DeviceSelected != null)
                 DeviceSelected.Invoke(m_SelectedDevice);
+        }
+
+        internal static bool ParseDeviceInfo(string input, out string id, out IAndroidLogcatDevice.DeviceState state)
+        {
+            var result = kDeviceInfoRegex.Match(input);
+            if (result.Success)
+            {
+                id = result.Groups["id"].Value;
+                var stateValue = result.Groups["state"].Value.ToLowerInvariant();
+                if (stateValue.Equals("device"))
+                    state = IAndroidLogcatDevice.DeviceState.Connected;
+                else if (stateValue.Equals("unauthorized"))
+                    state = IAndroidLogcatDevice.DeviceState.Unauthorized;
+                else
+                    state = IAndroidLogcatDevice.DeviceState.Unknown;
+                return true;
+            }
+            else
+            {
+                id = input;
+                state = IAndroidLogcatDevice.DeviceState.Unknown;
+                return false;
+            }
         }
 
         private static IAndroidLogcatTaskResult QueryDevicesAsync(IAndroidLogcatTaskInput input)
@@ -107,17 +152,15 @@ namespace Unity.Android.Logcat
                 foreach (var line in adbOutput.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()))
                 {
                     AndroidLogcatInternalLog.Log(" " + line);
-                    if (line.EndsWith("device"))
-                    {
-                        var deviceId = line.Split(new[] { '\t', ' ' })[0];
-                        result.deviceIds.Add(deviceId);
-                    }
+                    AndroidLogcatRetrieveDeviceIdsResult.DeviceInfo info;
+                    if (ParseDeviceInfo(line, out info.id, out info.state))
+                        result.deviceInfo.Add(info);
                 }
             }
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.Message);
-                result.deviceIds = new List<string>();
+                result.deviceInfo = new List<AndroidLogcatRetrieveDeviceIdsResult.DeviceInfo>();
             }
 
             return result;
@@ -126,36 +169,25 @@ namespace Unity.Android.Logcat
         private void IntegrateQueryDevices(IAndroidLogcatTaskResult resut)
         {
             var deviceIdsResult = ((AndroidLogcatRetrieveDeviceIdsResult)resut);
-            var deviceIds = deviceIdsResult.deviceIds;
+            var deviceInfos = deviceIdsResult.deviceInfo;
+
+            foreach (var d in m_Devices)
+            {
+                ((AndroidLogcatDevice)d.Value).UpdateState(IAndroidLogcatDevice.DeviceState.Disconnected);
+            }
+
+            foreach (var info in deviceInfos)
+            {
+                ((AndroidLogcatDevice)GetOrCreateDevice(info.id)).UpdateState(info.state);
+            }
 
             // If our selected device was removed, deselect it
-            if (m_SelectedDevice != null && !deviceIds.Contains(m_SelectedDevice.Id))
+            if (m_SelectedDevice != null && m_SelectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
             {
                 m_SelectedDevice = null;
                 if (deviceIdsResult.notifyListeners && DeviceSelected != null)
                     DeviceSelected.Invoke(m_SelectedDevice);
             }
-
-            // Gather devices we need to remove
-            var deviceIdsToRemove = new List<string>();
-            foreach (var device in m_Devices)
-            {
-                if (deviceIds.Contains(device.Value.Id))
-                    continue;
-                deviceIdsToRemove.Add(device.Value.Id);
-            }
-
-            foreach (var toRemove in deviceIdsToRemove)
-            {
-                m_Devices.Remove(toRemove);
-            }
-
-            // Create missing devices
-            foreach (var id in deviceIds)
-            {
-                GetOrCreateDevice(id);
-            }
-
 
             if (m_SelectedDevice != null)
             {

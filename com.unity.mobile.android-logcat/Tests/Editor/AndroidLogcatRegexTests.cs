@@ -271,4 +271,28 @@ default via 192.168.50.1 dev wlan0  metric 205
         ip = AndroidLogcatIPWindow.ParseIPAddress(kGooglePixelXL2IPOutput);
         Assert.AreEqual("192.168.50.91", ip);
     }
+
+    [Test]
+    public void ParseDeviceInfo()
+    {
+        string id;
+        IAndroidLogcatDevice.DeviceState state;
+        var result = AndroidLogcatDeviceQuery.ParseDeviceInfo("List of devices attached", out id, out state);
+        Assert.AreEqual(false, result);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("711KPQJ0939020 unauthorized", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("711KPQJ0939020", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Unauthorized, state);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\tdevice", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Connected, state);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\tblabla", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Unknown, state);
+    }
 }
