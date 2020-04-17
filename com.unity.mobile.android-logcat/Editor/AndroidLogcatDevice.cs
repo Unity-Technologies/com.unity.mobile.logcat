@@ -1,14 +1,7 @@
 #if PLATFORM_ANDROID
-using System.Collections.Generic;
-using System.Diagnostics;
 using System;
-using System.Text.RegularExpressions;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using UnityEditor;
 using UnityEditor.Android;
-using System.Text;
-using UnityEngine.iOS;
+
 
 namespace Unity.Android.Logcat
 {
@@ -75,6 +68,7 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
+        private string m_Id;
         private AndroidDevice m_Device;
         private Version m_Version;
         private string m_DisplayName;
@@ -82,6 +76,7 @@ namespace Unity.Android.Logcat
 
         internal AndroidLogcatDevice(ADB adb, string deviceId)
         {
+            m_Id = deviceId;
             m_State = DeviceState.Unknown;
             try
             {
@@ -119,6 +114,8 @@ namespace Unity.Android.Logcat
         {
             get
             {
+                if (m_Device == null)
+                    return new Version();
                 if (m_Version == null)
                 {
                     var versionString = m_Device.Properties["ro.build.version.release"];
@@ -136,7 +133,7 @@ namespace Unity.Android.Logcat
 
         internal override string Id
         {
-            get { return m_Device.Id; }
+            get { return m_Id; }
         }
 
         internal override string DisplayName
