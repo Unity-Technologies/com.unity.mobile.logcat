@@ -188,6 +188,12 @@ namespace Unity.Android.Logcat
             m_ExpectedDevice = null;
         }
 
+        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        {
+            m_ExpectedDevice = device;
+            m_ExpectedPackageFromRequest = package;
+        }
+
         internal void QueueMemoryRequest(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
         {
             m_ExpectedDevice = device;

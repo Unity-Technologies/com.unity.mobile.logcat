@@ -15,8 +15,6 @@ namespace Unity.Android.Logcat
 #if PLATFORM_ANDROID
         , IHasCustomMenu
     {
-        private IAndroidLogcatDevice m_SelectedDevice;
-        private Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
         private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
@@ -79,7 +77,7 @@ namespace Unity.Android.Logcat
 
         private List<PackageInformation> PackagesForSelectedDevice
         {
-            get { return GetPackagesForDevice(m_SelectedDevice); }
+            get { return GetPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice); }
         }
 
         private List<PackageInformation> GetPackagesForDevice(IAndroidLogcatDevice device)
@@ -106,7 +104,6 @@ namespace Unity.Android.Logcat
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private ADB m_Adb;
-        private DateTime m_TimeOfLastDeviceListUpdate;
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
 
@@ -145,8 +142,9 @@ namespace Unity.Android.Logcat
 
         internal void SaveStates()
         {
+            var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
             m_JsonSerialization = new AndroidLogcatJsonSerialization();
-            m_JsonSerialization.m_SelectedDeviceId = m_SelectedDevice != null ? m_SelectedDevice.Id : "";
+            m_JsonSerialization.m_SelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             m_JsonSerialization.m_SelectedPackage = m_SelectedPackage;
             m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
             m_JsonSerialization.m_TagControl = m_TagControl;
@@ -225,8 +223,6 @@ namespace Unity.Android.Logcat
                 m_TagControl = new AndroidLogcatTagsControl();
             m_TagControl.TagSelectionChanged += TagSelectionChanged;
 
-            m_SelectedDevice = null;
-
             m_TimeOfLastAutoConnectStart = DateTime.Now;
             m_Runtime.OnUpdate += Update;
 
@@ -242,6 +238,9 @@ namespace Unity.Android.Logcat
             // Can't apply settings here, apparently EditorStyles aren't initialized yet.
             m_ApplySettings = true;
 
+            m_Runtime.DeviceQuery.Clear();
+            m_Runtime.DeviceQuery.DeviceSelected += OnSelectedDevice;
+
             LoadStates();
         }
 
@@ -249,10 +248,13 @@ namespace Unity.Android.Logcat
         {
             SaveStates();
 
+            m_Runtime.DeviceQuery.DeviceSelected -= OnSelectedDevice;
+
             if (m_Runtime.Settings != null)
                 m_Runtime.Settings.OnSettingsChanged -= OnSettingsChanged;
 
             StopLogCat();
+            
             m_Runtime.OnUpdate -= Update;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
@@ -306,7 +308,8 @@ namespace Unity.Android.Logcat
 
         private void FilterByProcessId(int processId)
         {
-            var packages = m_PackagesForAllDevices[m_SelectedDevice.Id];
+            var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
+            var packages = m_PackagesForAllDevices[selectedDevice.Id];
             foreach (var p in packages)
             {
                 if (p.processId == processId)
@@ -316,19 +319,21 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Adb, m_SelectedDevice, processId);
+            var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Adb, selectedDevice, processId);
 
-            var package = CreatePackageInformation(packageName, processId, m_SelectedDevice);
+            var package = CreatePackageInformation(packageName, processId, selectedDevice);
 
             SelectPackage(package);
         }
 
         private void Update()
         {
-            if (m_Devices.Count == 0)
-                UpdateConnectedDevicesList(false);
+            var deviceQuery = m_Runtime.DeviceQuery;
 
-            if (m_Devices.Count == 0)
+            if (deviceQuery.FirstConnectedDevice == null)
+                deviceQuery.UpdateConnectedDevicesList(false);
+   
+            if (deviceQuery.FirstConnectedDevice == null)
                 return;
 
             if (m_AutoSelectPackage && !m_FinishedAutoselectingPackage)
@@ -339,7 +344,7 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log("Waiting for {0} launch, elapsed {1} seconds", PlayerSettings.applicationIdentifier, (DateTime.Now - m_TimeOfLastAutoConnectStart).Seconds);
                 m_TimeOfLastAutoConnectUpdate = DateTime.Now;
 
-                var firstDevice = m_Devices.First().Value;
+                var firstDevice = deviceQuery.FirstConnectedDevice;
                 ResetPackages(firstDevice);
 
                 int projectApplicationPid = GetPidFromPackageName(null, PlayerSettings.applicationIdentifier, firstDevice);
@@ -349,7 +354,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log("Auto selecting package {0}", PlayerSettings.applicationIdentifier);
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
                     m_SelectedPackage = package;
-                    m_SelectedDevice = firstDevice;
+                    deviceQuery.SelectDevice(firstDevice, false);
 
                     RestartLogCat();
                     m_FinishedAutoselectingPackage = true;
@@ -369,15 +374,28 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                if (m_SelectedDevice == null)
+                if (deviceQuery.SelectedDevice == null)
                 {
                     IAndroidLogcatDevice selectedDevice;
                     PackageInformation selectedPackage;
                     GetDeviceAndPackageFromSavedState(out selectedDevice, out selectedPackage);
-                    if (selectedDevice == null && m_Devices.Count > 0)
-                        selectedDevice = m_Devices.First().Value;
-                    SetSelectedDevice(selectedDevice, true);
-                    SelectPackage(selectedPackage);
+                    if (selectedDevice == null)
+                        selectedDevice = deviceQuery.FirstConnectedDevice;
+                    if (selectedDevice != null)
+                    {
+                        m_SelectedPackage = null;
+                        if (selectedPackage == null)
+                        {
+                            deviceQuery.SelectDevice(selectedDevice);
+                        }
+                        else
+                        {
+                            // We don't want for SelectDevice to start logcat, since we're gonna select a package
+                            // That's why we're not notifying the listeners
+                            deviceQuery.SelectDevice(selectedDevice, false);
+                            SelectPackage(selectedPackage);
+                        }
+                    }
                 }
             }
 
@@ -386,26 +404,30 @@ namespace Unity.Android.Logcat
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
-                    m_MemoryViewer.QueueMemoryRequest(m_SelectedDevice, m_SelectedPackage);
+                    m_MemoryViewer.QueueMemoryRequest(deviceQuery.SelectedDevice, m_SelectedPackage);
                 }
             }
         }
 
         private void GetDeviceAndPackageFromSavedState(out IAndroidLogcatDevice savedDevice, out PackageInformation savedPackage)
         {
-            if (m_JsonSerialization == null || string.IsNullOrEmpty(m_JsonSerialization.m_SelectedDeviceId) || !m_Devices.ContainsKey(m_JsonSerialization.m_SelectedDeviceId))
-            {
-                savedDevice = null;
-                savedPackage = null;
-                m_JsonSerialization = null;
-                return;
-            }
+            savedDevice = null;
+            savedPackage = null;
 
-            savedDevice = m_Devices[m_JsonSerialization.m_SelectedDeviceId];
+            if (m_JsonSerialization == null)
+                return;
+
+            var savedDeviceId = m_JsonSerialization.m_SelectedDeviceId;
             savedPackage = m_JsonSerialization.m_SelectedPackage;
 
-            // We should only restore from AndroidLogcatJsonSerialization once during first launching.
             m_JsonSerialization = null;
+
+            if (savedDeviceId == null)
+                return;
+
+            savedDevice = m_Runtime.DeviceQuery.GetDevice(savedDeviceId);
+            if (savedDevice == null)
+                return;
         }
 
         private void OnLogcatDisconnected(IAndroidLogcatDevice device)
@@ -413,15 +435,9 @@ namespace Unity.Android.Logcat
             StopLogCat();
             var msg = "Either adb application crashed or device disconnected (device id: " + device.DisplayName + ")";
             AndroidLogcatInternalLog.Log(msg);
-            // TODO: maybe should update full device list
-            if (m_SelectedDevice == device)
-                m_SelectedDevice = null;
-            m_Devices.Remove(device.Id);
 
-            if (m_SelectedDevice == null && m_Devices.Count > 0)
-                SetSelectedDevice(m_Devices.First().Value);
-            else
-                UpdateStatusBar(msg);
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
+            UpdateStatusBar(msg);
         }
 
         private void OnLogcatConnected(IAndroidLogcatDevice device)
@@ -469,7 +485,7 @@ namespace Unity.Android.Logcat
             switch (selected)
             {
                 case 0:
-                    AndroidLogcatScreenCaptureWindow.Show(m_SelectedDevice.Id);
+                    AndroidLogcatScreenCaptureWindow.Show(m_Runtime.DeviceQuery.SelectedDevice);
                     break;
                 case 1:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
@@ -627,26 +643,29 @@ namespace Unity.Android.Logcat
 
         private void DeviceSelection(object userData, string[] options, int selected)
         {
-            if (selected == m_Devices.Count)
+            var devices = m_Runtime.DeviceQuery.Devices;
+            if (selected == m_Runtime.DeviceQuery.Devices.Count)
             {
-                AndroidLogcatIPWindow.Show(this.m_Runtime, this.GetCachedAdb(), m_Devices, m_IpWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.m_Runtime, this.GetCachedAdb(), devices, m_IpWindowScreenRect);
                 return;
             }
 
-            SetSelectedDevice(m_Devices.Values.ToArray()[selected]);
+            m_SelectedPackage = null;
+            m_Runtime.DeviceQuery.SelectDevice(devices.Values.ToArray()[selected]);
         }
 
         private void HandleSelectedDeviceField()
         {
-            var currentSelectedDevice = m_SelectedDevice == null ? "No device" : m_SelectedDevice.DisplayName;
+            var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
+            var currentSelectedDevice = selectedDevice == null ? "No device" : selectedDevice.DisplayName;
             GUILayout.Label(new GUIContent(currentSelectedDevice, "Select android device"), AndroidLogcatStyles.toolbarPopup);
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
                 // Only update device list, when we select this UI item
-                UpdateConnectedDevicesList(true);
+                m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
-                var names = m_Devices.Select(m => new GUIContent(m.Value.Id)).ToList();
+                var names = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.Id)).ToList();
                 // Add <Enter IP> as last field to let user connect through wifi.
                 names.Add(new GUIContent("<Enter IP>"));
 
@@ -654,9 +673,10 @@ namespace Unity.Android.Logcat
                 m_IpWindowScreenRect = GUIUtility.GUIToScreenRect(rect);
 
                 int selectedIndex = -1;
-                for (int i = 0; i < names.Count && m_SelectedDevice != null; i++)
+                selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
+                for (int i = 0; i < names.Count && selectedDevice != null; i++)
                 {
-                    if (m_SelectedDevice.Id == names[i].text)
+                    if (selectedDevice.Id == names[i].text)
                     {
                         selectedIndex = i;
                         break;
@@ -678,8 +698,7 @@ namespace Unity.Android.Logcat
         {
             m_SelectedPackage = newPackage;
             m_MemoryViewer.ClearEntries();
-            // Need to call this at least once, so we can update expected package name
-            m_MemoryViewer.QueueMemoryRequest(m_SelectedDevice, m_SelectedPackage);
+            m_MemoryViewer.SetExpectedDeviceAndPackage(m_Runtime.DeviceQuery.SelectedDevice, m_SelectedPackage);
         }
 
         private void SelectPackage(PackageInformation newPackage)
@@ -689,10 +708,11 @@ namespace Unity.Android.Logcat
                 return;
 
             m_AutoSelectPackage = false;
-            SetPacakge(newPackage);
-            RestartLogCat();
 
             AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
+
+            SetPacakge(newPackage);
+            RestartLogCat();            
         }
 
         private void PackageSelection(object userData, string[] options, int selected)
@@ -734,6 +754,7 @@ namespace Unity.Android.Logcat
 
         private void ResetPackages(IAndroidLogcatDevice device)
         {
+            AndroidLogcatInternalLog.Log("Reset packages");
             SetPacakge(null);
             if (device == null)
                 return;
@@ -756,7 +777,7 @@ namespace Unity.Android.Logcat
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
-                if (m_SelectedDevice == null)
+                if (m_Runtime.DeviceQuery.SelectedDevice == null)
                     return;
 
                 UpdateDebuggablePackages();
@@ -806,17 +827,12 @@ namespace Unity.Android.Logcat
             SetFilter(newFilter);
         }
 
-        private void SetSelectedDevice(IAndroidLogcatDevice device, bool force = false)
+        private void OnSelectedDevice(IAndroidLogcatDevice device)
         {
-            if (device == m_SelectedDevice)
+            if (device == null)
                 return;
 
-            m_SelectedDevice = device;
-
-            if (m_SelectedDevice == null)
-                return;
-
-            ResetPackages(m_SelectedDevice);
+            ResetPackages(device);
             UpdateDebuggablePackages();
             RestartLogCat();
         }
@@ -871,51 +887,6 @@ namespace Unity.Android.Logcat
             m_LogCat.Start();
         }
 
-        private void IntegrateUpdateConnectedDevicesList(IAndroidLogcatTaskResult resut)
-        {
-            var deviceIds = ((AndroidLogcatRetrieveDeviceIdsResult)resut).deviceIds;
-
-            // If our selected device was removed, deselect it
-            if (m_SelectedDevice != null && !deviceIds.Contains(m_SelectedDevice.Id))
-                m_SelectedDevice = null;
-
-            // Gather devices we need to remove
-            var deviceIdsToRemove = new List<string>();
-            foreach (var device in m_Devices)
-            {
-                if (deviceIds.Contains(device.Value.Id))
-                    continue;
-                deviceIdsToRemove.Add(device.Value.Id);
-            }
-
-            foreach (var toRemove in deviceIdsToRemove)
-            {
-                m_Devices.Remove(toRemove);
-            }
-
-            // Create missing devices
-            foreach (var id in deviceIds)
-            {
-                GetOrCreateDevice(id);
-            }
-
-
-            if (m_SelectedDevice != null)
-            {
-                if (m_SelectedDevice != m_Devices[m_SelectedDevice.Id])
-                    throw new Exception("The selected device is not among our list of devices");
-            }
-        }
-
-        private void UpdateConnectedDevicesList(bool synchronous)
-        {
-            if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !synchronous)
-                return;
-            m_TimeOfLastDeviceListUpdate = DateTime.Now;
-
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = GetCachedAdb() }, AndroidLogcatRetrieveDeviceIdsTask.Execute, IntegrateUpdateConnectedDevicesList, synchronous);
-        }
-
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
         {
             foreach (var package in PackagesForSelectedDevice)
@@ -923,7 +894,7 @@ namespace Unity.Android.Logcat
                 if (package == null || package.processId <= 0)
                     continue;
 
-                if (GetPidFromPackageName(cache, package.name, m_SelectedDevice) != package.processId)
+                if (GetPidFromPackageName(cache, package.name, m_Runtime.DeviceQuery.SelectedDevice) != package.processId)
                 {
                     package.SetExited();
                 }
@@ -964,18 +935,19 @@ namespace Unity.Android.Logcat
             int topActivityPid = 0;
             string topActivityPackageName = string.Empty;
             bool checkProjectPackage = true;
-            if (AndroidLogcatUtilities.GetTopActivityInfo(GetCachedAdb(), m_SelectedDevice, ref topActivityPackageName, ref topActivityPid)
+            var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
+            if (AndroidLogcatUtilities.GetTopActivityInfo(GetCachedAdb(), selectedDevice, ref topActivityPackageName, ref topActivityPid)
                 && topActivityPid > 0)
             {
-                CreatePackageInformation(topActivityPackageName, topActivityPid, m_SelectedDevice);
+                CreatePackageInformation(topActivityPackageName, topActivityPid, selectedDevice);
 
                 checkProjectPackage = topActivityPackageName != PlayerSettings.applicationIdentifier;
             }
 
             if (checkProjectPackage)
             {
-                int projectApplicationPid = GetPidFromPackageName(packagePIDCache, PlayerSettings.applicationIdentifier, m_SelectedDevice);
-                CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, m_SelectedDevice);
+                int projectApplicationPid = GetPidFromPackageName(packagePIDCache, PlayerSettings.applicationIdentifier, selectedDevice);
+                CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, selectedDevice);
             }
 
             CleanupDeadPackages();
@@ -999,26 +971,13 @@ namespace Unity.Android.Logcat
             return pid;
         }
 
-        private IAndroidLogcatDevice GetOrCreateDevice(string deviceId)
-        {
-            IAndroidLogcatDevice device;
-            if (m_Devices.TryGetValue(deviceId, out device))
-            {
-                return device;
-            }
-            device = new AndroidLogcatDevice(m_Runtime.Tools.ADB, deviceId);
-            m_Devices[deviceId] = device;
-
-            return device;
-        }
-
         private void RestartLogCat()
         {
             StopLogCat();
 
             m_LogEntries.Clear();
 
-            ConnectToDevice(m_SelectedDevice);
+            ConnectToDevice(m_Runtime.DeviceQuery.SelectedDevice);
         }
 
         private void StopLogCat()

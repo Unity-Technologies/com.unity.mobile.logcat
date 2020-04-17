@@ -30,10 +30,12 @@ namespace Unity.Android.Logcat
             internal string imagePath;
         }
 
-        public static void Show(string deviceId)
+        public static void Show(IAndroidLogcatDevice device)
         {
+            if (device == null)
+                return;
             AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
-            win.m_DeviceId = deviceId;
+            win.m_DeviceId = device.Id;
             win.QueueScreenCapture();
         }
 

@@ -30,6 +30,11 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
         get { return null; }
     }
 
+    public AndroidLogcatDeviceQuery DeviceQuery
+    {
+        get { return null; }
+    }
+
     public void Initialize()
     {
         m_Dispatcher = new AndroidLogcatDispatcher(this);
