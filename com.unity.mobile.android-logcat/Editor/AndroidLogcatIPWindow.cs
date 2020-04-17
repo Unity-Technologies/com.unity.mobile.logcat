@@ -11,8 +11,6 @@ namespace Unity.Android.Logcat
     {
         internal static Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
         private IAndroidLogcatRuntime m_Runtime;
-        private ADB m_Adb = null;
-        private IReadOnlyDictionary<string, IAndroidLogcatDevice> m_Devices;
         internal string m_IpString;
         internal string m_PortString;
         private Vector2 m_DevicesScrollPosition = Vector2.zero;
@@ -22,25 +20,37 @@ namespace Unity.Android.Logcat
         private const string kAndroidLogcatLastPort = "AndroidLogcatLastPort";
 
         private GUIContent kConnect = new GUIContent(L10n.Tr("Connect"), L10n.Tr("Sets the target device to listen for a TCP/IP connection on port 5555 and connects to it via IP address."));
+        private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"));
 
-        public static void Show(IAndroidLogcatRuntime runtime, ADB adb, IReadOnlyDictionary<string, IAndroidLogcatDevice> devices, Rect screenRect)
+        public static void Show(IAndroidLogcatRuntime runtime, Rect screenRect)
         {
             AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Enter Device IP");
-            win.m_Devices = devices;
-            win.position = new Rect(screenRect.x, screenRect.y, 600, 200);
+            win.position = new Rect(screenRect.x, screenRect.y, 700, 200);
         }
 
         void OnEnable()
         {
-            if (m_Adb == null)
-                m_Adb = ADB.GetInstance();
             if (m_Runtime == null)
                 m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_IpString = EditorPrefs.GetString(kAndroidLogcatLastIp, "");
             m_PortString = EditorPrefs.GetString(kAndroidLogcatLastPort, "5555");
 
+            m_Runtime.DeviceQuery.DevicesUpdated += DevicesUpdated;
+
             // Disable progress bar just in case, if we have a stale process hanging where we peform adb connect
             EditorUtility.ClearProgressBar();
+        }
+
+        private void OnDisable()
+        {
+            if (m_Runtime == null)
+                return;
+            m_Runtime.DeviceQuery.DevicesUpdated -= DevicesUpdated;
+        }
+
+        private void DevicesUpdated()
+        {
+            Repaint();
         }
 
         /// <summary>
@@ -51,7 +61,7 @@ namespace Unity.Android.Logcat
         public  void ConnectDevice(string ip, string port)
         {
             EditorUtility.DisplayProgressBar("Connecting", "Connecting to " + ip + ":" + port, 0.0f);
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Adb, ip = ip, port = port}, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Runtime.Tools.ADB, ip = ip, port = port}, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
         }
 
         public void SetTCPIPAndConnectDevice(string deviceId, string ip, string port)
@@ -61,7 +71,15 @@ namespace Unity.Android.Logcat
                 {
                     "Set listening port to " + port + ". Connecting to " + ip + ":" + port,
                 }), 0.0f);
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Adb, ip = ip, port = port, deviceId = deviceId, setListeningPort = true }, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Runtime.Tools.ADB, ip = ip, port = port, deviceId = deviceId, setListeningPort = true }, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
+        }
+
+        private void DisconnectDevice(IAndroidLogcatDevice device)
+        {
+            var command = "disconnect " + device.Id;
+            AndroidLogcatInternalLog.Log("adb " + command);
+            var result = m_Runtime.Tools.ADB.Run(new[] { command }, "Failed to disconnect " + device.Id);
+            AndroidLogcatInternalLog.Log(result);
         }
 
         private static void IntegrateConnectToDevice(IAndroidLogcatTaskResult result)
@@ -84,7 +102,7 @@ namespace Unity.Android.Logcat
         {
             var command = "-s " + deviceId + " shell ip route";
             AndroidLogcatInternalLog.Log("adb " + command);
-            var result = m_Adb.Run(new[] { command }, "Failed to query ip");
+            var result = m_Runtime.Tools.ADB.Run(new[] { command }, "Failed to query ip");
             AndroidLogcatInternalLog.Log(result);
             var ip = ParseIPAddress(result);
             return string.IsNullOrEmpty(ip) ? "Failed to get IP address" : ip;
@@ -97,14 +115,14 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.LabelField("Available devices:", EditorStyles.boldLabel);
                 GUI.Box(m_DeviceScrollRect, GUIContent.none, EditorStyles.helpBox);
                 m_DevicesScrollPosition = EditorGUILayout.BeginScrollView(m_DevicesScrollPosition);
-                foreach (var deviceValue in m_Devices)
+                bool refreshDevices = false;
+                foreach (var deviceValue in m_Runtime.DeviceQuery.Devices)
                 {
                     var device = deviceValue.Value;
                     EditorGUILayout.BeginHorizontal();
-
-
                     EditorGUILayout.LabelField(device.DisplayName, EditorStyles.label);
 
+                    EditorGUI.BeginDisabledGroup(device.State != IAndroidLogcatDevice.DeviceState.Connected);
                     if (GUILayout.Button(" Copy IP ", GUILayout.ExpandWidth(false)))
                     {
                         m_IpString = CopyIP(device.Id);
@@ -113,13 +131,25 @@ namespace Unity.Android.Logcat
                         GUIUtility.hotControl = 0;
                         Repaint();
                     }
-                    if (GUILayout.Button(kConnect, GUILayout.ExpandWidth(false)))
+
+                    float connectButtoSize = 100.0f;
+                    if (device.ConnectionType == IAndroidLogcatDevice.DeviceConnectionType.Network)
                     {
-                        SetTCPIPAndConnectDevice(device.Id, CopyIP(device.Id), "5555");
-                        GUIUtility.keyboardControl = 0;
-                        GUIUtility.hotControl = 0;
-                        Repaint();
+                        if (GUILayout.Button(kDisconnect, GUILayout.Width(connectButtoSize)))
+                        {
+                            DisconnectDevice(device);
+                            refreshDevices = true;
+                        }
                     }
+                    else
+                    {
+                        if (GUILayout.Button(kConnect, GUILayout.Width(connectButtoSize)))
+                        {
+                            SetTCPIPAndConnectDevice(device.Id, CopyIP(device.Id), "5555");
+                            refreshDevices = true;
+                        }
+                    }
+                    EditorGUI.EndDisabledGroup();
 
                     var rc = GUILayoutUtility.GetLastRect();
                     var orgColor = GUI.color;
@@ -128,6 +158,14 @@ namespace Unity.Android.Logcat
                         GUI.DrawTexture(new Rect(0, rc.y + rc.height, m_DeviceScrollRect.width, 1), EditorGUIUtility.whiteTexture);
                     GUI.color = orgColor;
                     EditorGUILayout.EndHorizontal();
+
+                    if (refreshDevices)
+                    {
+                        m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
+                        GUIUtility.keyboardControl = 0;
+                        GUIUtility.hotControl = 0;
+                        break;
+                    }
                 }
                 EditorGUILayout.EndScrollView();
                 if (Event.current.type == EventType.Repaint)
@@ -142,7 +180,9 @@ namespace Unity.Android.Logcat
                 m_PortString = EditorGUILayout.TextField(m_PortString, GUILayout.Width(100));
                 EditorGUILayout.EndHorizontal();
 
-                GUI.enabled = !string.IsNullOrEmpty(m_IpString);
+                EditorGUILayout.BeginHorizontal();
+
+                EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_IpString));
                 if (GUILayout.Button("Connect"))
                 {
                     Close();
@@ -151,6 +191,13 @@ namespace Unity.Android.Logcat
                     ConnectDevice(m_IpString, m_PortString);
                     GUIUtility.ExitGUI();
                 }
+                EditorGUI.EndDisabledGroup();
+                if (GUILayout.Button("Refresh Devices"))
+                {
+                    m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
+                }
+
+                EditorGUILayout.EndHorizontal();
             }
             EditorGUILayout.EndVertical();
         }

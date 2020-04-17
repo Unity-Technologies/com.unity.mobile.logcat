@@ -143,15 +143,15 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                if (m_DisplayName != null)
-                    return m_DisplayName;
-
                 if (m_Device == null || State != DeviceState.Connected)
-                    m_DisplayName = Id + " (" + State.ToString() + ")";
+                    return Id + " (" + State.ToString() + ")";
                 else
+                {
+                    if (m_DisplayName != null)
+                        return m_DisplayName;
                     m_DisplayName = string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", Manufacturer, Model, OSVersion, ABI, APILevel, Id);
-
-                return m_DisplayName;
+                    return m_DisplayName;
+                }
             }
         }
 

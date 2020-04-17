@@ -646,7 +646,7 @@ namespace Unity.Android.Logcat
             var devices = m_Runtime.DeviceQuery.Devices;
             if (selected == m_Runtime.DeviceQuery.Devices.Count)
             {
-                AndroidLogcatIPWindow.Show(this.m_Runtime, this.GetCachedAdb(), devices, m_IpWindowScreenRect);
+                AndroidLogcatIPWindow.Show(this.m_Runtime, m_IpWindowScreenRect);
                 return;
             }
 

@@ -290,6 +290,11 @@ default via 192.168.50.1 dev wlan0  metric 205
         Assert.AreEqual("192.168.50.91:5555", id);
         Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Connected, state);
 
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\toffline", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Disconnected, state);
+
         result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\tblabla", out id, out state);
         Assert.AreEqual(true, result);
         Assert.AreEqual("192.168.50.91:5555", id);

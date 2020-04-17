@@ -38,6 +38,7 @@ namespace Unity.Android.Logcat
         private DateTime m_TimeOfLastDeviceListUpdate;
 
         public event Action<IAndroidLogcatDevice> DeviceSelected;
+        public event Action DevicesUpdated;
 
         internal IAndroidLogcatDevice SelectedDevice
         {
@@ -121,6 +122,8 @@ namespace Unity.Android.Logcat
                 var stateValue = result.Groups["state"].Value.ToLowerInvariant();
                 if (stateValue.Equals("device"))
                     state = IAndroidLogcatDevice.DeviceState.Connected;
+                else if (stateValue.Equals("offline"))
+                    state = IAndroidLogcatDevice.DeviceState.Disconnected;
                 else if (stateValue.Equals("unauthorized"))
                     state = IAndroidLogcatDevice.DeviceState.Unauthorized;
                 else
@@ -194,6 +197,9 @@ namespace Unity.Android.Logcat
                 if (m_SelectedDevice != m_Devices[m_SelectedDevice.Id])
                     throw new Exception("The selected device is not among our list of devices");
             }
+
+            if (DevicesUpdated != null)
+                DevicesUpdated.Invoke();
         }
 
         internal IAndroidLogcatDevice GetDevice(string deviceId)
