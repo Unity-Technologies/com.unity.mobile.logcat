@@ -15,10 +15,14 @@ namespace Unity.Android.Logcat
         /// Capture the screenshot on the given device.
         /// </summary>
         /// <returns> Return the path to the screenshot on the PC. </returns>
-        public static string CaptureScreen(ADB adb, string deviceId)
+        public static string CaptureScreen(ADB adb, string deviceId, out string error)
         {
+            error = string.Empty;
             if (string.IsNullOrEmpty(deviceId))
+            {
+                error = "Invalid device id.";
                 return null;
+            }
 
             try
             {
@@ -34,6 +38,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -48,6 +53,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -56,6 +62,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", deviceId, ex);
+                error = ex.Message;
                 return null;
             }
         }

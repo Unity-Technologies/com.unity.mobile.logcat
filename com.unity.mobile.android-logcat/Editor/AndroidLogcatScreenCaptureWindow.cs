@@ -18,6 +18,7 @@ namespace Unity.Android.Logcat
         private int m_CaptureCount;
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
+        private string m_Error;
 
         internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
         {
@@ -28,6 +29,7 @@ namespace Unity.Android.Logcat
         internal class AndroidLogcatCaptureScreenCaptureResult : IAndroidLogcatTaskResult
         {
             internal string imagePath;
+            internal string error;
         }
 
         public static void Show(IAndroidLogcatDevice device)
@@ -60,9 +62,13 @@ namespace Unity.Android.Logcat
         private static IAndroidLogcatTaskResult ExecuteScreenCapture(IAndroidLogcatTaskInput input)
         {
             var i = (AndroidLogcatCaptureScreenCaptureInput)input;
+            string error;
+            var path = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId, out error);
+
             return new AndroidLogcatCaptureScreenCaptureResult()
             {
-                imagePath = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId)
+                imagePath = path,
+                error = error
             };
         }
 
@@ -70,7 +76,9 @@ namespace Unity.Android.Logcat
         {
             if (m_CaptureCount > 0)
                 m_CaptureCount--;
-            m_ImagePath = ((AndroidLogcatCaptureScreenCaptureResult)result).imagePath;
+            var captureResult = (AndroidLogcatCaptureScreenCaptureResult)result;
+            m_ImagePath = captureResult.imagePath;
+            m_Error = captureResult.error;
             if (!string.IsNullOrEmpty(m_ImagePath))
                 LoadImage();
             Repaint();
@@ -119,10 +127,17 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
             {
-                if (m_ImageTexture != null)
+                if (!string.IsNullOrEmpty(m_Error))
                 {
-                    Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                    GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
+                    EditorGUILayout.HelpBox(m_Error, MessageType.Error);
+                }
+                else
+                {
+                    if (m_ImageTexture != null)
+                    {
+                        Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
+                    }
                 }
             }
             EditorGUILayout.EndVertical();
