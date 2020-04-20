@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
 
         AndroidTools Tools { get; }
 
-        AndroidLogcatDeviceQuery DeviceQuery { get; }
+        AndroidLogcatDeviceQueryBase DeviceQuery { get; }
 
         IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
 
@@ -61,7 +61,7 @@ namespace Unity.Android.Logcat
             get { return m_Tools; }
         }
 
-        public AndroidLogcatDeviceQuery DeviceQuery
+        public AndroidLogcatDeviceQueryBase DeviceQuery
         {
             get { return m_DeviceQuery; }
         }

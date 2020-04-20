@@ -29,12 +29,9 @@ namespace Unity.Android.Logcat
     {
         internal static Regex kDeviceInfoRegex = new Regex(@"(?<id>^\S+)\s+(?<state>\S+$)");
 
-        protected const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
-
         protected IAndroidLogcatDevice m_SelectedDevice;
         protected Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();
         protected IAndroidLogcatRuntime m_Runtime;
-        protected DateTime m_TimeOfLastDeviceListUpdate;
 
         internal event Action<IAndroidLogcatDevice> DeviceSelected;
         internal event Action DevicesUpdated;
@@ -73,7 +70,6 @@ namespace Unity.Android.Logcat
         internal AndroidLogcatDeviceQueryBase(IAndroidLogcatRuntime runtime)
         {
             m_Runtime = runtime;
-            m_TimeOfLastDeviceListUpdate = DateTime.Now;
         }
 
         internal void Clear()
@@ -89,6 +85,9 @@ namespace Unity.Android.Logcat
             if (device != null && device.State != IAndroidLogcatDevice.DeviceState.Connected)
             {
                 AndroidLogcatInternalLog.Log("Trying to select device which is not connected: " + device.Id);
+                if (m_SelectedDevice == null)
+                    return;
+
                 m_SelectedDevice = null;
             }
             else
@@ -184,7 +183,7 @@ namespace Unity.Android.Logcat
             return device;
         }
 
-        internal abstract void UpdateConnectedDevicesList(bool synchronous, bool notifyListeners);
+        internal abstract void UpdateConnectedDevicesList(bool synchronous);
 
         protected abstract IAndroidLogcatDevice CreateDevice(string deviceId);
     }
@@ -192,18 +191,22 @@ namespace Unity.Android.Logcat
 
     class AndroidLogcatDeviceQuery : AndroidLogcatDeviceQueryBase
     {
+        protected const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
+        protected DateTime m_TimeOfLastDeviceListUpdate;
+
         internal AndroidLogcatDeviceQuery(IAndroidLogcatRuntime runtime)
             : base(runtime)
         {
+            m_TimeOfLastDeviceListUpdate = DateTime.Now;
         }
 
-        internal override void UpdateConnectedDevicesList(bool synchronous, bool notifyListeners = true)
+        internal override void UpdateConnectedDevicesList(bool synchronous)
         {
             if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !synchronous)
                 return;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
 
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = m_Runtime.Tools.ADB, notifyListeners = notifyListeners }, QueryDevicesAsync, IntegrateQueryDevices, synchronous);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = m_Runtime.Tools.ADB, notifyListeners = true }, QueryDevicesAsync, IntegrateQueryDevices, synchronous);
         }
 
         private static IAndroidLogcatTaskResult QueryDevicesAsync(IAndroidLogcatTaskInput input)
