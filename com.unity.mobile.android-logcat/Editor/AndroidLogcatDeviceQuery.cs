@@ -25,20 +25,19 @@ namespace Unity.Android.Logcat
         internal bool notifyListeners;
     }
 
-
-    class AndroidLogcatDeviceQuery
+    abstract class AndroidLogcatDeviceQueryBase
     {
         internal static Regex kDeviceInfoRegex = new Regex(@"(?<id>^\S+)\s+(?<state>\S+$)");
 
-        private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
+        protected const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
 
-        private IAndroidLogcatDevice m_SelectedDevice;
-        private Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();
-        private IAndroidLogcatRuntime m_Runtime;
-        private DateTime m_TimeOfLastDeviceListUpdate;
+        protected IAndroidLogcatDevice m_SelectedDevice;
+        protected Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();
+        protected IAndroidLogcatRuntime m_Runtime;
+        protected DateTime m_TimeOfLastDeviceListUpdate;
 
-        public event Action<IAndroidLogcatDevice> DeviceSelected;
-        public event Action DevicesUpdated;
+        internal event Action<IAndroidLogcatDevice> DeviceSelected;
+        internal event Action DevicesUpdated;
 
         internal IAndroidLogcatDevice SelectedDevice
         {
@@ -71,7 +70,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal AndroidLogcatDeviceQuery(IAndroidLogcatRuntime runtime)
+        internal AndroidLogcatDeviceQueryBase(IAndroidLogcatRuntime runtime)
         {
             m_Runtime = runtime;
             m_TimeOfLastDeviceListUpdate = DateTime.Now;
@@ -80,15 +79,6 @@ namespace Unity.Android.Logcat
         internal void Clear()
         {
             m_SelectedDevice = null;
-        }
-
-        internal void UpdateConnectedDevicesList(bool synchronous, bool notifyListeners = true)
-        {
-            if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !synchronous)
-                return;
-            m_TimeOfLastDeviceListUpdate = DateTime.Now;
-
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = m_Runtime.Tools.ADB, notifyListeners = notifyListeners }, QueryDevicesAsync, IntegrateQueryDevices, synchronous);
         }
 
         internal void SelectDevice(IAndroidLogcatDevice device, bool notifyListeners = true)
@@ -138,6 +128,84 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal IAndroidLogcatDevice GetDevice(string deviceId)
+        {
+            IAndroidLogcatDevice device;
+            if (m_Devices.TryGetValue(deviceId, out device))
+            {
+                return device;
+            }
+            return null;
+        }
+
+        protected void IntegrateQueryDevices(IAndroidLogcatTaskResult resut)
+        {
+            var deviceIdsResult = ((AndroidLogcatRetrieveDeviceIdsResult)resut);
+            var deviceInfos = deviceIdsResult.deviceInfo;
+
+            foreach (var d in m_Devices)
+            {
+                d.Value.UpdateState(IAndroidLogcatDevice.DeviceState.Disconnected);
+            }
+
+            foreach (var info in deviceInfos)
+            {
+                GetOrCreateDevice(info.id).UpdateState(info.state);
+            }
+
+            // If our selected device was removed, deselect it
+            if (m_SelectedDevice != null && m_SelectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
+            {
+                m_SelectedDevice = null;
+                if (deviceIdsResult.notifyListeners && DeviceSelected != null)
+                    DeviceSelected.Invoke(m_SelectedDevice);
+            }
+
+            if (m_SelectedDevice != null)
+            {
+                if (m_SelectedDevice != m_Devices[m_SelectedDevice.Id])
+                    throw new Exception("The selected device is not among our list of devices");
+            }
+
+            if (DevicesUpdated != null)
+                DevicesUpdated.Invoke();
+        }
+
+        private IAndroidLogcatDevice GetOrCreateDevice(string deviceId)
+        {
+            IAndroidLogcatDevice device;
+            if (m_Devices.TryGetValue(deviceId, out device))
+            {
+                return device;
+            }
+            device = CreateDevice(deviceId);
+            m_Devices[deviceId] = device;
+
+            return device;
+        }
+
+        internal abstract void UpdateConnectedDevicesList(bool synchronous, bool notifyListeners);
+
+        protected abstract IAndroidLogcatDevice CreateDevice(string deviceId);
+    }
+
+
+    class AndroidLogcatDeviceQuery : AndroidLogcatDeviceQueryBase
+    {
+        internal AndroidLogcatDeviceQuery(IAndroidLogcatRuntime runtime)
+            : base(runtime)
+        {
+        }
+
+        internal override void UpdateConnectedDevicesList(bool synchronous, bool notifyListeners = true)
+        {
+            if ((DateTime.Now - m_TimeOfLastDeviceListUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveDeviceChecks && !synchronous)
+                return;
+            m_TimeOfLastDeviceListUpdate = DateTime.Now;
+
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatRetrieveDeviceIdsInput() { adb = m_Runtime.Tools.ADB, notifyListeners = notifyListeners }, QueryDevicesAsync, IntegrateQueryDevices, synchronous);
+        }
+
         private static IAndroidLogcatTaskResult QueryDevicesAsync(IAndroidLogcatTaskInput input)
         {
             var adb = ((AndroidLogcatRetrieveDeviceIdsInput)input).adb;
@@ -169,60 +237,9 @@ namespace Unity.Android.Logcat
             return result;
         }
 
-        private void IntegrateQueryDevices(IAndroidLogcatTaskResult resut)
+        protected override IAndroidLogcatDevice CreateDevice(string deviceId)
         {
-            var deviceIdsResult = ((AndroidLogcatRetrieveDeviceIdsResult)resut);
-            var deviceInfos = deviceIdsResult.deviceInfo;
-
-            foreach (var d in m_Devices)
-            {
-                ((AndroidLogcatDevice)d.Value).UpdateState(IAndroidLogcatDevice.DeviceState.Disconnected);
-            }
-
-            foreach (var info in deviceInfos)
-            {
-                ((AndroidLogcatDevice)GetOrCreateDevice(info.id)).UpdateState(info.state);
-            }
-
-            // If our selected device was removed, deselect it
-            if (m_SelectedDevice != null && m_SelectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
-            {
-                m_SelectedDevice = null;
-                if (deviceIdsResult.notifyListeners && DeviceSelected != null)
-                    DeviceSelected.Invoke(m_SelectedDevice);
-            }
-
-            if (m_SelectedDevice != null)
-            {
-                if (m_SelectedDevice != m_Devices[m_SelectedDevice.Id])
-                    throw new Exception("The selected device is not among our list of devices");
-            }
-
-            if (DevicesUpdated != null)
-                DevicesUpdated.Invoke();
-        }
-
-        internal IAndroidLogcatDevice GetDevice(string deviceId)
-        {
-            IAndroidLogcatDevice device;
-            if (m_Devices.TryGetValue(deviceId, out device))
-            {
-                return device;
-            }
-            return null;
-        }
-
-        private IAndroidLogcatDevice GetOrCreateDevice(string deviceId)
-        {
-            IAndroidLogcatDevice device;
-            if (m_Devices.TryGetValue(deviceId, out device))
-            {
-                return device;
-            }
-            device = new AndroidLogcatDevice(m_Runtime.Tools.ADB, deviceId);
-            m_Devices[deviceId] = device;
-
-            return device;
+            return new AndroidLogcatDevice(m_Runtime.Tools.ADB, deviceId);
         }
     }
 }

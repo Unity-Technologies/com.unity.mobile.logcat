@@ -103,8 +103,6 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     internal override string DisplayName => throw new NotImplementedException();
 
     internal override string ShortDisplayName => throw new NotImplementedException();
-
-    internal override DeviceState State => throw new NotImplementedException();
 }
 
 internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice

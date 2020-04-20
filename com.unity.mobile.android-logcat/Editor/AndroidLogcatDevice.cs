@@ -7,6 +7,7 @@ namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatDevice
     {
+        private DeviceState m_State;
         internal enum DeviceConnectionType
         {
             USB,
@@ -63,7 +64,21 @@ namespace Unity.Android.Logcat
             get { return Id.EndsWith(":5555") ? DeviceConnectionType.Network : DeviceConnectionType.USB; }
         }
 
-        internal abstract DeviceState State { get; }
+
+        internal DeviceState State
+        {
+            get { return m_State; }
+        }
+
+        internal void UpdateState(DeviceState state)
+        {
+            m_State = state;
+        }
+
+        internal IAndroidLogcatDevice()
+        {
+            m_State = DeviceState.Unknown;
+        }
     }
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
@@ -72,12 +87,12 @@ namespace Unity.Android.Logcat
         private AndroidDevice m_Device;
         private Version m_Version;
         private string m_DisplayName;
-        private DeviceState m_State;
+
 
         internal AndroidLogcatDevice(ADB adb, string deviceId)
         {
             m_Id = deviceId;
-            m_State = DeviceState.Unknown;
+
             try
             {
                 m_Device = new AndroidDevice(adb, deviceId);
@@ -161,16 +176,6 @@ namespace Unity.Android.Logcat
                 else
                     return Id;
             }
-        }
-
-        internal override DeviceState State
-        {
-            get { return m_State; }
-        }
-
-        internal void UpdateState(DeviceState state)
-        {
-            m_State = state;
         }
     }
 }
