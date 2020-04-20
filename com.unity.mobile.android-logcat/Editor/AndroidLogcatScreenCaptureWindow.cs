@@ -55,7 +55,8 @@ namespace Unity.Android.Logcat
 
         private void DeviceQuery_DevicesUpdated()
         {
-            m_Devices = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.Id)).ToArray();
+            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected)
+                .Select(m => new GUIContent(m.Value.Id)).ToArray();
         }
 
         private string GetDeviceId()
