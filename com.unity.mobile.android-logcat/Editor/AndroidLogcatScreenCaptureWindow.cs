@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEditor;
+using System.Linq;
 #if PLATFORM_ANDROID
 using UnityEditor.Android;
 #endif
@@ -13,7 +14,8 @@ namespace Unity.Android.Logcat
         [SerializeField] private string m_ImagePath;
 #if PLATFORM_ANDROID
         private IAndroidLogcatRuntime m_Runtime;
-        private string m_DeviceId;
+        private GUIContent[] m_Devices;
+        private int m_SelectedDevice;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private const int kButtonAreaHeight = 30;
@@ -32,27 +34,45 @@ namespace Unity.Android.Logcat
             internal string error;
         }
 
-        public static void Show(IAndroidLogcatDevice device)
+        public static void Show()
         {
-            if (device == null)
-                return;
             AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
-            win.m_DeviceId = device.Id;
             win.QueueScreenCapture();
         }
 
         private void OnEnable()
         {
             m_Runtime = AndroidLogcatManager.instance.Runtime;
+            m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
+            DeviceQuery_DevicesUpdated();
+        }
+
+        private void OnDisable()
+        {
+            m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
+            m_SelectedDevice = 0;
+        }
+
+        private void DeviceQuery_DevicesUpdated()
+        {
+            m_Devices = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.Id)).ToArray();
+        }
+
+        private string GetDeviceId()
+        {
+            if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
+                return string.Empty;
+            return m_Devices[m_SelectedDevice].text;
         }
 
         private void QueueScreenCapture()
         {
-            if (string.IsNullOrEmpty(m_DeviceId))
+            var id = GetDeviceId();
+            if (string.IsNullOrEmpty(id))
                 return;
 
             m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = m_DeviceId},
+                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = id},
                 ExecuteScreenCapture,
                 IntegrateCaptureScreenShot,
                 false);
@@ -100,6 +120,7 @@ namespace Unity.Android.Logcat
             }
             GUILayout.Button(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
 
+            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
             EditorGUI.BeginDisabledGroup(m_CaptureCount > 0);
             if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
                 QueueScreenCapture();
@@ -123,7 +144,8 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(10);
-            if (string.IsNullOrEmpty(m_DeviceId))
+            var id = GetDeviceId();
+            if (string.IsNullOrEmpty(id))
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
             {
