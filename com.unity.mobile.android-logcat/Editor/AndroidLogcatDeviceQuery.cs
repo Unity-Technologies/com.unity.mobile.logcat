@@ -56,7 +56,6 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                ;
                 foreach (var d in m_Devices)
                 {
                     if (d.Value.State != IAndroidLogcatDevice.DeviceState.Connected)
