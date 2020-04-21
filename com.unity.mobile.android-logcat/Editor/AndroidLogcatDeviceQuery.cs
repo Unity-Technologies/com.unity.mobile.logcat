@@ -98,8 +98,8 @@ namespace Unity.Android.Logcat
             if (m_SelectedDevice != null && !m_Devices.Keys.Contains(m_SelectedDevice.Id))
                 throw new Exception("Selected device is not among our listed devices");
 
-            if (notifyListeners && DeviceSelected != null)
-                DeviceSelected.Invoke(m_SelectedDevice);
+            if (notifyListeners)
+                DeviceSelected?.Invoke(m_SelectedDevice);
         }
 
         internal static bool ParseDeviceInfo(string input, out string id, out IAndroidLogcatDevice.DeviceState state)
@@ -156,8 +156,8 @@ namespace Unity.Android.Logcat
             if (m_SelectedDevice != null && m_SelectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
             {
                 m_SelectedDevice = null;
-                if (deviceIdsResult.notifyListeners && DeviceSelected != null)
-                    DeviceSelected.Invoke(m_SelectedDevice);
+                if (deviceIdsResult.notifyListeners)
+                    DeviceSelected?.Invoke(m_SelectedDevice);
             }
 
             if (m_SelectedDevice != null)
@@ -166,8 +166,7 @@ namespace Unity.Android.Logcat
                     throw new Exception("The selected device is not among our list of devices");
             }
 
-            if (DevicesUpdated != null)
-                DevicesUpdated.Invoke();
+            DevicesUpdated?.Invoke();
         }
 
         private IAndroidLogcatDevice GetOrCreateDevice(string deviceId)

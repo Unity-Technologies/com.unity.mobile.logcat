@@ -57,8 +57,7 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
     /// </summary>
     public void Update()
     {
-        if (OnUpdate != null)
-            OnUpdate.Invoke();
+        OnUpdate?.Invoke();
     }
 }
 

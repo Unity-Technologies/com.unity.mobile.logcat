@@ -190,8 +190,7 @@ namespace Unity.Android.Logcat
             m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device != null ? m_Device.Id : null, OnDataReceived);
             m_MessageProvider.Start();
 
-            if (Connected != null)
-                Connected.Invoke(Device);
+            Connected?.Invoke(Device);
         }
 
         internal void Stop()
@@ -226,8 +225,8 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider.HasExited)
             {
                 Stop();
-                if (Disconnected != null)
-                    Disconnected.Invoke(Device);
+                
+                Disconnected?.Invoke(Device);
 
                 return;
             }

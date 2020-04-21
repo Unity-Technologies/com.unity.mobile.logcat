@@ -93,8 +93,7 @@ namespace Unity.Android.Logcat
 
         public void Update()
         {
-            if (OnUpdate != null)
-                OnUpdate.Invoke();
+            OnUpdate?.Invoke();
         }
     }
 }
