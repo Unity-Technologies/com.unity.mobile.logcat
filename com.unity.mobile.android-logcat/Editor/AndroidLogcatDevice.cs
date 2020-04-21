@@ -93,6 +93,12 @@ namespace Unity.Android.Logcat
         {
             m_Id = deviceId;
 
+            if (adb == null)
+            {
+                m_Device = null;
+                return;
+            }
+
             try
             {
                 m_Device = new AndroidDevice(adb, deviceId);
@@ -109,6 +115,8 @@ namespace Unity.Android.Logcat
         {
             get
             {
+                if (m_Device == null)
+                    return 0;
                 int value = 0;
                 int.TryParse(m_Device.Properties["ro.build.version.sdk"], out value);
                 return value;
@@ -117,12 +125,22 @@ namespace Unity.Android.Logcat
 
         internal override string Manufacturer
         {
-            get { return m_Device.Properties["ro.product.manufacturer"]; }
+            get
+            {
+                if (m_Device == null)
+                    return string.Empty;
+                return m_Device.Properties["ro.product.manufacturer"];
+            }
         }
 
         internal override string Model
         {
-            get { return m_Device.Properties["ro.product.model"]; }
+            get
+            {
+                if (m_Device == null)
+                    return string.Empty;
+                return m_Device.Properties["ro.product.model"];
+            }
         }
 
         internal override Version OSVersion
@@ -143,7 +161,12 @@ namespace Unity.Android.Logcat
 
         internal override string ABI
         {
-            get { return m_Device.Properties["ro.product.cpu.abi"]; }
+            get
+            {
+                if (m_Device == null)
+                    return string.Empty;
+                return m_Device.Properties["ro.product.cpu.abi"];
+            }
         }
 
         internal override string Id

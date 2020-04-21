@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using Unity.Android.Logcat;
 using UnityEditor.Android;
@@ -142,5 +143,25 @@ myandroid3 offline
     private void Query_DeviceSelected(IAndroidLogcatDevice obj)
     {
         m_SelectedCount++;
+    }
+
+    [Test]
+    public void DeviceBehavesProperlyWithBaseNullDevice()
+    {
+        var device = new AndroidLogcatDevice(null, "test");
+        var properties = typeof(AndroidLogcatDevice).GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        foreach (var p in properties)
+        {
+            try
+            {
+                var value = p.GetValue(device);
+            }
+            catch
+            {
+                Assert.Fail($"Failed to query {p.DeclaringType.Name}.{p.Name}");
+            }
+        }
+
+        Assert.AreEqual("test", device.Id);
     }
 }
