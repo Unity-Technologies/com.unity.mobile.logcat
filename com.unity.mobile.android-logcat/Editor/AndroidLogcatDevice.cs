@@ -1,5 +1,6 @@
 #if PLATFORM_ANDROID
 using System;
+using System.Text.RegularExpressions;
 using UnityEditor.Android;
 
 
@@ -7,6 +8,8 @@ namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatDevice
     {
+        internal static Regex kNetworkDeviceRegex = new Regex(@"^.*:\d{1,5}$");
+
         private DeviceState m_State;
         internal enum DeviceConnectionType
         {
@@ -61,9 +64,11 @@ namespace Unity.Android.Logcat
 
         internal DeviceConnectionType ConnectionType
         {
-            get { return Id.EndsWith(":5555") ? DeviceConnectionType.Network : DeviceConnectionType.USB; }
+            get
+            {
+                return kNetworkDeviceRegex.Match(Id).Success ? DeviceConnectionType.Network : DeviceConnectionType.USB;
+            }
         }
-
 
         internal DeviceState State
         {

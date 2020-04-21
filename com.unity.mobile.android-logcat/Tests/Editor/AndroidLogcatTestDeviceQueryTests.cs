@@ -164,4 +164,18 @@ myandroid3 offline
 
         Assert.AreEqual("test", device.Id);
     }
+
+    [Test]
+    public void DeviceHasProperConnectionType()
+    {
+        var networkDevice1 = new AndroidLogcatFakeDevice90("mydevice:12345");
+        var networkDevice2 = new AndroidLogcatFakeDevice90("mydevice:5555");
+        var usbDevice1 = new AndroidLogcatFakeDevice90("mydevice");
+        // Since the port number is over 65535, it's treated as USB device
+        var usbDevice2 = new AndroidLogcatFakeDevice90("mydevice:123456");
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceConnectionType.Network, networkDevice1.ConnectionType);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceConnectionType.Network, networkDevice2.ConnectionType);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceConnectionType.USB, usbDevice1.ConnectionType);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceConnectionType.USB, usbDevice2.ConnectionType);
+    }
 }
