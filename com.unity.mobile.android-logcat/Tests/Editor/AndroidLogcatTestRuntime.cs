@@ -9,7 +9,7 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
     private AndroidLogcatDispatcher m_Dispatcher;
     private AndroidLogcatFakeDeviceQuery m_DeviceQuery;
 
-    public event Action OnUpdate;
+    public event Action Update;
 
     public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
@@ -55,9 +55,9 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
     /// <summary>
     /// Should be called manually from the test
     /// </summary>
-    public void Update()
+    public void OnUpdate()
     {
-        OnUpdate?.Invoke();
+        Update?.Invoke();
     }
 }
 

@@ -34,7 +34,7 @@ namespace Unity.Android.Logcat
             internal string error;
         }
 
-        public static void Show()
+        public static void ShowWindow()
         {
             AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
             win.QueueScreenCapture();

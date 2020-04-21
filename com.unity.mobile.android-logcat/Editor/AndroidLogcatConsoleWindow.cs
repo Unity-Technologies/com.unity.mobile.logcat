@@ -224,7 +224,7 @@ namespace Unity.Android.Logcat
             m_TagControl.TagSelectionChanged += TagSelectionChanged;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
-            m_Runtime.OnUpdate += Update;
+            m_Runtime.Update += OnUpdate;
 
             m_FinishedAutoselectingPackage = false;
             AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectPackage);
@@ -255,7 +255,7 @@ namespace Unity.Android.Logcat
 
             StopLogCat();
 
-            m_Runtime.OnUpdate -= Update;
+            m_Runtime.Update -= OnUpdate;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
         }
 
@@ -326,7 +326,7 @@ namespace Unity.Android.Logcat
             SelectPackage(package);
         }
 
-        private void Update()
+        private void OnUpdate()
         {
             var deviceQuery = m_Runtime.DeviceQuery;
 
@@ -485,7 +485,7 @@ namespace Unity.Android.Logcat
             switch (selected)
             {
                 case 0:
-                    AndroidLogcatScreenCaptureWindow.Show();
+                    AndroidLogcatScreenCaptureWindow.ShowWindow();
                     break;
                 case 1:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));

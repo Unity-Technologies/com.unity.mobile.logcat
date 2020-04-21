@@ -52,7 +52,7 @@ namespace Unity.Android.Logcat
             lock (m_IntegrateTaskQueue)
                 m_IntegrateTaskQueue.Clear();
 
-            m_Runtime.OnUpdate += IntegrateMainThread;
+            m_Runtime.Update += IntegrateMainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
 
             m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
@@ -64,7 +64,7 @@ namespace Unity.Android.Logcat
         {
             if (!m_Running)
                 throw new Exception("Expected dispatcher to run");
-            m_Runtime.OnUpdate -= IntegrateMainThread;
+            m_Runtime.Update -= IntegrateMainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
             if (!m_FinishedEvent.WaitOne(1000))

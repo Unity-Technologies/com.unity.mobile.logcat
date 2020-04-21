@@ -206,7 +206,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                 foreach (var m in messages)
                     provider.SupplyFakeMessage(m);
 
-                m_Runtime.Update();
+                m_Runtime.OnUpdate();
                 if (filter == "")
                 {
                     Assert.IsTrue(entries.Contains(".abc"));
@@ -263,7 +263,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             foreach (var m in messages)
                 provider.SupplyFakeMessage(m);
 
-            m_Runtime.Update();
+            m_Runtime.OnUpdate();
 
             switch (pid)
             {

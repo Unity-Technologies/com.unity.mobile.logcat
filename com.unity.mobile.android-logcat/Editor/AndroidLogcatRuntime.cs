@@ -28,7 +28,7 @@ namespace Unity.Android.Logcat
 
         void Shutdown();
 
-        event Action OnUpdate;
+        event Action Update;
     }
 
     internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
@@ -38,7 +38,7 @@ namespace Unity.Android.Logcat
         private AndroidTools m_Tools;
         private AndroidLogcatDeviceQuery m_DeviceQuery;
 
-        public event Action OnUpdate;
+        public event Action Update;
 
         public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
@@ -68,7 +68,7 @@ namespace Unity.Android.Logcat
 
         public void Initialize()
         {
-            EditorApplication.update += Update;
+            EditorApplication.update += OnUpdate;
 
             m_Dispatcher = new AndroidLogcatDispatcher(this);
             m_Dispatcher.Initialize();
@@ -88,12 +88,12 @@ namespace Unity.Android.Logcat
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
 
-            EditorApplication.update -= Update;
+            EditorApplication.update -= OnUpdate;
         }
 
-        public void Update()
+        public void OnUpdate()
         {
-            OnUpdate?.Invoke();
+            Update?.Invoke();
         }
     }
 }
