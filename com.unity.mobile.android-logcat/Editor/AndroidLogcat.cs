@@ -225,7 +225,7 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider.HasExited)
             {
                 Stop();
-                
+
                 Disconnected?.Invoke(Device);
 
                 return;
