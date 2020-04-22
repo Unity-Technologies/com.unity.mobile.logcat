@@ -644,7 +644,7 @@ namespace Unity.Android.Logcat
         private void DeviceSelection(object userData, string[] options, int selected)
         {
             var devices = m_Runtime.DeviceQuery.Devices;
-            if (selected == m_Runtime.DeviceQuery.Devices.Count)
+            if (selected >= m_Runtime.DeviceQuery.Devices.Count)
             {
                 AndroidLogcatIPWindow.Show(this.m_Runtime, m_IpWindowScreenRect);
                 return;
@@ -666,8 +666,9 @@ namespace Unity.Android.Logcat
                 m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
                 var names = m_Runtime.DeviceQuery.Devices.Select(m => new GUIContent(m.Value.ShortDisplayName)).ToList();
+                names.Add(GUIContent.none);
                 // Add <Enter IP> as last field to let user connect through wifi.
-                names.Add(new GUIContent("<Enter IP>"));
+                names.Add(new GUIContent("Other connection options..."));
 
                 // Store the screen-space place that we should show the AndroidLogcatIPWindow.
                 m_IpWindowScreenRect = GUIUtility.GUIToScreenRect(rect);

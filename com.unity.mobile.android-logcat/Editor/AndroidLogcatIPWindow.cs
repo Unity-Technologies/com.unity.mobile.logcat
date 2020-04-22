@@ -24,7 +24,7 @@ namespace Unity.Android.Logcat
 
         public static void Show(IAndroidLogcatRuntime runtime, Rect screenRect)
         {
-            AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Enter Device IP");
+            AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Other connection options");
             win.position = new Rect(screenRect.x, screenRect.y, 700, 200);
         }
 
