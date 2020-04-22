@@ -135,7 +135,11 @@ namespace Unity.Android.Logcat
             }
             GUILayout.Button(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
 
+            EditorGUI.BeginChangeCheck();
             m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
+            if (EditorGUI.EndChangeCheck())
+                QueueScreenCapture();
+
             EditorGUI.BeginDisabledGroup(m_CaptureCount > 0);
             if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
                 QueueScreenCapture();
