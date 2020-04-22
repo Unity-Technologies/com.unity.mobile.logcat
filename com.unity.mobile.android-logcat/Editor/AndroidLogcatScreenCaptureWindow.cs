@@ -44,7 +44,21 @@ namespace Unity.Android.Logcat
         {
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
+
             DeviceQuery_DevicesUpdated();
+
+            if (m_Runtime.DeviceQuery.SelectedDevice != null)
+            {
+                var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
+                for (int i = 0; i < m_Devices.Length; i++)
+                {
+                    if (id == m_Devices[i].text)
+                    {
+                        m_SelectedDevice = i;
+                        break;
+                    }
+                }
+            }
         }
 
         private void OnDisable()
