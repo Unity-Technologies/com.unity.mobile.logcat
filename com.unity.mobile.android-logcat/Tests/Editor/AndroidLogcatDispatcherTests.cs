@@ -51,7 +51,7 @@ public class AndroidLogcatDispatcherTests
         const float kMaxWaitTime = 1.0f;
         do
         {
-            runtime.Update();
+            runtime.OnUpdate();
             yield return null;
         }
         while (!taskFinished && Time.realtimeSinceStartup - startTime < kMaxWaitTime);
@@ -98,7 +98,7 @@ public class AndroidLogcatDispatcherTests
         const float kMaxWaitTime = 4.0f;
         do
         {
-            runtime.Update();
+            runtime.OnUpdate();
             yield return null;
         }
         while (itemsReceived.Count < kMaxCount && Time.realtimeSinceStartup - startTime < kMaxWaitTime);
@@ -139,7 +139,7 @@ public class AndroidLogcatDispatcherTests
 
         do
         {
-            runtime.Update();
+            runtime.OnUpdate();
             yield return null;
         }
         while (runtime.Dispatcher.AsyncOperationsExecuted < 1);
@@ -158,7 +158,7 @@ public class AndroidLogcatDispatcherTests
         var startTime = Time.realtimeSinceStartup;
         do
         {
-            runtime.Update();
+            runtime.OnUpdate();
             yield return null;
         }
         while ((runtime.Dispatcher.AsyncOperationsExecuted < 2 || iWasExecuted == 0) && Time.realtimeSinceStartup - startTime < kMaxWaitTime);

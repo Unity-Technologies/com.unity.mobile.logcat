@@ -79,6 +79,7 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
 internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
+    private string m_DeviceId;
     internal override string Manufacturer
     {
         get { return "Undefined"; }
@@ -97,7 +98,16 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 
     internal override string Id
     {
-        get { return "FakeDevice"; }
+        get { return m_DeviceId; }
+    }
+
+    internal override string DisplayName => throw new NotImplementedException();
+
+    internal override string ShortDisplayName => throw new NotImplementedException();
+
+    internal AndroidLogcatFakeDevice(string deviceId)
+    {
+        m_DeviceId = deviceId;
     }
 }
 
@@ -111,6 +121,10 @@ internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
     {
         get { return new Version(9, 0); }
     }
+
+    internal AndroidLogcatFakeDevice90(string deviceId) : base(deviceId)
+    {
+    }
 }
 
 internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
@@ -123,33 +137,19 @@ internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
     {
         get { return new Version(6, 0); }
     }
+
+    internal AndroidLogcatFakeDevice60(string deviceId) : base(deviceId)
+    {
+    }
 }
 
 
-internal class AndroidLogcatMessagerProvideTests
+internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
-    private AndroidLogcatTestRuntime m_Runtime;
-
-    public void InitRuntime()
-    {
-        if (m_Runtime != null)
-            throw new Exception("Runtime was not shutdown by previous test?");
-        m_Runtime = new AndroidLogcatTestRuntime();
-        m_Runtime.Initialize();
-    }
-
-    public void ShutdownRuntime()
-    {
-        if (m_Runtime == null)
-            throw new Exception("Runtime was not created?");
-        m_Runtime.Shutdown();
-        m_Runtime = null;
-    }
-
     [Test]
     public void RegexFilterCorrectlyFormed()
     {
-        var devices = new AndroidLogcatFakeDevice[] {new AndroidLogcatFakeDevice60(), new AndroidLogcatFakeDevice90()};
+        var devices = new AndroidLogcatFakeDevice[] {new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90")};
         var filter = ".*abc";
         InitRuntime();
 
@@ -194,7 +194,7 @@ internal class AndroidLogcatMessagerProvideTests
             foreach (var filter in new[] {"", ".abc", "...."})
             {
                 var entries = new List<string>();
-                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), -1,
+                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60("Fake60"), -1,
                     AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
                 logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
                 {
@@ -206,7 +206,7 @@ internal class AndroidLogcatMessagerProvideTests
                 foreach (var m in messages)
                     provider.SupplyFakeMessage(m);
 
-                m_Runtime.Update();
+                m_Runtime.OnUpdate();
                 if (filter == "")
                 {
                     Assert.IsTrue(entries.Contains(".abc"));
@@ -252,7 +252,7 @@ internal class AndroidLogcatMessagerProvideTests
         foreach (var pid in new[] { -1, 0, 1 })
         {
             var processIds = new List<int>();
-            var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60(), pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
+            var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60("Fake60"), pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
             logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
             {
                 processIds.AddRange(e.Select(m => m.processId));
@@ -263,7 +263,7 @@ internal class AndroidLogcatMessagerProvideTests
             foreach (var m in messages)
                 provider.SupplyFakeMessage(m);
 
-            m_Runtime.Update();
+            m_Runtime.OnUpdate();
 
             switch (pid)
             {

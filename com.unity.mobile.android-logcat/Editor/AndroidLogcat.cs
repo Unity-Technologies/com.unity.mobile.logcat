@@ -103,9 +103,9 @@ namespace Unity.Android.Logcat
 
         public event Action<List<LogEntry>> LogEntriesAdded;
 
-        public event Action<string> DeviceDisconnected;
+        public event Action<IAndroidLogcatDevice> Disconnected;
 
-        public event Action<string> DeviceConnected;
+        public event Action<IAndroidLogcatDevice> Connected;
 
         private IAndroidLogcatMessageProvider m_MessageProvider;
 
@@ -185,20 +185,19 @@ namespace Unity.Android.Logcat
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
-            m_Runtime.OnUpdate += OnUpdate;
+            m_Runtime.Update += OnUpdate;
 
             m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device != null ? m_Device.Id : null, OnDataReceived);
             m_MessageProvider.Start();
 
-            if (DeviceConnected != null)
-                DeviceConnected.Invoke(Device.Id);
+            Connected?.Invoke(Device);
         }
 
         internal void Stop()
         {
             m_CachedLogLines.Clear();
             m_BuildInfos.Clear();
-            m_Runtime.OnUpdate -= OnUpdate;
+            m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
@@ -226,8 +225,8 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider.HasExited)
             {
                 Stop();
-                if (DeviceDisconnected != null)
-                    DeviceDisconnected.Invoke(Device.Id);
+
+                Disconnected?.Invoke(Device);
 
                 return;
             }

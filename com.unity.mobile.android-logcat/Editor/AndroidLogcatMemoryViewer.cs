@@ -91,7 +91,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
-        private string m_ExpectedDeviceId;
+        private IAndroidLogcatDevice m_ExpectedDevice;
         private AndroidLogcatConsoleWindow.PackageInformation m_ExpectedPackageFromRequest;
 
         [SerializeField]
@@ -185,14 +185,20 @@ namespace Unity.Android.Logcat
 
             m_UpperMemoryBoundry = 32 * 1000 * 1000;
             m_ExpectedPackageFromRequest = null;
-            m_ExpectedDeviceId = null;
+            m_ExpectedDevice = null;
         }
 
-        internal void QueueMemoryRequest(string deviceId, AndroidLogcatConsoleWindow.PackageInformation package)
+        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
         {
-            m_ExpectedDeviceId = deviceId;
+            m_ExpectedDevice = device;
             m_ExpectedPackageFromRequest = package;
-            if (m_ExpectedPackageFromRequest == null || !m_ExpectedPackageFromRequest.IsAlive() || m_ExpectedDeviceId == null)
+        }
+
+        internal void QueueMemoryRequest(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        {
+            m_ExpectedDevice = device;
+            m_ExpectedPackageFromRequest = package;
+            if (m_ExpectedPackageFromRequest == null || !m_ExpectedPackageFromRequest.IsAlive() || m_ExpectedDevice == null)
                 return;
             // Don't make a memory request, if previous requests haven't finished yet
             // Otherwise async queue will grow bigger and bigger
@@ -206,7 +212,7 @@ namespace Unity.Android.Logcat
                     adb = ADB.GetInstance(),
                     packageProcessId = m_ExpectedPackageFromRequest.processId,
                     packageName = m_ExpectedPackageFromRequest.name,
-                    deviceId = deviceId
+                    deviceId = device.Id
                 },
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
@@ -319,11 +325,11 @@ namespace Unity.Android.Logcat
 
             // When selecting a new package, there might be still few requests for other packages running on other threads
             // Ignore those
-            if (m_ExpectedPackageFromRequest == null || m_ExpectedDeviceId == null)
+            if (m_ExpectedPackageFromRequest == null || m_ExpectedDevice == null)
                 return;
 
             if (memoryResult.packageProcessId != m_ExpectedPackageFromRequest.processId ||
-                memoryResult.deviceId != m_ExpectedDeviceId ||
+                memoryResult.deviceId != m_ExpectedDevice.Id ||
                 string.IsNullOrEmpty(memoryResult.contents))
                 return;
 
@@ -481,7 +487,7 @@ namespace Unity.Android.Logcat
             {
                 GUILayout.Space(10);
                 if (GUILayout.Button("Capture", EditorStyles.miniButton))
-                    QueueMemoryRequest(m_ExpectedDeviceId, m_ExpectedPackageFromRequest);
+                    QueueMemoryRequest(m_ExpectedDevice, m_ExpectedPackageFromRequest);
             }
 
             if (Unsupported.IsDeveloperMode())

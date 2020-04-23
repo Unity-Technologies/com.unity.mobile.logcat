@@ -11,7 +11,7 @@ The device list contains all the connnected devices, but you can only select one
 The devices connected through USB will be added to the device list automatically when starting Android logcat window. 
 
 **Connect via Wifi**  
-Go to the devices list and click **\<Enter IP>**.
+Go to the devices list and click **Other connection options**.
 
 Window to enter an ip address will open.
 
@@ -19,5 +19,5 @@ If you want to manually enter the device IP, please follow the instructions in t
 
 If the device you want to connect through Wifi is already connected through USB you can simply click **Connect** .
 
-![Enter IP](images/enter_ip_window.png)
+![Enter IP](images/AndroidLogcatIPWindow.png)
 

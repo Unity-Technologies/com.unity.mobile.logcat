@@ -125,7 +125,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static readonly GUIStyle StatusIcon = "StatusBarIcon";
+        public static readonly GUIStyle StatusIcon = "toolbarButton";
     }
 }
 #endif

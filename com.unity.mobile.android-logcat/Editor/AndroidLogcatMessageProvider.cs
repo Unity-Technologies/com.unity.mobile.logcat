@@ -64,6 +64,7 @@ namespace Unity.Android.Logcat
         public void Start()
         {
             var arguments = LogcatArguments();
+            AndroidLogcatInternalLog.Log("\n\nStarting logcat\n\n");
             AndroidLogcatInternalLog.Log("{0} {1}", m_ADB.GetADBPath(), arguments);
             m_LogcatProcess = new Process();
             m_LogcatProcess.StartInfo.FileName = m_ADB.GetADBPath();

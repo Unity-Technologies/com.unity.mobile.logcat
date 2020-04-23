@@ -15,10 +15,14 @@ namespace Unity.Android.Logcat
         /// Capture the screenshot on the given device.
         /// </summary>
         /// <returns> Return the path to the screenshot on the PC. </returns>
-        public static string CaptureScreen(ADB adb, string deviceId)
+        public static string CaptureScreen(ADB adb, string deviceId, out string error)
         {
+            error = string.Empty;
             if (string.IsNullOrEmpty(deviceId))
+            {
+                error = "Invalid device id.";
                 return null;
+            }
 
             try
             {
@@ -34,6 +38,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -48,6 +53,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -56,6 +62,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", deviceId, ex);
+                error = ex.Message;
                 return null;
             }
         }
@@ -63,13 +70,13 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
-        public static bool GetTopActivityInfo(ADB adb, string deviceId, ref string packageName, ref int packagePid)
+        public static bool GetTopActivityInfo(ADB adb, IAndroidLogcatDevice device, ref string packageName, ref int packagePid)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            if (device == null)
                 return false;
             try
             {
-                var cmd = "-s " + deviceId + " shell \"dumpsys activity\" ";
+                var cmd = "-s " + device.Id + " shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
                 packagePid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(output, out packageName);
@@ -84,18 +91,18 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Return the pid of the given package on the given device.
         /// </summary>
-        public static int GetPidFromPackageName(ADB adb, AndroidLogcatDevice device, string deviceId, string packageName)
+        public static int GetPidFromPackageName(ADB adb, IAndroidLogcatDevice device, string packageName)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            if (device == null)
                 return -1;
 
             try
             {
                 string cmd = null;
                 if (device.SupportsFilteringByPid)
-                    cmd = string.Format("-s {0} shell pidof -s {1}", deviceId, packageName);
+                    cmd = string.Format("-s {0} shell pidof -s {1}", device.Id, packageName);
                 else
-                    cmd = string.Format("-s {0} shell ps", deviceId);
+                    cmd = string.Format("-s {0} shell ps", device.Id);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
@@ -117,14 +124,14 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static string GetPackageNameFromPid(ADB adb, string deviceId, int processId)
+        public static string GetPackageNameFromPid(ADB adb, IAndroidLogcatDevice device, int processId)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            if (device == null)
                 return string.Empty;
 
             try
             {
-                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", deviceId, processId);
+                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", device.Id, processId);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);

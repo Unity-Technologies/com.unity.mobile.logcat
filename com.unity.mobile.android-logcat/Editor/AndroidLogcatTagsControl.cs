@@ -141,8 +141,7 @@ namespace Unity.Android.Logcat
                 m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
             }
 
-            if (TagSelectionChanged != null)
-                TagSelectionChanged.Invoke();
+            TagSelectionChanged?.Invoke();
         }
 
         private void UpdateTagFilterBasedOnNoFilterOption(bool isNoFilterSelected)
