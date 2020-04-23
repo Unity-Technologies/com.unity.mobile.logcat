@@ -4,7 +4,7 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.2.0-preview] - 2020-05-15
+## [1.2.0-preview] - 2020-04-23
 
 ### Fix & Improvements.
  - Android Logcat per project settings are saved in ProjectSettings directory.
@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Improved documentation.
  - Added Clear button in internal log window.
  - Minimum Unity version was raised to 2019.2. The reason was to drop .NET 3.5 support.
+ - 'Enter IP' window got renamed to 'Other connection options.
+ - In the device selection list, you'll also able to see disconnected and unauthorized devices for informational purposes.
+ - 'Other connection options' window has a Disconnect button for devices connected via Network.
+ - Added device selection in Screen Capture window
 ### Memory Window
  - Introduced a window for viewing application memory in real time, more information in the docs.
 
