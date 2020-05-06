@@ -4,9 +4,46 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.0.1-preview] - 2019-08-21
+## [1.2.0-preview] - 2020-04-23
 
 ### Fix & Improvements.
+ - Android Logcat per project settings are saved in ProjectSettings directory.
+ - Fix issue where sometimes Android Logcat would stop working if USB cable is unplugged and replugged.
+ - Properly save/restore Android Logcat settings, previously settings like tags were being lost during domain reload or Editor restart.
+ - Added Capture button in Capture Screen window, also capturing screen no longer will lock Unity thread.
+ - Fix issue where incorrect date format in incoming log message would break whole log parsing.
+ - Moved Stacktrace Utility, Capture Screen, Open Terminal under Tools menu.
+ - The package list will automatically clean itself, if there's more than 5 exited packages in the list;
+ - Improved documentation.
+ - Added Clear button in internal log window.
+ - Minimum Unity version was raised to 2019.2. The reason was to drop .NET 3.5 support.
+ - 'Enter IP' window got renamed to 'Other connection options.
+ - In the device selection list, you'll also able to see disconnected and unauthorized devices for informational purposes.
+ - 'Other connection options' window has a Disconnect button for devices connected via Network.
+ - Added device selection in Screen Capture window
+### Memory Window
+ - Introduced a window for viewing application memory in real time, more information in the docs.
+
+## [1.1.1] - 2020-03-12
+
+### Fix & Improvements.
+ - Fix warnings in scripts when active Editor platform is not Android.
+ - Fix regex issues with logcat messages.
+
+## [1.1.0] - 2020-02-14
+
+### Fix & Improvements.
+ - Added feature 'Filter by process id'
+ - Fixed addr2line functionality, when we try to resolve stacktrace
+ - Correctly open Terminal on macOS Catalina
+ - Fix Open Terminal button not working on Windows sometimes.
+ - Reworked Connect to IP window, it's now multithreaded, thus it will not lock Editor. It's now easier to connect to Android device via IP.
+ - Added icons for messages
+ - Added disconnect button, you can stop logcat messages this way.
+ - Improved mouse right click behavior to be consistent with the rest of Unity
+ - Correctly identify Android 9 version
+ - Android Settings will have color settings separated between Free skin and Pro skin.
+ - Moved Android Settingsunder Preferences->Analysis
  - Provide proper windows title for Stacktrace Utility window
  - Right clicking log lines behavior will be consistent with other Unity windows.
  - Ctrl/CMD + C will copy log lines correctly.

@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Linq;
 using UnityEngine;
@@ -7,6 +6,7 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
+#if PLATFORM_ANDROID
     internal class AndroidLogcatInternalLog : EditorWindow
     {
         static AndroidLogcatInternalLog ms_Instance = null;
@@ -53,6 +53,21 @@ namespace Unity.Android.Logcat
 
         public void OnGUI()
         {
+            GUILayout.BeginHorizontal();
+            int count;
+            lock (ms_LogEntries)
+            {
+                count = ms_LogEntries.Length;
+            }
+            GUILayout.Label("Entries: " + count);
+            if (GUILayout.Button("Clear"))
+            {
+                lock (ms_LogEntries)
+                {
+                    ms_LogEntries = new StringBuilder();
+                }
+            }
+            GUILayout.EndHorizontal();
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
@@ -61,7 +76,7 @@ namespace Unity.Android.Logcat
             }
 
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);
-            GUILayout.TextArea(ms_LogEntries.ToString(), GUILayout.ExpandHeight(true));
+            GUILayout.TextArea(ms_LogEntries.ToString(), AndroidLogcatStyles.internalLogStyle, GUILayout.ExpandHeight(true));
             GUILayout.EndScrollView();
         }
 
@@ -76,5 +91,13 @@ namespace Unity.Android.Logcat
             }
         }
     }
-}
+#else
+    internal class AndroidLogcatInternalLog : EditorWindow
+    {
+        internal void OnGUI()
+        {
+            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
+        }
+    }
 #endif
+}

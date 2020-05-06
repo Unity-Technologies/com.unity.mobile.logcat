@@ -1,13 +1,14 @@
 test_editors:
-  - version: 2019.1
   - version: 2019.2
+  - version: 2019.3
+  - version: 2020.1
   - version: trunk
 test_platforms:
   - name: win
     type: Unity::VM
-    image: package-ci/win10:stable
+    image: mobile/android-execution-r19:latest
     flavor: b1.large
-    unity-downloader-cli: c:\python27\Scripts\unity-downloader-cli.exe
+    unity-downloader-cli: unity-downloader-cli
   - name: mac
     type: Unity::VM::osx
     image: buildfarm/mac:stable
@@ -21,7 +22,7 @@ pack:
     image: package-ci/win10:stable
     flavor: b1.large
   commands:
-    - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - upm-ci package pack --package-path ./com.unity.mobile.android-logcat
   artifacts:
     packages:
@@ -37,12 +38,12 @@ test_{{ platform.name }}_{{ editor.version }}:
     image: {{ platform.image }}
     flavor: {{ platform.flavor}}
   commands:
-    - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version {{ editor.version }}
     - pip install unity-downloader-cli --extra-index-url https://artifactory.eu-cph-1.unityops.net/api/pypi/common-python/simple --upgrade
     - {{ platform.unity-downloader-cli }} -u {{ editor.version }} -c editor -c android --wait
-    - {% if editor.version == "2019.1" %} {% assign testingProject = "TestProjects/SampleProject2019.1Net35" %}  {% else %} {% assign testingProject = "TestProjects/SampleProject1" %} {% endif %}
-      upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject={{ testingProject }} --artifacts_path=upm-ci~/test-results/editor-android/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
+    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/ --extra-editor-arg="-buildTarget" --extra-editor-arg="android"
+    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:
     logs:
       paths:
@@ -86,7 +87,7 @@ publish:
     image: package-ci/win10:stable
     flavor: b1.large
   commands:
-    - npm install upm-ci-utils@stable -g --registry https://api.bintray.com/npm/unity/unity-npm
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - upm-ci package publish --package-path ./com.unity.mobile.android-logcat
   triggers:
     tags:

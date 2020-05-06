@@ -15,10 +15,14 @@ namespace Unity.Android.Logcat
         /// Capture the screenshot on the given device.
         /// </summary>
         /// <returns> Return the path to the screenshot on the PC. </returns>
-        public static string CaptureScreen(ADB adb, string deviceId)
+        public static string CaptureScreen(ADB adb, string deviceId, out string error)
         {
+            error = string.Empty;
             if (string.IsNullOrEmpty(deviceId))
+            {
+                error = "Invalid device id.";
                 return null;
+            }
 
             try
             {
@@ -34,6 +38,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -48,6 +53,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
+                    error = outputMsg;
                     return null;
                 }
 
@@ -56,39 +62,21 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", deviceId, ex);
+                error = ex.Message;
                 return null;
-            }
-        }
-
-        /// <summary>
-        /// Connect to the device by ip address.
-        /// Please refer to https://developer.android.com/studio/command-line/adb#wireless for details.
-        /// </summary>
-        /// <param name="ip"> The ip address of the device that needs to be connected. Port can be included like 'device_ip_address:port'. Both IPV4 and IPV6 are supported. </param>
-        public static void ConnectDevice(ADB adb, string ip)
-        {
-            var cmd = "connect " + ip;
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-
-            var errorMsg = "Unable to connect to ";
-            var outputMsg = adb.Run(new[] { cmd }, errorMsg + ip);
-            if (outputMsg.StartsWith(errorMsg))
-            {
-                AndroidLogcatInternalLog.Log(outputMsg);
-                Debug.LogError(outputMsg);
             }
         }
 
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
-        public static bool GetTopActivityInfo(ADB adb, string deviceId, ref string packageName, ref int packagePid)
+        public static bool GetTopActivityInfo(ADB adb, IAndroidLogcatDevice device, ref string packageName, ref int packagePid)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            if (device == null)
                 return false;
             try
             {
-                var cmd = "-s " + deviceId + " shell \"dumpsys activity\" ";
+                var cmd = "-s " + device.Id + " shell \"dumpsys activity\" ";
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the top activity.");
                 packagePid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(output, out packageName);
@@ -103,18 +91,18 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Return the pid of the given package on the given device.
         /// </summary>
-        public static int GetPidFromPackageName(ADB adb, AndroidLogcatDevice device, string deviceId, string packageName)
+        public static int GetPidFromPackageName(ADB adb, IAndroidLogcatDevice device, string packageName)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            if (device == null)
                 return -1;
 
             try
             {
                 string cmd = null;
                 if (device.SupportsFilteringByPid)
-                    cmd = string.Format("-s {0} shell pidof -s {1}", deviceId, packageName);
+                    cmd = string.Format("-s {0} shell pidof -s {1}", device.Id, packageName);
                 else
-                    cmd = string.Format("-s {0} shell ps", deviceId);
+                    cmd = string.Format("-s {0} shell ps", device.Id);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the pid of the given packages.");
@@ -133,6 +121,42 @@ namespace Unity.Android.Logcat
             {
                 AndroidLogcatInternalLog.Log(ex.Message);
                 return -1;
+            }
+        }
+
+        public static string GetPackageNameFromPid(ADB adb, IAndroidLogcatDevice device, int processId)
+        {
+            if (device == null)
+                return string.Empty;
+
+            try
+            {
+                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", device.Id, processId);
+
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);
+                if (string.IsNullOrEmpty(output))
+                    return string.Empty;
+
+                using (var sr = new StringReader(output))
+                {
+                    string line;
+                    while ((line = sr.ReadLine().Trim()) != null)
+                    {
+                        if (line.Equals("NAME"))
+                            continue;
+
+                        return line;
+                    }
+                }
+
+                AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return string.Empty;
             }
         }
 
@@ -224,14 +248,119 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start("cmd.exe", string.Format("/K \"cd {0}\"", workingDirectory));
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") {WorkingDirectory = workingDirectory});
                     break;
                 case RuntimePlatform.OSXEditor:
-                    System.Diagnostics.Process.Start(@"/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal", workingDirectory);
-                    break;
+                    var pathsToCheck = new[]
+                    {
+                        "/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+                        "/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal"
+                    };
+                    foreach (var p in pathsToCheck)
+                    {
+                        if (File.Exists(p))
+                        {
+                            System.Diagnostics.Process.Start(p, workingDirectory);
+                            return;
+                        }
+                    }
+
+                    throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n",  pathsToCheck)));
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        public static Version ParseVersionLegacy(string versionString)
+        {
+            int major = 0;
+            int minor = 0;
+            int build = 0;
+            int revision = 0;
+            var vals = versionString.Split('.');
+            if (vals.Length > 0)
+                int.TryParse(vals[0], out major);
+            if (vals.Length > 1)
+                int.TryParse(vals[1], out minor);
+            if (vals.Length > 2)
+                int.TryParse(vals[2], out build);
+            if (vals.Length > 3)
+                int.TryParse(vals[3], out revision);
+
+            if (vals.Length <= 2)
+                return new Version(major, minor);
+            if (vals.Length <= 3)
+                return new Version(major, minor, build);
+            return new Version(major, minor, build, revision);
+        }
+
+        public static Version ParseVersion(string versionString)
+        {
+#if NET_2_0
+            return ParseVersionLegacy(versionString);
+#else
+            var vals = versionString.Split('.');
+
+            // Version.TryParse isn't capable of parsing digits without dots, for ex., 1
+            if (vals.Length == 1)
+            {
+                int n;
+                if (!int.TryParse(vals[0], out n))
+                {
+                    AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                    return new Version(0, 0);
+                }
+                return new Version(n, 0);
+            }
+
+            Version version;
+            if (!Version.TryParse(versionString, out version))
+            {
+                AndroidLogcatInternalLog.Log("Failed to parse android OS version '{0}'", versionString);
+                return new Version(0, 0);
+            }
+            return version;
+#endif
+        }
+
+        public static BuildInfo ParseBuildInfo(string msg)
+        {
+            BuildInfo buildInfo;
+
+            var reg = new Regex(@"Build type '(\S+)',\s+Scripting Backend '(\S+)',\s+CPU '(\S+)'");
+            Match match = reg.Match(msg);
+
+            buildInfo.buildType = match.Groups[1].Value.ToLower();
+            buildInfo.scriptingImplementation = match.Groups[2].Value.ToLower();
+            buildInfo.cpu = match.Groups[3].Value.ToLower();
+            return buildInfo;
+        }
+
+        /// <summary>
+        /// Returns symbol file by checking following extensions, for ex., if you're searching for libunity.so symbol file, it will first try to:
+        /// - libunity.so
+        /// - libunity.sym.so
+        /// - libunity.dbg.so
+        /// </summary>
+        /// <param name="symbolPath"></param>
+        /// <param name="libraryFile"></param>
+        /// <returns></returns>
+        public static string GetSymbolFile(string symbolPath, string libraryFile)
+        {
+            var fullPath = Path.Combine(symbolPath, libraryFile);
+            if (File.Exists(fullPath))
+                return fullPath;
+
+            var extensionsToTry = new[] { ".sym.so", ".dbg.so" };
+            foreach (var e in extensionsToTry)
+            {
+                // Try sym.so extension
+                fullPath = Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + e);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
     }
 
@@ -246,6 +375,19 @@ namespace Unity.Android.Logcat
         public List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization = null;
 
         public AndroidLogcatTagsControl m_TagControl = null;
+
+        public string m_MemoryViewerJson;
+    }
+}
+#else
+namespace Unity.Android.Logcat
+{
+    internal class AndroidLogcatUtilities
+    {
+        public static void ShowActivePlatformNotAndroidMessage()
+        {
+            UnityEditor.EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", UnityEditor.MessageType.Info);
+        }
     }
 }
 #endif

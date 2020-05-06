@@ -80,13 +80,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        protected struct BuildInfo
-        {
-            public string buildType;
-            public string scriptingImplementation;
-            public string cpu;
-        }
-
         private IAndroidLogcatRuntime m_Runtime;
         private ADB adb;
 
@@ -110,9 +103,9 @@ namespace Unity.Android.Logcat
 
         public event Action<List<LogEntry>> LogEntriesAdded;
 
-        public event Action<string> DeviceDisconnected;
+        public event Action<IAndroidLogcatDevice> Disconnected;
 
-        public event Action<string> DeviceConnected;
+        public event Action<IAndroidLogcatDevice> Connected;
 
         private IAndroidLogcatMessageProvider m_MessageProvider;
 
@@ -192,20 +185,19 @@ namespace Unity.Android.Logcat
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
-            m_Runtime.OnUpdate += OnUpdate;
+            m_Runtime.Update += OnUpdate;
 
             m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device != null ? m_Device.Id : null, OnDataReceived);
             m_MessageProvider.Start();
 
-            if (DeviceConnected != null)
-                DeviceConnected.Invoke(Device.Id);
+            Connected?.Invoke(Device);
         }
 
         internal void Stop()
         {
             m_CachedLogLines.Clear();
             m_BuildInfos.Clear();
-            m_Runtime.OnUpdate -= OnUpdate;
+            m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
@@ -233,8 +225,8 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider.HasExited)
             {
                 Stop();
-                if (DeviceDisconnected != null)
-                    DeviceDisconnected.Invoke(Device.Id);
+
+                Disconnected?.Invoke(Device);
 
                 return;
             }
@@ -307,17 +299,20 @@ namespace Unity.Android.Logcat
         private LogEntry ParseLogEntry(Match m)
         {
             DateTime dateTime;
-            switch (LogPrintFormat)
+            var dateValue = m.Groups["date"].Value;
+            if (LogPrintFormat == kThreadTime)
+                dateValue = "1999-" + dateValue;
+
+            try
             {
-                case kThreadTime:
-                    dateTime = DateTime.Parse("1999-" + m.Groups["date"].Value);
-                    break;
-                case kYearTime:
-                    dateTime = DateTime.Parse(m.Groups["date"].Value);
-                    break;
-                default:
-                    throw new NotImplementedException("Please implement date parsing for log format: " + LogPrintFormat);
+                dateTime = DateTime.Parse(dateValue);
             }
+            catch (Exception ex)
+            {
+                dateTime = new DateTime();
+                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
+            }
+
             var entry = new LogEntry(
                 dateTime,
                 Int32.Parse(m.Groups["pid"].Value),
@@ -329,7 +324,7 @@ namespace Unity.Android.Logcat
             if ((entry.priority == Priority.Info && entry.tag.GetHashCode() == kUnityHashCode && entry.message.StartsWith("Built from")) ||
                 (entry.priority == Priority.Error && entry.tag.GetHashCode() == kCrashHashCode && entry.message.StartsWith("Build type")))
             {
-                m_BuildInfos[entry.processId] = ParseBuildInfo(entry.message);
+                m_BuildInfos[entry.processId] = AndroidLogcatUtilities.ParseBuildInfo(entry.message);
             }
 
             if (entry.priority == Priority.Fatal && entry.tag.GetHashCode() == kDebugHashCode && entry.message.StartsWith("pid:"))
@@ -355,19 +350,6 @@ namespace Unity.Android.Logcat
                 default:
                     throw new InvalidOperationException(string.Format("Invalid `priority` ({0}) in log entry.", priority));
             }
-        }
-
-        private BuildInfo ParseBuildInfo(string msg)
-        {
-            BuildInfo buildInfo;
-
-            var reg = new Regex(@"Build type '(.+)',\s+Scripting Backend '(.+)',\s+CPU '(.+)'");
-            Match match = reg.Match(msg);
-
-            buildInfo.buildType = match.Groups[1].Value.ToLower();
-            buildInfo.scriptingImplementation = match.Groups[2].Value.ToLower();
-            buildInfo.cpu = match.Groups[3].Value.ToLower();
-            return buildInfo;
         }
 
         private void ParseCrashBuildInfo(int processId, string msg)
@@ -432,13 +414,13 @@ namespace Unity.Android.Logcat
                 var libName = u.Key.Value;
 
                 var addresses = u.Value;
-                string[] paths = { engineDirectory, "Variations", buildInfo.scriptingImplementation, buildInfo.buildType, "Symbols", buildInfo.cpu, libName };
-                var libpath = CombinePaths(paths);
+                var symbolPath = CombinePaths(engineDirectory, "Variations", buildInfo.scriptingImplementation, buildInfo.buildType, "Symbols", buildInfo.cpu);
+                var libpath = AndroidLogcatUtilities.GetSymbolFile(symbolPath, libName);
 
                 // For optimizations purposes, we batch addresses which belong to same library, so addr2line can be ran less
                 try
                 {
-                    var result = Addr2LineWrapper.Run(libpath, addresses.Select(m => m.unresolvedAddress));
+                    var result = m_Runtime.Tools.RunAddr2Line(libpath, addresses.Select(m => m.unresolvedAddress).ToArray());
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         var idx = addresses[i].logEntryIndex;
@@ -454,6 +436,7 @@ namespace Unity.Android.Logcat
                         entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, "(Addr2Line failure)", true) };
                         var errorMessage = new StringBuilder();
                         errorMessage.AppendLine("Addr2Line failure");
+                        errorMessage.AppendLine("Full Entry Message: " + entries[idx].message);
                         errorMessage.AppendLine("Scripting Backend: " + buildInfo.scriptingImplementation);
                         errorMessage.AppendLine("Build Type: " + buildInfo.buildType);
                         errorMessage.AppendLine("CPU: " + buildInfo.cpu);
@@ -464,7 +447,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private string CombinePaths(string[] paths)
+        private string CombinePaths(params string[] paths)
         {
             // Unity hasn't implemented System.IO.Path(string[]), we have to do it on our own.
             if (paths.Length == 0)
@@ -540,10 +523,10 @@ namespace Unity.Android.Logcat
 
         internal static Regex m_CrashMessageRegex = new Regex(@"^\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)", RegexOptions.Compiled);
         // Regex for messages produced via 'adb logcat -s -v year *:V'
-        internal static Regex m_LogCatEntryYearRegex = new Regex(@"(?<date>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>\S+)\s*:\s(?<msg>.*)", RegexOptions.Compiled);
+        internal static Regex m_LogCatEntryYearRegex = new Regex(@"(?<date>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>.+?)\s*:\s(?<msg>.*)", RegexOptions.Compiled);
 
         // Regex for messages produced via 'adb logcat -s -v threadtime *:V'
-        internal static Regex m_LogCatEntryThreadTimeRegex = new Regex(@"(?<date>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>\S+)\s*:\s(?<msg>.*)", RegexOptions.Compiled);
+        internal static Regex m_LogCatEntryThreadTimeRegex = new Regex(@"(?<date>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>.+?)\s*:\s(?<msg>.*)", RegexOptions.Compiled);
 
 
         internal static readonly int kUnityHashCode = "Unity".GetHashCode();

@@ -4,48 +4,68 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatRegexTests
 {
-    // Messages produced via adb logcat -s -v threadtime *:V
-    private string[] kLogMessagesWithThreadTimeFormat = new[]
+    struct LogcatMessage
     {
-        "10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1",
-        "10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13",
-        "10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13",
-        "10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
-        "10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
-        "10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
-        "01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
-        "01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
-        "01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
+        string fullMessage;
+        string expectedTag;
+
+        internal string FullMessage { get { return fullMessage; } }
+        internal string ExpectedTag { get { return expectedTag; } }
+
+        internal LogcatMessage(string _fullMessage, string _expectedTag)
+        {
+            fullMessage = _fullMessage;
+            expectedTag = _expectedTag;
+        }
+    }
+
+    // Messages produced via adb logcat -s -v threadtime *:V
+    private LogcatMessage[] kLogMessagesWithThreadTimeFormat = new[]
+    {
+        new LogcatMessage("10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1", "ctxmgr"),
+        new LogcatMessage("10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13", "chromium"),
+        new LogcatMessage("10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2", "chromium"),
+        new LogcatMessage("10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]", "chromium"),
+        new LogcatMessage("10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8", "chromium"),
+        new LogcatMessage("01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed", "BarTender:BatteryStatsDumper"),
+        new LogcatMessage("01-19 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57", "SSRM:k"),
+        new LogcatMessage("01-19 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null", "u"),
+        new LogcatMessage("01-19 14:58:16.725  3966  3966 D EPDG -- SIM0 [EpdgSubScription]: getCurrentNetTypeId, current net type: null", "EPDG -- SIM0 [EpdgSubScription]"),
+        new LogcatMessage("03-10 14:33:13.505 11287 11287 D Unity   : NewInput[0xFFFFFFFFEA4E9DC0]: Incoming event with sources 'Touchscreen' from android device 3, isGameController: No, unity devices: 4", "Unity"),
+        new LogcatMessage("03-10 14:33:13.505 11287 11287 D Unity   :     NewInput[0xFFFFFFFFEA4E9DC0]: Touch 1454.000000 x 343.000000, touchId = 6 (0), phase = kEnded, time = 125.525207 (594002743)", "Unity")
         // Add more as needed
     };
 
+
     // Note: -v year is not available on Android 6.0 and below
     // Messages produced via adb logcat -s -v year *:V
-    private string[] kLogMessagesWithYearFormat = new[]
+    private LogcatMessage[] kLogMessagesWithYearFormat = new[]
     {
-        "2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1",
-        "2018-10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13",
-        "2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2",
-        "2018-10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]",
-        "2018-10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8",
-        "2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed",
-        "2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57",
-        "2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null",
+        new LogcatMessage("2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : [AccountAclCallback]Failed Acl fetch: network status=-1", "ctxmgr"),
+        new LogcatMessage("2018-10-25 14:27:43.785  2255  2642 I chromium: [2255:2642:INFO: mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 32 seconds: 13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: [2255:2255:INFO:metrics_recorder.cc(89)] Metrics stat: total=8", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.AppId.In=3", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.In=13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Request.Namespace.In=11", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.ResponderPing=1", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.AppId.Out=3", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Error.NamespaceNotSupported=11", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.Response.Out=13", "chromium"),
+        new LogcatMessage("2018-10-25 14:27:56.862  2255  2255 I chromium: Cast.Discovery.Mdns.SocketPing=2", "chromium"),
+        new LogcatMessage("2018-10-25 14:28:10.312  2255  2642 I chromium: [2255:2642:INFO:mdns_cast_service.cc(755)] Recent mDNS app subtypes: [supported:'805741C9',] [unsupported:]", "chromium"),
+        new LogcatMessage("2018-10-25 14:28:16.994  2255  2642 I chromium: [2255:2642:INFO:mdns_app_filter.cc(2202)] MdnsAppFilter: responses sent in 33 seconds: 8", "chromium"),
+        new LogcatMessage("2019-01-18 14:14:56.254  3777  6386 I BarTender:BatteryStatsDumper: writing to daily db completed", "BarTender:BatteryStatsDumper"),
+        new LogcatMessage("2019-01-18 22:21:51.151  1461  5286 D SSRM:k  : SIOP:: AP = 160, PST = 160 (W:14), CP = 18, CUR = 398, LCD = 57", "SSRM:k"),
+        new LogcatMessage("2019-01-18 14:58:16.725  3966  3966 D u       : getCurrentNetTypeId, current net type: null", "u"),
+        new LogcatMessage("2020-02-06 12:48:19.406  2579  2813 D EPDG -- SIM0 [EpdgSubScription]: getMnoNameFromDB() hassim :true", "EPDG -- SIM0 [EpdgSubScription]"),
         // Add more as needed
     };
     [Test]
@@ -53,7 +73,10 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithThreadTimeFormat)
         {
-            Assert.IsTrue(AndroidLogcat.m_LogCatEntryThreadTimeRegex.IsMatch(l));
+            var result = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(l.FullMessage);
+            Assert.IsTrue(result.Success);
+            var tagValue = result.Groups["tag"].Value;
+            Assert.AreEqual(l.ExpectedTag, tagValue);
         }
     }
 
@@ -62,7 +85,10 @@ class AndroidLogcatRegexTests
     {
         foreach (var l in kLogMessagesWithYearFormat)
         {
-            Assert.IsTrue(AndroidLogcat.m_LogCatEntryYearRegex.IsMatch(l));
+            var result = AndroidLogcat.m_LogCatEntryYearRegex.Match(l.FullMessage);
+            Assert.IsTrue(result.Success, l.FullMessage);
+            var tagValue = result.Groups["tag"].Value;
+            Assert.AreEqual(l.ExpectedTag, tagValue);
         }
     }
 
@@ -189,19 +215,24 @@ class AndroidLogcatRegexTests
     }
 
     [Test]
-    public void CorrectyParseStacktraceCrashFormat1()
+    public void ParseCrashStackrace()
     {
-        var logLine = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
-        var regex = new Regex(AndroidLogcatStacktraceWindow.m_AddressRegexFormat1);
-        string address;
-        string libName;
-        var result = AndroidLogcatStacktraceWindow.ParseLine(regex, logLine, out address, out libName);
-        Assert.IsTrue(result, "Failed to parse " + logLine);
-        Assert.IsTrue(address.Equals("002983fc"));
-        Assert.IsTrue(libName.Equals("libunity.so"));
-    }
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_DefaultAddressRegex);
 
-    [Test]
+        string crash32 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+        string crash64 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+
+        var result = regex.Match(crash32);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+
+        result = regex.Match(crash64);
+        Assert.IsTrue(result.Success);
+        Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
+        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+    }
+  [Test]
     public void CorrectyParseStacktraceCrashFormat2()
     {
         var logLine = "    at libunity.0041e340(Native Method)  ";
@@ -212,5 +243,72 @@ class AndroidLogcatRegexTests
         Assert.IsTrue(result, "Failed to parse " + logLine);
         Assert.IsTrue(address.Equals("0041e340"));
         Assert.IsTrue(libName.Equals("libunity.so"));
+    }
+    [Test]
+    public void ParseBuildInfo()
+    {
+        var buildType = "Release";
+        var cpu = "armeabi-v7a";
+        var backend = "mono";
+        var buildInfos = new[]
+        {
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "', Stripping 'Disabled'",
+            "Built from '2019.3/staging' branch, Version '2019.3.0f5 (44796c9d3c2c)', Build type '" + buildType + "', Scripting Backend '" + backend + "', CPU '" + cpu + "'"
+        };
+        foreach (var b in buildInfos)
+        {
+            var buildInfo = AndroidLogcatUtilities.ParseBuildInfo(b);
+            UnityEngine.Debug.Log("Parsing:\n" + b);
+            Assert.AreEqual(buildInfo.buildType, buildType.ToLower());
+            Assert.AreEqual(buildInfo.cpu, cpu);
+            Assert.AreEqual(buildInfo.scriptingImplementation, backend);
+        }
+    }
+
+    [Test]
+    public void ParseIPAddress()
+    {
+        // Data acquired using command adb -s <deviceId> shell ip route
+
+        const string kLGG4IPOutput = @"
+default via 192.168.50.1 dev wlan0  metric 205
+
+192.168.50.0/24 dev wlan0  proto kernel  scope link  src 192.168.50.40  metric 205
+";
+        var ip = AndroidLogcatIPWindow.ParseIPAddress(kLGG4IPOutput);
+        Assert.AreEqual("192.168.50.40", ip);
+
+        const string kGooglePixelXL2IPOutput = @"192.168.50.0/24 dev wlan0 proto kernel scope link src 192.168.50.91";
+        ip = AndroidLogcatIPWindow.ParseIPAddress(kGooglePixelXL2IPOutput);
+        Assert.AreEqual("192.168.50.91", ip);
+    }
+
+    [Test]
+    public void ParseDeviceInfo()
+    {
+        string id;
+        IAndroidLogcatDevice.DeviceState state;
+        var result = AndroidLogcatDeviceQuery.ParseDeviceInfo("List of devices attached", out id, out state);
+        Assert.AreEqual(false, result);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("711KPQJ0939020 unauthorized", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("711KPQJ0939020", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Unauthorized, state);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\tdevice", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Connected, state);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\toffline", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Disconnected, state);
+
+        result = AndroidLogcatDeviceQuery.ParseDeviceInfo("192.168.50.91:5555\tblabla", out id, out state);
+        Assert.AreEqual(true, result);
+        Assert.AreEqual("192.168.50.91:5555", id);
+        Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Unknown, state);
     }
 }

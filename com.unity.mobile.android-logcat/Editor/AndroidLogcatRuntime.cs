@@ -18,21 +18,27 @@ namespace Unity.Android.Logcat
 
         AndroidLogcatSettings Settings { get; }
 
+        AndroidTools Tools { get; }
+
+        AndroidLogcatDeviceQueryBase DeviceQuery { get; }
+
         IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
 
         void Initialize();
 
         void Shutdown();
 
-        event Action OnUpdate;
+        event Action Update;
     }
 
     internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
     {
         private AndroidLogcatDispatcher m_Dispatcher;
         private AndroidLogcatSettings m_Settings;
+        private AndroidTools m_Tools;
+        private AndroidLogcatDeviceQuery m_DeviceQuery;
 
-        public event Action OnUpdate;
+        public event Action Update;
 
         public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
@@ -50,14 +56,28 @@ namespace Unity.Android.Logcat
             get { return m_Settings; }
         }
 
+        public AndroidTools Tools
+        {
+            get { return m_Tools; }
+        }
+
+        public AndroidLogcatDeviceQueryBase DeviceQuery
+        {
+            get { return m_DeviceQuery; }
+        }
+
         public void Initialize()
         {
-            EditorApplication.update += Update;
+            EditorApplication.update += OnUpdate;
 
             m_Dispatcher = new AndroidLogcatDispatcher(this);
             m_Dispatcher.Initialize();
 
             m_Settings = AndroidLogcatSettings.Load();
+
+            m_Tools = new AndroidTools();
+
+            m_DeviceQuery = new AndroidLogcatDeviceQuery(this);
         }
 
         public void Shutdown()
@@ -68,13 +88,12 @@ namespace Unity.Android.Logcat
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
 
-            EditorApplication.update -= Update;
+            EditorApplication.update -= OnUpdate;
         }
 
-        public void Update()
+        public void OnUpdate()
         {
-            if (OnUpdate != null)
-                OnUpdate.Invoke();
+            Update?.Invoke();
         }
     }
 }

@@ -32,10 +32,12 @@ namespace Unity.Android.Logcat
         private volatile bool m_Running;
         private static Thread s_MainThread;
         private IAndroidLogcatRuntime m_Runtime;
+        private int m_AsyncOperationsExecuted;
 
         internal AndroidLogcatDispatcher(IAndroidLogcatRuntime runtime)
         {
             m_Runtime = runtime;
+            m_AsyncOperationsExecuted = 0;
         }
 
         internal void Initialize()
@@ -50,7 +52,7 @@ namespace Unity.Android.Logcat
             lock (m_IntegrateTaskQueue)
                 m_IntegrateTaskQueue.Clear();
 
-            m_Runtime.OnUpdate += IntegrateMainThread;
+            m_Runtime.Update += IntegrateMainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
 
             m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
@@ -62,7 +64,7 @@ namespace Unity.Android.Logcat
         {
             if (!m_Running)
                 throw new Exception("Expected dispatcher to run");
-            m_Runtime.OnUpdate -= IntegrateMainThread;
+            m_Runtime.Update -= IntegrateMainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
             if (!m_FinishedEvent.WaitOne(1000))
@@ -85,6 +87,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Worker thread for async operations.
+        /// Note: If there's an exception, very bad happen which don't get reported anywhere, this is way we're try/catching async operation invoke
+        /// </summary>
+        /// <param name="o"></param>
         private void WorkerThread(object o)
         {
             AndroidLogcatInternalLog.Log("Worker thread started");
@@ -92,24 +99,39 @@ namespace Unity.Android.Logcat
 
             while (m_AutoResetEvent.WaitOne() && m_Running)
             {
-                //Debug.Log("Executing");
-                AsyncTask task = null;
-                lock (m_AsyncTaskQueue)
+                bool remainingOperations = true;
+                while (remainingOperations)
                 {
-                    if (m_AsyncTaskQueue.Count > 0)
+                    AsyncTask task = null;
+                    lock (m_AsyncTaskQueue)
                     {
-                        task = m_AsyncTaskQueue.Dequeue();
-                    }
-                }
-                if (task != null && task.asyncAction != null)
-                {
-                    m_Sampler.Begin();
-                    var result = task.asyncAction.Invoke(task.taskData);
-                    m_Sampler.End();
+                        if (m_AsyncTaskQueue.Count > 0)
+                        {
+                            task = m_AsyncTaskQueue.Dequeue();
+                        }
 
-                    lock (m_IntegrateTaskQueue)
+                        remainingOperations = m_AsyncTaskQueue.Count > 0;
+                    }
+                    if (task != null && task.asyncAction != null)
                     {
-                        m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                        m_AsyncOperationsExecuted++;
+
+                        try
+                        {
+                            m_Sampler.Begin();
+                            var result = task.asyncAction.Invoke(task.taskData);
+                            m_Sampler.End();
+
+
+                            lock (m_IntegrateTaskQueue)
+                            {
+                                m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            AndroidLogcatInternalLog.Log("\nERROR while invoking async operation: \n" + ex.Message);
+                        }
                     }
                 }
             }
@@ -145,7 +167,16 @@ namespace Unity.Android.Logcat
 
             if (synchronous)
             {
-                integrateAction(asyncAction.Invoke(taskData));
+                m_AsyncOperationsExecuted++;
+
+                try
+                {
+                    integrateAction(asyncAction.Invoke(taskData));
+                }
+                catch (Exception ex)
+                {
+                    AndroidLogcatInternalLog.Log("\nERROR while invoking async operation: \n" + ex.Message);
+                }
                 return;
             }
 
@@ -155,6 +186,24 @@ namespace Unity.Android.Logcat
                 m_AsyncTaskQueue.Enqueue(task);
                 if (!m_AutoResetEvent.Set())
                     throw new Exception("Failed to signal auto reset event in dispatcher.");
+            }
+        }
+
+        internal int AsyncOperationsInQueue
+        {
+            get
+            {
+                lock (m_AsyncTaskQueue)
+                {
+                    return m_AsyncTaskQueue.Count;
+                }
+            }
+        }
+        internal int AsyncOperationsExecuted
+        {
+            get
+            {
+                return m_AsyncOperationsExecuted;
             }
         }
     }
