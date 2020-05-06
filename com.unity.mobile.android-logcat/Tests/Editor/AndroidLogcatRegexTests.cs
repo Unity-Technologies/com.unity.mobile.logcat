@@ -232,7 +232,8 @@ class AndroidLogcatRegexTests
         Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
         Assert.AreEqual(result.Groups[2].Value, "libunity.so");
     }
-  [Test]
+
+    [Test]
     public void CorrectyParseStacktraceCrashFormat2()
     {
         var logLine = "    at libunity.0041e340(Native Method)  ";
@@ -244,6 +245,7 @@ class AndroidLogcatRegexTests
         Assert.IsTrue(address.Equals("0041e340"));
         Assert.IsTrue(libName.Equals("libunity.so"));
     }
+
     [Test]
     public void ParseBuildInfo()
     {

@@ -202,6 +202,7 @@ namespace Unity.Android.Logcat
 
         void DoRegex(float labelWidth, Regex regex)
         {
+            /*
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.BeginVertical();
 //TODO fix
@@ -259,6 +260,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndHorizontal();
+            */
         }
 
         void OnGUI()
@@ -267,8 +269,13 @@ namespace Unity.Android.Logcat
             const float kInfoAreaHeight = 100.0f;
             GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
             GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
+            if (GUILayout.Button("Test"))
+            {
+                PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AndroidLogcatReordableList(
+                    new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } })));
+            }
             DoSymbolPath(kLabelWidth);
-            DoRegex(kLabelWidth, regex);
+            DoRegex(kLabelWidth, null);
             GUILayout.EndArea();
 
             EditorGUI.BeginChangeCheck();
