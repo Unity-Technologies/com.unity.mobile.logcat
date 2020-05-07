@@ -1,3 +1,4 @@
+#if UNITY_ANDROID
 using System;
 using System.Collections.Generic;
 using UnityEditor;
@@ -44,6 +45,21 @@ namespace Unity.Android.Logcat
         public override Vector2 GetWindowSize()
         {
             return new Vector2(300, 200);
+        }
+
+        public string CurrentItemName
+        {
+            get
+            {
+                return m_SelectedIndex == -1 ? m_InputFieldText : m_DataSource[m_SelectedIndex].Name;
+            }
+            set
+            {
+                if (m_SelectedIndex == -1)
+                    m_InputFieldText = value;
+                else
+                    m_DataSource[m_SelectedIndex].Name = value;
+            }
         }
 
         void DoListGUI()
@@ -95,12 +111,14 @@ namespace Unity.Android.Logcat
             var currentEvent = Event.current;
             bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
             EditorGUILayout.BeginVertical(GUILayout.Width(ButtonWidth));
+            
             if (GUILayout.Button(kIconToolbarPlus, ButtonStyles) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
             {
-                if (!string.IsNullOrEmpty(m_InputFieldText))
+                if (!string.IsNullOrEmpty(CurrentItemName))
                 {
-                    m_DataSource.Add(new DataSourceItem() { Name = m_InputFieldText, Enabled = true });
+                    m_DataSource.Add(new DataSourceItem() { Name = CurrentItemName, Enabled = true });
                     m_InputFieldText = string.Empty;
+                    m_SelectedIndex = m_DataSource.Count - 1;
                     GUIUtility.keyboardControl = 0;
                 }
             }
@@ -147,7 +165,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
 
             GUI.SetNextControlName(kInputTextFieldControlId);
-            m_InputFieldText = EditorGUILayout.TextField(m_InputFieldText, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
+            CurrentItemName = EditorGUILayout.TextField(CurrentItemName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
 
             EditorGUILayout.BeginHorizontal();
             DoListGUI();
@@ -186,3 +204,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif
