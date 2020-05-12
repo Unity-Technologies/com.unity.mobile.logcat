@@ -10,6 +10,27 @@ using System.Text;
 
 namespace Unity.Android.Logcat
 {
+    internal class AndroidLogcatSymbolList : AndroidLogcatReordableList
+    {
+        public AndroidLogcatSymbolList(List<DataSourceItem> dataSource) : base(dataSource)
+        {
+
+        }
+
+        protected override void OnPlusButtonClicked()
+        {
+            var item = EditorUtility.OpenFolderPanel("Locate symbol path", CurrentItemName, "");
+            if (string.IsNullOrEmpty(item))
+                return;
+            GUIUtility.keyboardControl = 0;
+            AddItem(item);
+        }
+
+        protected override void DoEntryGUI()
+        {
+            // Empty on purposes
+        }
+    }
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
 #if PLATFORM_ANDROID
@@ -24,6 +45,12 @@ namespace Unity.Android.Logcat
         {
             OriginalLog,
             ResolvedLog
+        }
+
+        enum ToolbarMode
+        {
+            Regex,
+            SymbolPaths
         }
 
         [SerializeField]
@@ -43,6 +70,10 @@ namespace Unity.Android.Logcat
         string m_ResolvedStacktraces = String.Empty;
 
         private WindowMode m_WindowMode;
+        private ToolbarMode m_ToolbarMode;
+
+        AndroidLogcatReordableList m_RegexList;
+        AndroidLogcatReordableList m_SymbolPathList;
 
         public static void ShowStacktraceWindow()
         {
@@ -168,6 +199,11 @@ namespace Unity.Android.Logcat
                 placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
+
+            m_RegexList = new AndroidLogcatReordableList(
+                new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } }));
+            m_SymbolPathList = new AndroidLogcatSymbolList(
+                new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } }));
         }
 
         private void OnDisable()
@@ -266,17 +302,38 @@ namespace Unity.Android.Logcat
         void OnGUI()
         {
             const float kLabelWidth = 120.0f;
-            const float kInfoAreaHeight = 100.0f;
-            GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
-            GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
+            const float kInfoAreaHeight = 200.0f;
+            EditorGUILayout.BeginVertical(GUILayout.Height(kInfoAreaHeight));
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+            if (GUILayout.Toggle(m_ToolbarMode == ToolbarMode.Regex, "Configure Regex", AndroidLogcatStyles.toolbarButton))
+                m_ToolbarMode = ToolbarMode.Regex;
+            if (GUILayout.Toggle(m_ToolbarMode == ToolbarMode.SymbolPaths, "Configure Symbol Paths", AndroidLogcatStyles.toolbarButton))
+                m_ToolbarMode = ToolbarMode.SymbolPaths;
+            EditorGUILayout.EndHorizontal();
+            
+           // GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
+           // GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
+
+            switch (m_ToolbarMode)
+            {
+                case ToolbarMode.Regex:
+                    m_RegexList.OnGUI();
+                    break;
+                case ToolbarMode.SymbolPaths:
+                    m_SymbolPathList.OnGUI();
+                    break;
+            }
+            
             if (GUILayout.Button("Test"))
             {
-                PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AndroidLogcatReordableList(
-                    new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } })));
+              //  PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AndroidLogcatReordableList(
+             //       new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } })));
             }
+            EditorGUILayout.EndVertical();
             DoSymbolPath(kLabelWidth);
             DoRegex(kLabelWidth, null);
-            GUILayout.EndArea();
+          //  GUILayout.EndArea();
+            
 
             EditorGUI.BeginChangeCheck();
             m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);

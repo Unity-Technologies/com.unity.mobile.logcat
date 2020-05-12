@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatReordableList : PopupWindowContent
+    internal class AndroidLogcatReordableList
     {
         internal class DataSourceItem
         {
@@ -42,10 +42,10 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public override Vector2 GetWindowSize()
-        {
-            return new Vector2(300, 200);
-        }
+        //public override Vector2 GetWindowSize()
+        //{
+        //    return new Vector2(300, 200);
+        //}
 
         public string CurrentItemName
         {
@@ -106,6 +106,20 @@ namespace Unity.Android.Logcat
             GUI.Box(new Rect(rc.x + 4, rc.y, rc.width - 4, rc.height), GUIContent.none, EditorStyles.helpBox);
         }
 
+        protected void AddItem(string name)
+        {
+            m_DataSource.Add(new DataSourceItem() { Name = name, Enabled = true });
+            m_InputFieldText = string.Empty;
+            m_SelectedIndex = m_DataSource.Count - 1;
+            GUIUtility.keyboardControl = 0;
+        }
+
+        protected virtual void OnPlusButtonClicked()
+        {
+            if (!string.IsNullOrEmpty(CurrentItemName))
+                AddItem(CurrentItemName);
+        }
+
         void DoButtonsGUI()
         {
             var currentEvent = Event.current;
@@ -114,13 +128,7 @@ namespace Unity.Android.Logcat
             
             if (GUILayout.Button(kIconToolbarPlus, ButtonStyles) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
             {
-                if (!string.IsNullOrEmpty(CurrentItemName))
-                {
-                    m_DataSource.Add(new DataSourceItem() { Name = CurrentItemName, Enabled = true });
-                    m_InputFieldText = string.Empty;
-                    m_SelectedIndex = m_DataSource.Count - 1;
-                    GUIUtility.keyboardControl = 0;
-                }
+                OnPlusButtonClicked();
             }
 
             EditorGUI.BeginDisabledGroup(m_SelectedIndex == -1);
@@ -160,12 +168,16 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
-        public override void OnGUI(Rect rect)
+        protected virtual void DoEntryGUI()
         {
-            EditorGUILayout.BeginVertical();
-
             GUI.SetNextControlName(kInputTextFieldControlId);
             CurrentItemName = EditorGUILayout.TextField(CurrentItemName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
+        }
+
+        public void OnGUI()
+        {
+            EditorGUILayout.BeginVertical();
+            DoEntryGUI();
 
             EditorGUILayout.BeginHorizontal();
             DoListGUI();
