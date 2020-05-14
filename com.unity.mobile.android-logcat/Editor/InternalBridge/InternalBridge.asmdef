@@ -1,0 +1,17 @@
+{
+    "name": "Unity.InternalAPIEngineBridge.005",
+    "references": [
+        "GUID:36c7d68b29d1acc459c26ef19cb84b25"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ENABLE_PROFILER"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -5,10 +5,13 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
+using System.Runtime.CompilerServices;
 #if PLATFORM_ANDROID
 using UnityEditor.Android;
 #endif
 
+
+[assembly: InternalsVisibleTo("Unity.InternalAPIEngineBridge.005")]
 namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow : EditorWindow
