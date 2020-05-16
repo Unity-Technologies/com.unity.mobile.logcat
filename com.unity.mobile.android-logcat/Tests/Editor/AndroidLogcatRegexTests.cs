@@ -205,13 +205,96 @@ class AndroidLogcatRegexTests
 
         var expectedPid = 3766;
         var expectedPackage = "com.sec.android.app.launcher";
-        Assert.IsTrue(pid == 3766, "Expected top activity process id to be " + expectedPid + ", but was " + pid);
-        Assert.IsTrue(packageName == expectedPackage, "Expected top activity package to be " + expectedPackage + ", but was " + packageName);
+        Assert.AreEqual(expectedPid, pid, "Expected top activity process id to be " + expectedPid + ", but was " + pid);
+        Assert.AreEqual(expectedPackage, packageName, "Expected top activity package to be " + expectedPackage + ", but was " + packageName);
+    }
 
+    [Test]
+    public void CorrectlyParseTopActivitiesWithInvalidData()
+    {
+        string packageName;
         var invalidAdbContents = "blabla";
+        var pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
+        Assert.AreEqual(-1, pid, "Expected top activity process id to be -1 but was " + pid);
+        Assert.AreEqual("", packageName, "Expected top activity package to be empty, but was " + packageName);
+
+        invalidAdbContents = "";
         pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(invalidAdbContents, out packageName);
-        Assert.IsTrue(pid == -1, "Expected top activity process id to be -1 but was " + pid);
-        Assert.IsTrue(packageName == "", "Expected top activity package to be empty, but was " + packageName);
+        Assert.AreEqual(-1, pid, "Expected top activity process id to be -1 but was " + pid);
+        Assert.AreEqual("", packageName, "Expected top activity package to be empty, but was " + packageName);
+    }
+
+    [Test]
+    public void CorrectlyParseSleepingTopActivities()
+    {
+        var adbContentsGooglePixelXL2 = @"
+ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
+  Isolated process list (sorted by uid):
+    Isolated #0: ProcessRecord{8768b3e 22943:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a276i5}
+    Isolated #1: ProcessRecord{8dc7ff9 23104:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a53i6}
+
+  UID states:
+    UID 1000: UidRecord{1afc23b 1000 PER  procs:3 seq(0,0,0)}
+    UID 1001: UidRecord{9a5dd58 1001 PER  change:active procs:5 seq(0,0,0)}
+    UID 1027: UidRecord{f203eb1 1027 PER  change:active|uncached procs:1 seq(0,0,0)}
+    UID 1068: UidRecord{1bacf96 1068 PER  change:active|uncached procs:1 seq(0,0,0)}
+    UID 1073: UidRecord{bce4717 1073 PER  change:active|uncached procs:1 seq(0,0,0)}
+    UID u0a1: UidRecord{326bcb1 u0a1 SVC  idle procs:1 seq(0,0,0)}
+    UID u0a9: UidRecord{7241e9 u0a9 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a10: UidRecord{6f463d5 u0a10 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a14: UidRecord{83797ea u0a14 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a18: UidRecord{3f13e6e u0a18 CEM  bg:+16m52s470ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a19: UidRecord{5d1490f u0a19 CEM  bg:+13m30s137ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a22: UidRecord{e63db3 u0a22 BFGS procs:1 seq(0,0,0)}
+    UID u0a31: UidRecord{446ff70 u0a31 BFGS change:active|uncached procs:2 seq(0,0,0)}
+    UID u0a37: UidRecord{3a73ff5 u0a37 SVC  bg:+29d10h59m47s648ms idle procs:1 seq(0,0,0)}
+    UID u0a43: UidRecord{ef8dd9c u0a43 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a50: UidRecord{1a44712 u0a50 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a53: UidRecord{fdcf4a5 u0a53 BFGS procs:5 seq(0,0,0)}
+    UID u0a58: UidRecord{3ca07a u0a58 BFGS change:uncached procs:1 seq(0,0,0)}
+    UID u0a63: UidRecord{d3b7751 u0a63 BFGS procs:1 seq(0,0,0)}
+    UID u0a68: UidRecord{62413a5 u0a68 CEM  bg:+13m31s299ms idle change:idle procs:2 seq(0,0,0)}
+    UID u0a69: UidRecord{ce44a46 u0a69 FGSL procs:2 seq(0,0,0)}
+    UID u0a72: UidRecord{1f6d37a u0a72 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a73: UidRecord{3f92407 u0a73 IMPF procs:1 seq(395,395,395)}
+    UID u0a84: UidRecord{8f12adb u0a84 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a94: UidRecord{4bfe687 u0a94 CEM  bg:+1d8h11m14s199ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a109: UidRecord{e5c22b5 u0a109 CEM  bg:+13m30s925ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a110: UidRecord{a202978 u0a110 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a116: UidRecord{40ac4d2 u0a116 IMPB procs:1 seq(0,0,0)}
+    UID u0a127: UidRecord{4e3672b u0a127 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a132: UidRecord{4843788 u0a132 CEM  idle change:cached procs:1 seq(0,0,0)}
+    UID u0a177: UidRecord{674521 u0a177 CEM  bg:+16m38s912ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a276: UidRecord{ccc1d4a u0a276 LAST bg:+13m30s343ms idle change:cached procs:1 seq(0,0,0)}
+    UID u0a340: UidRecord{eaf4b07 u0a340 CAC  bg:+25m17s229ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0a341: UidRecord{7e94434 u0a341 TPSL bg:+6m28s818ms idle change:idle procs:1 seq(0,0,0)}
+    UID u0i5: UidRecord{51134bb u0i5 LAST bg:+13m30s343ms idle change:cached procs:1 seq(0,0,0)}
+    UID u0i6: UidRecord{a069dd8 u0i6 LAST bg:+13m15s940ms idle change:cached procs:1 seq(0,0,0)}
+
+  Process LRU list (sorted by oom_adj, 53 total, non-act at 9, non-svc at 9):
+    PERS #52: sys    F/ /PER  trm: 0 1367:system/1000 (fixed)
+    PERS #49: pers   F/ /PER  trm: 0 2785:com.android.networkstack.process/1073 (fixed)
+    PERS #48: pers   F/ /PER  trm: 0 2852:.dataservices/1000 (fixed)
+    PERS #47: pers   F/ /PER  trm: 0 2886:com.qualcomm.qti.telephonyservice/1001 (fixed)
+    PERS #46: pers   F/ /PER  trm: 0 2904:com.android.phone/1001 (fixed)
+    PERS #45: pers   F/ /PER  trm: 0 3470:com.android.nfc/1027 (fixed)
+    PERS #44: pers   F/ /PER  trm: 0 3493:com.android.se/1068 (fixed)
+    PERS #43: pers   F/ /PER  trm: 0 3502:com.android.ims.rcsservice/1001 (fixed)
+    PERS #42: pers   F/ /PER  trm: 0 3527:com.google.SSRestartDetector/1000 (fixed)
+    PERS #51: pers   R/ /BFGS trm: 0 28569:com.android.systemui/u0a63 (pers-top-ui)
+    Proc #36: fore   T/ /TOP  trm: 0 0:com.DefaultCompany.InputSystemPlayground/u0a338 (top-activity)
+    Proc #35: fore   T/ /TOP  trm: 0 0:com.DefaultCompany.InputSystemPlayground/u0a338 (top-activity)
+    Proc #34: fore   T/ /TOP  trm: 0 0:com.DefaultCompany.InputSystemTouchPerformance/u0a339 (top-activity)
+    Proc # 0: fore   B/A/TPSL trm: 0 22172:com.Tomas.Test/u0a341 (top-sleeping)
+    Proc #39: vis    F/ /FGSL trm: 0 3439:com.google.android.googlequicksearchbox:interactor/u0a69 (service)
+";
+        string packageName;
+        var pid = AndroidLogcatUtilities.ParseTopActivityPackageInfo(adbContentsGooglePixelXL2, out packageName);
+
+        var expectedPid = 22172;
+        var expectedPackage = "com.Tomas.Test";
+        Assert.AreEqual(expectedPid, pid, "Expected top activity process id to be " + expectedPid + ", but was " + pid);
+        Assert.IsTrue(packageName == expectedPackage, "Expected top activity package to be " + expectedPackage + ", but was " + packageName);
     }
 
     [Test]

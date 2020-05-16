@@ -217,30 +217,44 @@ namespace Unity.Android.Logcat
             string line = null;
             using (var sr = new StringReader(commandOutput))
             {
-                while ((line = sr.ReadLine()) != null)
+                do
                 {
-                    if (line.Contains("top-activity"))
-                        break;
+                    while ((line = sr.ReadLine()) != null)
+                    {
+                        if (line.Contains("top-activity") ||        // Top Activity when device is not locked
+                            line.Contains("top-sleeping"))          // Top Activity when device is locked
+                            break;
+                    }
+
+                    if (string.IsNullOrEmpty(line))
+                    {
+                        AndroidLogcatInternalLog.Log("Cannot find top activity.");
+                        return -1;
+                    }
+
+                    AndroidLogcatInternalLog.Log(line);
+
+                    var reg = new Regex(@"(?<pid>\d+)\:(?<package>\S+)\/\S+\s+\(top-\S+\)");
+                    var match = reg.Match(line);
+                    if (!match.Success)
+                    {
+                        AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
+                        return -1;
+                    }
+
+                    int pid = int.Parse(match.Groups["pid"].Value);
+
+                    // There can be lines with (top-activity) at the end, but pid == 0, not sure what are those, but definetly not top activities
+                    if (pid > 0)
+                    {
+                        packageName = match.Groups["package"].Value;
+                        return pid;
+                    }
+
+                    // Continue looking for top activity
                 }
+                while (true);
             }
-
-            if (string.IsNullOrEmpty(line))
-            {
-                AndroidLogcatInternalLog.Log("Cannot find top activity.");
-                return -1;
-            }
-            AndroidLogcatInternalLog.Log(line);
-
-            var reg = new Regex(@"(?<pid>\d{2,})\:(?<package>[^/]*)");
-            var match = reg.Match(line);
-            if (!match.Success)
-            {
-                AndroidLogcatInternalLog.Log("Match '{0}' failed.", line);
-                return -1;
-            }
-
-            packageName = match.Groups["package"].Value;
-            return int.Parse(match.Groups["pid"].Value);
         }
 
         public static void OpenTerminal(string workingDirectory)
