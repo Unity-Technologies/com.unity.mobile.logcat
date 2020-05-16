@@ -227,6 +227,7 @@ class AndroidLogcatRegexTests
     [Test]
     public void CorrectlyParseSleepingTopActivities()
     {
+        // Google Pixel XL2 was locked during the capture
         var adbContentsGooglePixelXL2 = @"
 ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
   Isolated process list (sorted by uid):
