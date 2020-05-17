@@ -18,6 +18,8 @@ namespace Unity.Android.Logcat
 
         AndroidLogcatSettings Settings { get; }
 
+        AndroidLogcatProjectSettings ProjectSettings { get; }
+
         AndroidTools Tools { get; }
 
         AndroidLogcatDeviceQueryBase DeviceQuery { get; }
@@ -29,16 +31,19 @@ namespace Unity.Android.Logcat
         void Shutdown();
 
         event Action Update;
+        event Action Closing;
     }
 
     internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
     {
         private AndroidLogcatDispatcher m_Dispatcher;
         private AndroidLogcatSettings m_Settings;
+        private AndroidLogcatProjectSettings m_ProjectSettings;
         private AndroidTools m_Tools;
         private AndroidLogcatDeviceQuery m_DeviceQuery;
 
         public event Action Update;
+        public event Action Closing;
 
         public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
@@ -54,6 +59,11 @@ namespace Unity.Android.Logcat
         public AndroidLogcatSettings Settings
         {
             get { return m_Settings; }
+        }
+
+        public AndroidLogcatProjectSettings ProjectSettings
+        {
+            get { return m_ProjectSettings; }
         }
 
         public AndroidTools Tools
@@ -75,6 +85,13 @@ namespace Unity.Android.Logcat
 
             m_Settings = AndroidLogcatSettings.Load();
 
+            m_ProjectSettings = AndroidLogcatProjectSettings.Load();
+            if (m_ProjectSettings == null)
+            {
+                m_ProjectSettings = new AndroidLogcatProjectSettings();
+                m_ProjectSettings.Reset();
+            }
+
             m_Tools = new AndroidTools();
 
             m_DeviceQuery = new AndroidLogcatDeviceQuery(this);
@@ -82,8 +99,14 @@ namespace Unity.Android.Logcat
 
         public void Shutdown()
         {
+            Closing?.Invoke();
+
+
             AndroidLogcatSettings.Save(m_Settings);
             m_Settings = null;
+
+            AndroidLogcatProjectSettings.Save(m_ProjectSettings);
+            m_ProjectSettings = null;
 
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;

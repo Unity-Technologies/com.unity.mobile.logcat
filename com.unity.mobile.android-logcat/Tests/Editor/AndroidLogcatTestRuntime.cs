@@ -7,33 +7,48 @@ using UnityEditor.Android;
 internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 {
     private AndroidLogcatDispatcher m_Dispatcher;
+    private AndroidLogcatSettings m_Settings;
+    private AndroidLogcatProjectSettings m_ProjectSettings;
     private AndroidLogcatFakeDeviceQuery m_DeviceQuery;
+    private bool m_Initialized;
 
     public event Action Update;
+    public event Action Closing;
 
     public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
         return new AndroidLogcatFakeMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
     }
 
+    private void ValidateIsInitialized()
+    {
+        if (!m_Initialized)
+            throw new Exception("Runtime is not initialized");
+    }
+
     public AndroidLogcatDispatcher Dispatcher
     {
-        get { return m_Dispatcher; }
+        get { ValidateIsInitialized(); return m_Dispatcher; }
     }
 
     public AndroidLogcatSettings Settings
     {
-        get { return null;  }
+        get { ValidateIsInitialized(); return m_Settings;  }
+    }
+
+    public AndroidLogcatProjectSettings ProjectSettings
+    {
+        get { ValidateIsInitialized(); return m_ProjectSettings; }
     }
 
     public AndroidTools Tools
     {
-        get { return null; }
+        get { ValidateIsInitialized(); return null; }
     }
 
     public AndroidLogcatDeviceQueryBase DeviceQuery
     {
-        get { return m_DeviceQuery; }
+        get { ValidateIsInitialized(); return m_DeviceQuery; }
     }
 
     public void Initialize()
@@ -41,12 +56,24 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
         m_Dispatcher = new AndroidLogcatDispatcher(this);
         m_Dispatcher.Initialize();
 
+        m_Settings = new AndroidLogcatSettings();
+
+        m_ProjectSettings = new AndroidLogcatProjectSettings();
+        m_ProjectSettings.Reset();
+
         m_DeviceQuery = new AndroidLogcatFakeDeviceQuery(this);
+        m_Initialized = true;
     }
 
     public void Shutdown()
     {
+        Closing?.Invoke();
+        m_Initialized = false;
+
         m_DeviceQuery = null;
+
+        m_Settings = null;
+        m_ProjectSettings = null;
 
         m_Dispatcher.Shutdown();
         m_Dispatcher = null;

@@ -36,6 +36,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<Color> m_MessageColorsFreeSkin;
 
+        [SerializeField]
+        private List<ReordableListItem> m_StacktraceResolveRegex;
+
         // Warning: Setting this number to low, will make memory request to be delayed
         // Since querying memory from device is a lengthy operation. That's why there's a cap 500
         internal int MemoryRequestIntervalMS
@@ -123,9 +126,17 @@ namespace Unity.Android.Logcat
             return GetDefaultColor(priority, EditorGUIUtility.isProSkin);
         }
 
+        internal List<ReordableListItem> StacktraceResolveRegex
+        {
+            get
+            {
+                return m_StacktraceResolveRegex;
+            }
+        }
+
         internal Action<AndroidLogcatSettings> OnSettingsChanged;
 
-        private AndroidLogcatSettings()
+        internal AndroidLogcatSettings()
         {
             Reset();
         }
@@ -146,7 +157,17 @@ namespace Unity.Android.Logcat
                 m_MessageColorsProSkin.Add(GetDefaultColor(p, true));
                 m_MessageColorsFreeSkin.Add(GetDefaultColor(p, false));
             }
+
+            ResetStacktraceResolveRegex();
+
             InvokeOnSettingsChanged();
+        }
+
+        internal void ResetStacktraceResolveRegex()
+        {
+            m_StacktraceResolveRegex = new List<ReordableListItem>();
+            m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat1, Enabled = true });
+            m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat2, Enabled = true });
         }
 
         private Color GetDefaultColor(AndroidLogcat.Priority priority, bool isProSkin)

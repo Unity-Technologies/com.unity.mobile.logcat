@@ -9,21 +9,127 @@ using System.Linq;
 
 namespace Unity.Android.Logcat
 {
+    [Serializable]
     internal class AndroidLogcatProjectSettings
     {
         private static readonly string kAndroidLogcatSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
 
-        public string m_SelectedDeviceId = String.Empty;
+        [SerializeField]
+        private string m_SelectedDeviceId;
+        [SerializeField]
+        private AndroidLogcatConsoleWindow.PackageInformation m_SelectedPackage;
+        [SerializeField]
+        private AndroidLogcat.Priority m_SelectedPriority;
+        [SerializeField]
+        private List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization;
+        [SerializeField]
+        private AndroidLogcatTagsControl m_TagControl;
+        [SerializeField]
+        private string m_MemoryViewerJson;
 
-        public AndroidLogcatConsoleWindow.PackageInformation m_SelectedPackage = null;
+        public string SelectedDeviceId
+        {
+            set
+            {
+                m_SelectedDeviceId = value;
+            }
+            get
+            {
+                return m_SelectedDeviceId;
+            }
+        }
 
-        public AndroidLogcat.Priority m_SelectedPriority = AndroidLogcat.Priority.Verbose;
+        public bool SelectedDeviceIdValid
+        {
+            get
+            {
+                return !string.IsNullOrEmpty(m_SelectedDeviceId);
+            }
+        }
 
-        public List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization = null;
+        public AndroidLogcatConsoleWindow.PackageInformation SelectedPackage
+        {
+            set
+            {
+                m_SelectedPackage = value;
+            }
+            get
+            {
+                return m_SelectedPackage;
+            }
+        }
 
-        public AndroidLogcatTagsControl m_TagControl = null;
+        public bool SelectedPackageValid
+        {
+            get
+            {
+                return m_SelectedPackage != null &&
+                    !string.IsNullOrEmpty(m_SelectedPackage.deviceId) &&
+                    m_SelectedPackage.processId > 0;
+            }
+        }
 
-        public string m_MemoryViewerJson;
+
+        public AndroidLogcat.Priority SelectedPriority
+        {
+            set
+            {
+                m_SelectedPriority = value;
+            }
+            get
+            {
+                return m_SelectedPriority;
+            }
+        }
+
+        public List<AndroidLogcatConsoleWindow.PackageInformation> PackagesForSerialization
+        {
+            set
+            {
+                m_PackagesForSerialization = value;
+            }
+            get
+            {
+                return m_PackagesForSerialization;
+            }
+        }
+
+        public AndroidLogcatTagsControl TagControl
+        {
+            set
+            {
+                m_TagControl = value;
+            }
+            get
+            {
+                return m_TagControl;
+            }
+        }
+
+
+        public string MemoryViewerJson
+        {
+            set
+            {
+                m_MemoryViewerJson = value;
+            }
+            get
+            {
+                return m_MemoryViewerJson;
+            }
+        }
+        internal AndroidLogcatProjectSettings()
+        {
+            Reset();
+        }
+
+        internal void Reset()
+        {
+            m_SelectedDeviceId = string.Empty;
+            m_SelectedPriority = AndroidLogcat.Priority.Verbose;
+            m_TagControl = new AndroidLogcatTagsControl();
+            m_PackagesForSerialization = new List<AndroidLogcatConsoleWindow.PackageInformation>();
+        }
 
         internal static AndroidLogcatProjectSettings Load()
         {
@@ -49,6 +155,9 @@ namespace Unity.Android.Logcat
 
         internal static void Save(AndroidLogcatProjectSettings settings)
         {
+            if (settings == null)
+                throw new NullReferenceException(nameof(settings));
+
             var jsonString = JsonUtility.ToJson(settings, true);
             if (string.IsNullOrEmpty(jsonString))
                 return;

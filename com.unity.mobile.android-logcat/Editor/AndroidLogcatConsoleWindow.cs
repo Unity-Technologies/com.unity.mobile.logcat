@@ -88,17 +88,12 @@ namespace Unity.Android.Logcat
         }
 
         private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
-
-        private AndroidLogcat.Priority m_SelectedPriority;
-
         private string m_Filter = string.Empty;
         private bool m_FilterIsRegularExpression;
 
         private SearchField m_SearchField;
 
         private AndroidLogcatTagsControl m_TagControl = null;
-
-        private AndroidLogcatJsonSerialization m_JsonSerialization = null;
 
         private IAndroidLogcatRuntime m_Runtime;
         private AndroidLogcat m_LogCat;
@@ -142,13 +137,13 @@ namespace Unity.Android.Logcat
 
         internal void SaveStates()
         {
+            var settings = m_Runtime.ProjectSettings;
+
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            m_JsonSerialization = new AndroidLogcatJsonSerialization();
-            m_JsonSerialization.m_SelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
-            m_JsonSerialization.m_SelectedPackage = m_SelectedPackage;
-            m_JsonSerialization.m_SelectedPriority = m_SelectedPriority;
-            m_JsonSerialization.m_TagControl = m_TagControl;
-            m_JsonSerialization.m_MemoryViewerJson = JsonUtility.ToJson(m_MemoryViewer);
+            settings.SelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
+            settings.SelectedPackage = m_SelectedPackage;
+            settings.TagControl = m_TagControl;
+            settings.MemoryViewerJson = JsonUtility.ToJson(m_MemoryViewer);
 
             // Convert Dictionary to List for serialization.
             var packagesForSerialization = new List<PackageInformation>();
@@ -156,47 +151,23 @@ namespace Unity.Android.Logcat
             {
                 packagesForSerialization.AddRange(p.Value);
             }
-            m_JsonSerialization.m_PackagesForSerialization = packagesForSerialization;
-
-            var jsonString = JsonUtility.ToJson(m_JsonSerialization, true);
-            m_JsonSerialization = null;
-            if (string.IsNullOrEmpty(jsonString))
-                return;
-
-            File.WriteAllText(kAndroidLogcatSettingsPath, jsonString);
+            settings.PackagesForSerialization = packagesForSerialization;
         }
 
         internal void LoadStates()
         {
-            if (!File.Exists(kAndroidLogcatSettingsPath))
-                return;
+            var settings = m_Runtime.ProjectSettings;
 
-            var jsonString = File.ReadAllText(kAndroidLogcatSettingsPath);
-            if (string.IsNullOrEmpty(jsonString))
-                return;
-
-            try
-            {
-                m_JsonSerialization = JsonUtility.FromJson<AndroidLogcatJsonSerialization>(jsonString);
-            }
-            catch (Exception ex)
-            {
-                AndroidLogcatInternalLog.Log("Load Preferences from Json failed: " + ex.Message);
-                m_JsonSerialization = null;
-                return;
-            }
-
-            JsonUtility.FromJsonOverwrite(m_JsonSerialization.m_MemoryViewerJson, m_MemoryViewer);
+            if (!string.IsNullOrEmpty(settings.MemoryViewerJson))
+                JsonUtility.FromJsonOverwrite(settings.MemoryViewerJson, m_MemoryViewer);
             m_MemoryViewer.ValidateSettings();
 
-            // We can only restore Priority, TagControl & PackageForSerialization here.
             // For selected device & package, we have to delay it when we first launch the window.
-            m_SelectedPriority = m_JsonSerialization.m_SelectedPriority;
-            m_TagControl.TagNames = m_JsonSerialization.m_TagControl.TagNames;
-            m_TagControl.SelectedTags = m_JsonSerialization.m_TagControl.SelectedTags;
+            m_TagControl.TagNames = settings.TagControl.TagNames;
+            m_TagControl.SelectedTags = settings.TagControl.SelectedTags;
 
             m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
-            foreach (var p in m_JsonSerialization.m_PackagesForSerialization)
+            foreach (var p in settings.PackagesForSerialization)
             {
                 List<PackageInformation> packages;
                 if (!m_PackagesForAllDevices.TryGetValue(p.deviceId, out packages))
@@ -208,10 +179,15 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private void OnEnable()
+        internal void OnEnable()
+        {
+            OnEnable(AndroidLogcatManager.instance.Runtime);
+        }
+
+        protected void OnEnable(IAndroidLogcatRuntime runtime)
         {
             AndroidLogcatInternalLog.Log("OnEnable");
-            m_Runtime = AndroidLogcatManager.instance.Runtime;
+            m_Runtime = runtime;
 
             if (m_Columns == null || m_Columns.Length != Enum.GetValues(typeof(Column)).Length)
                 m_Columns = GetColumns();
@@ -242,10 +218,19 @@ namespace Unity.Android.Logcat
             m_Runtime.DeviceQuery.DeviceSelected += OnSelectedDevice;
 
             LoadStates();
+
+            // Since Runtime.OnDisable can be called earlier than this window OnClose, we must ensure the order
+            m_Runtime.Closing += OnDisable;
         }
 
-        private void OnDisable()
+        internal void OnDisable()
         {
+            if (m_Runtime == null)
+            {
+                AndroidLogcatInternalLog.Log("Runtime was already destroyed.");
+                return;
+            }
+            m_Runtime.Closing -= OnDisable;
             SaveStates();
 
             m_Runtime.DeviceQuery.DeviceSelected -= OnSelectedDevice;
@@ -257,6 +242,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime.Update -= OnUpdate;
             AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectPackage);
+            m_Runtime = null;
         }
 
         private void OnSettingsChanged(AndroidLogcatSettings settings)
@@ -414,20 +400,15 @@ namespace Unity.Android.Logcat
             savedDevice = null;
             savedPackage = null;
 
-            if (m_JsonSerialization == null)
+            var settings = m_Runtime.ProjectSettings;
+
+            if (!settings.SelectedDeviceIdValid || !settings.SelectedPackageValid)
                 return;
 
-            var savedDeviceId = m_JsonSerialization.m_SelectedDeviceId;
-            savedPackage = m_JsonSerialization.m_SelectedPackage;
+            savedPackage = settings.SelectedPackage;
 
-            m_JsonSerialization = null;
-
-            if (savedDeviceId == null)
-                return;
-
+            var savedDeviceId = settings.SelectedDeviceId;
             savedDevice = m_Runtime.DeviceQuery.GetDevice(savedDeviceId);
-            if (savedDevice == null)
-                return;
         }
 
         private void OnLogcatDisconnected(IAndroidLogcatDevice device)
@@ -844,9 +825,9 @@ namespace Unity.Android.Logcat
 
         private void SetSelectedPriority(AndroidLogcat.Priority newPriority)
         {
-            if (newPriority != m_SelectedPriority)
+            if (newPriority != m_Runtime.ProjectSettings.SelectedPriority)
             {
-                m_SelectedPriority = newPriority;
+                m_Runtime.ProjectSettings.SelectedPriority = newPriority;
                 RestartLogCat();
             }
         }
@@ -881,7 +862,7 @@ namespace Unity.Android.Logcat
                 adb,
                 device,
                 m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
-                m_SelectedPriority,
+                m_Runtime.ProjectSettings.SelectedPriority,
                 m_Filter,
                 m_FilterIsRegularExpression,
                 m_TagControl.GetSelectedTags());
