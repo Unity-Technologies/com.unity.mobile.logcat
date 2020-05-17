@@ -6,16 +6,17 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
+    [Serializable]
+    internal class ReordableListItem
+    {
+        internal string Name;
+
+        internal bool Enabled;
+    }
+
     internal class AndroidLogcatReordableList
     {
-        internal class DataSourceItem
-        {
-            internal string Name { set; get; }
-
-            internal bool Enabled { set; get; }
-        }
-
-        private List<DataSourceItem> m_DataSource;
+        private List<ReordableListItem> m_DataSource;
         private int m_SelectedIndex = -1;
         private string m_InputFieldText = String.Empty;
         private const string kInputTextFieldControlId = "ReordableListInputTextFieldControl";
@@ -24,7 +25,7 @@ namespace Unity.Android.Logcat
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 
-        public AndroidLogcatReordableList(List<DataSourceItem> dataSource)
+        public AndroidLogcatReordableList(List<ReordableListItem> dataSource)
         {
             m_DataSource = dataSource;
         }
@@ -108,7 +109,7 @@ namespace Unity.Android.Logcat
 
         protected void AddItem(string name)
         {
-            m_DataSource.Add(new DataSourceItem() { Name = name, Enabled = true });
+            m_DataSource.Add(new ReordableListItem() { Name = name, Enabled = true });
             m_InputFieldText = string.Empty;
             m_SelectedIndex = m_DataSource.Count - 1;
             GUIUtility.keyboardControl = 0;
@@ -125,7 +126,7 @@ namespace Unity.Android.Logcat
             var currentEvent = Event.current;
             bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
             EditorGUILayout.BeginVertical(GUILayout.Width(ButtonWidth));
-            
+
             if (GUILayout.Button(kIconToolbarPlus, ButtonStyles) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
             {
                 OnPlusButtonClicked();

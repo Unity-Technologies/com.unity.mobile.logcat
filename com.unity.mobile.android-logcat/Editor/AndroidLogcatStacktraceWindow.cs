@@ -12,9 +12,8 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatSymbolList : AndroidLogcatReordableList
     {
-        public AndroidLogcatSymbolList(List<DataSourceItem> dataSource) : base(dataSource)
+        public AndroidLogcatSymbolList(List<ReordableListItem> dataSource) : base(dataSource)
         {
-
         }
 
         protected override void OnPlusButtonClicked()
@@ -53,24 +52,17 @@ namespace Unity.Android.Logcat
             SymbolPaths
         }
 
-        [SerializeField]
-        List<string> m_RecentSymbolPaths;
-
-        [SerializeField]
-        int m_SelectedSymbolPath;
-
-        [SerializeField]
-        string m_CustomAddressRegex;
-
-        [SerializeField]
-        int m_SelectedRegex;
-
         Vector2 m_ScrollPosition;
         string m_Text = String.Empty;
         string m_ResolvedStacktraces = String.Empty;
 
         private WindowMode m_WindowMode;
         private ToolbarMode m_ToolbarMode;
+
+        private IAndroidLogcatRuntime m_Runtime;
+
+        [SerializeField]
+        List<ReordableListItem> m_SymbolPaths;
 
         AndroidLogcatReordableList m_RegexList;
         AndroidLogcatReordableList m_SymbolPathList;
@@ -97,19 +89,6 @@ namespace Unity.Android.Logcat
             address = null;
             libName = null;
             return false;
-        }
-
-        void AddSymbolPath(string path)
-        {
-            int index = m_RecentSymbolPaths.IndexOf(path);
-            if (index >= 0)
-                m_RecentSymbolPaths.RemoveAt(index);
-
-            m_RecentSymbolPaths.Insert(0, path);
-            if (m_RecentSymbolPaths.Count > 10)
-                m_RecentSymbolPaths.RemoveAt(m_RecentSymbolPaths.Count - 1);
-
-            m_SelectedSymbolPath = 0;
         }
 
         static string ConvertSlashToUnicodeSlash(string text_)
@@ -168,29 +147,7 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
-            var data = EditorPrefs.GetString(GetType().FullName, JsonUtility.ToJson(this, false));
-            JsonUtility.FromJsonOverwrite(data, this);
-
-            if (m_RecentSymbolPaths == null)
-                m_RecentSymbolPaths = new List<string>();
-            else
-            {
-                var validatedSymbolPaths = new List<string>();
-                foreach (var s in m_RecentSymbolPaths)
-                {
-                    if (!Directory.Exists(s))
-                        continue;
-                    validatedSymbolPaths.Add(s);
-                }
-                m_RecentSymbolPaths = validatedSymbolPaths;
-            }
-
-            if (string.IsNullOrEmpty(m_CustomAddressRegex))
-                m_CustomAddressRegex = "";
-
-            if (m_SelectedSymbolPath >= m_RecentSymbolPaths.Count)
-                m_SelectedSymbolPath = (m_RecentSymbolPaths.Count == 0) ? -1 : 0;
-
+            m_Runtime = AndroidLogcatManager.instance.Runtime;
             if (string.IsNullOrEmpty(m_Text))
             {
                 var placeholder = new StringBuilder();
@@ -200,40 +157,12 @@ namespace Unity.Android.Logcat
                 m_Text = placeholder.ToString();
             }
 
-            m_RegexList = new AndroidLogcatReordableList(
-                new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } }));
-            m_SymbolPathList = new AndroidLogcatSymbolList(
-                new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } }));
-        }
+            if (m_SymbolPaths == null)
+                m_SymbolPaths = new List<ReordableListItem>();
 
-        private void OnDisable()
-        {
-            var data = JsonUtility.ToJson(this, false);
-            EditorPrefs.SetString(GetType().FullName, data);
-        }
 
-        void DoSymbolPath(float labelWidth)
-        {
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Symbol path:", EditorStyles.boldLabel, GUILayout.Width(labelWidth));
-
-            var recentPaths = new List<string>(m_RecentSymbolPaths);
-            recentPaths.Add("");
-            recentPaths.Add("Select Symbol Path");
-
-            int selection = EditorGUILayout.Popup(m_SelectedSymbolPath, recentPaths.Select(m => new GUIContent(ConvertSlashToUnicodeSlash(m))).ToArray());
-            if (selection == m_RecentSymbolPaths.Count + 1)
-            {
-                var symbolPath = m_SelectedSymbolPath >= 0 && m_SelectedSymbolPath < m_RecentSymbolPaths.Count ? m_RecentSymbolPaths[m_SelectedSymbolPath] : EditorApplication.applicationContentsPath;
-                symbolPath = EditorUtility.OpenFolderPanel("Locate symbol path", symbolPath, "");
-                if (!string.IsNullOrEmpty(symbolPath))
-                    AddSymbolPath(symbolPath);
-            }
-            else if (selection >= 0 && selection < m_RecentSymbolPaths.Count)
-            {
-                m_SelectedSymbolPath = selection;
-            }
-            EditorGUILayout.EndHorizontal();
+            m_RegexList = new AndroidLogcatReordableList(m_Runtime.Settings.StacktraceResolveRegex);
+            m_SymbolPathList = new AndroidLogcatSymbolList(m_SymbolPaths);
         }
 
         void DoRegex(float labelWidth, Regex regex)
@@ -310,9 +239,9 @@ namespace Unity.Android.Logcat
             if (GUILayout.Toggle(m_ToolbarMode == ToolbarMode.SymbolPaths, "Configure Symbol Paths", AndroidLogcatStyles.toolbarButton))
                 m_ToolbarMode = ToolbarMode.SymbolPaths;
             EditorGUILayout.EndHorizontal();
-            
-           // GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
-           // GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
+
+            // GUILayout.Box("", AndroidLogcatStyles.columnHeader, GUILayout.Width(position.width), GUILayout.Height(kInfoAreaHeight));
+            // GUILayout.BeginArea(new Rect(0, 0, this.position.width, kInfoAreaHeight));
 
             switch (m_ToolbarMode)
             {
@@ -323,17 +252,16 @@ namespace Unity.Android.Logcat
                     m_SymbolPathList.OnGUI();
                     break;
             }
-            
+
             if (GUILayout.Button("Test"))
             {
-              //  PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AndroidLogcatReordableList(
-             //       new List<AndroidLogcatReordableList.DataSourceItem>(new[] { new AndroidLogcatReordableList.DataSourceItem() { Name = "sds", Enabled = true } })));
+                //  PopupWindow.Show(GUILayoutUtility.GetLastRect(), new AndroidLogcatReordableList(
+                //       new List<ReordableListItem>(new[] { new ReordableListItem() { Name = "sds", Enabled = true } })));
             }
             EditorGUILayout.EndVertical();
-            DoSymbolPath(kLabelWidth);
             DoRegex(kLabelWidth, null);
-          //  GUILayout.EndArea();
-            
+            //  GUILayout.EndArea();
+
 
             EditorGUI.BeginChangeCheck();
             m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);
