@@ -8,10 +8,10 @@ namespace Unity.Android.Logcat
     {
         public const int kFontSize = 10;
         public const int kFixedHeight = kFontSize + 9;
-        public static GUIStyle toolbar = new GUIStyle(EditorStyles.toolbar) { fontSize = kFontSize, fixedHeight = kFixedHeight};
-        public static GUIStyle toolbarButton = new GUIStyle(EditorStyles.toolbarButton) { fontSize = kFontSize, fixedHeight = kFixedHeight };
-        public static GUIStyle toolbarPopup = new GUIStyle(EditorStyles.toolbarPopup) { fontSize = kFontSize, fixedHeight = kFixedHeight };
-        public static GUIStyle toolbarPopupCenter = new GUIStyle(EditorStyles.toolbarPopup) { fontSize = kFontSize, fixedHeight = kFixedHeight, alignment = TextAnchor.MiddleCenter };
+        public static GUIStyle toolbar = new GUIStyle("toolbar") { fontSize = kFontSize, fixedHeight = kFixedHeight};
+        public static GUIStyle toolbarButton = new GUIStyle("toolbarButton") { fontSize = kFontSize, fixedHeight = kFixedHeight };
+        public static GUIStyle toolbarPopup = new GUIStyle("toolbarPopup") { fontSize = kFontSize, fixedHeight = kFixedHeight };
+        public static GUIStyle toolbarPopupCenter = new GUIStyle("toolbarPopup") { fontSize = kFontSize, fixedHeight = kFixedHeight, alignment = TextAnchor.MiddleCenter };
 
         public static GUIStyle columnHeader = new GUIStyle("OL TITLE");
 
