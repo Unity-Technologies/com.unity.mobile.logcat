@@ -55,7 +55,8 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 
     public void Cleanup()
     {
-        Directory.Delete("Tests", true);
+        if (Directory.Exists("Tests"))
+            Directory.Delete("Tests", true);
     }
 
     public void Initialize()
@@ -115,11 +116,13 @@ internal class AndroidLogcatRuntimeTestBase
         m_Runtime.Initialize();
     }
 
-    protected void ShutdownRuntime()
+    protected void ShutdownRuntime(bool cleanup = true)
     {
         if (m_Runtime == null)
             throw new Exception("Runtime was not created?");
         m_Runtime.Shutdown();
+        if (cleanup)
+            m_Runtime.Cleanup();
         m_Runtime = null;
     }
 }

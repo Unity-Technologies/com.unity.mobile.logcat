@@ -24,9 +24,9 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         ms_Runtime = m_Runtime;
     }
 
-    private void ShutdownRuntimeStatic()
+    private void ShutdownRuntimeStatic(bool cleanup)
     {
-        ShutdownRuntime();
+        ShutdownRuntime(cleanup);
         ms_Runtime = null;
     }
 
@@ -55,7 +55,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         Assert.IsTrue(m_Runtime.ProjectSettings.TagControl.TagNames.Contains(kMyCustomTag));
 
         ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic();
+        ShutdownRuntimeStatic(true);
     }
 
     /// <summary>
@@ -68,7 +68,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         var consoleWindow = StartTest();
 
         ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic();
+        ShutdownRuntimeStatic(false);
 
         FinalizeTest();
     }
@@ -78,7 +78,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
     {
         var consoleWindow = StartTest();
 
-        ShutdownRuntimeStatic();
+        ShutdownRuntimeStatic(false);
         ScriptableObject.DestroyImmediate(consoleWindow);
 
         FinalizeTest();
