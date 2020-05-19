@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.Android;
-using System.Text;
+using System.IO;
 
 
 namespace Unity.Android.Logcat
@@ -36,6 +36,8 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
     {
+        private static readonly string kAndroidLogcatSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
+
         private AndroidLogcatDispatcher m_Dispatcher;
         private AndroidLogcatSettings m_Settings;
         private AndroidLogcatProjectSettings m_ProjectSettings;
@@ -85,7 +87,7 @@ namespace Unity.Android.Logcat
 
             m_Settings = AndroidLogcatSettings.Load();
 
-            m_ProjectSettings = AndroidLogcatProjectSettings.Load();
+            m_ProjectSettings = AndroidLogcatProjectSettings.Load(kAndroidLogcatSettingsPath);
             if (m_ProjectSettings == null)
             {
                 m_ProjectSettings = new AndroidLogcatProjectSettings();
@@ -101,11 +103,10 @@ namespace Unity.Android.Logcat
         {
             Closing?.Invoke();
 
-
             AndroidLogcatSettings.Save(m_Settings);
             m_Settings = null;
 
-            AndroidLogcatProjectSettings.Save(m_ProjectSettings);
+            AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath);
             m_ProjectSettings = null;
 
             m_Dispatcher.Shutdown();

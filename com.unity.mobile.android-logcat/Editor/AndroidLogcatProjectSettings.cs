@@ -12,8 +12,6 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatProjectSettings
     {
-        private static readonly string kAndroidLogcatSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
-
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -131,12 +129,12 @@ namespace Unity.Android.Logcat
             m_PackagesForSerialization = new List<AndroidLogcatConsoleWindow.PackageInformation>();
         }
 
-        internal static AndroidLogcatProjectSettings Load()
+        internal static AndroidLogcatProjectSettings Load(string path)
         {
-            if (!File.Exists(kAndroidLogcatSettingsPath))
+            if (!File.Exists(path))
                 return null;
 
-            var jsonString = File.ReadAllText(kAndroidLogcatSettingsPath);
+            var jsonString = File.ReadAllText(path);
             if (string.IsNullOrEmpty(jsonString))
                 return null;
 
@@ -153,7 +151,7 @@ namespace Unity.Android.Logcat
             return null;
         }
 
-        internal static void Save(AndroidLogcatProjectSettings settings)
+        internal static void Save(AndroidLogcatProjectSettings settings, string path)
         {
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
@@ -162,7 +160,7 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(jsonString))
                 return;
 
-            File.WriteAllText(kAndroidLogcatSettingsPath, jsonString);
+            File.WriteAllText(path, jsonString);
         }
     }
 }
