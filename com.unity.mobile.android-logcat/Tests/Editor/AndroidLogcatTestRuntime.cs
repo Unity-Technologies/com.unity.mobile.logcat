@@ -105,7 +105,7 @@ internal class AndroidLogcatRuntimeTestBase
 {
     protected AndroidLogcatTestRuntime m_Runtime;
 
-    protected void InitRuntime(bool cleanup = false)
+    protected void InitRuntime(bool cleanup = true)
     {
         if (m_Runtime != null)
             throw new Exception("Runtime was not shutdown by previous test?");
