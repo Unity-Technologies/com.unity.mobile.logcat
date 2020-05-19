@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System.IO;
 using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 using UnityEngine;
@@ -7,6 +8,8 @@ using UnityEngine;
 internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
 {
     static IAndroidLogcatRuntime ms_Runtime;
+    const string kMyCustomTag = "CustomTAG1234";
+
     class AndroidLogcatTestConsoleWindow : AndroidLogcatConsoleWindow
     {
         public new void OnEnable()
@@ -15,9 +18,9 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         }
     }
 
-    private void InitRuntimeStatic()
+    private void InitRuntimeStatic(bool cleanup)
     {
-        InitRuntime();
+        InitRuntime(cleanup);
         ms_Runtime = m_Runtime;
     }
 
@@ -27,27 +30,57 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         ms_Runtime = null;
     }
 
-    /// <summary>
-    /// In Unity, ScriptableObject destroy queue order is undefined
-    /// This test checks if everything is working correctly, if runtime is destroyed first and last
-    /// </summary>
-    [Test]
-    public void DisableHandledCorrectlyRuntimeDestroyedLast()
+    private AndroidLogcatTestConsoleWindow StartTest()
     {
-        InitRuntimeStatic();
+        InitRuntimeStatic(true);
+        Assert.IsFalse(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
+
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        m_Runtime.ProjectSettings.TagControl.Add(kMyCustomTag);
+
+        return consoleWindow;
+    }
+
+    private void FinalizeTest()
+    {
+        // Check if player settings have our new tag saved
+        var contents = File.ReadAllText(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath);
+        Assert.IsTrue(contents.Contains(kMyCustomTag));
+
+        // Resume runtime and see if we can restore player settings
+        InitRuntimeStatic(false);
+        Assert.IsTrue(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
+        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+
+        Assert.IsTrue(m_Runtime.ProjectSettings.TagControl.TagNames.Contains(kMyCustomTag));
 
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic();
     }
 
+    /// <summary>
+    /// In Unity, ScriptableObject destroy queue order is undefined
+    /// This test checks if everything is working correctly, if runtime is destroyed last and first
+    /// </summary>
     [Test]
-    public void DisableHandledCorrectlyRuntimeDestroyedFirst()
+    public void LogcatBehavesCorrectlyWhenRuntimeDestroyedLast()
     {
-        InitRuntimeStatic();
-        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        var consoleWindow = StartTest();
+
+        ScriptableObject.DestroyImmediate(consoleWindow);
+        ShutdownRuntimeStatic();
+
+        FinalizeTest();
+    }
+
+    [Test]
+    public void LogcatBehavesCorrectlyWhenRuntimeDestroyedFirst()
+    {
+        var consoleWindow = StartTest();
 
         ShutdownRuntimeStatic();
         ScriptableObject.DestroyImmediate(consoleWindow);
+
+        FinalizeTest();
     }
 }

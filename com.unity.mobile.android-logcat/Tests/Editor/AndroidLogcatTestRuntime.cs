@@ -6,6 +6,8 @@ using UnityEditor.Android;
 
 internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 {
+    internal static readonly string kAndroidLogcatSettingsPath = Path.Combine("Tests", "ProjectSettings", "AndroidLogcatSettings.asset");
+
     private AndroidLogcatDispatcher m_Dispatcher;
     private AndroidLogcatSettings m_Settings;
     private AndroidLogcatProjectSettings m_ProjectSettings;
@@ -51,6 +53,11 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
         get { ValidateIsInitialized(); return m_DeviceQuery; }
     }
 
+    public void Cleanup()
+    {
+        Directory.Delete("Tests", true);
+    }
+
     public void Initialize()
     {
         m_Dispatcher = new AndroidLogcatDispatcher(this);
@@ -58,8 +65,13 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 
         m_Settings = new AndroidLogcatSettings();
 
-        m_ProjectSettings = new AndroidLogcatProjectSettings();
-        m_ProjectSettings.Reset();
+        Directory.CreateDirectory(Path.GetDirectoryName(kAndroidLogcatSettingsPath));
+        m_ProjectSettings = AndroidLogcatProjectSettings.Load(kAndroidLogcatSettingsPath);
+        if (m_ProjectSettings == null)
+        {
+            m_ProjectSettings = new AndroidLogcatProjectSettings();
+            m_ProjectSettings.Reset();
+        }
 
         m_DeviceQuery = new AndroidLogcatFakeDeviceQuery(this);
         m_Initialized = true;
@@ -72,7 +84,7 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
 
         m_DeviceQuery = null;
 
-        m_Settings = null;
+        AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath);
         m_ProjectSettings = null;
 
         m_Dispatcher.Shutdown();
@@ -93,11 +105,13 @@ internal class AndroidLogcatRuntimeTestBase
 {
     protected AndroidLogcatTestRuntime m_Runtime;
 
-    protected void InitRuntime()
+    protected void InitRuntime(bool cleanup = false)
     {
         if (m_Runtime != null)
             throw new Exception("Runtime was not shutdown by previous test?");
         m_Runtime = new AndroidLogcatTestRuntime();
+        if (cleanup)
+            m_Runtime.Cleanup();
         m_Runtime.Initialize();
     }
 
