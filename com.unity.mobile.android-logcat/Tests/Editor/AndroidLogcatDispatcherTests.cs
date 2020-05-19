@@ -88,7 +88,8 @@ public class AndroidLogcatDispatcherTests
                 PerformAsycnTask,
                 (IAndroidLogcatTaskResult r) =>
                 {
-                    Debug.Log("Received " + ((TaskResultData)r).mainThreadId);
+                    // Keep it for debugging
+                    // Debug.Log("Received " + ((TaskResultData)r).mainThreadId);
                     itemsReceived.Add(((TaskResultData)r).mainThreadId);
                 }, synchronousTask);
         }
