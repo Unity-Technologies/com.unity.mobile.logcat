@@ -126,15 +126,6 @@ namespace Unity.Android.Logcat
         }
 
         public static readonly GUIStyle StatusIcon = "toolbarButton";
-
-        public static Texture2D LoadIcon(string name)
-        {
-            var tex = (Texture2D)EditorGUIUtility.Load($"Packages/com.unity.mobile.android-logcat/Editor/Resources/{name}.png");
-            return tex;
-        }
-
-        internal static GUIContent kIconToolbarDown = new GUIContent(LoadIcon("DownArrow"));
-        internal static GUIContent kIconToolbarUp = new GUIContent(LoadIcon("UpArrow"));
     }
 }
 #endif
