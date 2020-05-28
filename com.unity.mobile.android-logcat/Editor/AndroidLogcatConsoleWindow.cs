@@ -143,7 +143,6 @@ namespace Unity.Android.Logcat
             settings.SelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.SelectedPackage = m_SelectedPackage;
             settings.TagControl = m_TagControl;
-            settings.MemoryViewerJson = JsonUtility.ToJson(m_MemoryViewer);
 
             // Convert Dictionary to List for serialization.
             var packagesForSerialization = new List<PackageInformation>();
@@ -158,9 +157,6 @@ namespace Unity.Android.Logcat
         {
             var settings = m_Runtime.ProjectSettings;
 
-            if (!string.IsNullOrEmpty(settings.MemoryViewerJson))
-                JsonUtility.FromJsonOverwrite(settings.MemoryViewerJson, m_MemoryViewer);
-            m_MemoryViewer.ValidateSettings();
 
             // For selected device & package, we have to delay it when we first launch the window.
             m_TagControl.TagNames = settings.TagControl.TagNames;
@@ -385,7 +381,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_LogCat != null && m_LogCat.IsConnected && m_MemoryViewer.State == MemoryViewerState.Auto)
+            if (m_LogCat != null && m_LogCat.IsConnected && m_Runtime.ProjectSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
@@ -475,13 +471,13 @@ namespace Unity.Android.Logcat
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                     break;
                 case 3:
-                    m_MemoryViewer.State = MemoryViewerState.Auto;
+                    m_Runtime.ProjectSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Auto;
                     break;
                 case 4:
-                    m_MemoryViewer.State = MemoryViewerState.Manual;
+                    m_Runtime.ProjectSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Manual;
                     break;
                 case 5:
-                    m_MemoryViewer.State = MemoryViewerState.Hidden;
+                    m_Runtime.ProjectSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Hidden;
                     break;
             }
         }
@@ -504,11 +500,11 @@ namespace Unity.Android.Logcat
                 }.Select(m => new GUIContent(m)).ToArray();
 
                 int selected = -1;
-                switch (m_MemoryViewer.State)
+                switch (m_Runtime.ProjectSettings.MemoryViewerState.Behavior)
                 {
-                    case MemoryViewerState.Auto: selected = 3; break;
-                    case MemoryViewerState.Manual: selected = 4; break;
-                    case MemoryViewerState.Hidden: selected = 5; break;
+                    case MemoryViewerBehavior.Auto: selected = 3; break;
+                    case MemoryViewerBehavior.Manual: selected = 4; break;
+                    case MemoryViewerBehavior.Hidden: selected = 5; break;
                 }
 
                 EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names, selected, MenuToolsSelection, null);

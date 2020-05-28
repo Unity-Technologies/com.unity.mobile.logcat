@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
         [SerializeField]
-        private string m_MemoryViewerJson;
+        private AndroidLogcatMemoryViewerState m_MemoryViewerState;
 
         public string SelectedDeviceId
         {
@@ -104,18 +104,18 @@ namespace Unity.Android.Logcat
             }
         }
 
-
-        public string MemoryViewerJson
+        public AndroidLogcatMemoryViewerState MemoryViewerState
         {
             set
             {
-                m_MemoryViewerJson = value;
+                m_MemoryViewerState = value;
             }
             get
             {
-                return m_MemoryViewerJson;
+                return m_MemoryViewerState;
             }
         }
+
         internal AndroidLogcatProjectSettings()
         {
             Reset();
@@ -127,6 +127,7 @@ namespace Unity.Android.Logcat
             m_SelectedPriority = AndroidLogcat.Priority.Verbose;
             m_TagControl = new AndroidLogcatTagsControl();
             m_PackagesForSerialization = new List<AndroidLogcatConsoleWindow.PackageInformation>();
+            m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
         }
 
         internal static AndroidLogcatProjectSettings Load(string path)
