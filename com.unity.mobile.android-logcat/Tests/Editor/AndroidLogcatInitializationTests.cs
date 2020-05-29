@@ -7,6 +7,7 @@ using UnityEngine;
 
 internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
 {
+    // We need this for AndroidLogcatTestConsoleWindow
     static IAndroidLogcatRuntime ms_Runtime;
     const string kMyCustomTag = "CustomTAG1234";
 
@@ -14,6 +15,12 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
     {
         public new void OnEnable()
         {
+            // Unity implicitly saves all scriptable objects, including AndroidLogcatTestConsoleWindow
+            // So during domain reload AndroidLogcatTestConsoleWindow is created and OnEnable is called
+            // But we want AndroidLogcatTestConsoleWindow to be available only for tests
+            // Not sure how to avoid this initialization better
+            if (ms_Runtime == null)
+                return;
             OnEnable(ms_Runtime);
         }
     }
@@ -30,7 +37,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         ms_Runtime = null;
     }
 
-    private AndroidLogcatTestConsoleWindow StartTest()
+    private AndroidLogcatTestConsoleWindow StartPlayerSettingsTest()
     {
         InitRuntimeStatic(true);
         Assert.IsFalse(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
@@ -41,7 +48,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         return consoleWindow;
     }
 
-    private void FinalizeTest()
+    private void StopPlayerSettingsTest()
     {
         // Check if player settings have our new tag saved
         var contents = File.ReadAllText(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath);
@@ -63,24 +70,59 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
     /// This test checks if everything is working correctly, if runtime is destroyed last and first
     /// </summary>
     [Test]
-    public void LogcatBehavesCorrectlyWhenRuntimeDestroyedLast()
+    public void PlayerSettingsAreSavedWhenRuntimeDestroyedLast()
     {
-        var consoleWindow = StartTest();
+        var consoleWindow = StartPlayerSettingsTest();
 
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic(false);
 
-        FinalizeTest();
+        StopPlayerSettingsTest();
     }
 
     [Test]
-    public void LogcatBehavesCorrectlyWhenRuntimeDestroyedFirst()
+    public void PlayerSettingsAreSavedWhenRuntimeDestroyedFirst()
     {
-        var consoleWindow = StartTest();
+        var consoleWindow = StartPlayerSettingsTest();
 
         ShutdownRuntimeStatic(false);
         ScriptableObject.DestroyImmediate(consoleWindow);
 
-        FinalizeTest();
+        StopPlayerSettingsTest();
+    }
+
+    AndroidLogcatFakeDeviceQuery PrepareQuery()
+    {
+        var query = (AndroidLogcatFakeDeviceQuery)m_Runtime.DeviceQuery;
+        query.QueueDeviceInfos(@"myandroid1 device
+myandroid2 device
+");
+        query.UpdateConnectedDevicesList(true);
+        return query;
+    }
+
+    [Test]
+    public void SavedSelectedDeviceIsPickedDuringRestart()
+    {
+        InitRuntimeStatic(true);
+        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        var query = PrepareQuery();
+
+        // Pretend to be a user and select the device
+        query.SelectDevice(query.Devices["myandroid2"]);
+        ScriptableObject.DestroyImmediate(consoleWindow);
+        ShutdownRuntimeStatic(false);
+
+        InitRuntimeStatic(false);
+        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.SelectedDeviceId);
+        query = PrepareQuery();
+        consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        // Since the selected device was saved in player settings
+        // Console window should auto select it
+        m_Runtime.OnUpdate();
+        Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
+
+        ScriptableObject.DestroyImmediate(consoleWindow);
+        ShutdownRuntimeStatic(true);
     }
 }
