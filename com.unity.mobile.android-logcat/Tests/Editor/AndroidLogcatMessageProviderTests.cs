@@ -109,6 +109,11 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     {
         m_DeviceId = deviceId;
     }
+
+    public override string ToString()
+    {
+        return $"{GetType().FullName}({m_DeviceId})";
+    }
 }
 
 internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
