@@ -125,4 +125,30 @@ myandroid2 device
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic(true);
     }
+
+    [Test]
+    public void SavedSelectedPackageIsPickedDuringRestart()
+    {
+        InitRuntimeStatic(true);
+        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        var query = PrepareQuery();
+
+        // Pretend to be a user and select the device
+        query.SelectDevice(query.Devices["myandroid2"]);
+        consoleWindow.Sele
+        ScriptableObject.DestroyImmediate(consoleWindow);
+        ShutdownRuntimeStatic(false);
+
+        InitRuntimeStatic(false);
+        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.SelectedDeviceId);
+        query = PrepareQuery();
+        consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+        // Since the selected device was saved in player settings
+        // Console window should auto select it
+        m_Runtime.OnUpdate();
+        Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
+
+        ScriptableObject.DestroyImmediate(consoleWindow);
+        ShutdownRuntimeStatic(true);
+    }
 }
