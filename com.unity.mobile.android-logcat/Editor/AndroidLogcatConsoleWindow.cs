@@ -398,13 +398,12 @@ namespace Unity.Android.Logcat
 
             var settings = m_Runtime.ProjectSettings;
 
-            if (!settings.SelectedDeviceIdValid || !settings.SelectedPackageValid)
+            if (!settings.SelectedDeviceIdValid)
                 return;
-
-            savedPackage = settings.SelectedPackage;
 
             var savedDeviceId = settings.SelectedDeviceId;
             savedDevice = m_Runtime.DeviceQuery.GetDevice(savedDeviceId);
+            savedPackage = settings.SelectedPackage;
         }
 
         private void OnLogcatDisconnected(IAndroidLogcatDevice device)
