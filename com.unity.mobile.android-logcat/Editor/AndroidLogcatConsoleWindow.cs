@@ -51,7 +51,6 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
-        private ADB m_Adb;
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
 
@@ -223,7 +222,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Adb, selectedDevice, processId);
+            var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Runtime.Tools.ADB, selectedDevice, processId);
 
             var package = CreatePackageInformation(packageName, processId, selectedDevice);
 
@@ -386,7 +385,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatScreenCaptureWindow.ShowWindow();
                     break;
                 case 1:
-                    AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(GetCachedAdb().GetADBPath()));
+                    AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(m_Runtime.Tools.ADB.GetADBPath()));
                     break;
                 case 2:
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
@@ -772,11 +771,9 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return;
 
-            var adb = GetCachedAdb();
-
             m_LogCat = new AndroidLogcat(
                 m_Runtime,
-                adb,
+                m_Runtime.Tools.ADB,
                 device,
                 SelectedPackage == null ? 0 : SelectedPackage.processId,
                 m_Runtime.ProjectSettings.SelectedPriority,
@@ -839,7 +836,7 @@ namespace Unity.Android.Logcat
             string topActivityPackageName = string.Empty;
             bool checkProjectPackage = true;
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            if (AndroidLogcatUtilities.GetTopActivityInfo(GetCachedAdb(), selectedDevice, ref topActivityPackageName, ref topActivityPid)
+            if (AndroidLogcatUtilities.GetTopActivityInfo(m_Runtime.Tools.ADB, selectedDevice, ref topActivityPackageName, ref topActivityPid)
                 && topActivityPid > 0)
             {
                 CreatePackageInformation(topActivityPackageName, topActivityPid, selectedDevice);
@@ -866,9 +863,7 @@ namespace Unity.Android.Logcat
             if (cache != null && cache.TryGetValue(packageName, out pid))
                 return pid;
 
-            var adb = GetCachedAdb();
-
-            pid = AndroidLogcatUtilities.GetPidFromPackageName(adb, device, packageName);
+            pid = AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, packageName);
             if (cache != null)
                 cache[packageName] = pid;
             return pid;
@@ -905,14 +900,6 @@ namespace Unity.Android.Logcat
             m_SelectedIndices.Clear();
             m_LogCat.Clear();
             m_LogCat.Start();
-        }
-
-        private ADB GetCachedAdb()
-        {
-            if (m_Adb == null)
-                m_Adb = ADB.GetInstance();
-
-            return m_Adb;
         }
 
         public static void ShowInternalLog()

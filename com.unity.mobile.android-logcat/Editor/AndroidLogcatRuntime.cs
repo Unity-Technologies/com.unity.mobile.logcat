@@ -46,7 +46,7 @@ namespace Unity.Android.Logcat
 
         public AndroidTools Tools
         {
-            get { ValidateIsInitialized(); return null; }
+            get { ValidateIsInitialized(); return m_Tools; }
         }
 
         public AndroidLogcatDeviceQueryBase DeviceQuery
@@ -59,10 +59,8 @@ namespace Unity.Android.Logcat
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
-        public void Initialize()
+        public virtual void Initialize()
         {
-            EditorApplication.update += OnUpdate;
-
             m_Dispatcher = new AndroidLogcatDispatcher(this);
             m_Dispatcher.Initialize();
 
@@ -82,7 +80,7 @@ namespace Unity.Android.Logcat
             m_Initialized = true;
         }
 
-        public void Shutdown()
+        public virtual void Shutdown()
         {
             Closing?.Invoke();
             // ProjectSettings is accessing some information from runtime during save
@@ -92,9 +90,9 @@ namespace Unity.Android.Logcat
             m_Initialized = false;
             m_Settings = null;
             m_ProjectSettings = null;
+            m_Tools = null;
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
-            EditorApplication.update -= OnUpdate;
         }
 
         public void OnUpdate()
@@ -116,6 +114,18 @@ namespace Unity.Android.Logcat
             Action<string> logCallbackAction)
         {
             return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
+        }
+
+        public override void Initialize()
+        {
+            EditorApplication.update += OnUpdate;
+            base.Initialize();
+        }
+
+        public override void Shutdown()
+        {
+            base.Shutdown();
+            EditorApplication.update -= OnUpdate;
         }
 
         protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
