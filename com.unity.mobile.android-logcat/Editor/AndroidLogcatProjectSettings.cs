@@ -69,7 +69,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-
         public AndroidLogcat.Priority SelectedPriority
         {
             set
