@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
 
-        public string SelectedDeviceId
+        public string LastSelectedDeviceId
         {
             set
             {
@@ -37,7 +37,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public bool SelectedDeviceIdValid
+        public bool LastSelectedDeviceIdValid
         {
             get
             {
@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcatConsoleWindow.PackageInformation SelectedPackage
+        public AndroidLogcatConsoleWindow.PackageInformation LastSelectedPackage
         {
             set
             {

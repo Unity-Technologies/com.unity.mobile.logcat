@@ -21,7 +21,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
             // Not sure how to avoid this initialization better
             if (ms_Runtime == null)
                 return;
-            OnEnable(ms_Runtime);
+            OnInternalEnable(ms_Runtime);
         }
     }
 
@@ -114,7 +114,7 @@ myandroid2 device
         ShutdownRuntimeStatic(false);
 
         InitRuntimeStatic(false);
-        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.SelectedDeviceId);
+        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
         query = PrepareQuery();
         consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
         // Since the selected device was saved in player settings
@@ -135,12 +135,12 @@ myandroid2 device
 
         // Pretend to be a user and select the device
         query.SelectDevice(query.Devices["myandroid2"]);
-        consoleWindow.Sele
+
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic(false);
 
         InitRuntimeStatic(false);
-        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.SelectedDeviceId);
+        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
         query = PrepareQuery();
         consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
         // Since the selected device was saved in player settings

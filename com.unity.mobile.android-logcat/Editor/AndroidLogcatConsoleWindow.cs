@@ -140,8 +140,8 @@ namespace Unity.Android.Logcat
             var settings = m_Runtime.ProjectSettings;
 
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            settings.SelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
-            settings.SelectedPackage = m_SelectedPackage;
+            settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
+            settings.LastSelectedPackage = m_SelectedPackage;
             settings.TagControl = m_TagControl;
 
             // Convert Dictionary to List for serialization.
@@ -177,10 +177,10 @@ namespace Unity.Android.Logcat
 
         internal void OnEnable()
         {
-            OnEnable(AndroidLogcatManager.instance.Runtime);
+            OnInternalEnable(AndroidLogcatManager.instance.Runtime);
         }
 
-        protected void OnEnable(IAndroidLogcatRuntime runtime)
+        protected void OnInternalEnable(IAndroidLogcatRuntime runtime)
         {
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;
@@ -398,12 +398,12 @@ namespace Unity.Android.Logcat
 
             var settings = m_Runtime.ProjectSettings;
 
-            if (!settings.SelectedDeviceIdValid)
+            if (!settings.LastSelectedDeviceIdValid)
                 return;
 
-            var savedDeviceId = settings.SelectedDeviceId;
+            var savedDeviceId = settings.LastSelectedDeviceId;
             savedDevice = m_Runtime.DeviceQuery.GetDevice(savedDeviceId);
-            savedPackage = settings.SelectedPackage;
+            savedPackage = settings.LastSelectedPackage;
         }
 
         private void OnLogcatDisconnected(IAndroidLogcatDevice device)
