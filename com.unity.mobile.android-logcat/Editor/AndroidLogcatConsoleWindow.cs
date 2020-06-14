@@ -48,7 +48,7 @@ namespace Unity.Android.Logcat
 
         private SearchField m_SearchField;
 
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private ADB m_Adb;
@@ -105,7 +105,7 @@ namespace Unity.Android.Logcat
             OnInternalEnable(AndroidLogcatManager.instance.Runtime);
         }
 
-        protected void OnInternalEnable(IAndroidLogcatRuntime runtime)
+        protected void OnInternalEnable(AndroidLogcatRuntimeBase runtime)
         {
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;

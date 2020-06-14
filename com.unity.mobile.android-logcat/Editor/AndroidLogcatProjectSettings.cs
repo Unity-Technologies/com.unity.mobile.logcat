@@ -182,7 +182,7 @@ namespace Unity.Android.Logcat
             return null;
         }
 
-        internal static void Save(AndroidLogcatProjectSettings settings, string path, IAndroidLogcatRuntime runtime)
+        internal static void Save(AndroidLogcatProjectSettings settings, string path, AndroidLogcatRuntimeBase runtime)
         {
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));

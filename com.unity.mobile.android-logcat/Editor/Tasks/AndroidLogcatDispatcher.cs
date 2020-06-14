@@ -31,10 +31,10 @@ namespace Unity.Android.Logcat
         private AutoResetEvent m_FinishedEvent = new AutoResetEvent(false);
         private volatile bool m_Running;
         private static Thread s_MainThread;
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private int m_AsyncOperationsExecuted;
 
-        internal AndroidLogcatDispatcher(IAndroidLogcatRuntime runtime)
+        internal AndroidLogcatDispatcher(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
             m_AsyncOperationsExecuted = 0;

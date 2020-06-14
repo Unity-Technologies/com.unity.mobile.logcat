@@ -9,7 +9,7 @@ using UnityEngine;
 internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
 {
     // We need this for AndroidLogcatTestConsoleWindow
-    static IAndroidLogcatRuntime ms_Runtime;
+    static AndroidLogcatRuntimeBase ms_Runtime;
     const string kMyCustomTag = "CustomTAG1234";
 
     class AndroidLogcatTestConsoleWindow : AndroidLogcatConsoleWindow

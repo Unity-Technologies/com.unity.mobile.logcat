@@ -53,7 +53,7 @@ namespace Unity.Android.Logcat
         }
 
         private EditorWindow m_Parent;
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private Material m_Material;
 
         const int kMaxEntries = 300;
