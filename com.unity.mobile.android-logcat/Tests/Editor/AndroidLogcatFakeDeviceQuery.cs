@@ -7,7 +7,6 @@ class AndroidLogcatFakeDeviceQuery : AndroidLogcatDeviceQueryBase
 {
     List<string> m_QueuedInfos = new List<string>();
 
-
     internal AndroidLogcatFakeDeviceQuery(IAndroidLogcatRuntime runtime)
         : base(runtime)
     {
