@@ -382,11 +382,11 @@ namespace Unity.Android.Logcat
     {
         public string m_SelectedDeviceId = String.Empty;
 
-        public AndroidLogcatConsoleWindow.PackageInformation m_SelectedPackage = null;
+        public PackageInformation m_SelectedPackage = null;
 
         public AndroidLogcat.Priority m_SelectedPriority = AndroidLogcat.Priority.Verbose;
 
-        public List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization = null;
+        public List<PackageInformation> m_PackagesForSerialization = null;
 
         public AndroidLogcatTagsControl m_TagControl = null;
 

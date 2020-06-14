@@ -25,53 +25,6 @@ namespace Unity.Android.Logcat
 
         private Rect m_IpWindowScreenRect;
 
-        [Serializable]
-        internal class PackageInformation
-        {
-            public string deviceId;
-            public string name;
-            public int processId;
-            public bool exited;
-
-            public string DisplayName
-            {
-                get
-                {
-                    var result = name + " (" + processId + ")";
-                    if (exited)
-                        result += " [Exited]";
-                    return result;
-                }
-            }
-
-            public PackageInformation()
-            {
-                Reset();
-            }
-
-            public void Reset()
-            {
-                deviceId = string.Empty;
-                name = string.Empty;
-                processId = 0;
-                exited = false;
-            }
-
-            public void SetExited()
-            {
-                exited = true;
-            }
-
-            public void SetAlive()
-            {
-                exited = false;
-            }
-
-            public bool IsAlive()
-            {
-                return !exited && processId != 0;
-            }
-        }
 
         private PackageInformation m_SelectedPackage = null;
 
@@ -143,36 +96,16 @@ namespace Unity.Android.Logcat
             settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.LastSelectedPackage = m_SelectedPackage;
             settings.TagControl = m_TagControl;
-
-            // Convert Dictionary to List for serialization.
-            var packagesForSerialization = new List<PackageInformation>();
-            foreach (var p in m_PackagesForAllDevices)
-            {
-                packagesForSerialization.AddRange(p.Value);
-            }
-            settings.PackagesForSerialization = packagesForSerialization;
+            settings.SetKnownPackages(m_PackagesForAllDevices);
         }
 
         internal void LoadStates()
         {
             var settings = m_Runtime.ProjectSettings;
-
-
             // For selected device & package, we have to delay it when we first launch the window.
             m_TagControl.TagNames = settings.TagControl.TagNames;
             m_TagControl.SelectedTags = settings.TagControl.SelectedTags;
-
-            m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
-            foreach (var p in settings.PackagesForSerialization)
-            {
-                List<PackageInformation> packages;
-                if (!m_PackagesForAllDevices.TryGetValue(p.deviceId, out packages))
-                {
-                    packages = new List<PackageInformation>();
-                    m_PackagesForAllDevices[p.deviceId] = packages;
-                }
-                packages.Add(p);
-            }
+            m_PackagesForAllDevices = settings.GetKnownPackages();
         }
 
         internal void OnEnable()

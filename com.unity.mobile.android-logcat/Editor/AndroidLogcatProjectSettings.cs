@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEditor.Android;
 using System.Collections.Generic;
 using System.Linq;
+using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 namespace Unity.Android.Logcat
 {
@@ -15,11 +16,11 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
-        private AndroidLogcatConsoleWindow.PackageInformation m_SelectedPackage;
+        private PackageInformation m_SelectedPackage;
         [SerializeField]
         private AndroidLogcat.Priority m_SelectedPriority;
         [SerializeField]
-        private List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization;
+        private List<PackageInformation> m_KnownPackages;
         [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
         [SerializeField]
@@ -45,7 +46,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcatConsoleWindow.PackageInformation LastSelectedPackage
+        public PackageInformation LastSelectedPackage
         {
             set
             {
@@ -80,16 +81,42 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public List<AndroidLogcatConsoleWindow.PackageInformation> PackagesForSerialization
+        public List<PackageInformation> KnownPackages
         {
             set
             {
-                m_PackagesForSerialization = value;
+                m_KnownPackages = value;
             }
             get
             {
-                return m_PackagesForSerialization;
+                return m_KnownPackages;
             }
+        }
+
+        public void SetKnownPackages(Dictionary<string, List<PackageInformation>> packages)
+        {
+            m_KnownPackages = new List<PackageInformation>();
+            foreach (var p in packages)
+            {
+                m_KnownPackages.AddRange(p.Value);
+            }
+        }
+
+        public Dictionary<string, List<PackageInformation>> GetKnownPackages()
+        {
+            var dictionaryPackages = new Dictionary<string, List<PackageInformation>>();
+            foreach (var p in m_KnownPackages)
+            {
+                List<PackageInformation> packages;
+                if (!dictionaryPackages.TryGetValue(p.deviceId, out packages))
+                {
+                    packages = new List<PackageInformation>();
+                    dictionaryPackages[p.deviceId] = packages;
+                }
+                packages.Add(p);
+            }
+
+            return dictionaryPackages;
         }
 
         public AndroidLogcatTagsControl TagControl
@@ -126,7 +153,7 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = string.Empty;
             m_SelectedPriority = AndroidLogcat.Priority.Verbose;
             m_TagControl = new AndroidLogcatTagsControl();
-            m_PackagesForSerialization = new List<AndroidLogcatConsoleWindow.PackageInformation>();
+            m_KnownPackages = new List<PackageInformation>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
         }
 

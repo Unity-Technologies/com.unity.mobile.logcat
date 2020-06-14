@@ -92,7 +92,7 @@ namespace Unity.Android.Logcat
 
 
         private IAndroidLogcatDevice m_ExpectedDevice;
-        private AndroidLogcatConsoleWindow.PackageInformation m_ExpectedPackageFromRequest;
+        private PackageInformation m_ExpectedPackageFromRequest;
         private AndroidLogcatMemoryViewerState m_State;
 
 
@@ -176,13 +176,13 @@ namespace Unity.Android.Logcat
             m_ExpectedDevice = null;
         }
 
-        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, PackageInformation package)
         {
             m_ExpectedDevice = device;
             m_ExpectedPackageFromRequest = package;
         }
 
-        internal void QueueMemoryRequest(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        internal void QueueMemoryRequest(IAndroidLogcatDevice device, PackageInformation package)
         {
             m_ExpectedDevice = device;
             m_ExpectedPackageFromRequest = package;
