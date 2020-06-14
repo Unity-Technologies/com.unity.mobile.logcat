@@ -102,16 +102,14 @@ namespace Unity.Android.Logcat
         public void Shutdown()
         {
             Closing?.Invoke();
-
+            // ProjectSettings is accessing some information from runtime during save
+            AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath, this);
             AndroidLogcatSettings.Save(m_Settings);
+
             m_Settings = null;
-
-            AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath);
             m_ProjectSettings = null;
-
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
-
             EditorApplication.update -= OnUpdate;
         }
 

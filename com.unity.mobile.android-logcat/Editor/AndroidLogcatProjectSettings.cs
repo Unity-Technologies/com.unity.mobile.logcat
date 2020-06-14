@@ -182,12 +182,15 @@ namespace Unity.Android.Logcat
             return null;
         }
 
-        internal static void Save(AndroidLogcatProjectSettings settings, string path)
+        internal static void Save(AndroidLogcatProjectSettings settings, string path, IAndroidLogcatRuntime runtime)
         {
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
 
+            var selectedDevice = runtime.DeviceQuery.SelectedDevice;
+            settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.m_KnownPackagesForSerialization = PackagesToList(settings.m_KnownPackages);
+
             var jsonString = JsonUtility.ToJson(settings, true);
             if (string.IsNullOrEmpty(jsonString))
                 return;

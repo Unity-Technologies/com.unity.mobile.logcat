@@ -20,13 +20,9 @@ namespace Unity.Android.Logcat
         private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
         private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
-        private const string kJsonFileEditorPrefKey = "AndroidLogcatStateJsonFile";
-        private readonly string kAndroidLogcatSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
 
         private Rect m_IpWindowScreenRect;
 
-
-        private PackageInformation m_SelectedPackage = null;
 
         private List<PackageInformation> PackagesForSelectedDevice
         {
@@ -37,7 +33,14 @@ namespace Unity.Android.Logcat
         {
             if (device == null)
                 return null;
-            return m_Runtime.ProjectSettings.KnownPackages[device.Id];
+
+            List<PackageInformation> packages = null;
+            if (!m_Runtime.ProjectSettings.KnownPackages.TryGetValue(device.Id, out packages))
+            {
+                packages = new List<PackageInformation>();
+                m_Runtime.ProjectSettings.KnownPackages[device.Id] = packages;
+            }
+            return packages;
         }
 
         private string m_Filter = string.Empty;
@@ -68,6 +71,18 @@ namespace Unity.Android.Logcat
 
         private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
 
+        private PackageInformation SelectedPackage
+        {
+            set
+            {
+                m_Runtime.ProjectSettings.LastSelectedPackage = value;
+            }
+            get
+            {
+                return m_Runtime.ProjectSettings.LastSelectedPackage;
+            }
+        }
+
         public bool AutoSelectPackage
         {
             set
@@ -83,15 +98,6 @@ namespace Unity.Android.Logcat
             {
                 return m_AutoSelectPackage;
             }
-        }
-
-        internal void SaveStates()
-        {
-            var settings = m_Runtime.ProjectSettings;
-
-            var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
-            settings.LastSelectedPackage = m_SelectedPackage;
         }
 
         internal void OnEnable()
@@ -144,7 +150,6 @@ namespace Unity.Android.Logcat
             m_Runtime.ProjectSettings.TagControl.TagSelectionChanged -= TagSelectionChanged;
 
             m_Runtime.Closing -= OnDisable;
-            SaveStates();
 
             m_Runtime.DeviceQuery.DeviceSelected -= OnSelectedDevice;
 
@@ -252,7 +257,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log("Auto selecting package {0}", PlayerSettings.applicationIdentifier);
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
-                    m_SelectedPackage = package;
+                    SelectedPackage = package;
                     deviceQuery.SelectDevice(firstDevice, false);
 
                     RestartLogCat();
@@ -282,7 +287,7 @@ namespace Unity.Android.Logcat
                         selectedDevice = deviceQuery.FirstConnectedDevice;
                     if (selectedDevice != null)
                     {
-                        m_SelectedPackage = null;
+                        SelectedPackage = null;
                         if (selectedPackage == null)
                         {
                             deviceQuery.SelectDevice(selectedDevice);
@@ -303,7 +308,7 @@ namespace Unity.Android.Logcat
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
                     m_TimeOfLastMemoryRequest = DateTime.Now;
-                    m_MemoryViewer.QueueMemoryRequest(deviceQuery.SelectedDevice, m_SelectedPackage);
+                    m_MemoryViewer.QueueMemoryRequest(deviceQuery.SelectedDevice, SelectedPackage);
                 }
             }
         }
@@ -543,7 +548,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            m_SelectedPackage = null;
+            SelectedPackage = null;
             m_Runtime.DeviceQuery.SelectDevice(devices.Values.ToArray()[selected]);
         }
 
@@ -594,15 +599,15 @@ namespace Unity.Android.Logcat
 
         private void SetPacakge(PackageInformation newPackage)
         {
-            m_SelectedPackage = newPackage;
+            SelectedPackage = newPackage;
             m_MemoryViewer.ClearEntries();
-            m_MemoryViewer.SetExpectedDeviceAndPackage(m_Runtime.DeviceQuery.SelectedDevice, m_SelectedPackage);
+            m_MemoryViewer.SetExpectedDeviceAndPackage(m_Runtime.DeviceQuery.SelectedDevice, SelectedPackage);
         }
 
         private void SelectPackage(PackageInformation newPackage)
         {
-            if ((m_SelectedPackage == null && newPackage == null) ||
-                (newPackage != null && m_SelectedPackage != null && newPackage.name == m_SelectedPackage.name && newPackage.processId == m_SelectedPackage.processId))
+            if ((SelectedPackage == null && newPackage == null) ||
+                (newPackage != null && SelectedPackage != null && newPackage.name == SelectedPackage.name && newPackage.processId == SelectedPackage.processId))
                 return;
 
             m_AutoSelectPackage = false;
@@ -670,7 +675,7 @@ namespace Unity.Android.Logcat
             // * No Filter
             // * Package defined from player settings
             // * Package which is from top activity on phone and if it's not the one from player settings
-            var displayName = m_SelectedPackage != null && m_SelectedPackage.processId != 0 ? m_SelectedPackage.DisplayName : "No Filter";
+            var displayName = SelectedPackage != null && SelectedPackage.processId != 0 ? SelectedPackage.DisplayName : "No Filter";
             GUILayout.Label(new GUIContent(displayName, "Select package name"), AndroidLogcatStyles.toolbarPopup);
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
@@ -700,12 +705,12 @@ namespace Unity.Android.Logcat
                 packages.Insert(0, null);
 
                 var names = new GUIContent[packages.Count];
-                int selectedPackagedId = m_SelectedPackage == null || m_SelectedPackage.processId == 0 ? 0 : -1;
+                int selectedPackagedId = SelectedPackage == null || SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
                     names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName);
 
-                    if (packages[i] != null && m_SelectedPackage != null && m_SelectedPackage.name == packages[i].name && m_SelectedPackage.processId == packages[i].processId)
+                    if (packages[i] != null && SelectedPackage != null && SelectedPackage.name == packages[i].name && SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
                 }
 
@@ -773,7 +778,7 @@ namespace Unity.Android.Logcat
                 m_Runtime,
                 adb,
                 device,
-                m_SelectedPackage == null ? 0 : m_SelectedPackage.processId,
+                SelectedPackage == null ? 0 : SelectedPackage.processId,
                 m_Runtime.ProjectSettings.SelectedPriority,
                 m_Filter,
                 m_FilterIsRegularExpression,

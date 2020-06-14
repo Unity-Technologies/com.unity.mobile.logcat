@@ -81,13 +81,11 @@ internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
     public void Shutdown()
     {
         Closing?.Invoke();
+        AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath, this);
+
         m_Initialized = false;
-
         m_DeviceQuery = null;
-
-        AndroidLogcatProjectSettings.Save(m_ProjectSettings, kAndroidLogcatSettingsPath);
         m_ProjectSettings = null;
-
         m_Dispatcher.Shutdown();
         m_Dispatcher = null;
     }
