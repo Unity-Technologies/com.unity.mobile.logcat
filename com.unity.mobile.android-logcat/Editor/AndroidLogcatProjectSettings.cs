@@ -18,9 +18,10 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private PackageInformation m_SelectedPackage;
         [SerializeField]
-        private AndroidLogcat.Priority m_SelectedPriority;
+        private AndroidLogcat.Priority m_SelectedPriority;    
+        private Dictionary<string, List<PackageInformation>> m_KnownPackages;
         [SerializeField]
-        private List<PackageInformation> m_KnownPackages;
+        private List<PackageInformation> m_KnownPackagesForSerialization;
         [SerializeField]
         private AndroidLogcatTagsControl m_TagControl;
         [SerializeField]
@@ -81,7 +82,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public List<PackageInformation> KnownPackages
+        public Dictionary<string, List<PackageInformation>> KnownPackages
         {
             set
             {
@@ -93,19 +94,20 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public void SetKnownPackages(Dictionary<string, List<PackageInformation>> packages)
+        private static List<PackageInformation> PackagesToList(Dictionary<string, List<PackageInformation>> packages)
         {
-            m_KnownPackages = new List<PackageInformation>();
+            var temp = new List<PackageInformation>();
             foreach (var p in packages)
             {
-                m_KnownPackages.AddRange(p.Value);
+                temp.AddRange(p.Value);
             }
+            return temp;
         }
 
-        public Dictionary<string, List<PackageInformation>> GetKnownPackages()
+        private static Dictionary<string, List<PackageInformation>> PackagesToDictionary(List<PackageInformation> allPackages)
         {
             var dictionaryPackages = new Dictionary<string, List<PackageInformation>>();
-            foreach (var p in m_KnownPackages)
+            foreach (var p in allPackages)
             {
                 List<PackageInformation> packages;
                 if (!dictionaryPackages.TryGetValue(p.deviceId, out packages))
@@ -153,7 +155,7 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = string.Empty;
             m_SelectedPriority = AndroidLogcat.Priority.Verbose;
             m_TagControl = new AndroidLogcatTagsControl();
-            m_KnownPackages = new List<PackageInformation>();
+            m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
         }
 
@@ -170,6 +172,7 @@ namespace Unity.Android.Logcat
             {
                 var settings = new AndroidLogcatProjectSettings();
                 JsonUtility.FromJsonOverwrite(jsonString, settings);
+                settings.m_KnownPackages = PackagesToDictionary(settings.m_KnownPackagesForSerialization);
                 return settings;
             }
             catch (Exception ex)
@@ -184,6 +187,7 @@ namespace Unity.Android.Logcat
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
 
+            settings.m_KnownPackagesForSerialization = PackagesToList(settings.m_KnownPackages);
             var jsonString = JsonUtility.ToJson(settings, true);
             if (string.IsNullOrEmpty(jsonString))
                 return;

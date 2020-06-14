@@ -37,10 +37,9 @@ namespace Unity.Android.Logcat
         {
             if (device == null)
                 return null;
-            return m_PackagesForAllDevices[device.Id];
+            return m_Runtime.ProjectSettings.KnownPackages[device.Id];
         }
 
-        private Dictionary<string, List<PackageInformation>> m_PackagesForAllDevices = new Dictionary<string, List<PackageInformation>>();
         private string m_Filter = string.Empty;
         private bool m_FilterIsRegularExpression;
 
@@ -96,7 +95,6 @@ namespace Unity.Android.Logcat
             settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.LastSelectedPackage = m_SelectedPackage;
             settings.TagControl = m_TagControl;
-            settings.SetKnownPackages(m_PackagesForAllDevices);
         }
 
         internal void LoadStates()
@@ -105,7 +103,6 @@ namespace Unity.Android.Logcat
             // For selected device & package, we have to delay it when we first launch the window.
             m_TagControl.TagNames = settings.TagControl.TagNames;
             m_TagControl.SelectedTags = settings.TagControl.SelectedTags;
-            m_PackagesForAllDevices = settings.GetKnownPackages();
         }
 
         internal void OnEnable()
@@ -224,7 +221,7 @@ namespace Unity.Android.Logcat
         private void FilterByProcessId(int processId)
         {
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            var packages = m_PackagesForAllDevices[selectedDevice.Id];
+            var packages = m_Runtime.ProjectSettings.KnownPackages[selectedDevice.Id];
             foreach (var p in packages)
             {
                 if (p.processId == processId)
@@ -673,10 +670,10 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return;
             List<PackageInformation> packages;
-            if (!m_PackagesForAllDevices.TryGetValue(device.Id, out packages))
+            if (!m_Runtime.ProjectSettings.KnownPackages.TryGetValue(device.Id, out packages))
             {
                 packages = new List<PackageInformation>();
-                m_PackagesForAllDevices.Add(device.Id, packages);
+                m_Runtime.ProjectSettings.KnownPackages.Add(device.Id, packages);
             }
         }
 
