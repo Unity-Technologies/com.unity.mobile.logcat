@@ -14,7 +14,6 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
         get { return "Undefined"; }
     }
 
-
     internal override string ABI
     {
         get { return "Undefined"; }
