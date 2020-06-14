@@ -45,8 +45,6 @@ namespace Unity.Android.Logcat
 
         private SearchField m_SearchField;
 
-        private AndroidLogcatTagsControl m_TagControl = null;
-
         private IAndroidLogcatRuntime m_Runtime;
         private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
@@ -94,15 +92,6 @@ namespace Unity.Android.Logcat
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
             settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.LastSelectedPackage = m_SelectedPackage;
-            settings.TagControl = m_TagControl;
-        }
-
-        internal void LoadStates()
-        {
-            var settings = m_Runtime.ProjectSettings;
-            // For selected device & package, we have to delay it when we first launch the window.
-            m_TagControl.TagNames = settings.TagControl.TagNames;
-            m_TagControl.SelectedTags = settings.TagControl.SelectedTags;
         }
 
         internal void OnEnable()
@@ -121,9 +110,7 @@ namespace Unity.Android.Logcat
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
 
-            if (m_TagControl == null)
-                m_TagControl = new AndroidLogcatTagsControl();
-            m_TagControl.TagSelectionChanged += TagSelectionChanged;
+            m_Runtime.ProjectSettings.TagControl.TagSelectionChanged += TagSelectionChanged;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
             m_Runtime.Update += OnUpdate;
@@ -143,8 +130,6 @@ namespace Unity.Android.Logcat
             m_Runtime.DeviceQuery.Clear();
             m_Runtime.DeviceQuery.DeviceSelected += OnSelectedDevice;
 
-            LoadStates();
-
             // Since Runtime.OnDisable can be called earlier than this window OnClose, we must ensure the order
             m_Runtime.Closing += OnDisable;
         }
@@ -156,6 +141,8 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log("Runtime was already destroyed.");
                 return;
             }
+            m_Runtime.ProjectSettings.TagControl.TagSelectionChanged -= TagSelectionChanged;
+
             m_Runtime.Closing -= OnDisable;
             SaveStates();
 
@@ -199,7 +186,7 @@ namespace Unity.Android.Logcat
 
         private void RemoveTag(string tag)
         {
-            if (!m_TagControl.Remove(tag))
+            if (!m_Runtime.ProjectSettings.TagControl.Remove(tag))
                 return;
 
             RestartLogCat();
@@ -207,7 +194,7 @@ namespace Unity.Android.Logcat
 
         private void AddTag(string tag)
         {
-            if (!m_TagControl.Add(tag, true))
+            if (!m_Runtime.ProjectSettings.TagControl.Add(tag, true))
                 return;
 
             RestartLogCat();
@@ -790,7 +777,7 @@ namespace Unity.Android.Logcat
                 m_Runtime.ProjectSettings.SelectedPriority,
                 m_Filter,
                 m_FilterIsRegularExpression,
-                m_TagControl.GetSelectedTags());
+                m_Runtime.ProjectSettings.TagControl.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.Disconnected += OnLogcatDisconnected;
             m_LogCat.Connected += OnLogcatConnected;

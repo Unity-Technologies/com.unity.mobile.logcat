@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 using UnityEngine;
@@ -59,7 +60,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         Assert.IsTrue(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
 
-        Assert.IsTrue(m_Runtime.ProjectSettings.TagControl.TagNames.Contains(kMyCustomTag));
+        Assert.IsTrue(m_Runtime.ProjectSettings.TagControl.Tags.Where(m => m.Name.Equals(kMyCustomTag)).First() != null);
 
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic(true);

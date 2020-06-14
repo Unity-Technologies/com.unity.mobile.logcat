@@ -19,25 +19,29 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatTagsControl
     {
         [SerializeField]
-        private List<string> m_TagNames = new List<string>(new[] { "Filter by all listed tags", "No Filter", null, "Tag Control...", null, "Unity", "CRASH" });
-        public List<string> TagNames
-        {
-            get { return m_TagNames; }
-            set { m_TagNames = value; }
-        }
-
-        [SerializeField]
-        private List<bool> m_SelectedTags = new List<bool>(new[] { false, true, false, false, false, false, false });
-
-        public List<bool> SelectedTags
-        {
-            get { return m_SelectedTags; }
-            set { m_SelectedTags = value; }
-        }
+        private List<TagInformation> m_Tags = new List<TagInformation>(
+            new[]
+            {
+                new TagInformation() { Name = "Filter by all listed tags", Selected = false },
+                new TagInformation() { Name = "No Filter", Selected = true },
+                new TagInformation() { Name = string.Empty, Selected = false },
+                new TagInformation() { Name = "Tag Control...", Selected = false },
+                new TagInformation() { Name = string.Empty, Selected = false },
+                new TagInformation() { Name = "Unity", Selected = false },
+                new TagInformation() { Name = "CRASH", Selected = false },
+            });
 
         public event Action TagSelectionChanged;
 
         private Rect m_TagButtonRect = new Rect();
+
+        public List<TagInformation> Tags
+        {
+            get
+            {
+                return m_Tags;
+            }
+        }
 
         public AndroidLogcatTagsControl()
         {
@@ -45,14 +49,14 @@ namespace Unity.Android.Logcat
 
         public bool Add(string tag, bool isSelected = false)
         {
-            if (string.IsNullOrEmpty(tag) || m_TagNames.IndexOf(tag) > 0)
+            if (string.IsNullOrEmpty(tag) || m_Tags.Where(t => tag.Equals(t.Name)).FirstOrDefault() != null)
                 return false;
 
-            m_TagNames.Add(tag);
-            m_SelectedTags.Add(false);
+            m_Tags.Add(new TagInformation() { Name = tag, Selected = false });
+
 
             if (isSelected)
-                TagSelected(null, null, m_SelectedTags.Count - 1); // This will set the selected state.
+                TagSelected(null, null, m_Tags.Count - 1); // This will set the selected state.
 
             return true;
         }
@@ -62,32 +66,37 @@ namespace Unity.Android.Logcat
             if (tagIndex < (int)AndroidLogcatTagType.FirstValidTag)
                 return false;
 
-            if (IsSelected(tagIndex))
+            if (m_Tags[tagIndex].Selected)
                 TagSelected(null, null, tagIndex); // Deselect it
 
-            m_TagNames.Remove(m_TagNames[tagIndex]);
-            m_SelectedTags.RemoveAt(tagIndex);
+            m_Tags.RemoveAt(tagIndex);
 
             return true;
         }
 
         public bool Remove(string tag)
         {
-            var tagIndex = m_TagNames.IndexOf(tag);
-            return Remove(tagIndex);
+            for (int i = 0; i < m_Tags.Count; i++)
+            {
+                if (tag == m_Tags[i].Name)
+                {
+                    return Remove(i);
+                }
+            }
+            return false;
         }
 
         public string[] GetSelectedTags(bool skipNoFilterIndex = false)
         {
-            if (!skipNoFilterIndex && m_SelectedTags[(int)AndroidLogcatTagType.NoFilter])
+            if (!skipNoFilterIndex && m_Tags[(int)AndroidLogcatTagType.NoFilter].Selected)
                 return null;
 
-            var selectedTagNames = new List<string>(m_SelectedTags.Count);
-            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_SelectedTags.Count; i++)
+            var selectedTagNames = new List<string>(m_Tags.Count);
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Tags.Count; i++)
             {
-                if (m_SelectedTags[i])
+                if (m_Tags[i].Selected)
                 {
-                    selectedTagNames.Add(m_TagNames[i]);
+                    selectedTagNames.Add(m_Tags[i].Name);
                 }
             }
 
@@ -98,16 +107,16 @@ namespace Unity.Android.Logcat
         {
             m_TagButtonRect = tagButtonRect;
 
-            var separators = m_TagNames.Select(t => t == null).ToArray();
-            var enabled = Enumerable.Repeat(true, m_TagNames.Count).ToArray();
+            var separators = m_Tags.Select(t => string.IsNullOrEmpty(t.Name)).ToArray();
+            var enabled = Enumerable.Repeat(true, m_Tags.Count).ToArray();
             var selectedTags = new List<int>();
-            for (int i = 0; i < m_SelectedTags.Count; ++i)
+            for (int i = 0; i < m_Tags.Count; ++i)
             {
-                if (m_SelectedTags[i])
+                if (m_Tags[i].Selected)
                     selectedTags.Add(i);
             }
 
-            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_TagNames.ToArray(), enabled, separators, selectedTags.ToArray(), TagSelected, null);
+            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(rect.x, rect.y + rect.height, 0, 0), m_Tags.Select(m => m.Name).ToArray(), enabled, separators, selectedTags.ToArray(), TagSelected, null);
         }
 
         public void TagSelected(object userData, string[] options, int selectedIndex)
@@ -119,7 +128,7 @@ namespace Unity.Android.Logcat
             }
             else if (selectedIndex == (int)AndroidLogcatTagType.NoFilter)
             {
-                if (!m_SelectedTags[(int)AndroidLogcatTagType.NoFilter])
+                if (!m_Tags[(int)AndroidLogcatTagType.NoFilter].Selected)
                 {
                     // Select *No Filter*, deselect all others.
                     UpdateTagFilterBasedOnNoFilterOption(true);
@@ -137,8 +146,8 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                m_SelectedTags[selectedIndex] = !m_SelectedTags[selectedIndex];
-                m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = !(GetSelectedTags(true).Length > 0);
+                m_Tags[selectedIndex].Selected = !m_Tags[selectedIndex].Selected;
+                m_Tags[(int)AndroidLogcatTagType.NoFilter].Selected = !(GetSelectedTags(true).Length > 0);
             }
 
             TagSelectionChanged?.Invoke();
@@ -146,15 +155,10 @@ namespace Unity.Android.Logcat
 
         private void UpdateTagFilterBasedOnNoFilterOption(bool isNoFilterSelected)
         {
-            m_SelectedTags[(int)AndroidLogcatTagType.NoFilter] = isNoFilterSelected;
+            m_Tags[(int)AndroidLogcatTagType.NoFilter].Selected = isNoFilterSelected;
 
-            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_SelectedTags.Count; i++)
-                m_SelectedTags[i] = !isNoFilterSelected;
-        }
-
-        private bool IsSelected(int tagIndex)
-        {
-            return m_SelectedTags[tagIndex];
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Tags.Count; i++)
+                m_Tags[i].Selected = !isNoFilterSelected;
         }
     }
 
@@ -182,20 +186,20 @@ namespace Unity.Android.Logcat
         {
             var currentEvent = Event.current;
             var buttonWidth = 25;
-            var tagNames = m_TagControl.TagNames;
-            var selectedTags = m_TagControl.SelectedTags;
             GUILayout.BeginHorizontal();
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
 
-            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_TagControl.TagNames.Count; ++i)
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_TagControl.Tags.Count; ++i)
             {
                 EditorGUILayout.BeginHorizontal();
+
+                var t = m_TagControl.Tags[i];
 
                 var labelStyle = AndroidLogcatStyles.tagEntryStyle;
                 var toggleStyle = AndroidLogcatStyles.tagToggleStyle;
                 var buttonStyle = AndroidLogcatStyles.tagButtonStyle;
 
-                var labelRect = GUILayoutUtility.GetRect(new GUIContent(tagNames[i]), labelStyle);
+                var labelRect = GUILayoutUtility.GetRect(new GUIContent(t.Name), labelStyle);
                 var toggleRect = GUILayoutUtility.GetRect(GUIContent.none, toggleStyle, GUILayout.Width(buttonWidth));
                 var buttonRect = GUILayoutUtility.GetRect(kIconToolbarMinus, buttonStyle, GUILayout.Width(buttonWidth));
 
@@ -219,9 +223,9 @@ namespace Unity.Android.Logcat
                     DoMouseEvent(selectableRect, i);
                 }
 
-                GUI.Label(labelRect, new GUIContent(tagNames[i]), labelStyle);
-                var toggled = GUI.Toggle(toggleRect, selectedTags[i], String.Empty, toggleStyle);
-                if (toggled != selectedTags[i])
+                GUI.Label(labelRect, new GUIContent(t.Name), labelStyle);
+                var toggled = GUI.Toggle(toggleRect, t.Selected, String.Empty, toggleStyle);
+                if (toggled != t.Selected)
                 {
                     m_TagControl.TagSelected(null, null, i);
                     GUIUtility.keyboardControl = 0;
@@ -302,7 +306,7 @@ namespace Unity.Android.Logcat
 
         public bool RemoveSelected(int tagIndex)
         {
-            if (tagIndex < 0 || tagIndex >= m_TagControl.TagNames.Count)
+            if (tagIndex < 0 || tagIndex >= m_TagControl.Tags.Count)
                 return false;
 
             // Simply reset to no selected.

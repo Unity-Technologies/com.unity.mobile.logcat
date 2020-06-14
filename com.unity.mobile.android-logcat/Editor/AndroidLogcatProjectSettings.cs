@@ -18,7 +18,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private PackageInformation m_SelectedPackage;
         [SerializeField]
-        private AndroidLogcat.Priority m_SelectedPriority;    
+        private AndroidLogcat.Priority m_SelectedPriority;
         private Dictionary<string, List<PackageInformation>> m_KnownPackages;
         [SerializeField]
         private List<PackageInformation> m_KnownPackagesForSerialization;
