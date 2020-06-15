@@ -15,6 +15,16 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
         return new AndroidLogcatFakeMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
     }
 
+    protected override AndroidTools CreateAndroidTools()
+    {
+#if UNITY_EDITOR_WIN
+        return new AndroidTools();
+#else
+        // We don't use Mac agent which has Android NDK/SDK installed
+        return null;
+#endif
+    }
+
     protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
     {
         return new AndroidLogcatFakeDeviceQuery(this);

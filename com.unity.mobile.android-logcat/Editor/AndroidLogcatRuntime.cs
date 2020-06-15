@@ -57,6 +57,7 @@ namespace Unity.Android.Logcat
         public abstract IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
+        protected abstract AndroidTools CreateAndroidTools();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -74,7 +75,7 @@ namespace Unity.Android.Logcat
                 m_ProjectSettings.Reset();
             }
 
-            m_Tools = new AndroidTools();
+            m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
 
             m_Initialized = true;
@@ -131,6 +132,11 @@ namespace Unity.Android.Logcat
         protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
         {
             return new AndroidLogcatDeviceQuery(this);
+        }
+
+        protected override AndroidTools CreateAndroidTools()
+        {
+            return new AndroidTools();
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()
