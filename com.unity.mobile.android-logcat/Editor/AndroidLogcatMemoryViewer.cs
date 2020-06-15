@@ -134,15 +134,7 @@ namespace Unity.Android.Logcat
             m_MemoryTypeColors[MemoryType.PrivateOther] = Color.grey;
             m_MemoryTypeColors[MemoryType.System] = Color.magenta;
             m_MemoryTypeColors[MemoryType.Total] = Color.white;
-
-
-            m_UpperMemoryBoundry = 32 * 1000 * 1000;
-
-
-            ValidateSettings();
-
             ClearEntries();
-
             ValidateSettings();
         }
 
