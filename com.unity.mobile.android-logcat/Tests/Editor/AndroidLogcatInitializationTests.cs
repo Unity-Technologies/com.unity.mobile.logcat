@@ -106,50 +106,62 @@ myandroid2 device
     public void SavedSelectedDeviceIsPickedDuringRestart()
     {
         InitRuntimeStatic(true);
-        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-        var query = PrepareQuery();
+        try
+        {
+            var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+            var query = PrepareQuery();
 
-        // Pretend to be a user and select the device
-        query.SelectDevice(query.Devices["myandroid2"]);
-        ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic(false);
+            // Pretend to be a user and select the device
+            query.SelectDevice(query.Devices["myandroid2"]);
+            ScriptableObject.DestroyImmediate(consoleWindow);
+            ShutdownRuntimeStatic(false);
 
-        InitRuntimeStatic(false);
-        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
-        query = PrepareQuery();
-        consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-        // Since the selected device was saved in player settings
-        // Console window should auto select it
-        m_Runtime.OnUpdate();
-        Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
+            InitRuntimeStatic(false);
+            Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
+            query = PrepareQuery();
+            consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+            // Since the selected device was saved in player settings
+            // Console window should auto select it
+            m_Runtime.OnUpdate();
+            Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
 
-        ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic(true);
+            ScriptableObject.DestroyImmediate(consoleWindow);
+        }
+        finally
+        {
+            ShutdownRuntimeStatic(true);
+        }
     }
 
     [Test]
     public void SavedSelectedPackageIsPickedDuringRestart()
     {
         InitRuntimeStatic(true);
-        var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-        var query = PrepareQuery();
+        try
+        {
+            var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+            var query = PrepareQuery();
 
-        // Pretend to be a user and select the device
-        query.SelectDevice(query.Devices["myandroid2"]);
+            // Pretend to be a user and select the device
+            query.SelectDevice(query.Devices["myandroid2"]);
 
-        ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic(false);
+            ScriptableObject.DestroyImmediate(consoleWindow);
+            ShutdownRuntimeStatic(false);
 
-        InitRuntimeStatic(false);
-        Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
-        query = PrepareQuery();
-        consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-        // Since the selected device was saved in player settings
-        // Console window should auto select it
-        m_Runtime.OnUpdate();
-        Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
+            InitRuntimeStatic(false);
+            Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
+            query = PrepareQuery();
+            consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
+            // Since the selected device was saved in player settings
+            // Console window should auto select it
+            m_Runtime.OnUpdate();
+            Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
 
-        ScriptableObject.DestroyImmediate(consoleWindow);
-        ShutdownRuntimeStatic(true);
+            ScriptableObject.DestroyImmediate(consoleWindow);
+        }
+        finally
+        {
+            ShutdownRuntimeStatic(true);
+        }
     }
 }

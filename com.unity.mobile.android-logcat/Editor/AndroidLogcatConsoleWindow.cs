@@ -770,6 +770,8 @@ namespace Unity.Android.Logcat
         {
             if (device == null)
                 return;
+            if (m_Runtime.Tools == null)
+                return;
 
             m_LogCat = new AndroidLogcat(
                 m_Runtime,

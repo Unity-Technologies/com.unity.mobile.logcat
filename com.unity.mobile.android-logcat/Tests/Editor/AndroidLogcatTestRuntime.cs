@@ -17,12 +17,8 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
 
     protected override AndroidTools CreateAndroidTools()
     {
-#if UNITY_EDITOR_WIN
-        return new AndroidTools();
-#else
-        // We don't use Mac agent which has Android NDK/SDK installed
+        // Mac agents don't have SDK/NDK set up, for now return null for AndroidTools and make code work even if there's no Tools
         return null;
-#endif
     }
 
     protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
