@@ -127,7 +127,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime.Settings.OnSettingsChanged += OnSettingsChanged;
 
-            m_MemoryViewer = new AndroidLogcatMemoryViewer(this);
+            m_MemoryViewer = new AndroidLogcatMemoryViewer(this, m_Runtime);
 
             // Can't apply settings here, apparently EditorStyles aren't initialized yet.
             m_ApplySettings = true;
@@ -828,6 +828,9 @@ namespace Unity.Android.Logcat
 
         private void UpdateDebuggablePackages()
         {
+            // When running test Tools don't exist
+            if (m_Runtime.Tools == null)
+                return;
             var startTime = DateTime.Now;
             var packagePIDCache = new Dictionary<string, int>();
             CheckIfPackagesExited(packagePIDCache);

@@ -103,10 +103,10 @@ namespace Unity.Android.Logcat
 
         Dictionary<MemoryType, Color> m_MemoryTypeColors = new Dictionary<MemoryType, Color>();
 
-        public AndroidLogcatMemoryViewer(EditorWindow parent)
+        public AndroidLogcatMemoryViewer(EditorWindow parent, AndroidLogcatRuntimeBase runtime)
         {
             m_Parent = parent;
-            m_Runtime = AndroidLogcatManager.instance.Runtime;
+            m_Runtime = runtime;
             m_Material = (Material)EditorGUIUtility.LoadRequired("SceneView/HandleLines.mat");
             m_State = m_Runtime.ProjectSettings.MemoryViewerState;
 
