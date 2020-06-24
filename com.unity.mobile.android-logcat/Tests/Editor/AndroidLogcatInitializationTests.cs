@@ -44,7 +44,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         Assert.IsFalse(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
 
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-        m_Runtime.ProjectSettings.TagControl.Add(kMyCustomTag);
+        m_Runtime.ProjectSettings.Tags.Add(kMyCustomTag);
 
         return consoleWindow;
     }
@@ -60,7 +60,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
         Assert.IsTrue(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
 
-        Assert.IsTrue(m_Runtime.ProjectSettings.TagControl.Tags.Where(m => m.Name.Equals(kMyCustomTag)).First() != null);
+        Assert.IsTrue(m_Runtime.ProjectSettings.Tags.Entries.Where(m => m.Name.Equals(kMyCustomTag)).First() != null);
 
         ScriptableObject.DestroyImmediate(consoleWindow);
         ShutdownRuntimeStatic(true);
