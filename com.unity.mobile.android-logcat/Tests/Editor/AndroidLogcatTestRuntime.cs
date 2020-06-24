@@ -6,9 +6,9 @@ using UnityEditor.Android;
 
 internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
 {
-    internal static readonly string kAndroidLogcatSettingsPath = Path.Combine("Tests", "ProjectSettings", "AndroidLogcatSettings.asset");
+    internal static readonly string kProjectSettingsPath = Path.Combine("Tests", "ProjectSettings", "AndroidLogcatSettings.asset");
 
-    protected override string ProjectSettingsPath { get => kAndroidLogcatSettingsPath; }
+    protected override string ProjectSettingsPath { get => kProjectSettingsPath; }
 
     public override IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {

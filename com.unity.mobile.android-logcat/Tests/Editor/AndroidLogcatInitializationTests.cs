@@ -41,7 +41,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
     private AndroidLogcatTestConsoleWindow StartPlayerSettingsTest()
     {
         InitRuntimeStatic(true);
-        Assert.IsFalse(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
+        Assert.IsFalse(File.Exists(AndroidLogcatTestRuntime.kProjectSettingsPath));
 
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
         m_Runtime.ProjectSettings.Tags.Add(kMyCustomTag);
@@ -52,12 +52,12 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
     private void StopPlayerSettingsTest()
     {
         // Check if player settings have our new tag saved
-        var contents = File.ReadAllText(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath);
+        var contents = File.ReadAllText(AndroidLogcatTestRuntime.kProjectSettingsPath);
         Assert.IsTrue(contents.Contains(kMyCustomTag));
 
         // Resume runtime and see if we can restore player settings
         InitRuntimeStatic(false);
-        Assert.IsTrue(File.Exists(AndroidLogcatTestRuntime.kAndroidLogcatSettingsPath));
+        Assert.IsTrue(File.Exists(AndroidLogcatTestRuntime.kProjectSettingsPath));
         var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
 
         Assert.IsTrue(m_Runtime.ProjectSettings.Tags.Entries.Where(m => m.Name.Equals(kMyCustomTag)).First() != null);
