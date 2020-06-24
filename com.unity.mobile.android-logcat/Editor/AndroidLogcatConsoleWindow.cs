@@ -101,10 +101,10 @@ namespace Unity.Android.Logcat
 
         internal void OnEnable()
         {
-            OnInternalEnable(AndroidLogcatManager.instance.Runtime);
+            OnEnableInternal(AndroidLogcatManager.instance.Runtime);
         }
 
-        protected void OnInternalEnable(AndroidLogcatRuntimeBase runtime)
+        protected void OnEnableInternal(AndroidLogcatRuntimeBase runtime)
         {
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;
