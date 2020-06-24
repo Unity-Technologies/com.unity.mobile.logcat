@@ -22,7 +22,7 @@ internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
             // Not sure how to avoid this initialization better
             if (ms_Runtime == null)
                 return;
-            OnInternalEnable(ms_Runtime);
+            OnEnableInternal(ms_Runtime);
         }
     }
 

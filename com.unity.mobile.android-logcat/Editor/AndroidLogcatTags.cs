@@ -16,7 +16,7 @@ namespace Unity.Android.Logcat
     }
 
     [Serializable]
-    internal class AndroidLogcatTagsControl
+    internal class AndroidLogcatTags
     {
         [SerializeField]
         private List<TagInformation> m_Tags = new List<TagInformation>(
@@ -43,7 +43,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcatTagsControl()
+        public AndroidLogcatTags()
         {
         }
 
@@ -164,7 +164,7 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatTagListPopup : PopupWindowContent
     {
-        private AndroidLogcatTagsControl m_TagControl = null;
+        private AndroidLogcatTags m_Tags = null;
         private int m_SelectedTagIndex = -1;
         private string m_InputTagName = String.Empty;
         private const string kTagInputTextFieldControlId = "TagInputTextFieldControl";
@@ -172,9 +172,9 @@ namespace Unity.Android.Logcat
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 
-        public AndroidLogcatTagListPopup(AndroidLogcatTagsControl tagsControl)
+        public AndroidLogcatTagListPopup(AndroidLogcatTags tags)
         {
-            m_TagControl = tagsControl;
+            m_Tags = tags;
         }
 
         public override Vector2 GetWindowSize()
@@ -189,11 +189,11 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
 
-            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_TagControl.Tags.Count; ++i)
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Tags.Tags.Count; ++i)
             {
                 EditorGUILayout.BeginHorizontal();
 
-                var t = m_TagControl.Tags[i];
+                var t = m_Tags.Tags[i];
 
                 var labelStyle = AndroidLogcatStyles.tagEntryStyle;
                 var toggleStyle = AndroidLogcatStyles.tagToggleStyle;
@@ -227,7 +227,7 @@ namespace Unity.Android.Logcat
                 var toggled = GUI.Toggle(toggleRect, t.Selected, String.Empty, toggleStyle);
                 if (toggled != t.Selected)
                 {
-                    m_TagControl.TagSelected(null, null, i);
+                    m_Tags.TagSelected(null, null, i);
                     GUIUtility.keyboardControl = 0;
                 }
 
@@ -276,7 +276,7 @@ namespace Unity.Android.Logcat
                 {
                     if (!string.IsNullOrEmpty(trimmedTagName))
                     {
-                        m_TagControl.Add(trimmedTagName);
+                        m_Tags.Add(trimmedTagName);
                         m_InputTagName = string.Empty;
                         GUIUtility.keyboardControl = 0; // Have to remove the focus from the input text field to clear it.
                     }
@@ -306,12 +306,12 @@ namespace Unity.Android.Logcat
 
         public bool RemoveSelected(int tagIndex)
         {
-            if (tagIndex < 0 || tagIndex >= m_TagControl.Tags.Count)
+            if (tagIndex < 0 || tagIndex >= m_Tags.Tags.Count)
                 return false;
 
             // Simply reset to no selected.
             m_SelectedTagIndex = -1;
-            m_TagControl.Remove(tagIndex);
+            m_Tags.Remove(tagIndex);
 
             return true;
         }

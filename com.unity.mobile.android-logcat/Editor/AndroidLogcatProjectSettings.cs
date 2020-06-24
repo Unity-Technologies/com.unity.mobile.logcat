@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<PackageInformation> m_KnownPackagesForSerialization;
         [SerializeField]
-        private AndroidLogcatTagsControl m_TagControl;
+        private AndroidLogcatTags m_Tags;
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
 
@@ -120,15 +120,15 @@ namespace Unity.Android.Logcat
             return dictionaryPackages;
         }
 
-        public AndroidLogcatTagsControl TagControl
+        public AndroidLogcatTags Tags
         {
             set
             {
-                m_TagControl = value;
+                m_Tags = value;
             }
             get
             {
-                return m_TagControl;
+                return m_Tags;
             }
         }
 
@@ -153,7 +153,7 @@ namespace Unity.Android.Logcat
         {
             m_SelectedDeviceId = string.Empty;
             m_SelectedPriority = AndroidLogcat.Priority.Verbose;
-            m_TagControl = new AndroidLogcatTagsControl();
+            m_Tags = new AndroidLogcatTags();
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
         }

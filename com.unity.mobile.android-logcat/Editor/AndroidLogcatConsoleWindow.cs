@@ -115,7 +115,7 @@ namespace Unity.Android.Logcat
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
 
-            m_Runtime.ProjectSettings.TagControl.TagSelectionChanged += TagSelectionChanged;
+            m_Runtime.ProjectSettings.Tags.TagSelectionChanged += TagSelectionChanged;
 
             m_TimeOfLastAutoConnectStart = DateTime.Now;
             m_Runtime.Update += OnUpdate;
@@ -146,7 +146,7 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log("Runtime was already destroyed.");
                 return;
             }
-            m_Runtime.ProjectSettings.TagControl.TagSelectionChanged -= TagSelectionChanged;
+            m_Runtime.ProjectSettings.Tags.TagSelectionChanged -= TagSelectionChanged;
 
             m_Runtime.Closing -= OnDisable;
 
@@ -190,7 +190,7 @@ namespace Unity.Android.Logcat
 
         private void RemoveTag(string tag)
         {
-            if (!m_Runtime.ProjectSettings.TagControl.Remove(tag))
+            if (!m_Runtime.ProjectSettings.Tags.Remove(tag))
                 return;
 
             RestartLogCat();
@@ -198,7 +198,7 @@ namespace Unity.Android.Logcat
 
         private void AddTag(string tag)
         {
-            if (!m_Runtime.ProjectSettings.TagControl.Add(tag, true))
+            if (!m_Runtime.ProjectSettings.Tags.Add(tag, true))
                 return;
 
             RestartLogCat();
@@ -781,7 +781,7 @@ namespace Unity.Android.Logcat
                 m_Runtime.ProjectSettings.SelectedPriority,
                 m_Filter,
                 m_FilterIsRegularExpression,
-                m_Runtime.ProjectSettings.TagControl.GetSelectedTags());
+                m_Runtime.ProjectSettings.Tags.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.Disconnected += OnLogcatDisconnected;
             m_LogCat.Connected += OnLogcatConnected;
