@@ -26,6 +26,10 @@ namespace Unity.Android.Logcat
         private AndroidLogcatTags m_Tags;
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
+        [SerializeField]
+        private string m_Filter;
+        [SerializeField]
+        private bool m_FilterIsRegularExpression;
 
         public string LastSelectedDeviceId
         {
@@ -141,6 +145,30 @@ namespace Unity.Android.Logcat
             get
             {
                 return m_MemoryViewerState;
+            }
+        }
+
+        public string Filter
+        {
+            set
+            {
+                m_Filter = value;
+            }
+            get
+            {
+                return m_Filter;
+            }
+        }
+
+        public bool FilterIsRegularExpression
+        {
+            set
+            {
+                m_FilterIsRegularExpression = value;
+            }
+            get
+            {
+                return m_FilterIsRegularExpression;
             }
         }
 

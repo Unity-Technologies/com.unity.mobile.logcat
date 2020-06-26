@@ -43,9 +43,6 @@ namespace Unity.Android.Logcat
             return packages;
         }
 
-        private string m_Filter = string.Empty;
-        private bool m_FilterIsRegularExpression;
-
         private SearchField m_SearchField;
 
         private AndroidLogcatRuntimeBase m_Runtime;
@@ -451,7 +448,7 @@ namespace Unity.Android.Logcat
 
                 HandleSearchField();
 
-                SetRegex(GUILayout.Toggle(m_FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
+                SetRegex(GUILayout.Toggle(m_Runtime.ProjectSettings.FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
 
                 EditorGUI.EndDisabledGroup();
 
@@ -725,7 +722,7 @@ namespace Unity.Android.Logcat
 
         private void HandleSearchField()
         {
-            var newFilter = m_SearchField.OnToolbarGUI(m_Filter, null);
+            var newFilter = m_SearchField.OnToolbarGUI(m_Runtime.ProjectSettings.Filter, null);
             SetFilter(newFilter);
         }
 
@@ -750,19 +747,19 @@ namespace Unity.Android.Logcat
 
         private void SetFilter(string newFilter)
         {
-            if (newFilter == m_Filter)
+            if (newFilter == m_Runtime.ProjectSettings.Filter)
                 return;
 
-            m_Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
+            m_Runtime.ProjectSettings.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
             RestartLogCat();
         }
 
         private void SetRegex(bool newValue)
         {
-            if (newValue == m_FilterIsRegularExpression)
+            if (newValue == m_Runtime.ProjectSettings.FilterIsRegularExpression)
                 return;
 
-            m_FilterIsRegularExpression = newValue;
+            m_Runtime.ProjectSettings.FilterIsRegularExpression = newValue;
             RestartLogCat();
         }
 
@@ -779,8 +776,8 @@ namespace Unity.Android.Logcat
                 device,
                 SelectedPackage == null ? 0 : SelectedPackage.processId,
                 m_Runtime.ProjectSettings.SelectedPriority,
-                m_Filter,
-                m_FilterIsRegularExpression,
+                m_Runtime.ProjectSettings.Filter,
+                m_Runtime.ProjectSettings.FilterIsRegularExpression,
                 m_Runtime.ProjectSettings.Tags.GetSelectedTags());
             m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.Disconnected += OnLogcatDisconnected;
