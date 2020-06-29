@@ -249,8 +249,6 @@ namespace Unity.Android.Logcat
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
 
-            var selectedDevice = runtime.DeviceQuery.SelectedDevice;
-            settings.LastSelectedDeviceId = selectedDevice != null ? selectedDevice.Id : "";
             settings.m_KnownPackagesForSerialization = PackagesToList(settings.m_KnownPackages);
 
             var jsonString = JsonUtility.ToJson(settings, true);
