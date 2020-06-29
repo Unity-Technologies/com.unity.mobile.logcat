@@ -97,6 +97,41 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public void CleanupDeadPackagesForDevice(IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return;
+
+            List<PackageInformation> packages = null;
+            if (!m_KnownPackages.TryGetValue(device.Id, out packages))
+                return;
+
+            const int kMaxExitedPackages = 5;
+            int deadPackageCount = 0;
+
+            for (int i = 0; i < packages.Count; i++)
+            {
+                if (packages[i].IsAlive() == false)
+                    deadPackageCount++;
+            }
+
+            // Need to remove the package which were added first, since they are the oldest packages
+            int deadPackagesToRemove = deadPackageCount - kMaxExitedPackages;
+            for (int i = 0; i < packages.Count && deadPackagesToRemove > 0;)
+            {
+                if (packages[i].IsAlive())
+                {
+                    i++;
+                    continue;
+                }
+
+                deadPackagesToRemove--;
+                packages.RemoveAt(i);
+            }
+
+            // TODO: Update packages for serialization
+        }
+
         private static List<PackageInformation> PackagesToList(Dictionary<string, List<PackageInformation>> packages)
         {
             var temp = new List<PackageInformation>();

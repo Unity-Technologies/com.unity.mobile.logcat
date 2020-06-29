@@ -24,7 +24,7 @@ namespace Unity.Android.Logcat
         private Rect m_IpWindowScreenRect;
 
 
-        private List<PackageInformation> PackagesForSelectedDevice
+        private  IReadOnlyList<PackageInformation> PackagesForSelectedDevice
         {
             get { return GetPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice); }
         }
@@ -620,37 +620,6 @@ namespace Unity.Android.Logcat
             SelectPackage(packages[selected]);
         }
 
-        /// <summary>
-        /// Removes dead packages from the list. Otherwise the list will grow forever
-        /// </summary>
-        /// <param name="packages"></param>
-        private void CleanupDeadPackages()
-        {
-            List<PackageInformation> packages = PackagesForSelectedDevice;
-            const int kMaxExitedPackages = 5;
-            int deadPackageCount = 0;
-
-            for (int i = 0; i < packages.Count; i++)
-            {
-                if (packages[i].IsAlive() == false)
-                    deadPackageCount++;
-            }
-
-            // Need to remove the package which were added first, since they are the oldest packages
-            int deadPackagesToRemove = deadPackageCount - kMaxExitedPackages;
-            for (int i = 0; i < packages.Count && deadPackagesToRemove > 0;)
-            {
-                if (packages[i].IsAlive())
-                {
-                    i++;
-                    continue;
-                }
-
-                deadPackagesToRemove--;
-                packages.RemoveAt(i);
-            }
-        }
-
         private void ResetPackages(IAndroidLogcatDevice device)
         {
             AndroidLogcatInternalLog.Log("Reset packages");
@@ -829,7 +798,7 @@ namespace Unity.Android.Logcat
                 CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, selectedDevice);
             }
 
-            CleanupDeadPackages();
+            m_Runtime.ProjectSettings.CleanupDeadPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice);
             AndroidLogcatInternalLog.Log("UpdateDebuggablePackages finished in " + (DateTime.Now - startTime).Milliseconds + " ms");
         }
 
