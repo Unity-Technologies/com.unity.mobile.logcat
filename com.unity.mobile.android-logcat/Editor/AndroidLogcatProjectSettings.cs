@@ -176,6 +176,7 @@ namespace Unity.Android.Logcat
             };
 
             packages.Add(newPackage);
+            RefreshPackagesForSerialization();
             return newPackage;
         }
 
