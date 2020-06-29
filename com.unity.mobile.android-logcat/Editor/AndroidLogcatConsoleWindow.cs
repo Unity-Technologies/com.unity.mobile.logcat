@@ -221,7 +221,7 @@ namespace Unity.Android.Logcat
 
             var packageName = AndroidLogcatUtilities.GetPackageNameFromPid(m_Runtime.Tools.ADB, selectedDevice, processId);
 
-            var package = CreatePackageInformation(packageName, processId, selectedDevice);
+            var package = m_Runtime.ProjectSettings.CreatePackageInformation(packageName, processId, selectedDevice);
 
             SelectPackage(package);
         }
@@ -248,7 +248,7 @@ namespace Unity.Android.Logcat
                 ResetPackages(firstDevice);
 
                 int projectApplicationPid = GetPidFromPackageName(null, PlayerSettings.applicationIdentifier, firstDevice);
-                var package = CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, firstDevice);
+                var package = m_Runtime.ProjectSettings.CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, firstDevice);
                 if (package != null)
                 {
                     AndroidLogcatInternalLog.Log("Auto selecting package {0}", PlayerSettings.applicationIdentifier);
@@ -750,27 +750,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private PackageInformation CreatePackageInformation(string packageName, int pid, IAndroidLogcatDevice device)
-        {
-            if (pid <= 0)
-                return null;
-
-            var packages = GetPackagesForDevice(device);
-            PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
-            if (info != null)
-                return info;
-
-            var newPackage = new PackageInformation()
-            {
-                name = packageName,
-                processId = pid,
-                deviceId = device.Id
-            };
-
-            packages.Add(newPackage);
-            return newPackage;
-        }
-
         private void UpdateDebuggablePackages()
         {
             // When running test Tools don't exist
@@ -787,7 +766,7 @@ namespace Unity.Android.Logcat
             if (AndroidLogcatUtilities.GetTopActivityInfo(m_Runtime.Tools.ADB, selectedDevice, ref topActivityPackageName, ref topActivityPid)
                 && topActivityPid > 0)
             {
-                CreatePackageInformation(topActivityPackageName, topActivityPid, selectedDevice);
+                m_Runtime.ProjectSettings.CreatePackageInformation(topActivityPackageName, topActivityPid, selectedDevice);
 
                 checkProjectPackage = topActivityPackageName != PlayerSettings.applicationIdentifier;
             }
@@ -795,7 +774,7 @@ namespace Unity.Android.Logcat
             if (checkProjectPackage)
             {
                 int projectApplicationPid = GetPidFromPackageName(packagePIDCache, PlayerSettings.applicationIdentifier, selectedDevice);
-                CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, selectedDevice);
+                m_Runtime.ProjectSettings.CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, selectedDevice);
             }
 
             m_Runtime.ProjectSettings.CleanupDeadPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice);

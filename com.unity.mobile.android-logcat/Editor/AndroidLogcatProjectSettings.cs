@@ -144,6 +144,41 @@ namespace Unity.Android.Logcat
             RefreshPackagesForSerialization();
         }
 
+        private List<PackageInformation> GetOrCreatePackagesForDevice(IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return null;
+
+            List<PackageInformation> packages = null;
+            if (!m_KnownPackages.TryGetValue(device.Id, out packages))
+            {
+                packages = new List<PackageInformation>();
+                m_KnownPackages[device.Id] = packages;
+            }
+            return packages;
+        }
+
+        public PackageInformation CreatePackageInformation(string packageName, int pid, IAndroidLogcatDevice device)
+        {
+            if (pid <= 0)
+                return null;
+
+            var packages = GetOrCreatePackagesForDevice(device);
+            PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
+            if (info != null)
+                return info;
+
+            var newPackage = new PackageInformation()
+            {
+                name = packageName,
+                processId = pid,
+                deviceId = device.Id
+            };
+
+            packages.Add(newPackage);
+            return newPackage;
+        }
+
         private static Dictionary<string, List<PackageInformation>> PackagesToDictionary(List<PackageInformation> allPackages)
         {
             var dictionaryPackages = new Dictionary<string, List<PackageInformation>>();
