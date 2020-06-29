@@ -763,29 +763,6 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
-        private void ConnectToDevice(IAndroidLogcatDevice device)
-        {
-            if (device == null)
-                return;
-            if (m_Runtime.Tools == null)
-                return;
-
-            m_LogCat = new AndroidLogcat(
-                m_Runtime,
-                m_Runtime.Tools.ADB,
-                device,
-                SelectedPackage == null ? 0 : SelectedPackage.processId,
-                m_Runtime.ProjectSettings.SelectedPriority,
-                m_Runtime.ProjectSettings.Filter,
-                m_Runtime.ProjectSettings.FilterIsRegularExpression,
-                m_Runtime.ProjectSettings.Tags.GetSelectedTags());
-            m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
-            m_LogCat.Disconnected += OnLogcatDisconnected;
-            m_LogCat.Connected += OnLogcatConnected;
-
-            m_LogCat.Start();
-        }
-
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
         {
             foreach (var package in PackagesForSelectedDevice)
@@ -877,7 +854,31 @@ namespace Unity.Android.Logcat
 
             m_LogEntries.Clear();
 
-            ConnectToDevice(m_Runtime.DeviceQuery.SelectedDevice);
+            StartLogcat();
+        }
+
+        private void StartLogcat()
+        {
+            var device = m_Runtime.DeviceQuery.SelectedDevice;
+            if (device == null)
+                return;
+            if (m_Runtime.Tools == null)
+                return;
+
+            m_LogCat = new AndroidLogcat(
+                m_Runtime,
+                m_Runtime.Tools.ADB,
+                device,
+                SelectedPackage == null ? 0 : SelectedPackage.processId,
+                m_Runtime.ProjectSettings.SelectedPriority,
+                m_Runtime.ProjectSettings.Filter,
+                m_Runtime.ProjectSettings.FilterIsRegularExpression,
+                m_Runtime.ProjectSettings.Tags.GetSelectedTags());
+            m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
+            m_LogCat.Disconnected += OnLogcatDisconnected;
+            m_LogCat.Connected += OnLogcatConnected;
+
+            m_LogCat.Start();
         }
 
         private void StopLogCat()
