@@ -26,21 +26,7 @@ namespace Unity.Android.Logcat
 
         private  IReadOnlyList<PackageInformation> PackagesForSelectedDevice
         {
-            get { return GetPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice); }
-        }
-
-        private List<PackageInformation> GetPackagesForDevice(IAndroidLogcatDevice device)
-        {
-            if (device == null)
-                return null;
-
-            List<PackageInformation> packages = null;
-            if (!m_Runtime.ProjectSettings.KnownPackages.TryGetValue(device.Id, out packages))
-            {
-                packages = new List<PackageInformation>();
-                m_Runtime.ProjectSettings.KnownPackages[device.Id] = packages;
-            }
-            return packages;
+            get { return m_Runtime.ProjectSettings.GetKnownPackages(m_Runtime.DeviceQuery.SelectedDevice); }
         }
 
         private SearchField m_SearchField;
@@ -209,7 +195,7 @@ namespace Unity.Android.Logcat
         private void FilterByProcessId(int processId)
         {
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
-            var packages = m_Runtime.ProjectSettings.KnownPackages[selectedDevice.Id];
+            var packages = m_Runtime.ProjectSettings.GetKnownPackages(selectedDevice);
             foreach (var p in packages)
             {
                 if (p.processId == processId)
@@ -624,14 +610,6 @@ namespace Unity.Android.Logcat
         {
             AndroidLogcatInternalLog.Log("Reset packages");
             SetPacakge(null);
-            if (device == null)
-                return;
-            List<PackageInformation> packages;
-            if (!m_Runtime.ProjectSettings.KnownPackages.TryGetValue(device.Id, out packages))
-            {
-                packages = new List<PackageInformation>();
-                m_Runtime.ProjectSettings.KnownPackages.Add(device.Id, packages);
-            }
         }
 
         private void HandleSelectedPackage()
