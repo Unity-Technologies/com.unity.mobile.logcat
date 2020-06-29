@@ -281,8 +281,6 @@ namespace Unity.Android.Logcat
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
 
-            settings.RefreshPackagesForSerialization();
-
             var jsonString = JsonUtility.ToJson(settings, true);
             if (string.IsNullOrEmpty(jsonString))
                 return;
