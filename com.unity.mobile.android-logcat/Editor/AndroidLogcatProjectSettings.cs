@@ -85,6 +85,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private void RefreshPackagesForSerialization()
+        {
+            m_KnownPackagesForSerialization = PackagesToList(m_KnownPackages);
+        }
+
         public Dictionary<string, List<PackageInformation>> KnownPackages
         {
             set
@@ -117,6 +122,9 @@ namespace Unity.Android.Logcat
 
             // Need to remove the package which were added first, since they are the oldest packages
             int deadPackagesToRemove = deadPackageCount - kMaxExitedPackages;
+            if (deadPackagesToRemove <= 0)
+                return;
+
             for (int i = 0; i < packages.Count && deadPackagesToRemove > 0;)
             {
                 if (packages[i].IsAlive())
@@ -129,7 +137,7 @@ namespace Unity.Android.Logcat
                 packages.RemoveAt(i);
             }
 
-            // TODO: Update packages for serialization
+            RefreshPackagesForSerialization();
         }
 
         private static List<PackageInformation> PackagesToList(Dictionary<string, List<PackageInformation>> packages)
@@ -249,7 +257,7 @@ namespace Unity.Android.Logcat
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));
 
-            settings.m_KnownPackagesForSerialization = PackagesToList(settings.m_KnownPackages);
+            settings.RefreshPackagesForSerialization();
 
             var jsonString = JsonUtility.ToJson(settings, true);
             if (string.IsNullOrEmpty(jsonString))
