@@ -87,7 +87,11 @@ namespace Unity.Android.Logcat
 
         private void RefreshPackagesForSerialization()
         {
-            m_KnownPackagesForSerialization = PackagesToList(m_KnownPackages);
+            m_KnownPackagesForSerialization = new List<PackageInformation>();
+            foreach (var p in m_KnownPackages)
+            {
+                m_KnownPackagesForSerialization.AddRange(p.Value);
+            }
         }
 
         public Dictionary<string, List<PackageInformation>> KnownPackages
@@ -138,16 +142,6 @@ namespace Unity.Android.Logcat
             }
 
             RefreshPackagesForSerialization();
-        }
-
-        private static List<PackageInformation> PackagesToList(Dictionary<string, List<PackageInformation>> packages)
-        {
-            var temp = new List<PackageInformation>();
-            foreach (var p in packages)
-            {
-                temp.AddRange(p.Value);
-            }
-            return temp;
         }
 
         private static Dictionary<string, List<PackageInformation>> PackagesToDictionary(List<PackageInformation> allPackages)
