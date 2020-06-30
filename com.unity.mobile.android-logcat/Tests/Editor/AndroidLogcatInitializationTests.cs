@@ -102,8 +102,9 @@ myandroid2 device
         return query;
     }
 
-    [Test]
-    public void SavedSelectedDeviceIsPickedDuringRestart()
+    [TestCase(true, Description = "Runtime & editor window are restarted.")]
+    [TestCase(false, Description = "Runtime is kept, only editor window is restarted")]
+    public void SavedSelectedDeviceIsPickedDuringRestart(bool restartRuntime)
     {
         InitRuntimeStatic(true);
         try
@@ -114,9 +115,12 @@ myandroid2 device
             // Pretend to be a user and select the device
             query.SelectDevice(query.Devices["myandroid2"]);
             ScriptableObject.DestroyImmediate(consoleWindow);
-            ShutdownRuntimeStatic(false);
+            if (restartRuntime)
+            {
+                ShutdownRuntimeStatic(false);
 
-            InitRuntimeStatic(false);
+                InitRuntimeStatic(false);
+            }
             Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
             query = PrepareQuery();
             consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
@@ -133,29 +137,41 @@ myandroid2 device
         }
     }
 
-    [Test]
-    public void SavedSelectedPackageIsPickedDuringRestart()
+    [TestCase(true, Description = "Runtime & editor window are restarted.")]
+    [TestCase(false, Description = "Runtime is kept, only editor window is restarted")]
+    public void SavedSelectedPackageIsPickedDuringRestart(bool restartRuntime)
     {
         InitRuntimeStatic(true);
         try
         {
+            var packageName = "com.unity.test";
+            var deviceName = "myandroid2";
             var consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
             var query = PrepareQuery();
 
+            var device = query.Devices[deviceName];
             // Pretend to be a user and select the device
-            query.SelectDevice(query.Devices["myandroid2"]);
+            query.SelectDevice(device);
+            m_Runtime.ProjectSettings.LastSelectedPackage = m_Runtime.ProjectSettings.CreatePackageInformation(packageName, 1, device);
 
             ScriptableObject.DestroyImmediate(consoleWindow);
-            ShutdownRuntimeStatic(false);
+            if (restartRuntime)
+            {
+                ShutdownRuntimeStatic(false);
 
-            InitRuntimeStatic(false);
-            Assert.AreEqual("myandroid2", m_Runtime.ProjectSettings.LastSelectedDeviceId);
+                InitRuntimeStatic(false);
+            }
+
+            Assert.AreEqual(deviceName, m_Runtime.ProjectSettings.LastSelectedDeviceId);
+            Assert.AreEqual(packageName, m_Runtime.ProjectSettings.LastSelectedPackage.name);
+
             query = PrepareQuery();
             consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
-            // Since the selected device was saved in player settings
-            // Console window should auto select it
             m_Runtime.OnUpdate();
-            Assert.AreEqual(query.Devices["myandroid2"], query.SelectedDevice);
+
+            // Check if Console Window didn't repick a different device/package
+            Assert.AreEqual(query.Devices[deviceName], query.SelectedDevice);
+            Assert.AreEqual(packageName, m_Runtime.ProjectSettings.LastSelectedPackage.name);
 
             ScriptableObject.DestroyImmediate(consoleWindow);
         }
