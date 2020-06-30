@@ -13,6 +13,8 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatProjectSettings
     {
+        internal const int kMaxExitedPackages = 5;
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -122,7 +124,6 @@ namespace Unity.Android.Logcat
             if (!m_KnownPackages.TryGetValue(device.Id, out packages))
                 return;
 
-            const int kMaxExitedPackages = 5;
             int deadPackageCount = 0;
 
             for (int i = 0; i < packages.Count; i++)
@@ -150,7 +151,6 @@ namespace Unity.Android.Logcat
 
             RefreshPackagesForSerialization();
         }
-
 
         public PackageInformation CreatePackageInformation(string packageName, int pid, IAndroidLogcatDevice device)
         {
