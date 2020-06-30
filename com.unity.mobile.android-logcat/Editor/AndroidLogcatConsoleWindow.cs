@@ -92,9 +92,6 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;
 
-            if (m_Columns == null || m_Columns.Length != Enum.GetValues(typeof(Column)).Length)
-                m_Columns = GetColumns();
-
             if (m_SearchField == null)
                 m_SearchField = new SearchField();
 

@@ -36,6 +36,8 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<Color> m_MessageColorsFreeSkin;
 
+        [SerializeField] private ColumnData[] m_ColumnData;
+
         // Warning: Setting this number to low, will make memory request to be delayed
         // Since querying memory from device is a lengthy operation. That's why there's a cap 500
         internal int MemoryRequestIntervalMS
@@ -123,6 +125,14 @@ namespace Unity.Android.Logcat
             return GetDefaultColor(priority, EditorGUIUtility.isProSkin);
         }
 
+        internal ColumnData[] ColumnData
+        {
+            get
+            {
+                return m_ColumnData;
+            }
+        }
+
         internal Action<AndroidLogcatSettings> OnSettingsChanged;
 
         internal AndroidLogcatSettings()
@@ -146,7 +156,28 @@ namespace Unity.Android.Logcat
                 m_MessageColorsProSkin.Add(GetDefaultColor(p, true));
                 m_MessageColorsFreeSkin.Add(GetDefaultColor(p, false));
             }
+
+            m_ColumnData = GetColumns();
             InvokeOnSettingsChanged();
+        }
+
+        private static ColumnData[] GetColumns()
+        {
+            var columns = new ColumnData[]
+            {
+                new ColumnData() {content = new GUIContent(""), width = 30.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
+                new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
+            };
+
+            var expectedColumnLength = Enum.GetValues(typeof(AndroidLogcatConsoleWindow.Column)).Length;
+            if (columns.Length != expectedColumnLength)
+                throw new Exception($"Expected {expectedColumnLength} columns, but had {columns.Length}");
+            return columns;
         }
 
         private Color GetDefaultColor(AndroidLogcat.Priority priority, bool isProSkin)
@@ -187,6 +218,13 @@ namespace Unity.Android.Logcat
             OnSettingsChanged(this);
         }
 
+        private void Validate()
+        {
+            var defaultColumnData = GetColumns();
+            if (m_ColumnData == null || m_ColumnData.Length != defaultColumnData.Length)
+                m_ColumnData = defaultColumnData;
+        }
+
         internal static AndroidLogcatSettings Load()
         {
             var settings = new AndroidLogcatSettings();
@@ -198,6 +236,7 @@ namespace Unity.Android.Logcat
             try
             {
                 EditorJsonUtility.FromJsonOverwrite(data, settings);
+                settings.Validate();
             }
             catch (Exception ex)
             {
