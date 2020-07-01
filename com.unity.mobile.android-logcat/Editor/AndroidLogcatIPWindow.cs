@@ -10,7 +10,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatIPWindow : EditorWindow
     {
         internal static Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         internal string m_IpString;
         internal string m_PortString;
         private Vector2 m_DevicesScrollPosition = Vector2.zero;
@@ -22,7 +22,7 @@ namespace Unity.Android.Logcat
         private GUIContent kConnect = new GUIContent(L10n.Tr("Connect"), L10n.Tr("Sets the target device to listen for a TCP/IP connection on port 5555 and connects to it via IP address."));
         private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"));
 
-        public static void Show(IAndroidLogcatRuntime runtime, Rect screenRect)
+        public static void Show(AndroidLogcatRuntimeBase runtime, Rect screenRect)
         {
             AndroidLogcatIPWindow win = EditorWindow.GetWindow<AndroidLogcatIPWindow>(true, "Other connection options");
             win.position = new Rect(screenRect.x, screenRect.y, 700, 200);

@@ -7,93 +7,146 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.Android;
-using System.Text;
+using System.IO;
 
 
 namespace Unity.Android.Logcat
 {
-    internal interface IAndroidLogcatRuntime
+    internal abstract class AndroidLogcatRuntimeBase
     {
-        AndroidLogcatDispatcher Dispatcher { get; }
+        protected AndroidLogcatDispatcher m_Dispatcher;
+        protected AndroidLogcatSettings m_Settings;
+        protected AndroidLogcatProjectSettings m_ProjectSettings;
+        protected AndroidTools m_Tools;
+        protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
+        protected bool m_Initialized;
 
-        AndroidLogcatSettings Settings { get; }
+        protected abstract string ProjectSettingsPath { get; }
 
-        AndroidTools Tools { get; }
-
-        AndroidLogcatDeviceQueryBase DeviceQuery { get; }
-
-        IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
-
-        void Initialize();
-
-        void Shutdown();
-
-        event Action Update;
-    }
-
-    internal class AndroidLogcatRuntime : IAndroidLogcatRuntime
-    {
-        private AndroidLogcatDispatcher m_Dispatcher;
-        private AndroidLogcatSettings m_Settings;
-        private AndroidTools m_Tools;
-        private AndroidLogcatDeviceQuery m_DeviceQuery;
-
-        public event Action Update;
-
-        public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
-            Action<string> logCallbackAction)
+        private void ValidateIsInitialized()
         {
-            return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
+            if (!m_Initialized)
+                throw new Exception("Runtime is not initialized");
         }
 
         public AndroidLogcatDispatcher Dispatcher
         {
-            get { return m_Dispatcher; }
+            get { ValidateIsInitialized(); return m_Dispatcher; }
         }
 
         public AndroidLogcatSettings Settings
         {
-            get { return m_Settings; }
+            get { ValidateIsInitialized(); return m_Settings; }
+        }
+
+        public AndroidLogcatProjectSettings ProjectSettings
+        {
+            get { ValidateIsInitialized(); return m_ProjectSettings; }
         }
 
         public AndroidTools Tools
         {
-            get { return m_Tools; }
+            get { ValidateIsInitialized(); return m_Tools; }
         }
 
         public AndroidLogcatDeviceQueryBase DeviceQuery
         {
-            get { return m_DeviceQuery; }
+            get { ValidateIsInitialized(); return m_DeviceQuery; }
         }
 
-        public void Initialize()
-        {
-            EditorApplication.update += OnUpdate;
+        public abstract IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
+        protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
+        protected abstract AndroidLogcatSettings LoadEditorSettings();
+        protected abstract AndroidTools CreateAndroidTools();
+        protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
+        public virtual void Initialize()
+        {
             m_Dispatcher = new AndroidLogcatDispatcher(this);
             m_Dispatcher.Initialize();
 
-            m_Settings = AndroidLogcatSettings.Load();
+            m_Settings = LoadEditorSettings();
 
-            m_Tools = new AndroidTools();
+            Directory.CreateDirectory(Path.GetDirectoryName(ProjectSettingsPath));
+            m_ProjectSettings = AndroidLogcatProjectSettings.Load(ProjectSettingsPath);
+            if (m_ProjectSettings == null)
+            {
+                m_ProjectSettings = new AndroidLogcatProjectSettings();
+                m_ProjectSettings.Reset();
+            }
 
-            m_DeviceQuery = new AndroidLogcatDeviceQuery(this);
+            m_Tools = CreateAndroidTools();
+            m_DeviceQuery = CreateDeviceQuery();
+
+            m_Initialized = true;
         }
 
-        public void Shutdown()
+        public virtual void Shutdown()
         {
-            AndroidLogcatSettings.Save(m_Settings);
-            m_Settings = null;
+            Closing?.Invoke();
+            // ProjectSettings is accessing some information from runtime during save
+            AndroidLogcatProjectSettings.Save(m_ProjectSettings, ProjectSettingsPath, this);
+            SaveEditorSettings(m_Settings);
 
+            m_Initialized = false;
+            m_Settings = null;
+            m_ProjectSettings = null;
+            m_Tools = null;
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
-
-            EditorApplication.update -= OnUpdate;
         }
 
         public void OnUpdate()
         {
             Update?.Invoke();
+        }
+
+        public event Action Update;
+        public event Action Closing;
+    }
+
+    internal class AndroidLogcatRuntime : AndroidLogcatRuntimeBase
+    {
+        private static readonly string kProjectSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
+
+        protected override string ProjectSettingsPath { get => kProjectSettingsPath; }
+
+        public override IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
+            Action<string> logCallbackAction)
+        {
+            return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
+        }
+
+        public override void Initialize()
+        {
+            EditorApplication.update += OnUpdate;
+            base.Initialize();
+        }
+
+        public override void Shutdown()
+        {
+            base.Shutdown();
+            EditorApplication.update -= OnUpdate;
+        }
+
+        protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
+        {
+            return new AndroidLogcatDeviceQuery(this);
+        }
+
+        protected override AndroidTools CreateAndroidTools()
+        {
+            return new AndroidTools();
+        }
+
+        protected override AndroidLogcatSettings LoadEditorSettings()
+        {
+            return AndroidLogcatSettings.Load();
+        }
+
+        protected override void SaveEditorSettings(AndroidLogcatSettings settings)
+        {
+            AndroidLogcatSettings.Save(settings);
         }
     }
 }

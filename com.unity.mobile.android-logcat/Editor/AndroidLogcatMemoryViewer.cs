@@ -10,11 +10,21 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    internal enum MemoryViewerState
+    internal enum MemoryViewerBehavior
     {
         Hidden,
         Auto,
         Manual
+    }
+
+    [Serializable]
+    internal class AndroidLogcatMemoryViewerState
+    {
+        public float MemoryWindowHeight;
+        public float MemoryWindowWidth;
+        public bool[] MemoryTypeEnabled;
+        public MemoryGroup MemoryGroup = MemoryGroup.HeapAlloc;
+        public MemoryViewerBehavior Behavior = MemoryViewerBehavior.Auto;
     }
 
     internal class AndroidLogcatMemoryViewer
@@ -43,7 +53,7 @@ namespace Unity.Android.Logcat
         }
 
         private EditorWindow m_Parent;
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private Material m_Material;
 
         const int kMaxEntries = 300;
@@ -59,11 +69,6 @@ namespace Unity.Android.Logcat
         private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
-        [SerializeField]
-        private float m_MemoryWindowHeight;
-        [SerializeField]
-        private float m_MemoryWindowWidth;
-
         private SplitterDragging m_SplitterDragging;
         private float m_SplitterStart;
         private float m_SplitterOldValue;
@@ -85,30 +90,25 @@ namespace Unity.Android.Logcat
             MemoryType.JavaHeap,
         };
 
-        [SerializeField]
-        private bool[] m_MemoryTypeEnabled;
-
-        [SerializeField]
-        private MemoryGroup m_MemoryGroup = MemoryGroup.HeapAlloc;
 
         private IAndroidLogcatDevice m_ExpectedDevice;
-        private AndroidLogcatConsoleWindow.PackageInformation m_ExpectedPackageFromRequest;
+        private PackageInformation m_ExpectedPackageFromRequest;
+        private AndroidLogcatMemoryViewerState m_State;
 
-        [SerializeField]
-        private MemoryViewerState m_MemoryViewerState;
 
         private MemoryType[] GetOrderMemoryTypes()
         {
-            return m_MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
+            return m_State.MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
         }
 
         Dictionary<MemoryType, Color> m_MemoryTypeColors = new Dictionary<MemoryType, Color>();
 
-        public AndroidLogcatMemoryViewer(EditorWindow parent)
+        public AndroidLogcatMemoryViewer(EditorWindow parent, AndroidLogcatRuntimeBase runtime)
         {
             m_Parent = parent;
-            m_Runtime = AndroidLogcatManager.instance.Runtime;
+            m_Runtime = runtime;
             m_Material = (Material)EditorGUIUtility.LoadRequired("SceneView/HandleLines.mat");
+            m_State = m_Runtime.ProjectSettings.MemoryViewerState;
 
             for (int i = 0; i < kMaxEntries; i++)
                 m_Entries[i] = new AndroidMemoryStatistics();
@@ -125,7 +125,6 @@ namespace Unity.Android.Logcat
 
             m_SplitterStart = 0;
             m_SplitterDragging = SplitterDragging.None;
-            m_MemoryViewerState = MemoryViewerState.Auto;
 
             m_MemoryTypeColors[MemoryType.NativeHeap] = Color.red;
             m_MemoryTypeColors[MemoryType.JavaHeap] = Color.yellow;
@@ -135,46 +134,27 @@ namespace Unity.Android.Logcat
             m_MemoryTypeColors[MemoryType.PrivateOther] = Color.grey;
             m_MemoryTypeColors[MemoryType.System] = Color.magenta;
             m_MemoryTypeColors[MemoryType.Total] = Color.white;
-
-
-            m_UpperMemoryBoundry = 32 * 1000 * 1000;
-
-
-            ValidateSettings();
-
             ClearEntries();
-        }
-
-        internal MemoryViewerState State
-        {
-            set
-            {
-                m_MemoryViewerState = value;
-            }
-
-            get
-            {
-                return m_MemoryViewerState;
-            }
+            ValidateSettings();
         }
 
         /// <summary>
         /// Validate serialized settings here
         /// </summary>
-        internal void ValidateSettings()
+        private void ValidateSettings()
         {
             var allMemoryTypes = (MemoryType[])Enum.GetValues(typeof(MemoryType));
 
-            if (m_MemoryTypeEnabled == null || m_MemoryTypeEnabled.Length != allMemoryTypes.Length)
+            if (m_State.MemoryTypeEnabled == null || m_State.MemoryTypeEnabled.Length != allMemoryTypes.Length)
             {
-                m_MemoryTypeEnabled = new bool[allMemoryTypes.Length];
-                for (int i = 0; i < m_MemoryTypeEnabled.Length; i++)
-                    m_MemoryTypeEnabled[i] = true;
+                m_State.MemoryTypeEnabled = new bool[allMemoryTypes.Length];
+                for (int i = 0; i < m_State.MemoryTypeEnabled.Length; i++)
+                    m_State.MemoryTypeEnabled[i] = true;
             }
 
-            if (m_MemoryWindowHeight < kMinMemoryWindowHeight)
-                m_MemoryWindowHeight = 300.0f;
-            m_MemoryWindowWidth = Mathf.Clamp(m_MemoryWindowWidth, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
+            if (m_State.MemoryWindowHeight < kMinMemoryWindowHeight)
+                m_State.MemoryWindowHeight = 300.0f;
+            m_State.MemoryWindowWidth = Mathf.Clamp(m_State.MemoryWindowWidth, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
         }
 
         internal void ClearEntries()
@@ -188,13 +168,13 @@ namespace Unity.Android.Logcat
             m_ExpectedDevice = null;
         }
 
-        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        internal void SetExpectedDeviceAndPackage(IAndroidLogcatDevice device, PackageInformation package)
         {
             m_ExpectedDevice = device;
             m_ExpectedPackageFromRequest = package;
         }
 
-        internal void QueueMemoryRequest(IAndroidLogcatDevice device, AndroidLogcatConsoleWindow.PackageInformation package)
+        internal void QueueMemoryRequest(IAndroidLogcatDevice device, PackageInformation package)
         {
             m_ExpectedDevice = device;
             m_ExpectedPackageFromRequest = package;
@@ -293,9 +273,9 @@ namespace Unity.Android.Logcat
                     UInt64 localTotal = 0;
                     foreach (var t in GetOrderMemoryTypes())
                     {
-                        if (!m_MemoryTypeEnabled[(int)t])
+                        if (!m_State.MemoryTypeEnabled[(int)t])
                             continue;
-                        localTotal += m_Entries[ResolveEntryIndex(i)].GetValue(m_MemoryGroup, t);
+                        localTotal += m_Entries[ResolveEntryIndex(i)].GetValue(m_State.MemoryGroup, t);
                     }
                     maxMemory = Math.Max(maxMemory, localTotal);
                 }
@@ -379,7 +359,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.Space(10);
             Color oldColor = GUI.backgroundColor;
-            var memory = m_ExpectedPackageFromRequest == null ? "0" : UInt64ToSizeString(m_LastAllocatedEntry.GetValue(m_MemoryGroup, type));
+            var memory = m_ExpectedPackageFromRequest == null ? "0" : UInt64ToSizeString(m_LastAllocatedEntry.GetValue(m_State.MemoryGroup, type));
             var name = String.Format("{0} ({1})", type, memory);
             if (type == MemoryType.Total)
             {
@@ -388,10 +368,10 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                var enabled = m_MemoryTypeEnabled[(int)type];
+                var enabled = m_State.MemoryTypeEnabled[(int)type];
                 GUI.backgroundColor = enabled ? GetMemoryColor(type) : Color.black;
                 EditorGUI.BeginChangeCheck();
-                m_MemoryTypeEnabled[(int)type] = GUILayout.Toggle(enabled, name, AndroidLogcatStyles.kSeriesLabel);
+                m_State.MemoryTypeEnabled[(int)type] = GUILayout.Toggle(enabled, name, AndroidLogcatStyles.kSeriesLabel);
                 if (EditorGUI.EndChangeCheck())
                     UpdateGeneralStats();
             }
@@ -417,7 +397,7 @@ namespace Unity.Android.Logcat
                     if (verticalSplitter.Contains(e.mousePosition))
                     {
                         m_SplitterDragging = SplitterDragging.Vertical;
-                        m_SplitterOldValue = m_MemoryWindowHeight;
+                        m_SplitterOldValue = m_State.MemoryWindowHeight;
                         m_SplitterStart = e.mousePosition.y;
                         e.Use();
                         return true;
@@ -426,7 +406,7 @@ namespace Unity.Android.Logcat
                     if (horizontalSplitter.Contains(e.mousePosition))
                     {
                         m_SplitterDragging = SplitterDragging.Horizontal;
-                        m_SplitterOldValue = m_MemoryWindowWidth;
+                        m_SplitterOldValue = m_State.MemoryWindowWidth;
                         m_SplitterStart = e.mousePosition.x;
                         e.Use();
                         return true;
@@ -437,13 +417,13 @@ namespace Unity.Android.Logcat
                     switch (m_SplitterDragging)
                     {
                         case SplitterDragging.Vertical:
-                            m_MemoryWindowHeight = Math.Max(m_SplitterOldValue + m_SplitterStart - e.mousePosition.y, kMinMemoryWindowHeight);
+                            m_State.MemoryWindowHeight = Math.Max(m_SplitterOldValue + m_SplitterStart - e.mousePosition.y, kMinMemoryWindowHeight);
                             if (e.type == EventType.MouseUp)
                                 ClearSplitterOperation();
                             e.Use();
                             return true;
                         case SplitterDragging.Horizontal:
-                            m_MemoryWindowWidth = Mathf.Clamp(m_SplitterOldValue + e.mousePosition.x - m_SplitterStart, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
+                            m_State.MemoryWindowWidth = Mathf.Clamp(m_SplitterOldValue + e.mousePosition.x - m_SplitterStart, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
                             if (e.type == EventType.MouseUp)
                                 ClearSplitterOperation();
                             e.Use();
@@ -457,21 +437,21 @@ namespace Unity.Android.Logcat
 
         internal void DoGUI()
         {
-            if (m_MemoryViewerState == MemoryViewerState.Hidden)
+            if (m_State.Behavior == MemoryViewerBehavior.Hidden)
                 return;
 
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
-            var splitterRectHorizontal = new Rect(m_MemoryWindowWidth, splitterRectVertical.y, 5, m_MemoryWindowHeight);
+            var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, m_State.MemoryWindowHeight);
             DoSplitter(splitterRectVertical, splitterRectHorizontal);
             GUILayout.BeginHorizontal();
 
-            GUILayout.BeginVertical(GUILayout.Width(m_MemoryWindowWidth), GUILayout.Height(m_MemoryWindowHeight));
+            GUILayout.BeginVertical(GUILayout.Width(m_State.MemoryWindowWidth), GUILayout.Height(m_State.MemoryWindowHeight));
 
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();
             GUILayout.Label("Group:");
             EditorGUI.BeginChangeCheck();
-            m_MemoryGroup = (MemoryGroup)EditorGUILayout.EnumPopup(m_MemoryGroup);
+            m_State.MemoryGroup = (MemoryGroup)EditorGUILayout.EnumPopup(m_State.MemoryGroup);
             if (EditorGUI.EndChangeCheck())
                 UpdateGeneralStats();
             GUILayout.EndHorizontal();
@@ -483,7 +463,7 @@ namespace Unity.Android.Logcat
 
             DoMemoryToggle(MemoryType.Total);
 
-            if (m_MemoryViewerState == MemoryViewerState.Manual)
+            if (m_State.Behavior == MemoryViewerBehavior.Manual)
             {
                 GUILayout.Space(10);
                 if (GUILayout.Button("Capture", EditorStyles.miniButton))
@@ -499,7 +479,7 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginVertical();
             // Note: GUILayoutUtility.GetRect must be called for Layout event always
-            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(m_MemoryWindowHeight));
+            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(m_State.MemoryWindowHeight));
 
             size.height -= 4;
 
@@ -531,9 +511,9 @@ namespace Unity.Android.Logcat
             {
                 if (types[i] == type)
                     return total;
-                if (!m_MemoryTypeEnabled[i])
+                if (!m_State.MemoryTypeEnabled[i])
                     continue;
-                total += stats.GetValue(m_MemoryGroup, types[i]);
+                total += stats.GetValue(m_State.MemoryGroup, types[i]);
             }
 
             throw new Exception("Unhandled memory type: " + type);
@@ -587,7 +567,7 @@ namespace Unity.Android.Logcat
 
             foreach (var m in GetOrderMemoryTypes())
             {
-                if (!m_MemoryTypeEnabled[(int)m])
+                if (!m_State.MemoryTypeEnabled[(int)m])
                     continue;
                 GL.Begin(GL.TRIANGLE_STRIP);
                 GL.Color(GetMemoryColor(m));
@@ -596,7 +576,7 @@ namespace Unity.Android.Logcat
                 {
                     var idx = ResolveEntryIndex(i);
                     var agr = AggregateMemorySize(m_Entries[idx], m);
-                    var val = m_Entries[idx].GetValue(m_MemoryGroup, m);
+                    var val = m_Entries[idx].GetValue(m_State.MemoryGroup, m);
                     var x = xOffset + i * width;
                     var y1 = b - multiplier * (val + agr);
                     var y2 = b - multiplier * agr;
@@ -641,13 +621,13 @@ namespace Unity.Android.Logcat
             int enabledCount = 0;
             foreach (var m in GetOrderMemoryTypes())
             {
-                if (!m_MemoryTypeEnabled[(int)m])
+                if (!m_State.MemoryTypeEnabled[(int)m])
                     continue;
-                info.AppendLine(m.ToString() + " : " + UInt64ToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, m)));
+                info.AppendLine(m.ToString() + " : " + UInt64ToSizeString(m_Entries[idx].GetValue(m_State.MemoryGroup, m)));
                 enabledCount++;
             }
 
-            info.AppendLine("Total: " + UInt64ToSizeString(m_Entries[idx].GetValue(m_MemoryGroup, MemoryType.Total)));
+            info.AppendLine("Total: " + UInt64ToSizeString(m_Entries[idx].GetValue(m_State.MemoryGroup, MemoryType.Total)));
 
             const float kInfoWidth = 150;
             var infoX = x + 5;

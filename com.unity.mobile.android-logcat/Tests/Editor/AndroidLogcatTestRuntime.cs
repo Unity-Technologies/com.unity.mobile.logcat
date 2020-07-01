@@ -4,81 +4,66 @@ using NUnit.Framework;
 using Unity.Android.Logcat;
 using UnityEditor.Android;
 
-internal class AndroidLogcatTestRuntime : IAndroidLogcatRuntime
+internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
 {
-    private AndroidLogcatDispatcher m_Dispatcher;
-    private AndroidLogcatFakeDeviceQuery m_DeviceQuery;
+    internal static readonly string kProjectSettingsPath = Path.Combine("Tests", "ProjectSettings", "AndroidLogcatSettings.asset");
 
-    public event Action Update;
+    protected override string ProjectSettingsPath { get => kProjectSettingsPath; }
 
-    public IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+    public override IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
         return new AndroidLogcatFakeMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
     }
 
-    public AndroidLogcatDispatcher Dispatcher
+    protected override AndroidTools CreateAndroidTools()
     {
-        get { return m_Dispatcher; }
+        // Mac agents don't have SDK/NDK set up, for now return null for AndroidTools and make code work even if there's no Tools
+        return null;
     }
 
-    public AndroidLogcatSettings Settings
+    protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
     {
-        get { return null;  }
+        return new AndroidLogcatFakeDeviceQuery(this);
     }
 
-    public AndroidTools Tools
+    protected override AndroidLogcatSettings LoadEditorSettings()
     {
-        get { return null; }
+        return new AndroidLogcatSettings();
     }
 
-    public AndroidLogcatDeviceQueryBase DeviceQuery
+    protected override void SaveEditorSettings(AndroidLogcatSettings settings)
     {
-        get { return m_DeviceQuery; }
-    }
-
-    public void Initialize()
-    {
-        m_Dispatcher = new AndroidLogcatDispatcher(this);
-        m_Dispatcher.Initialize();
-
-        m_DeviceQuery = new AndroidLogcatFakeDeviceQuery(this);
-    }
-
-    public void Shutdown()
-    {
-        m_DeviceQuery = null;
-
-        m_Dispatcher.Shutdown();
-        m_Dispatcher = null;
-    }
-
-    /// <summary>
-    /// Should be called manually from the test
-    /// </summary>
-    public void OnUpdate()
-    {
-        Update?.Invoke();
+        // Don't save editor settings for tests
     }
 }
-
 
 internal class AndroidLogcatRuntimeTestBase
 {
     protected AndroidLogcatTestRuntime m_Runtime;
 
-    protected void InitRuntime()
+    protected void Cleanup()
+    {
+        if (Directory.Exists("Tests"))
+            Directory.Delete("Tests", true);
+    }
+
+    protected void InitRuntime(bool cleanup = true)
     {
         if (m_Runtime != null)
             throw new Exception("Runtime was not shutdown by previous test?");
         m_Runtime = new AndroidLogcatTestRuntime();
+        if (cleanup)
+            Cleanup();
         m_Runtime.Initialize();
     }
 
-    protected void ShutdownRuntime()
+    protected void ShutdownRuntime(bool cleanup = true)
     {
         if (m_Runtime == null)
             throw new Exception("Runtime was not created?");
         m_Runtime.Shutdown();
+        if (cleanup)
+            Cleanup();
         m_Runtime = null;
     }
 }

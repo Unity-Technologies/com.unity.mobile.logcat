@@ -14,7 +14,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatManager : ScriptableSingleton<AndroidLogcatManager>
     {
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
 
         internal void OnEnable()
         {
@@ -39,7 +39,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Initialize();
         }
 
-        internal IAndroidLogcatRuntime Runtime
+        internal AndroidLogcatRuntimeBase Runtime
         {
             get
             {

@@ -31,7 +31,7 @@ namespace Unity.Android.Logcat
 
         protected IAndroidLogcatDevice m_SelectedDevice;
         protected Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();
-        protected IAndroidLogcatRuntime m_Runtime;
+        protected AndroidLogcatRuntimeBase m_Runtime;
 
         internal event Action<IAndroidLogcatDevice> DeviceSelected;
         internal event Action DevicesUpdated;
@@ -66,7 +66,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal AndroidLogcatDeviceQueryBase(IAndroidLogcatRuntime runtime)
+        internal AndroidLogcatDeviceQueryBase(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
         }
@@ -96,6 +96,8 @@ namespace Unity.Android.Logcat
 
             if (m_SelectedDevice != null && !m_Devices.Keys.Contains(m_SelectedDevice.Id))
                 throw new Exception("Selected device is not among our listed devices");
+
+            m_Runtime.ProjectSettings.LastSelectedDeviceId = m_SelectedDevice != null ? m_SelectedDevice.Id : "";
 
             if (notifyListeners)
                 DeviceSelected?.Invoke(m_SelectedDevice);
@@ -192,7 +194,7 @@ namespace Unity.Android.Logcat
         protected const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         protected DateTime m_TimeOfLastDeviceListUpdate;
 
-        internal AndroidLogcatDeviceQuery(IAndroidLogcatRuntime runtime)
+        internal AndroidLogcatDeviceQuery(AndroidLogcatRuntimeBase runtime)
             : base(runtime)
         {
             m_TimeOfLastDeviceListUpdate = DateTime.Now;

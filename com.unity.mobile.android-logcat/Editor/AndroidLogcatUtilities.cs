@@ -377,21 +377,6 @@ namespace Unity.Android.Logcat
             return null;
         }
     }
-
-    internal class AndroidLogcatJsonSerialization
-    {
-        public string m_SelectedDeviceId = String.Empty;
-
-        public AndroidLogcatConsoleWindow.PackageInformation m_SelectedPackage = null;
-
-        public AndroidLogcat.Priority m_SelectedPriority = AndroidLogcat.Priority.Verbose;
-
-        public List<AndroidLogcatConsoleWindow.PackageInformation> m_PackagesForSerialization = null;
-
-        public AndroidLogcatTagsControl m_TagControl = null;
-
-        public string m_MemoryViewerJson;
-    }
 }
 #else
 namespace Unity.Android.Logcat

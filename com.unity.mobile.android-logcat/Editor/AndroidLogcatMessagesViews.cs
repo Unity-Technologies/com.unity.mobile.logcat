@@ -23,52 +23,19 @@ namespace Unity.Android.Logcat
             Message
         }
 
-        [Serializable]
-        public class ColumnData
-        {
-            [NonSerialized]
-            public GUIContent content;
-
-            public float width;
-
-            [NonSerialized]
-            // Updated automatically when we're moving the splitter
-            public Rect itemSize = Rect.zero;
-
-            [NonSerialized]
-            public bool splitterDragging;
-
-            [NonSerialized]
-            public float splitterDragStartMouseValue;
-
-            [NonSerialized]
-            public float splitterDragStartWidthValue;
-
-            public bool enabled = true;
-        }
-
         private List<int> m_SelectedIndices = new List<int>();
         private Vector2 m_ScrollPosition = Vector2.zero;
         private float m_MaxLogEntryWidth = 0.0f;
 
-        [SerializeField]
-        private ColumnData[] m_Columns = GetColumns();
-
         private bool m_Autoscroll = true;
         private float doubleClickStart = -1;
 
-        private static ColumnData[] GetColumns()
+        private ColumnData[] Columns
         {
-            return new ColumnData[]
+            get
             {
-                new ColumnData() {content = new GUIContent(""), width = 30.0f },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Time", "Time when event occured"), width = 160.0f },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Pid", "Process Id"), width = 50.0f  },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tid", "Thread Id"), width = 50.0f  },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Priority", "Priority (Left click to select different priorities)"), width = 50.0f  },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Tag", "Tag (Left click to select different tags)"), width = 50.0f  },
-                new ColumnData() {content = EditorGUIUtility.TrTextContent("Message", ""), width = -1  },
-            };
+                return m_Runtime.Settings.ColumnData;
+            }
         }
 
         private bool DoSplitter(ColumnData data, Rect splitterRect)
@@ -115,10 +82,10 @@ namespace Unity.Android.Logcat
         {
             if (column == Column.Icon)
             {
-                return m_Runtime.Settings.MessageFontSize > 11 && m_Columns[(int)column].enabled;
+                return m_Runtime.Settings.MessageFontSize > 11 && Columns[(int)column].enabled;
             }
 
-            return m_Columns[(int)column].enabled;
+            return Columns[(int)column].enabled;
         }
 
         private bool DoGUIHeader()
@@ -132,7 +99,7 @@ namespace Unity.Android.Logcat
             {
                 if (!ShowColumn(c))
                     continue;
-                var d = m_Columns[(int)c];
+                var d = Columns[(int)c];
 
                 d.itemSize = new Rect(offset, fullHeaderRect.y, d.width, fullHeaderRect.height);
                 offset += d.width;
@@ -148,13 +115,13 @@ namespace Unity.Android.Logcat
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
                                 var priorities = (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority));
-                                EditorUtility.DisplayCustomMenu(new Rect(Event.current.mousePosition, Vector2.zero), priorities.Select(m => new GUIContent(m.ToString())).ToArray(), (int)m_SelectedPriority, PrioritySelection, null);
+                                EditorUtility.DisplayCustomMenu(new Rect(Event.current.mousePosition, Vector2.zero), priorities.Select(m => new GUIContent(m.ToString())).ToArray(), (int)m_Runtime.ProjectSettings.SelectedPriority, PrioritySelection, null);
                             }
                             break;
                         case Column.Tag:
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
-                                m_TagControl.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero), buttonRect);
+                                m_Runtime.ProjectSettings.Tags.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero), buttonRect);
                             }
                             break;
                         default:
@@ -206,16 +173,16 @@ namespace Unity.Android.Logcat
         {
             if (options[selected] == "Clear All")
             {
-                foreach (var c in m_Columns)
+                foreach (var c in Columns)
                     c.enabled = false;
             }
             else if (options[selected] == "Select All")
             {
-                foreach (var c in m_Columns)
+                foreach (var c in Columns)
                     c.enabled = true;
             }
-            else if (selected < m_Columns.Length)
-                m_Columns[selected].enabled = !m_Columns[selected].enabled;
+            else if (selected < Columns.Length)
+                Columns[selected].enabled = !Columns[selected].enabled;
         }
 
         private void PrioritySelection(object userData, string[] options, int selected)
@@ -233,10 +200,10 @@ namespace Unity.Android.Logcat
                     case 1:
                         var menuTexts = new List<string>();
                         var menuSelected = new List<int>();
-                        for (int i = 0; i < m_Columns.Length; i++)
+                        for (int i = 0; i < Columns.Length; i++)
                         {
                             menuTexts.Add(((Column)i).ToString());
-                            if (m_Columns[i].enabled)
+                            if (Columns[i].enabled)
                                 menuSelected.Add(i);
                         }
 
@@ -263,7 +230,7 @@ namespace Unity.Android.Logcat
         {
             if (!ShowColumn(column))
                 return;
-            var itemRect = m_Columns[(uint)column].itemSize;
+            var itemRect = Columns[(uint)column].itemSize;
             var entryHeight = AndroidLogcatStyles.kLogEntryFixedHeight;
             var rc = new Rect(itemRect.x + (itemRect.width - iconSize.x) * 0.5f, fullView.y + entryHeight * index + (entryHeight - iconSize.y) * 0.5f, 0, 0);
             style.Draw(rc, new GUIContent(value), 0);
@@ -274,7 +241,7 @@ namespace Unity.Android.Logcat
             if (!ShowColumn(column))
                 return;
             const float kMessageMargin = 5;
-            var itemRect = m_Columns[(uint)column].itemSize;
+            var itemRect = Columns[(uint)column].itemSize;
             var rc = new Rect(itemRect.x + kMessageMargin, fullView.y + AndroidLogcatStyles.kLogEntryFixedHeight * index, itemRect.width - kMessageMargin, itemRect.height);
             style.Draw(rc, new GUIContent(value), 0);
         }
@@ -357,7 +324,7 @@ namespace Unity.Android.Logcat
                     DoLogEntryItem(visibleWindowRect, i, Column.Message, le.message, style);
 
                     m_MaxLogEntryWidth = Mathf.Max(m_MaxLogEntryWidth,
-                        AndroidLogcatStyles.priorityDefaultStyle.CalcSize(new GUIContent(le.message)).x + m_Columns[(int)Column.Message].itemSize.x);
+                        AndroidLogcatStyles.priorityDefaultStyle.CalcSize(new GUIContent(le.message)).x + Columns[(int)Column.Message].itemSize.x);
                 }
                 else
                 {
@@ -387,7 +354,7 @@ namespace Unity.Android.Logcat
             {
                 if (!ShowColumn((Column)i))
                     continue;
-                var itemRect = m_Columns[i].itemSize;
+                var itemRect = Columns[i].itemSize;
                 var rc = new Rect(itemRect.x + itemRect.width - m_ScrollPosition.x, visibleWindowRect.y, borderWidth, visibleWindowRect.height);
                 GUI.DrawTexture(rc, EditorGUIUtility.whiteTexture);
             }
@@ -601,7 +568,7 @@ namespace Unity.Android.Logcat
             foreach (var l in entries)
             {
                 var entry = string.Empty;
-                for (int i = 0; i < m_Columns.Length; i++)
+                for (int i = 0; i < Columns.Length; i++)
                 {
                     if (!ShowColumn((Column)i))
                         continue;

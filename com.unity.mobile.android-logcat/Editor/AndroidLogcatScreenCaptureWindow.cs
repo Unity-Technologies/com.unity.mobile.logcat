@@ -13,7 +13,7 @@ namespace Unity.Android.Logcat
     {
         [SerializeField] private string m_ImagePath;
 #if PLATFORM_ANDROID
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private GUIContent[] m_Devices;
         private int m_SelectedDevice;
         private Texture2D m_ImageTexture = null;

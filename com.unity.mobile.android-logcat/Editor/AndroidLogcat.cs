@@ -80,7 +80,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private IAndroidLogcatRuntime m_Runtime;
+        private AndroidLogcatRuntimeBase m_Runtime;
         private ADB adb;
 
         private readonly IAndroidLogcatDevice m_Device;
@@ -134,7 +134,7 @@ namespace Unity.Android.Logcat
             get { return m_MessageProvider; }
         }
 
-        public AndroidLogcat(IAndroidLogcatRuntime runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(AndroidLogcatRuntimeBase runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
