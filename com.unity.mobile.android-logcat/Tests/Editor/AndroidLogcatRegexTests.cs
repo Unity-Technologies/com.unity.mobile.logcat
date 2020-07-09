@@ -317,6 +317,19 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
     }
 
     [Test]
+    public void CorrectyParseStacktraceCrashFormat2()
+    {
+        var logLine = "    at libunity.0041e340(Native Method)  ";
+        var regex = new Regex(AndroidLogcatStacktraceWindow.m_AddressRegexFormat2);
+        string address;
+        string libName;
+        var result = AndroidLogcatStacktraceWindow.ParseLine(regex, logLine, out address, out libName);
+        Assert.IsTrue(result, "Failed to parse " + logLine);
+        Assert.IsTrue(address.Equals("0041e340"));
+        Assert.IsTrue(libName.Equals("libunity.so"));
+    }
+
+    [Test]
     public void ParseBuildInfo()
     {
         var buildType = "Release";
