@@ -10,10 +10,33 @@ using System.Text;
 
 namespace Unity.Android.Logcat
 {
+    internal class AndroidLogcatRegexList : AndroidLogcatReordableList
+    {
+        public AndroidLogcatRegexList(List<ReordableListItem> dataSource) : base(dataSource) { }
+
+        protected override string ValidateItem(string item)
+        {
+            if (string.IsNullOrEmpty(item))
+                return string.Empty;
+
+            try
+            {
+                Regex.Match("", item);
+            }
+            catch (ArgumentException ex)
+            {
+                return ex.Message;
+            }
+
+            return string.Empty;
+        }
+    }
+
     internal class AndroidLogcatSymbolList : AndroidLogcatReordableList
     {
         public AndroidLogcatSymbolList(List<ReordableListItem> dataSource) : base(dataSource)
         {
+            ShowEntryGUI = false;
         }
 
         protected override void OnPlusButtonClicked()
@@ -25,11 +48,13 @@ namespace Unity.Android.Logcat
             AddItem(item);
         }
 
-        protected override void DoEntryGUI()
+
+        protected override void DoListGUIWhenEmpty()
         {
-            // Empty on purposes
+            EditorGUILayout.HelpBox("Please add directories containing symbols for your native libraries.", MessageType.Info, true);
         }
     }
+
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
 #if PLATFORM_ANDROID
@@ -59,11 +84,8 @@ namespace Unity.Android.Logcat
         private WindowMode m_WindowMode;
         private ToolbarMode m_ToolbarMode;
 
-        private IAndroidLogcatRuntime m_Runtime;
-
-        [SerializeField]
-        List<ReordableListItem> m_SymbolPaths;
-
+        private AndroidLogcatRuntimeBase m_Runtime;
+        
         AndroidLogcatReordableList m_RegexList;
         AndroidLogcatReordableList m_SymbolPathList;
 
@@ -156,13 +178,9 @@ namespace Unity.Android.Logcat
                 placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
-
-            if (m_SymbolPaths == null)
-                m_SymbolPaths = new List<ReordableListItem>();
-
-
-            m_RegexList = new AndroidLogcatReordableList(m_Runtime.Settings.StacktraceResolveRegex);
-            m_SymbolPathList = new AndroidLogcatSymbolList(m_SymbolPaths);
+            
+            m_RegexList = new AndroidLogcatRegexList(m_Runtime.Settings.StacktraceResolveRegex);
+            m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 
         void DoRegex(float labelWidth, Regex regex)

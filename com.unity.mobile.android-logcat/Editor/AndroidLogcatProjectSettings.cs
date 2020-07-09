@@ -32,6 +32,8 @@ namespace Unity.Android.Logcat
         private string m_Filter;
         [SerializeField]
         private bool m_FilterIsRegularExpression;
+        [SerializeField]
+        private List<ReordableListItem> m_SymbolPaths;
 
         public string LastSelectedDeviceId
         {
@@ -239,6 +241,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public List<ReordableListItem> SymbolPaths
+        {
+            get => m_SymbolPaths;
+        }
+
         internal AndroidLogcatProjectSettings()
         {
             Reset();
@@ -251,6 +258,7 @@ namespace Unity.Android.Logcat
             m_Tags = new AndroidLogcatTags();
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
+            m_SymbolPaths = new List<ReordableListItem>();
         }
 
         internal static AndroidLogcatProjectSettings Load(string path)

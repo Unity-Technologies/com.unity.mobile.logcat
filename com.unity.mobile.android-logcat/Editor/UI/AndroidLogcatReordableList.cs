@@ -9,13 +9,16 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class ReordableListItem
     {
+        [SerializeField]
         internal string Name;
 
+        [SerializeField]
         internal bool Enabled;
     }
 
     internal class AndroidLogcatReordableList
     {
+        private const float ButtonWidth = 25;
         private List<ReordableListItem> m_DataSource;
         private int m_SelectedIndex = -1;
         private string m_InputFieldText = String.Empty;
@@ -25,29 +28,22 @@ namespace Unity.Android.Logcat
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 
+        protected bool ShowEntryGUI { get; set; }
+
         public AndroidLogcatReordableList(List<ReordableListItem> dataSource)
         {
+            ShowEntryGUI = true;
             m_DataSource = dataSource;
         }
 
-        private static float ButtonWidth
-        {
-            get => 25;
-        }
-
-        private static GUILayoutOption[] ButtonStyles
+        private GUILayoutOption[] ButtonStyles
         {
             get
             {
                 return new GUILayoutOption[] { GUILayout.Width(ButtonWidth), GUILayout.Height(ButtonWidth) };
             }
         }
-
-        //public override Vector2 GetWindowSize()
-        //{
-        //    return new Vector2(300, 200);
-        //}
-
+        
         public string CurrentItemName
         {
             get
@@ -62,16 +58,20 @@ namespace Unity.Android.Logcat
                     m_DataSource[m_SelectedIndex].Name = value;
             }
         }
-
+        
         void DoListGUI()
         {
             var currentEvent = Event.current;
-
+            GUILayout.BeginVertical();
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
-
+            if (m_DataSource.Count == 0)
+                DoListGUIWhenEmpty();
+ 
             for (int i = 0; i < m_DataSource.Count; i++)
             {
                 var item = m_DataSource[i];
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(8);
 
                 EditorGUILayout.BeginHorizontal();
                 var toggleRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.tagToggleStyle);
@@ -80,6 +80,8 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.EndHorizontal();
 
                 var entryRect = GUILayoutUtility.GetLastRect();
+                EditorGUILayout.EndHorizontal();
+
                 if (currentEvent.type == EventType.Repaint)
                 {
                     if (m_SelectedIndex == i)
@@ -104,7 +106,23 @@ namespace Unity.Android.Logcat
 
             GUILayout.EndScrollView();
             var rc = GUILayoutUtility.GetLastRect();
+
+            var msg = ValidateItem(CurrentItemName);
+            if (!string.IsNullOrEmpty(msg))
+                EditorGUILayout.HelpBox(msg, MessageType.Error, true);
+
+            GUILayout.EndVertical();
             GUI.Box(new Rect(rc.x + 4, rc.y, rc.width - 4, rc.height), GUIContent.none, EditorStyles.helpBox);
+        }
+
+        protected virtual string ValidateItem(string item)
+        {
+            return string.Empty;
+        }
+
+        protected virtual void DoListGUIWhenEmpty()
+        {
+
         }
 
         protected void AddItem(string name)
@@ -169,7 +187,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
-        protected virtual void DoEntryGUI()
+        protected void DoEntryGUI()
         {
             GUI.SetNextControlName(kInputTextFieldControlId);
             CurrentItemName = EditorGUILayout.TextField(CurrentItemName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
@@ -178,7 +196,8 @@ namespace Unity.Android.Logcat
         public void OnGUI()
         {
             EditorGUILayout.BeginVertical();
-            DoEntryGUI();
+            if (ShowEntryGUI)
+                DoEntryGUI();
 
             EditorGUILayout.BeginHorizontal();
             DoListGUI();
