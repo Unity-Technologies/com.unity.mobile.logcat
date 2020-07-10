@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
                 return new GUILayoutOption[] { GUILayout.Width(ButtonWidth), GUILayout.Height(ButtonWidth) };
             }
         }
-        
+
         public string CurrentItemName
         {
             get
@@ -60,7 +60,7 @@ namespace Unity.Android.Logcat
                     m_DataSource[m_SelectedIndex].Name = value;
             }
         }
-        
+
         void DoListGUI()
         {
             var currentEvent = Event.current;
@@ -68,7 +68,7 @@ namespace Unity.Android.Logcat
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
             if (m_DataSource.Count == 0)
                 DoListGUIWhenEmpty();
- 
+
             for (int i = 0; i < m_DataSource.Count; i++)
             {
                 var item = m_DataSource[i];
@@ -124,7 +124,6 @@ namespace Unity.Android.Logcat
 
         protected virtual void DoListGUIWhenEmpty()
         {
-
         }
 
         protected void AddItem(string name)
@@ -143,7 +142,6 @@ namespace Unity.Android.Logcat
 
         protected virtual void OnResetButtonClicked()
         {
-
         }
 
         void DoButtonsGUI()

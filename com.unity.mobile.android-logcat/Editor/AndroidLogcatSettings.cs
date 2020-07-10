@@ -18,6 +18,12 @@ namespace Unity.Android.Logcat
     {
         internal static string kSettingsName = "AndroidLogcatSettings";
 
+        internal static readonly string[] kAddressResolveRegex =
+        {
+            @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*)\.so",
+            @"\s*at (?<libName>lib.*)\.(?<address>[a-fA-F0-9]{8})"
+        };
+
         [SerializeField]
         private int m_MemoryRequestInterval;
 
@@ -177,8 +183,10 @@ namespace Unity.Android.Logcat
             if (m_StacktraceResolveRegex == null)
                 m_StacktraceResolveRegex = new List<ReordableListItem>();
             m_StacktraceResolveRegex.Clear();
-            m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat1, Enabled = true });
-            m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat2, Enabled = true });
+            foreach (var r in kAddressResolveRegex)
+            {
+                m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = r, Enabled = true });
+            }
         }
 
         private static ColumnData[] GetColumns()
@@ -301,7 +309,7 @@ namespace Unity.Android.Logcat
             {
                 settings.SetMessageColor(p, EditorGUILayout.ColorField(p.ToString(), settings.GetMessageColor(p)));
             }
-
+            GUILayout.Space(20);
             EditorGUILayout.LabelField("Memory Window", EditorStyles.boldLabel);
             settings.MemoryRequestIntervalMS = EditorGUILayout.IntField("Request Interval ms", settings.MemoryRequestIntervalMS);
             GUILayout.Space(20);

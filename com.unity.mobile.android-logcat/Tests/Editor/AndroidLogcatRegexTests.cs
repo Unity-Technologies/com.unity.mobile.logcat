@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
@@ -317,16 +318,29 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
     }
 
     [Test]
-    public void CorrectyParseStacktraceCrashFormat2()
+    public void CorrectyParseStacktraceCrash()
     {
-        var logLine = "    at libunity.0041e340(Native Method)  ";
-        var regex = new Regex(AndroidLogcatStacktraceWindow.m_AddressRegexFormat2);
-        string address;
-        string libName;
-        var result = AndroidLogcatStacktraceWindow.ParseLine(regex, logLine, out address, out libName);
-        Assert.IsTrue(result, "Failed to parse " + logLine);
-        Assert.IsTrue(address.Equals("0041e340"));
-        Assert.IsTrue(libName.Equals("libunity.so"));
+        var logLines = new[]
+        {
+            "    at libunity.0041e340(Native Method)  ",
+            "2019 -05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 0041e340  /data/app/com.mygame==/lib/arm/libunity.so"
+        };
+
+        var regexs = new List<ReordableListItem>();
+        foreach (var r in AndroidLogcatSettings.kAddressResolveRegex)
+        {
+            regexs.Add(new ReordableListItem() { Enabled = true, Name = r });
+        }
+
+        foreach (var line in logLines)
+        {
+            string address;
+            string libName;
+            var result = AndroidLogcatStacktraceWindow.ParseLine(regexs, line, out address, out libName);
+            Assert.IsTrue(result, "Failed to parse " + line);
+            Assert.IsTrue(address.Equals("0041e340"));
+            Assert.IsTrue(libName.Equals("libunity.so"));
+        }
     }
 
     [Test]
