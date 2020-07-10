@@ -12,7 +12,17 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatRegexList : AndroidLogcatReordableList
     {
-        public AndroidLogcatRegexList(List<ReordableListItem> dataSource) : base(dataSource) { }
+        private AndroidLogcatRuntimeBase m_Runtime;
+        public AndroidLogcatRegexList(List<ReordableListItem> dataSource, AndroidLogcatRuntimeBase runtime) : base(dataSource)
+        {
+            ShowResetGUI = true;
+            m_Runtime = runtime;
+        }
+
+        protected override void OnResetButtonClicked()
+        {
+            m_Runtime.Settings.ResetStacktraceResolveRegex();
+        }
 
         protected override string ValidateItem(string item)
         {
@@ -179,7 +189,7 @@ namespace Unity.Android.Logcat
                 m_Text = placeholder.ToString();
             }
             
-            m_RegexList = new AndroidLogcatRegexList(m_Runtime.Settings.StacktraceResolveRegex);
+            m_RegexList = new AndroidLogcatRegexList(m_Runtime.Settings.StacktraceResolveRegex, m_Runtime);
             m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 

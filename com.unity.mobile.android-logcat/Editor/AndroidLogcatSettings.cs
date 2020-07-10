@@ -172,11 +172,14 @@ namespace Unity.Android.Logcat
 
         internal void ResetStacktraceResolveRegex()
         {
-            m_StacktraceResolveRegex = new List<ReordableListItem>();
+            // Note: Don't create new instance, if not necessary
+            // Since some classes might be using it
+            if (m_StacktraceResolveRegex == null)
+                m_StacktraceResolveRegex = new List<ReordableListItem>();
+            m_StacktraceResolveRegex.Clear();
             m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat1, Enabled = true });
             m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = AndroidLogcatStacktraceWindow.m_AddressRegexFormat2, Enabled = true });
         }
-
 
         private static ColumnData[] GetColumns()
         {

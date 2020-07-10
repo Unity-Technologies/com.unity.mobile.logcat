@@ -30,6 +30,8 @@ namespace Unity.Android.Logcat
 
         protected bool ShowEntryGUI { get; set; }
 
+        protected bool ShowResetGUI { get; set; }
+
         public AndroidLogcatReordableList(List<ReordableListItem> dataSource)
         {
             ShowEntryGUI = true;
@@ -139,6 +141,11 @@ namespace Unity.Android.Logcat
                 AddItem(CurrentItemName);
         }
 
+        protected virtual void OnResetButtonClicked()
+        {
+
+        }
+
         void DoButtonsGUI()
         {
             var currentEvent = Event.current;
@@ -183,6 +190,13 @@ namespace Unity.Android.Logcat
 
             EditorGUI.EndDisabledGroup();
 
+            if (ShowResetGUI)
+            {
+                if (GUILayout.Button(AndroidLogcatStyles.kIconReset, ButtonStyles))
+                {
+                    OnResetButtonClicked();
+                }
+            }
 
             EditorGUILayout.EndVertical();
         }
