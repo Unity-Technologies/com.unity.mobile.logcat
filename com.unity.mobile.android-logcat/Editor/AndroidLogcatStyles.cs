@@ -135,6 +135,7 @@ namespace Unity.Android.Logcat
 
         internal static GUIContent kIconToolbarDown = new GUIContent(LoadIcon("DownArrow"));
         internal static GUIContent kIconToolbarUp = new GUIContent(LoadIcon("UpArrow"));
+        internal static GUIContent kIconReset = new GUIContent(LoadIcon("Reset"), "Reset");
     }
 }
 #endif
