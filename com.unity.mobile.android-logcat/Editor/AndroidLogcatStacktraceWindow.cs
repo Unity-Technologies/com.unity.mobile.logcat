@@ -77,22 +77,14 @@ namespace Unity.Android.Logcat
             ResolvedLog
         }
 
-        enum ToolbarMode
-        {
-            Regex,
-            SymbolPaths
-        }
-
         Vector2 m_ScrollPosition;
         string m_Text = String.Empty;
         string m_ResolvedStacktraces = String.Empty;
 
         private WindowMode m_WindowMode;
-        private ToolbarMode m_ToolbarMode;
 
         private AndroidLogcatRuntimeBase m_Runtime;
 
-        AndroidLogcatReordableList m_RegexList;
         AndroidLogcatReordableList m_SymbolPathList;
 
         public static void ShowStacktraceWindow()
@@ -201,40 +193,26 @@ namespace Unity.Android.Logcat
                 placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
-
-            m_RegexList = new AndroidLogcatRegexList(m_Runtime.Settings.StacktraceResolveRegex, m_Runtime);
             m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 
         void DoInfoGUI()
         {
-            const float kInfoAreaHeight = 200.0f;
-            EditorGUILayout.BeginVertical(GUILayout.Height(kInfoAreaHeight));
-            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-            if (GUILayout.Toggle(m_ToolbarMode == ToolbarMode.Regex, "Configure Regex", AndroidLogcatStyles.toolbarButton))
-                m_ToolbarMode = ToolbarMode.Regex;
-            if (GUILayout.Toggle(m_ToolbarMode == ToolbarMode.SymbolPaths, "Configure Symbol Paths", AndroidLogcatStyles.toolbarButton))
-                m_ToolbarMode = ToolbarMode.SymbolPaths;
-            EditorGUILayout.EndHorizontal();
-
-            switch (m_ToolbarMode)
-            {
-                case ToolbarMode.Regex:
-                    m_RegexList.OnGUI();
-                    break;
-                case ToolbarMode.SymbolPaths:
-                    m_SymbolPathList.OnGUI();
-                    break;
-            }
-
+            EditorGUILayout.BeginVertical();
+            GUILayout.Label("Configure Symbol Paths", EditorStyles.boldLabel);
+            m_SymbolPathList.OnGUI();
             EditorGUILayout.EndVertical();
         }
 
         void OnGUI()
         {
             DoInfoGUI();
-            if (GUILayout.Button("Resolve"))
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Configure Resolve Regex"))
+                SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
+            if (GUILayout.Button("Resolve Stacktraces"))
                 ResolveStacktraces();
+            EditorGUILayout.EndHorizontal();
 
             EditorGUI.BeginChangeCheck();
             m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);

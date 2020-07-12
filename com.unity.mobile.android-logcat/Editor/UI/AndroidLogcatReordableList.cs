@@ -50,7 +50,13 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                return m_SelectedIndex == -1 ? m_InputFieldText : m_DataSource[m_SelectedIndex].Name;
+                if (m_SelectedIndex >= m_DataSource.Count)
+                    m_SelectedIndex = -1;
+
+                if (m_SelectedIndex == -1)
+                    return m_InputFieldText;
+
+                return m_DataSource[m_SelectedIndex].Name;
             }
             set
             {
@@ -65,7 +71,11 @@ namespace Unity.Android.Logcat
         {
             var currentEvent = Event.current;
             GUILayout.BeginVertical();
-            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
+            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false,
+                GUIStyle.none,
+                GUI.skin.verticalScrollbar,
+                GUILayout.ExpandWidth(true),
+                GUILayout.ExpandHeight(true));
             if (m_DataSource.Count == 0)
                 DoListGUIWhenEmpty();
 
@@ -105,16 +115,14 @@ namespace Unity.Android.Logcat
 
                 DoMouseEvent(entryRect, i);
             }
-
+            //GUILayout.FlexibleSpace();
             GUILayout.EndScrollView();
-            var rc = GUILayoutUtility.GetLastRect();
 
             var msg = ValidateItem(CurrentItemName);
             if (!string.IsNullOrEmpty(msg))
                 EditorGUILayout.HelpBox(msg, MessageType.Error, true);
 
             GUILayout.EndVertical();
-            GUI.Box(new Rect(rc.x + 4, rc.y, rc.width - 4, rc.height), GUIContent.none, EditorStyles.helpBox);
         }
 
         protected virtual string ValidateItem(string item)
@@ -207,13 +215,20 @@ namespace Unity.Android.Logcat
 
         public void OnGUI()
         {
-            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginVertical(GUILayout.Height(70));
             if (ShowEntryGUI)
                 DoEntryGUI();
 
             EditorGUILayout.BeginHorizontal();
             DoListGUI();
+            var listrc = GUILayoutUtility.GetLastRect();
+
             DoButtonsGUI();
+            var buttonsrc = GUILayoutUtility.GetLastRect();
+
+            // There's somekind of bug with layouting, ensure box height is not less then the height of button layout height
+            var rc = new Rect(listrc.x, listrc.y, listrc.width, Math.Max(listrc.height, buttonsrc.height));
+            GUI.Box(new Rect(rc.x + 4, rc.y, rc.width - 4, rc.height), GUIContent.none, EditorStyles.helpBox);
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
@@ -240,9 +255,11 @@ namespace Unity.Android.Logcat
             if (index < 0 || index >= m_DataSource.Count)
                 return false;
 
-            // Simply reset to no selected.
-            m_SelectedIndex = -1;
             m_DataSource.RemoveAt(index);
+            if (m_DataSource.Count == 0)
+                m_SelectedIndex = -1;
+            else
+                m_SelectedIndex = (int)Mathf.Clamp(m_SelectedIndex, 0, m_DataSource.Count - 1);
 
             return true;
         }

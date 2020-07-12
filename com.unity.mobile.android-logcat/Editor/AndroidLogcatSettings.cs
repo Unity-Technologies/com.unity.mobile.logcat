@@ -285,6 +285,8 @@ namespace Unity.Android.Logcat
 
     class AndroidLogcatSettingsProvider : SettingsProvider
     {
+        internal static readonly string kSettingsPath = "Preferences/Analysis/Android Logcat Settings";
+
         class Styles
         {
             public static GUIContent maxMessageCount = new GUIContent("Max Count", "The maximum number of messages.");
@@ -292,12 +294,21 @@ namespace Unity.Android.Logcat
             public static GUIContent fontSize = new GUIContent("Font Size");
         }
 
+        private AndroidLogcatRuntimeBase m_Runtime;
+        private AndroidLogcatRegexList m_RegexList;
+
+        private AndroidLogcatSettings Settings => m_Runtime.Settings;
+
         public AndroidLogcatSettingsProvider(string path, SettingsScope scope)
-            : base(path, scope) {}
+            : base(path, scope)
+        {
+            m_Runtime = AndroidLogcatManager.instance.Runtime;
+            m_RegexList = new AndroidLogcatRegexList(Settings.StacktraceResolveRegex, m_Runtime);
+        }
 
         public override void OnGUI(string searchContext)
         {
-            var settings = AndroidLogcatManager.instance.Runtime.Settings;
+            var settings = Settings;
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
             settings.MaxMessageCount = EditorGUILayout.IntSlider(Styles.maxMessageCount, settings.MaxMessageCount, 1, 100000);
             settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
@@ -313,6 +324,11 @@ namespace Unity.Android.Logcat
             EditorGUILayout.LabelField("Memory Window", EditorStyles.boldLabel);
             settings.MemoryRequestIntervalMS = EditorGUILayout.IntField("Request Interval ms", settings.MemoryRequestIntervalMS);
             GUILayout.Space(20);
+
+            EditorGUILayout.LabelField("Stacktrace Resolve Regex", EditorStyles.boldLabel);
+            m_RegexList.OnGUI();
+
+            GUILayout.Space(20);
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Reset"))
@@ -324,7 +340,7 @@ namespace Unity.Android.Logcat
         [SettingsProvider]
         public static SettingsProvider CreateMyCustomSettingsProvider()
         {
-            var provider = new AndroidLogcatSettingsProvider("Preferences/Analysis/Android Logcat Settings", SettingsScope.User);
+            var provider = new AndroidLogcatSettingsProvider(kSettingsPath, SettingsScope.User);
             return provider;
         }
     }
