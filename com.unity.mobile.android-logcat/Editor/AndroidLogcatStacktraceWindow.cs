@@ -211,7 +211,13 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button("Configure Resolve Regex"))
                 SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
             if (GUILayout.Button("Resolve Stacktraces"))
+            {
                 ResolveStacktraces();
+                m_WindowMode = WindowMode.ResolvedLog;
+                GUIUtility.keyboardControl = 0;
+                GUIUtility.hotControl = 0;
+            }
+
             EditorGUILayout.EndHorizontal();
 
             EditorGUI.BeginChangeCheck();
