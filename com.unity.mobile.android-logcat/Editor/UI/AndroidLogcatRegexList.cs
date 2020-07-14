@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -38,3 +39,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if PLATFORM_ANDROID
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -75,3 +76,4 @@ namespace Unity.Android.Logcat
         }
     }
 }
+#endif
