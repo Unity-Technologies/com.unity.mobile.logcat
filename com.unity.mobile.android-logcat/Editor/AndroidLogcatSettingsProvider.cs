@@ -27,19 +27,21 @@ namespace Unity.Android.Logcat
             public static GUIContent configureSymbolPaths = new GUIContent("Configure Symbol Paths", @"Per project setting, used for locating library's native symbol file, symbol file is used for demangling native function address into native function name");
         }
 
-        private enum StacktraceToolbar
-        {
-            Regex,
-            SymbolPaths
-        }
-
+        private const string kStacktraceToolbar = "LogcatStacktraceToolbar";
+        private const int kStacktraceToolbarRegex = 0;
+        private const int kStacktraceToolbarSymbolPaths = 1;
         private AndroidLogcatRuntimeBase m_Runtime;
         private AndroidLogcatRegexList m_RegexList;
         private AndroidLogcatSymbolList m_SymbolList;
-        private StacktraceToolbar m_StacktraceToolbar;
 
         private AndroidLogcatSettings Settings => m_Runtime.Settings;
         private AndroidLogcatProjectSettings ProjectSettings => m_Runtime.ProjectSettings;
+
+        private int StacktraceToolbar
+        {
+            get => SessionState.GetInt(kStacktraceToolbar, kStacktraceToolbarRegex);
+            set => SessionState.SetInt(kStacktraceToolbar, value);
+        }
 
         public AndroidLogcatSettingsProvider(string path, SettingsScope scope)
             : base(path, scope)
@@ -83,19 +85,20 @@ namespace Unity.Android.Logcat
         {
             EditorGUILayout.LabelField(Styles.stactrace, EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-            if (GUILayout.Toggle(m_StacktraceToolbar == StacktraceToolbar.Regex, Styles.configureRegex, AndroidLogcatStyles.toolbarButton))
-                m_StacktraceToolbar = StacktraceToolbar.Regex;
-            if (GUILayout.Toggle(m_StacktraceToolbar == StacktraceToolbar.SymbolPaths, Styles.configureSymbolPaths, AndroidLogcatStyles.toolbarButton))
-                m_StacktraceToolbar = StacktraceToolbar.SymbolPaths;
+
+            if (GUILayout.Toggle(StacktraceToolbar == kStacktraceToolbarRegex, Styles.configureRegex, AndroidLogcatStyles.toolbarButton))
+                StacktraceToolbar =  kStacktraceToolbarRegex;
+            if (GUILayout.Toggle(StacktraceToolbar == kStacktraceToolbarSymbolPaths, Styles.configureSymbolPaths, AndroidLogcatStyles.toolbarButton))
+                StacktraceToolbar = kStacktraceToolbarSymbolPaths;
             EditorGUILayout.EndHorizontal();
 
             float height = 400.0f;
-            switch (m_StacktraceToolbar)
+            switch (StacktraceToolbar)
             {
-                case StacktraceToolbar.Regex:
+                case kStacktraceToolbarRegex:
                     m_RegexList.OnGUI(height);
                     break;
-                case StacktraceToolbar.SymbolPaths:
+                case kStacktraceToolbarSymbolPaths:
                     m_SymbolList.OnGUI(height);
                     break;
             }
