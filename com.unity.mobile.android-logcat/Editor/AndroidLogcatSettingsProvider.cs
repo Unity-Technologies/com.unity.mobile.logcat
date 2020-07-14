@@ -22,18 +22,31 @@ namespace Unity.Android.Logcat
             public static GUIContent maxMessageCount = new GUIContent("Max Count", "The maximum number of messages.");
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
+            public static GUIContent stactrace = new GUIContent("Stack trace");
+            public static GUIContent configureRegex = new GUIContent("Configure Regex", @"Global setting, shared by all projects, used for resolving library name and address name");
+            public static GUIContent configureSymbolPaths = new GUIContent("Configure Symbol Paths", @"Per project setting, used for locating library's native symbol file, symbol file is used for demangling native function address into native function name");
+        }
+
+        private enum StacktraceToolbar
+        {
+            Regex,
+            SymbolPaths
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
         private AndroidLogcatRegexList m_RegexList;
+        private AndroidLogcatSymbolList m_SymbolList;
+        private StacktraceToolbar m_StacktraceToolbar;
 
         private AndroidLogcatSettings Settings => m_Runtime.Settings;
+        private AndroidLogcatProjectSettings ProjectSettings => m_Runtime.ProjectSettings;
 
         public AndroidLogcatSettingsProvider(string path, SettingsScope scope)
             : base(path, scope)
         {
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_RegexList = new AndroidLogcatRegexList(Settings.StacktraceResolveRegex, m_Runtime);
+            m_SymbolList = new AndroidLogcatSymbolList(ProjectSettings.SymbolPaths);
         }
 
         public override void OnGUI(string searchContext)
@@ -54,9 +67,8 @@ namespace Unity.Android.Logcat
             EditorGUILayout.LabelField("Memory Window", EditorStyles.boldLabel);
             settings.MemoryRequestIntervalMS = EditorGUILayout.IntField("Request Interval ms", settings.MemoryRequestIntervalMS);
             GUILayout.Space(20);
+            DoStacktraceGUI();
 
-            EditorGUILayout.LabelField("Stacktrace Resolve Regex", EditorStyles.boldLabel);
-            m_RegexList.OnGUI();
 
             GUILayout.Space(20);
             GUILayout.BeginHorizontal();
@@ -65,6 +77,28 @@ namespace Unity.Android.Logcat
                 settings.Reset();
             GUILayout.Space(5);
             GUILayout.EndHorizontal();
+        }
+
+        void DoStacktraceGUI()
+        {
+            EditorGUILayout.LabelField(Styles.stactrace, EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+            if (GUILayout.Toggle(m_StacktraceToolbar == StacktraceToolbar.Regex, Styles.configureRegex, AndroidLogcatStyles.toolbarButton))
+                m_StacktraceToolbar = StacktraceToolbar.Regex;
+            if (GUILayout.Toggle(m_StacktraceToolbar == StacktraceToolbar.SymbolPaths, Styles.configureSymbolPaths, AndroidLogcatStyles.toolbarButton))
+                m_StacktraceToolbar = StacktraceToolbar.SymbolPaths;
+            EditorGUILayout.EndHorizontal();
+
+            float height = 400.0f;
+            switch (m_StacktraceToolbar)
+            {
+                case StacktraceToolbar.Regex:
+                    m_RegexList.OnGUI(height);
+                    break;
+                case StacktraceToolbar.SymbolPaths:
+                    m_SymbolList.OnGUI(height);
+                    break;
+            }
         }
 
         [SettingsProvider]

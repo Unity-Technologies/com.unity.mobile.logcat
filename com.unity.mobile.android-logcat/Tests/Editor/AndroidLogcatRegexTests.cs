@@ -336,7 +336,7 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
         {
             string address;
             string libName;
-            var result = AndroidLogcatStacktraceWindow.ParseLine(regexs, line, out address, out libName);
+            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out address, out libName);
             Assert.IsTrue(result, "Failed to parse " + line);
             Assert.IsTrue(address.Equals("0041e340"));
             Assert.IsTrue(libName.Equals("libunity.so"));

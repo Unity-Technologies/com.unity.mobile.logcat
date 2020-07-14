@@ -43,42 +43,6 @@ namespace Unity.Android.Logcat
             wnd.Focus();
         }
 
-        internal static bool ParseLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string address, out string libName)
-        {
-            foreach (var regexItem in regexs)
-            {
-                if (!regexItem.Enabled)
-                    continue;
-
-                var match = new Regex(regexItem.Name).Match(msg);
-                if (match.Success)
-                {
-                    address = match.Groups["address"].Value;
-                    libName = match.Groups["libName"].Value + ".so";
-                    return true;
-                }
-            }
-
-            address = null;
-            libName = null;
-            return false;
-        }
-
-        internal string GetSymbolFilePath(string libraryName)
-        {
-            foreach (var symbolPath in m_Runtime.ProjectSettings.SymbolPaths)
-            {
-                if (!symbolPath.Enabled)
-                    continue;
-
-                var file = AndroidLogcatUtilities.GetSymbolFile(symbolPath.Name, libraryName);
-                if (!string.IsNullOrEmpty(file))
-                    return file;
-            }
-
-            return string.Empty;
-        }
-
         void ResolveStacktraces()
         {
             m_ResolvedStacktraces = String.Empty;
@@ -93,14 +57,15 @@ namespace Unity.Android.Logcat
             {
                 string address;
                 string library;
-                if (!ParseLine(m_Runtime.Settings.StacktraceResolveRegex, l, out address, out library))
+
+                if (!AndroidLogcatUtilities.ParseCrashLine(m_Runtime.Settings.StacktraceResolveRegex, l, out address, out library))
                 {
                     m_ResolvedStacktraces += l;
                 }
                 else
                 {
                     string resolved = string.Format(" <color={0}>(Not resolved)</color>", m_RedColor);
-                    var symbolFile = GetSymbolFilePath(library);
+                    var symbolFile = AndroidLogcatUtilities.GetSymbolFile(m_Runtime.ProjectSettings.SymbolPaths, library);
                     if (string.IsNullOrEmpty(symbolFile))
                     {
                         resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
@@ -144,18 +109,8 @@ namespace Unity.Android.Logcat
 
         void DoInfoGUI()
         {
-            EditorGUILayout.BeginVertical();
-            GUILayout.Label("Configure Symbol Paths", EditorStyles.boldLabel);
-            m_SymbolPathList.OnGUI();
-            EditorGUILayout.EndVertical();
-        }
+            EditorGUILayout.BeginVertical(GUILayout.Width(100));
 
-        void OnGUI()
-        {
-            DoInfoGUI();
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Configure Resolve Regex"))
-                SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
             if (GUILayout.Button("Resolve Stacktraces"))
             {
                 ResolveStacktraces();
@@ -163,11 +118,18 @@ namespace Unity.Android.Logcat
                 GUIUtility.keyboardControl = 0;
                 GUIUtility.hotControl = 0;
             }
+            GUILayout.Space(20);
+            if (GUILayout.Button("Open settings"))
+                SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
+            EditorGUILayout.EndVertical();
+        }
 
-            EditorGUILayout.EndHorizontal();
-
+        void OnGUI()
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.BeginVertical();
             EditorGUI.BeginChangeCheck();
-            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.FitToContents);
+            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.Fixed, GUILayout.ExpandWidth(true));
             if (EditorGUI.EndChangeCheck())
             {
                 // Editor seems to be caching text from EditorGUILayout.TextArea
@@ -190,6 +152,9 @@ namespace Unity.Android.Logcat
                     break;
             }
             EditorGUILayout.EndScrollView();
+            GUILayout.EndVertical();
+            DoInfoGUI();
+            GUILayout.EndHorizontal();
         }
 
 #else

@@ -359,7 +359,7 @@ namespace Unity.Android.Logcat
         /// <param name="symbolPath"></param>
         /// <param name="libraryFile"></param>
         /// <returns></returns>
-        public static string GetSymbolFile(string symbolPath, string libraryFile)
+        internal static string GetSymbolFile(string symbolPath, string libraryFile)
         {
             var fullPath = Path.Combine(symbolPath, libraryFile);
             if (File.Exists(fullPath))
@@ -374,7 +374,43 @@ namespace Unity.Android.Logcat
                     return fullPath;
             }
 
-            return null;
+            return string.Empty;
+        }
+
+        internal static string GetSymbolFile(IReadOnlyList<ReordableListItem> symbolPaths, string libraryFile)
+        {
+            foreach (var symbolPath in symbolPaths)
+            {
+                if (!symbolPath.Enabled)
+                    continue;
+
+                var file = GetSymbolFile(symbolPath.Name, libraryFile);
+                if (!string.IsNullOrEmpty(file))
+                    return file;
+            }
+
+            return string.Empty;
+        }
+
+        internal static bool ParseCrashLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string address, out string libName)
+        {
+            foreach (var regexItem in regexs)
+            {
+                if (!regexItem.Enabled)
+                    continue;
+
+                var match = new Regex(regexItem.Name).Match(msg);
+                if (match.Success)
+                {
+                    address = match.Groups["address"].Value;
+                    libName = match.Groups["libName"].Value + ".so";
+                    return true;
+                }
+            }
+
+            address = null;
+            libName = null;
+            return false;
         }
     }
 }

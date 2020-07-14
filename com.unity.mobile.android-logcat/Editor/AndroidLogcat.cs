@@ -393,7 +393,7 @@ namespace Unity.Android.Logcat
                     continue;
 
                 string address, libName;
-                if (!ParseCrashMessage(entry.message, out address, out libName))
+                if (!AndroidLogcatUtilities.ParseCrashLine(m_Runtime.Settings.StacktraceResolveRegex, entry.message, out address, out libName))
                     continue;
 
                 List<UnresolvedAddress> addresses;

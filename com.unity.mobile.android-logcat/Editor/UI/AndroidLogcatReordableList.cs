@@ -74,8 +74,7 @@ namespace Unity.Android.Logcat
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, false, false,
                 GUIStyle.none,
                 GUI.skin.verticalScrollbar,
-                GUILayout.ExpandWidth(true),
-                GUILayout.ExpandHeight(true));
+                GUILayout.ExpandWidth(true));
             if (m_DataSource.Count == 0)
                 DoListGUIWhenEmpty();
 
@@ -156,8 +155,8 @@ namespace Unity.Android.Logcat
         {
             var currentEvent = Event.current;
             bool hitEnter = currentEvent.type == EventType.KeyDown && (currentEvent.keyCode == KeyCode.Return || currentEvent.keyCode == KeyCode.KeypadEnter);
-            EditorGUILayout.BeginVertical(GUILayout.Width(ButtonWidth));
-
+            EditorGUILayout.BeginVertical(GUILayout.Width(ButtonWidth), GUILayout.Height(140));
+            GUILayout.Space(2);
             if (GUILayout.Button(kIconToolbarPlus, ButtonStyles) || (hitEnter && GUI.GetNameOfFocusedControl() == kInputTextFieldControlId))
             {
                 OnPlusButtonClicked();
@@ -213,9 +212,9 @@ namespace Unity.Android.Logcat
             CurrentItemName = EditorGUILayout.TextField(CurrentItemName, GUILayout.Height(AndroidLogcatStyles.kTagEntryFixedHeight + 2));
         }
 
-        public void OnGUI()
+        public void OnGUI(float height)
         {
-            EditorGUILayout.BeginVertical(GUILayout.Height(70));
+            EditorGUILayout.BeginVertical(GUILayout.Height(height));
             if (ShowEntryGUI)
                 DoEntryGUI();
 
