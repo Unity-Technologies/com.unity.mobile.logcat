@@ -20,8 +20,8 @@ namespace Unity.Android.Logcat
 
         internal static readonly string[] kAddressResolveRegex =
         {
-            @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]{8}).*(?<libName>lib.*)\.so",
-            @"\s*at (?<libName>lib.*)\.(?<address>[a-fA-F0-9]{8})"
+            @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9]+).*(?<libName>lib.*)\.so",
+            @".*at (?<libName>lib.*)\.0x(?<address>[a-fA-F0-9]+)\(Native Method\)"
         };
 
         [SerializeField]

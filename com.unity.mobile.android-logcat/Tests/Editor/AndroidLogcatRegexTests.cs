@@ -322,8 +322,10 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
     {
         var logLines = new[]
         {
-            "    at libunity.0041e340(Native Method)  ",
-            "2019 -05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 0041e340  /data/app/com.mygame==/lib/arm/libunity.so"
+            "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x0041e340(Native Method)",
+            "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 0041e340  /data/app/com.mygame==/lib/arm/libunity.so",
+            "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x1234567890123456(Native Method)",
+            "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/arm/libunity.so",
         };
 
         var regexs = new List<ReordableListItem>();
@@ -338,7 +340,8 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
             string libName;
             var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out address, out libName);
             Assert.IsTrue(result, "Failed to parse " + line);
-            Assert.IsTrue(address.Equals("0041e340"));
+            Assert.IsTrue(address.Equals("0041e340") ||
+                address.Equals("1234567890123456"));
             Assert.IsTrue(libName.Equals("libunity.so"));
         }
     }
