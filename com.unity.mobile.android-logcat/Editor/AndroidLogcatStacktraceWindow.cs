@@ -111,12 +111,13 @@ namespace Unity.Android.Logcat
         {
             EditorGUILayout.BeginVertical(GUILayout.Width(100));
 
+            // TODO: bug, after copy pasting to resolved text area and clicking this button, nothing happens
             if (GUILayout.Button("Resolve Stacktraces"))
             {
-                ResolveStacktraces();
-                m_WindowMode = WindowMode.ResolvedLog;
                 GUIUtility.keyboardControl = 0;
                 GUIUtility.hotControl = 0;
+                ResolveStacktraces();
+                m_WindowMode = WindowMode.ResolvedLog;
             }
             GUILayout.Space(20);
             if (GUILayout.Button("Open settings"))
