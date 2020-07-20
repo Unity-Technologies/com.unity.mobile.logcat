@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="Screen" style="flex-direction: row; flex-grow: 1;">
+        <ui:VisualElement style="height: 100%; width: auto; flex-grow: 1;">
+            <ui:IMGUIContainer name="Toolbar" style="width: auto; height: 20px;" />
+            <ui:TextField picking-mode="Ignore" value="filler text" text="filler text" multiline="true" style="flex-grow: 1;" />
+        </ui:VisualElement>
+        <ui:IMGUIContainer name="Operations" style="width: 150px; align-items: stretch; height: 100%; flex-direction: column; right: auto; left: auto; top: auto; bottom: auto; flex-grow: 0; flex-shrink: 1;" />
+    </ui:VisualElement>
+</ui:UXML>
