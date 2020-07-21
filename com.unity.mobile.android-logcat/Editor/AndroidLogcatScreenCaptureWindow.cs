@@ -133,7 +133,7 @@ namespace Unity.Android.Logcat
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
                 Repaint();
             }
-            GUILayout.Button(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
 
             EditorGUI.BeginChangeCheck();
             m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
