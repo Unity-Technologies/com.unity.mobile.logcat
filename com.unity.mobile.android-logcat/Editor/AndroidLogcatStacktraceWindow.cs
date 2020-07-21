@@ -107,17 +107,26 @@ namespace Unity.Android.Logcat
             m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 
+        private void SelectWindowMode(WindowMode mode)
+        {
+            m_WindowMode = mode;
+
+            GUIUtility.keyboardControl = 0;
+            GUIUtility.hotControl = 0;
+            GUI.FocusControl(string.Empty);
+            Repaint();
+        }
+
         void DoInfoGUI()
         {
             EditorGUILayout.BeginVertical(GUILayout.Width(100));
 
-            // TODO: bug, after copy pasting to resolved text area and clicking this button, nothing happens
             if (GUILayout.Button("Resolve Stacktraces"))
             {
-                GUIUtility.keyboardControl = 0;
-                GUIUtility.hotControl = 0;
+                // Note: Must be executed before ResolveStacktraces, otherwise m_Text might contain old data
+                SelectWindowMode(WindowMode.ResolvedLog);
+
                 ResolveStacktraces();
-                m_WindowMode = WindowMode.ResolvedLog;
             }
             GUILayout.Space(20);
             if (GUILayout.Button("Open settings"))
@@ -132,26 +141,21 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginChangeCheck();
             m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.Fixed, GUILayout.ExpandWidth(true));
             if (EditorGUI.EndChangeCheck())
-            {
-                // Editor seems to be caching text from EditorGUILayout.TextArea
-                // This invalidates the cache, and forces the text to change in text area
-                GUIUtility.keyboardControl = 0;
-                GUIUtility.hotControl = 0;
-            }
+                SelectWindowMode(m_WindowMode);
 
             m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
+            GUI.SetNextControlName(WindowMode.ResolvedLog.ToString());
             switch (m_WindowMode)
             {
                 case WindowMode.ResolvedLog:
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
                     EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
-                    // Keep this commented, otherwise, it's not possible to select text in this text area and copy it.
-                    //GUIUtility.keyboardControl = 0;
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
             }
+            
             EditorGUILayout.EndScrollView();
             GUILayout.EndVertical();
             DoInfoGUI();
