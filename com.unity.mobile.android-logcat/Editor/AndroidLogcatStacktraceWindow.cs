@@ -1,11 +1,6 @@
 using System;
-using System.IO;
 using UnityEngine;
 using UnityEditor;
-using System.Text.RegularExpressions;
-using UnityEditor.Android;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace Unity.Android.Logcat
@@ -30,9 +25,7 @@ namespace Unity.Android.Logcat
         private WindowMode m_WindowMode;
 
         private AndroidLogcatRuntimeBase m_Runtime;
-
-        AndroidLogcatReordableList m_SymbolPathList;
-
+        
         public static void ShowStacktraceWindow()
         {
             var wnd = GetWindow<AndroidLogcatStacktraceWindow>();
@@ -104,7 +97,6 @@ namespace Unity.Android.Logcat
                 placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
-            m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 
         private void SelectWindowMode(WindowMode mode)
