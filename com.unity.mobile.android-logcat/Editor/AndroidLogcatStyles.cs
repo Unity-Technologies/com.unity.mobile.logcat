@@ -68,6 +68,15 @@ namespace Unity.Android.Logcat
             wordWrap = false
         };
 
+        public static GUIStyle resolvedStacktraceStyle = new GUIStyle("textArea")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont(),
+            fontStyle = FontStyle.BoldAndItalic,
+            richText = true,
+            wordWrap = false,
+        };
+
         public static GUIStyle infoStyle = new GUIStyle("label")
         {
             fontSize = kLogEntryFontSize,

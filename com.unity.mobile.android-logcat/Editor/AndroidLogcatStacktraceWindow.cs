@@ -149,13 +149,13 @@ namespace Unity.Android.Logcat
             {
                 case WindowMode.ResolvedLog:
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
-                    EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
+                    EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
             }
-            
+
             EditorGUILayout.EndScrollView();
             GUILayout.EndVertical();
             DoInfoGUI();
