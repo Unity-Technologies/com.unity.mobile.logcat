@@ -17,6 +17,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatSettings
     {
         internal static string kSettingsName = "AndroidLogcatSettings";
+        internal static int kMinMemoryRequestIntervalMS = 500;
 
         internal static readonly string[] kAddressResolveRegex =
         {
@@ -54,8 +55,8 @@ namespace Unity.Android.Logcat
             set
             {
                 int correctedValue = value;
-                if (correctedValue < 500)
-                    correctedValue = 500;
+                if (correctedValue < kMinMemoryRequestIntervalMS)
+                    correctedValue = kMinMemoryRequestIntervalMS;
                 if (m_MemoryRequestInterval == correctedValue)
                     return;
                 m_MemoryRequestInterval = correctedValue;

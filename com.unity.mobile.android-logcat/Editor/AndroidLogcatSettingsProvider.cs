@@ -25,6 +25,8 @@ namespace Unity.Android.Logcat
             public static GUIContent stactrace = new GUIContent("Stack trace");
             public static GUIContent configureRegex = new GUIContent("Configure Regex", @"Global setting, shared by all projects, used for resolving library name and address name");
             public static GUIContent configureSymbolPaths = new GUIContent("Configure Symbol Paths", @"Per project setting, used for locating library's native symbol file, symbol file is used for demangling native function address into native function name");
+            public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms", $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
+                
         }
 
         private const string kStacktraceToolbar = "LogcatStacktraceToolbar";
@@ -67,7 +69,7 @@ namespace Unity.Android.Logcat
             }
             GUILayout.Space(20);
             EditorGUILayout.LabelField("Memory Window", EditorStyles.boldLabel);
-            settings.MemoryRequestIntervalMS = EditorGUILayout.IntField("Request Interval ms", settings.MemoryRequestIntervalMS);
+            settings.MemoryRequestIntervalMS = EditorGUILayout.IntField(Styles.requestIntervalMS, settings.MemoryRequestIntervalMS);
             GUILayout.Space(20);
             DoStacktraceGUI();
 
