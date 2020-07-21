@@ -7,7 +7,6 @@ using UnityEditor.Android;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -31,6 +30,8 @@ namespace Unity.Android.Logcat
         private WindowMode m_WindowMode;
 
         private AndroidLogcatRuntimeBase m_Runtime;
+
+        AndroidLogcatReordableList m_SymbolPathList;
 
         public static void ShowStacktraceWindow()
         {
@@ -94,32 +95,6 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
-            var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Resources/StacktraceWindow.uxml");
-            var child = tree.CloneTree();
-            rootVisualElement.Add(child);
-
-            child.style.flexGrow = 1;
-            child.style.flexShrink = 0;
-            child.Q<IMGUIContainer>("Operations").onGUIHandler = DoInfoGUI;
-            child.Q<IMGUIContainer>("Toolbar").onGUIHandler = DoToolbarGUI;
-
-            // var e = child.Q<EnumField>("Platform");
-            //e.styleSheets
-
-            //var iMGUIContainer = child.Q<IMGUIContainer>();
-            // iMGUIContainer.onGUIHandler = DoGUI;
-
-            /*
-            var root = rootVisualElement;
-
-            // Creates our button and sets its Text property.
-            var field = new TextField() { maxLength = 0, multiline = true};
-
-            field.SetValueWithoutNotify("sdsd");
-            field.wi
-            // Adds it to the root.
-            root.Add(field);
-
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             if (string.IsNullOrEmpty(m_Text))
             {
@@ -129,26 +104,12 @@ namespace Unity.Android.Logcat
                 placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
                 m_Text = placeholder.ToString();
             }
-            */
-        }
-
-        void DoToolbarGUI()
-        {
-            EditorGUI.BeginChangeCheck();
-            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] { new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.Fixed, GUILayout.ExpandWidth(true));
-            if (EditorGUI.EndChangeCheck())
-            {
-                // Editor seems to be caching text from EditorGUILayout.TextArea
-                // This invalidates the cache, and forces the text to change in text area
-                GUIUtility.keyboardControl = 0;
-                GUIUtility.hotControl = 0;
-            }
-
+            m_SymbolPathList = new AndroidLogcatSymbolList(m_Runtime.ProjectSettings.SymbolPaths);
         }
 
         void DoInfoGUI()
         {
-            EditorGUILayout.BeginVertical();
+            EditorGUILayout.BeginVertical(GUILayout.Width(100));
 
             // TODO: bug, after copy pasting to resolved text area and clicking this button, nothing happens
             if (GUILayout.Button("Resolve Stacktraces"))
@@ -164,7 +125,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
-        void OnGUI2()
+        void OnGUI()
         {
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
