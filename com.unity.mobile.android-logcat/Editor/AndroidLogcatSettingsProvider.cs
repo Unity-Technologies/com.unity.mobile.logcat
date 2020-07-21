@@ -94,7 +94,7 @@ namespace Unity.Android.Logcat
                 StacktraceToolbar = kStacktraceToolbarSymbolPaths;
             EditorGUILayout.EndHorizontal();
 
-            float height = 400.0f;
+            float height = 150.0f;
             switch (StacktraceToolbar)
             {
                 case kStacktraceToolbarRegex:
