@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using System.Text;
@@ -8,9 +10,55 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
 #if PLATFORM_ANDROID
+
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
-        internal static readonly string m_DefaultAddressRegex = @"\s*#\d{2}\s*pc\s*(\S*)\s*.*(lib.*\.so)";
+
+        class UnresolvedAddresses
+        {
+            Dictionary<string, Dictionary<string, string>> m_Addresses = new Dictionary<string, Dictionary<string, string>>();
+
+            private Dictionary<string, string> GetOrCreateAddressMap(string libraryName)
+            {
+                Dictionary<string, string> addresses;
+                if (m_Addresses.TryGetValue(libraryName, out addresses))
+                    return addresses;
+                addresses = new Dictionary<string, string>();
+                m_Addresses[libraryName] = addresses;
+                return addresses;
+            }
+
+            internal void CreateAddressEntry(string libraryName, string address)
+            {
+                var addresses = GetOrCreateAddressMap(libraryName);
+                addresses[address] = string.Empty;
+            }
+
+            internal void SetAddressValue(string libraryName, string address, string value)
+            {
+                var addresses = GetOrCreateAddressMap(libraryName);
+                addresses[address] = value;
+            }
+
+            internal string GetAddressValue(string libraryName, string address)
+            {
+                var addresses = GetOrCreateAddressMap(libraryName);
+                string value = string.Empty;
+                if (addresses.TryGetValue(address, out value))
+                    return value;
+                return string.Empty;
+            }
+
+            internal IReadOnlyList<string> GetAllLibraries()
+            {
+                return m_Addresses.Keys.ToArray();
+            }
+
+            internal IReadOnlyList<string> GetAllAddresses(string libraryName)
+            {
+                return m_Addresses[libraryName].Keys.ToArray();
+            }
+        }
 
         enum WindowMode
         {
@@ -25,7 +73,7 @@ namespace Unity.Android.Logcat
         private WindowMode m_WindowMode;
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        
+
         public static void ShowStacktraceWindow()
         {
             var wnd = GetWindow<AndroidLogcatStacktraceWindow>();
@@ -34,6 +82,100 @@ namespace Unity.Android.Logcat
             wnd.titleContent = new GUIContent("Stacktrace Utility");
             wnd.Show();
             wnd.Focus();
+        }
+
+        internal static string ResolveAddresses(string[] lines, IReadOnlyList<ReordableListItem> regexes,  IReadOnlyList<ReordableListItem> symbolPaths, AndroidTools tools)
+        {
+            var output = string.Empty;
+            // Calling addr2line for every address is costly, that's why we need to do it in batch
+            var unresolved = new UnresolvedAddresses();
+            foreach (var l in lines)
+            {
+                string address;
+                string library;
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out address, out library))
+                    continue;
+                unresolved.CreateAddressEntry(library, address);
+            }
+
+            var libraries = unresolved.GetAllLibraries();
+            foreach (var library in libraries)
+            {
+                var addresses = unresolved.GetAllAddresses(library);
+                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, library);
+
+                // Symbol file not found, set 'not found' messages for all addresses of this library
+                if (string.IsNullOrEmpty(symbolFile))
+                {
+                    var value = $"<color={m_RedColor}>({library} not found)</color>";
+                    foreach (var a in addresses)
+                        unresolved.SetAddressValue(library, a, value);
+                    continue;
+                }
+
+
+                try
+                {
+                    var result = tools.RunAddr2Line(symbolFile, addresses.ToArray());
+
+                    if (result.Length != addresses.Count)
+                    {
+                        return $"Failed to run addr2line, expected to receive {addresses.Count} addresses, but received {result.Length}";
+                    }
+
+                    for (int i = 0; i < addresses.Count; i++)
+                    {
+                        AndroidLogcatInternalLog.Log($"{addresses[i]} ---> {result[i]}");
+                        unresolved.SetAddressValue(library, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return $"Exception while running addr2line:\n{ex.Message}";
+                }
+            }
+
+
+            foreach (var l in lines)
+            {
+                string address;
+                string library;
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out address, out library))
+                {
+                    output += l;
+                }
+                else
+                {
+                    /*
+                    string resolved = string.Format(" <color={0}>(Not resolved)</color>", m_RedColor);
+                    var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, library);
+                    if (string.IsNullOrEmpty(symbolFile))
+                    {
+                        resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            var result = tools.RunAddr2Line(symbolFile, new[] { address });
+                            AndroidLogcatInternalLog.Log("addr2line \"{0}\" {1}", symbolFile, address);
+                            if (!string.IsNullOrEmpty(result[0]))
+                                resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());
+                        }
+                        catch (Exception ex)
+                        {
+                            return string.Format("Exception while running addr2line ('{0}', {1}):\n{2}", symbolFile, address, ex.Message);
+                        }
+                    }
+                    */
+
+                    output += l.Replace(address, address + " " + unresolved.GetAddressValue(library, address));
+                }
+
+                output += Environment.NewLine;
+            }
+
+            return output;
         }
 
         void ResolveStacktraces()
@@ -46,44 +188,7 @@ namespace Unity.Android.Logcat
             }
 
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var l in lines)
-            {
-                string address;
-                string library;
-
-                if (!AndroidLogcatUtilities.ParseCrashLine(m_Runtime.Settings.StacktraceResolveRegex, l, out address, out library))
-                {
-                    m_ResolvedStacktraces += l;
-                }
-                else
-                {
-                    string resolved = string.Format(" <color={0}>(Not resolved)</color>", m_RedColor);
-                    var symbolFile = AndroidLogcatUtilities.GetSymbolFile(m_Runtime.ProjectSettings.SymbolPaths, library);
-                    if (string.IsNullOrEmpty(symbolFile))
-                    {
-                        resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var result = AndroidLogcatManager.instance.Runtime.Tools.RunAddr2Line(symbolFile, new[] { address });
-                            AndroidLogcatInternalLog.Log("addr2line \"{0}\" {1}", symbolFile, address);
-                            if (!string.IsNullOrEmpty(result[0]))
-                                resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());
-                        }
-                        catch (Exception ex)
-                        {
-                            m_ResolvedStacktraces = string.Format("Exception while running addr2line ('{0}', {1}):\n{2}", symbolFile, address, ex.Message);
-                            return;
-                        }
-                    }
-
-                    m_ResolvedStacktraces += l.Replace(address, address + resolved);
-                }
-
-                m_ResolvedStacktraces += Environment.NewLine;
-            }
+            m_ResolvedStacktraces = ResolveAddresses(lines, m_Runtime.Settings.StacktraceResolveRegex, m_Runtime.ProjectSettings.SymbolPaths, m_Runtime.Tools);
         }
 
         private void OnEnable()
