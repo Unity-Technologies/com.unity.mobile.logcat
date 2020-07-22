@@ -89,7 +89,7 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Worker thread for async operations.
-        /// Note: If there's an exception, very bad happen which don't get reported anywhere, this is way we're try/catching async operation invoke
+        /// Note: If there's an exception, very bad things happen which don't get reported anywhere, this is why we're try/catching async operation invoke
         /// </summary>
         /// <param name="o"></param>
         private void WorkerThread(object o)
