@@ -226,8 +226,10 @@ namespace Unity.Android.Logcat
                 ResolveStacktraces();
             }
             GUILayout.Space(20);
-            if (GUILayout.Button("Open settings"))
+            if (GUILayout.Button("Configure Regex"))
                 SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
+            if (GUILayout.Button("Configure Symbol Paths"))
+                SettingsService.OpenProjectSettings(AndroidLogcatProjectSettingsProvider.kSettingsPath);
             EditorGUILayout.EndVertical();
         }
 
