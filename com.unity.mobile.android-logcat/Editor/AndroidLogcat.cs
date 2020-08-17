@@ -503,7 +503,7 @@ namespace Unity.Android.Logcat
         private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (string.IsNullOrEmpty(message))
+            if (message == null)
                 return;
 
             lock (m_CachedLogLines)
