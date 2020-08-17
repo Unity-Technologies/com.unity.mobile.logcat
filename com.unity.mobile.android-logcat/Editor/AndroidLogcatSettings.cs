@@ -17,6 +17,8 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatSettings
     {
         internal static string kSettingsName = "AndroidLogcatSettings";
+
+        // Since querying memory from device is a lengthy operation, here's a cap 500 ms, setting it too low  will make memory request to be delayed
         internal static int kMinMemoryRequestIntervalMS = 500;
 
         internal static readonly string[] kAddressResolveRegex =
@@ -48,8 +50,6 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<ReordableListItem> m_StacktraceResolveRegex;
 
-        // Warning: Setting this number to low, will make memory request to be delayed
-        // Since querying memory from device is a lengthy operation. That's why there's a cap 500
         internal int MemoryRequestIntervalMS
         {
             set

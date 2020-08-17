@@ -434,7 +434,7 @@ namespace Unity.Android.Logcat
                     {
                         var idx = addresses[i].logEntryIndex;
                         var append = string.IsNullOrEmpty(result[i]) ? "(Not Resolved)" : result[i];
-                        entries[idx] = new LogEntry(entries[idx]) {message = ModifyLogEntry(entries[idx].message, append, false)};
+                        entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, append, false)};
                     }
                 }
                 catch (Exception ex)

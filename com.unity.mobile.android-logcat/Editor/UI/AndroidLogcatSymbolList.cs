@@ -60,11 +60,11 @@ namespace Unity.Android.Logcat
         private void DoSymbolPickSelection(object userData, string[] options, int selected)
         {
             var paths = (List<string>)userData;
-            var p = paths[selected];
-            if (!string.IsNullOrEmpty(p))
+            var selectedPath = paths[selected];
+            if (!string.IsNullOrEmpty(selectedPath))
             {
                 GUIUtility.keyboardControl = 0;
-                AddItem(p);
+                AddItem(selectedPath);
                 return;
             }
 
