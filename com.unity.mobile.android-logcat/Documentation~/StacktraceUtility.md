@@ -12,7 +12,7 @@ Allows you to copy and paste custom log and resolve stacktraces.
 
 #### Configure Symbol Paths
 
-Before using the tool, you need to setup symbol paths in the **Preferences->Analysis->Android Logcat Settings**, so symbols for libraries like libunity.so, libmain.so, libil2cpp.so can be found.
+Before using the tool, you need to setup symbol paths in the **Project Settings->Analysis->Android Logcat Settings**, so symbols for libraries like libunity.so, libmain.so, libil2cpp.so can be found.
 ![](images/SymbolPaths.png)
 Click **+** button and pick a symbol path from Unity installation or a custom location.
 
@@ -47,6 +47,8 @@ When resolving stacktrace, the tool will go through symbol path list and use the
 **Note: If you provide an invalid symbol path, the function names will still be resolved, but they will not be correct. Android tools don't validate if a specific address belongs to a specific symbol file.**
 
 #### Configure Regex
+
+Can be found in **Preferences->Analysis->Android Logcat Settings**
 
 ![](images/ConfigureRegex.png)
 This list contains the default regexes how to parse address and library name from entry line. You can add your own custom regex to resolve address and library name, just be sure capture groups - *libName* and *address* exist.
