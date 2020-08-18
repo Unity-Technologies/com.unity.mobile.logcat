@@ -4,14 +4,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2020-08-18
 
 ### Fix & Improvements.
  - Correctly resolve top activity when device is locked.
-
-## [1.2.0-preview] - 2020-04-23
-
-### Fix & Improvements.
+ - Improved Stacktrace Utility, it's easier to set symbol paths and regexes.
+ - Consola font is now selectable in Logcat settings.
  - Android Logcat per project settings are saved in ProjectSettings directory.
  - Fix issue where sometimes Android Logcat would stop working if USB cable is unplugged and replugged.
  - Properly save/restore Android Logcat settings, previously settings like tags were being lost during domain reload or Editor restart.
