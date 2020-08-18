@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
@@ -298,22 +299,32 @@ ACTIVITY MANAGER RUNNING PROCESSES (dumpsys activity processes)
     }
 
     [Test]
-    public void ParseCrashStackrace()
+    public void CorrectyParseStacktraceCrash()
     {
-        var regex = new Regex(AndroidLogcatStacktraceWindow.m_DefaultAddressRegex);
+        var logLines = new[]
+        {
+            "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x0041e340(Native Method)",
+            "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 0041e340  /data/app/com.mygame==/lib/arm/libunity.so",
+            "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x1234567890123456(Native Method)",
+            "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/arm/libunity.so",
+        };
 
-        string crash32 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
-        string crash64 = "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc002983fc  /data/app/com.mygame==/lib/arm/libunity.so";
+        var regexs = new List<ReordableListItem>();
+        foreach (var r in AndroidLogcatSettings.kAddressResolveRegex)
+        {
+            regexs.Add(new ReordableListItem() { Enabled = true, Name = r });
+        }
 
-        var result = regex.Match(crash32);
-        Assert.IsTrue(result.Success);
-        Assert.AreEqual(result.Groups[1].Value, "002983fc");
-        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
-
-        result = regex.Match(crash64);
-        Assert.IsTrue(result.Success);
-        Assert.AreEqual(result.Groups[1].Value, "002983fc002983fc");
-        Assert.AreEqual(result.Groups[2].Value, "libunity.so");
+        foreach (var line in logLines)
+        {
+            string address;
+            string libName;
+            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out address, out libName);
+            Assert.IsTrue(result, "Failed to parse " + line);
+            Assert.IsTrue(address.Equals("0041e340") ||
+                address.Equals("1234567890123456"));
+            Assert.IsTrue(libName.Equals("libunity.so"));
+        }
     }
 
     [Test]

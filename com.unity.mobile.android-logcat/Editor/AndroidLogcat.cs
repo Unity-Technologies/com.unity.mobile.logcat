@@ -393,7 +393,7 @@ namespace Unity.Android.Logcat
                     continue;
 
                 string address, libName;
-                if (!ParseCrashMessage(entry.message, out address, out libName))
+                if (!AndroidLogcatUtilities.ParseCrashLine(m_Runtime.Settings.StacktraceResolveRegex, entry.message, out address, out libName))
                     continue;
 
                 List<UnresolvedAddress> addresses;
@@ -420,12 +420,21 @@ namespace Unity.Android.Logcat
                 // For optimizations purposes, we batch addresses which belong to same library, so addr2line can be ran less
                 try
                 {
-                    var result = m_Runtime.Tools.RunAddr2Line(libpath, addresses.Select(m => m.unresolvedAddress).ToArray());
+                    string[] result;
+                    if (!string.IsNullOrEmpty(libpath))
+                        result = m_Runtime.Tools.RunAddr2Line(libpath, addresses.Select(m => m.unresolvedAddress).ToArray());
+                    else
+                    {
+                        result = new string[addresses.Count];
+                        for (int i = 0; i < addresses.Count; i++)
+                            result[i] = string.Empty;
+                    }
+
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         var idx = addresses[i].logEntryIndex;
                         var append = string.IsNullOrEmpty(result[i]) ? "(Not Resolved)" : result[i];
-                        entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, append, false) };
+                        entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, append, false)};
                     }
                 }
                 catch (Exception ex)
@@ -494,7 +503,7 @@ namespace Unity.Android.Logcat
         private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (string.IsNullOrEmpty(message))
+            if (message == null)
                 return;
 
             lock (m_CachedLogLines)

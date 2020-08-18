@@ -68,6 +68,15 @@ namespace Unity.Android.Logcat
             wordWrap = false
         };
 
+        public static GUIStyle resolvedStacktraceStyle = new GUIStyle("textArea")
+        {
+            fontSize = kLogEntryFontSize,
+            font = GetFont(),
+            fontStyle = FontStyle.BoldAndItalic,
+            richText = true,
+            wordWrap = false,
+        };
+
         public static GUIStyle infoStyle = new GUIStyle("label")
         {
             fontSize = kLogEntryFontSize,
@@ -126,6 +135,16 @@ namespace Unity.Android.Logcat
         }
 
         public static readonly GUIStyle StatusIcon = "toolbarButton";
+
+        public static Texture2D LoadIcon(string name)
+        {
+            var tex = (Texture2D)EditorGUIUtility.Load($"Packages/com.unity.mobile.android-logcat/Editor/Resources/{name}.png");
+            return tex;
+        }
+
+        internal static GUIContent kIconToolbarDown = new GUIContent(LoadIcon("DownArrow"));
+        internal static GUIContent kIconToolbarUp = new GUIContent(LoadIcon("UpArrow"));
+        internal static GUIContent kIconReset = new GUIContent(LoadIcon("Reset"), "Reset");
     }
 }
 #endif

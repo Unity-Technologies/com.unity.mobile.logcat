@@ -76,9 +76,11 @@ namespace Unity.Android.Logcat
 
         internal string[] RunAddr2Line(string symbolFilePath, string[] addresses)
         {
+            // https://sourceware.org/binutils/docs/binutils/addr2line.html
+            var args = "-C -f -p -e \"" + symbolFilePath + "\" " + string.Join(" ", addresses.ToArray());
+            AndroidLogcatInternalLog.Log($"\"{m_Addr2LinePath}\" {args}");
             var result = Shell.RunProcess(
-                m_Addr2LinePath,
-                "-C -f -p -e \"" + symbolFilePath + "\" " + string.Join(" ", addresses.ToArray()));
+                m_Addr2LinePath, args);
             ValidateResult(result);
             return result.GetStandardOut().Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
         }
