@@ -67,8 +67,10 @@ namespace Unity.Android.Logcat
         }
 
         [SettingsProvider]
-        public static SettingsProvider CreateMyCustomSettingsProvider()
+        public static SettingsProvider CreateAndroidLogcatSettingsProvider()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return null;
             var provider = new AndroidLogcatSettingsProvider(kSettingsPath, SettingsScope.User);
             return provider;
         }

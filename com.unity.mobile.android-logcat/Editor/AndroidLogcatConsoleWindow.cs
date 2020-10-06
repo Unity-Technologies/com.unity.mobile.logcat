@@ -84,6 +84,9 @@ namespace Unity.Android.Logcat
 
         protected void OnEnableInternal(AndroidLogcatRuntimeBase runtime)
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;
 
@@ -116,6 +119,9 @@ namespace Unity.Android.Logcat
 
         internal void OnDisable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             if (m_Runtime == null)
             {
                 AndroidLogcatInternalLog.Log("Runtime was already destroyed.");
@@ -408,6 +414,12 @@ namespace Unity.Android.Logcat
 
         internal void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             if (m_ApplySettings)
             {
                 ApplySettings(m_Runtime.Settings);

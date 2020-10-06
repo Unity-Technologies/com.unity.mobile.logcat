@@ -13,6 +13,7 @@ namespace Unity.Android.Logcat
     {
         private static int s_AndroidExtensionsExists = -1;
         private static Assembly s_AndroidExtensions;
+        private static readonly string kAndroidLogcatWarningIssued = nameof(kAndroidLogcatWarningIssued);
 
         private static Assembly AndroidExtensions
         {
@@ -29,13 +30,19 @@ namespace Unity.Android.Logcat
                     .FirstOrDefault(a => a.FullName.Contains(assemblyName));
                 s_AndroidExtensionsExists = s_AndroidExtensions == null ? 0 : 1;
 
-                if (s_AndroidExtensionsExists == 0)
+                // Warn user once why logcat is disabled
+                if (SessionState.GetBool(kAndroidLogcatWarningIssued, false) == false &&
+                    s_AndroidExtensionsExists == 0)
+                {
+                    SessionState.SetBool(kAndroidLogcatWarningIssued, true);
                     Debug.LogWarning($"{assemblyName} assembly not found, android logcat will be disabled.");
+                }
 
                 return s_AndroidExtensions;
             }
         }
 
+        internal static bool AndroidExtensionsInstalled => AndroidExtensions != null;
 
         internal class ADB
         {

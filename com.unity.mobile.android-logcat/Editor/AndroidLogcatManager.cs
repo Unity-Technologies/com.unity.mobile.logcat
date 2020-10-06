@@ -23,6 +23,9 @@ namespace Unity.Android.Logcat
 
         private void Initialize()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             if (m_Runtime != null)
                 return;
 

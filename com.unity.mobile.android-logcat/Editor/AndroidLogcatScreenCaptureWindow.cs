@@ -38,6 +38,9 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
 
@@ -59,6 +62,9 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
             m_SelectedDevice = 0;
         }
@@ -117,6 +123,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             EditorGUILayout.BeginVertical();
             GUILayout.Space(5);
 

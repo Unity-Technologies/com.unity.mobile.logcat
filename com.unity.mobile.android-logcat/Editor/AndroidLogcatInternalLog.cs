@@ -48,11 +48,19 @@ namespace Unity.Android.Logcat
 
         public void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
             ms_Instance = this;
         }
 
         public void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             GUILayout.BeginHorizontal();
             int count;
             lock (ms_LogEntries)

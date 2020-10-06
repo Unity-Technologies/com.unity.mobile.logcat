@@ -27,6 +27,8 @@ namespace Unity.Android.Logcat
 
         void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
             if (m_Runtime == null)
                 m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_IpString = EditorPrefs.GetString(kAndroidLogcatLastIp, "");
@@ -40,6 +42,8 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
             if (m_Runtime == null)
                 return;
             m_Runtime.DeviceQuery.DevicesUpdated -= DevicesUpdated;
@@ -107,6 +111,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             EditorGUILayout.BeginVertical();
             {
                 EditorGUILayout.LabelField("Available devices:", EditorStyles.boldLabel);

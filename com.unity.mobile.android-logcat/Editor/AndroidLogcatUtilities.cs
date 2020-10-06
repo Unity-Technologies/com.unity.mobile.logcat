@@ -409,5 +409,10 @@ namespace Unity.Android.Logcat
             libName = null;
             return false;
         }
+
+        internal static void ShowAndroidIsNotInstalledMessage()
+        {
+            UnityEditor.EditorGUILayout.HelpBox("Android Logcat requires Android support to be installed.", UnityEditor.MessageType.Info);
+        }
     }
 }

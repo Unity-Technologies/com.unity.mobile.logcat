@@ -191,6 +191,9 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             if (string.IsNullOrEmpty(m_Text))
             {
@@ -233,6 +236,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             EditorGUI.BeginChangeCheck();
