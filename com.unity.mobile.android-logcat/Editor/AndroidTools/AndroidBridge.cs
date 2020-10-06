@@ -9,6 +9,11 @@ using Object = System.Object;
 
 namespace Unity.Android.Logcat
 {
+    /// <summary>
+    /// Provides dynamic way of accessing UnityEditor.Android.Extensions.dll.
+    /// It solves the problem where if you have logcat package installed, but there's no Android Support installed, you won't get compiler errors
+    /// It also enables to use Logcat package when active platform is not Android
+    /// </summary>
     class AndroidBridge
     {
         private static int s_AndroidExtensionsExists = -1;
