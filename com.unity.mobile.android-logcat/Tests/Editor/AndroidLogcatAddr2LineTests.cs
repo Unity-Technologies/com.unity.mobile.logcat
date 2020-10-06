@@ -45,6 +45,12 @@ public class AndroidLogcatAddr2LineTests
 
     private void CanResolveStacktraces(string abi)
     {
+        if (!AndroidBridge.AndroidExtensionsInstalled)
+        {
+            System.Console.WriteLine("Test ignored, because Android Support is not installed");
+            return;
+        }
+
         if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
         {
             System.Console.WriteLine("Test ignored");

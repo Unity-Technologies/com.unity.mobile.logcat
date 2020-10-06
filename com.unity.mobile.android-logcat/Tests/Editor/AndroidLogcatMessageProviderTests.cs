@@ -11,7 +11,7 @@ using UnityEngine.TestTools;
 internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 {
 #pragma warning disable 0414
-    private AndroidInterface.ADB m_ADB;
+    private AndroidBridge.ADB m_ADB;
     private string m_Filter;
     private AndroidLogcat.Priority m_Priority;
     private int m_PackageID;
@@ -22,7 +22,7 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
     private List<string> m_FakeMessages;
 #pragma warning restore 0414
-    internal AndroidLogcatFakeMessageProvider(AndroidInterface.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
     {
         m_ADB = adb;
         m_Filter = filter;
