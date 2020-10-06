@@ -1,7 +1,5 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Text.RegularExpressions;
-using UnityEditor.Android;
 
 
 namespace Unity.Android.Logcat
@@ -89,12 +87,12 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
         private string m_Id;
-        private AndroidDevice m_Device;
+        private AndroidBridge.AndroidDevice m_Device;
         private Version m_Version;
         private string m_DisplayName;
 
 
-        internal AndroidLogcatDevice(ADB adb, string deviceId)
+        internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
         {
             m_Id = deviceId;
 
@@ -106,7 +104,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                m_Device = new AndroidDevice(adb, deviceId);
+                m_Device = new AndroidBridge.AndroidDevice(adb, deviceId);
             }
             catch (Exception ex)
             {
@@ -207,4 +205,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

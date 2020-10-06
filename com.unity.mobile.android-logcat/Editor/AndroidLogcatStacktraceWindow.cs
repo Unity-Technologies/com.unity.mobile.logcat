@@ -9,8 +9,6 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
-#if PLATFORM_ANDROID
-
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
 
@@ -260,15 +258,5 @@ namespace Unity.Android.Logcat
             DoInfoGUI();
             GUILayout.EndHorizontal();
         }
-
-#else
-        internal void OnGUI()
-        {
-#if !PLATFORM_ANDROID
-            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
-#endif
-        }
-
-#endif
     }
 }

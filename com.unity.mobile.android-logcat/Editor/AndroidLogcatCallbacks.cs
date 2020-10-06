@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -16,4 +15,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

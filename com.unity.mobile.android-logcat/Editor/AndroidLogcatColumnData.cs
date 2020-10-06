@@ -1,17 +1,10 @@
-#if PLATFORM_ANDROID
 using System;
-using System.IO;
-using System.Collections.Generic;
 using UnityEngine;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
     [Serializable]
-    public class ColumnData
+    internal class ColumnData
     {
         [NonSerialized]
         public GUIContent content;
@@ -34,4 +27,3 @@ namespace Unity.Android.Logcat
         public bool enabled = true;
     }
 }
-#endif

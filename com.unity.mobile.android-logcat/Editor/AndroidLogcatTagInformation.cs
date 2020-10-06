@@ -1,5 +1,3 @@
-#if PLATFORM_ANDROID
-
 using System;
 using UnityEngine;
 
@@ -47,4 +45,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

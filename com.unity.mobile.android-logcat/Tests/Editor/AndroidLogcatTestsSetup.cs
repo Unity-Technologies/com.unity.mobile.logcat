@@ -5,7 +5,7 @@ using Unity.Android.Logcat;
 using UnityEngine;
 using UnityEditor;
 using System;
-#if UNITY_ANDROID
+
 [InitializeOnLoad]
 public class AndroidLogcatTestsSetup
 {
@@ -18,23 +18,23 @@ public class AndroidLogcatTestsSetup
         var sdkPath = Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT");
         if (sdkPath != string.Empty)
         {
-            UnityEditor.Android.AndroidExternalToolsSettings.sdkRootPath = sdkPath;
+            AndroidInterface.AndroidExternalToolsSettings.sdkRootPath = sdkPath;
             Debug.Log($"SDK Path was set from ANDROID_SDK_ROOT = {sdkPath}");
         }
         else
         {
-            Debug.LogWarning($"ANDROID_SDK_ROOT was not set.\nCurrently using SDK from here: {UnityEditor.Android.AndroidExternalToolsSettings.sdkRootPath}");
+            Debug.LogWarning($"ANDROID_SDK_ROOT was not set.\nCurrently using SDK from here: {AndroidInterface.AndroidExternalToolsSettings.sdkRootPath}");
         }
 
         var ndkPath = Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT");
         if (ndkPath != string.Empty)
         {
-            UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath = ndkPath;
+            AndroidInterface.AndroidExternalToolsSettings.ndkRootPath = ndkPath;
             Debug.Log($"SDK Path was set from ANDROID_NDK_ROOT = {ndkPath}");
         }
         else
         {
-            Debug.LogWarning($"ANDROID_NDK_ROOT was not set.\nCurrently using NDK from here: {UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath}");
+            Debug.LogWarning($"ANDROID_NDK_ROOT was not set.\nCurrently using NDK from here: {AndroidInterface.AndroidExternalToolsSettings.ndkRootPath}");
         }
 #endif
     }
@@ -49,4 +49,3 @@ public class AndroidLogcatTestsSetup
 #endif
     }
 }
-#endif

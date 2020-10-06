@@ -1,15 +1,5 @@
-#if PLATFORM_ANDROID
-using System.Collections.Generic;
-using System.Diagnostics;
-using System;
-using System.Text.RegularExpressions;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEngine;
-using UnityEditor.Android;
-using System.Text;
-using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -43,4 +33,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

@@ -1,15 +1,10 @@
-#if PLATFORM_ANDROID
-
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatConnectToDeviceInput : IAndroidLogcatTaskInput
     {
-        internal ADB adb;
+        internal AndroidBridge.ADB adb;
         internal string ip;
         internal string port;
         internal string deviceId;
@@ -74,4 +69,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

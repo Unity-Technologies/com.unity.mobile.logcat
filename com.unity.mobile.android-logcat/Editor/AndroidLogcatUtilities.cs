@@ -1,11 +1,8 @@
-#if PLATFORM_ANDROID
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEditor.Android;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Unity.Android.Logcat
 {
@@ -15,7 +12,7 @@ namespace Unity.Android.Logcat
         /// Capture the screenshot on the given device.
         /// </summary>
         /// <returns> Return the path to the screenshot on the PC. </returns>
-        public static string CaptureScreen(ADB adb, string deviceId, out string error)
+        public static string CaptureScreen(AndroidBridge.ADB adb, string deviceId, out string error)
         {
             error = string.Empty;
             if (string.IsNullOrEmpty(deviceId))
@@ -70,7 +67,7 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
-        public static bool GetTopActivityInfo(ADB adb, IAndroidLogcatDevice device, ref string packageName, ref int packagePid)
+        public static bool GetTopActivityInfo(AndroidBridge.ADB adb, IAndroidLogcatDevice device, ref string packageName, ref int packagePid)
         {
             if (device == null)
                 return false;
@@ -91,7 +88,7 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Return the pid of the given package on the given device.
         /// </summary>
-        public static int GetPidFromPackageName(ADB adb, IAndroidLogcatDevice device, string packageName)
+        public static int GetPidFromPackageName(AndroidBridge.ADB adb, IAndroidLogcatDevice device, string packageName)
         {
             if (device == null)
                 return -1;
@@ -124,7 +121,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static string GetPackageNameFromPid(ADB adb, IAndroidLogcatDevice device, int processId)
+        public static string GetPackageNameFromPid(AndroidBridge.ADB adb, IAndroidLogcatDevice device, int processId)
         {
             if (device == null)
                 return string.Empty;
@@ -414,15 +411,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#else
-namespace Unity.Android.Logcat
-{
-    internal class AndroidLogcatUtilities
-    {
-        public static void ShowActivePlatformNotAndroidMessage()
-        {
-            UnityEditor.EditorGUILayout.HelpBox("Please switch active platform to be Android in Build Settings Window.", UnityEditor.MessageType.Info);
-        }
-    }
-}
-#endif

@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 using UnityEngine;
 using UnityEditor;
 
@@ -147,4 +146,3 @@ namespace Unity.Android.Logcat
         internal static GUIContent kIconReset = new GUIContent(LoadIcon("Reset"), "Reset");
     }
 }
-#endif

@@ -1,12 +1,9 @@
-#if PLATFORM_ANDROID
 using System.Collections.Generic;
-using System.Diagnostics;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
-using UnityEditor.Android;
 using System.Text;
 
 [assembly: InternalsVisibleTo("Unity.Mobile.AndroidLogcat.EditorTests")]
@@ -81,7 +78,7 @@ namespace Unity.Android.Logcat
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private ADB adb;
+        private AndroidBridge.ADB adb;
 
         private readonly IAndroidLogcatDevice m_Device;
         private readonly int m_PackagePid;
@@ -134,7 +131,7 @@ namespace Unity.Android.Logcat
             get { return m_MessageProvider; }
         }
 
-        public AndroidLogcat(AndroidLogcatRuntimeBase runtime, ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(AndroidLogcatRuntimeBase runtime, AndroidBridge.ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
@@ -547,4 +544,3 @@ namespace Unity.Android.Logcat
         internal const string kYearTime = "year";
     }
 }
-#endif

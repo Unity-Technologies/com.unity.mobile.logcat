@@ -1,4 +1,3 @@
-#if PLATFORM_ANDROID
 namespace Unity.Android.Logcat
 {
     internal struct BuildInfo
@@ -8,4 +7,3 @@ namespace Unity.Android.Logcat
         public string cpu;
     }
 }
-#endif

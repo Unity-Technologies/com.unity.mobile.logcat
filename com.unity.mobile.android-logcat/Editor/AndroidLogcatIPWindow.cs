@@ -1,8 +1,5 @@
-#if PLATFORM_ANDROID
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.Android;
 using System.Text.RegularExpressions;
 
 namespace Unity.Android.Logcat
@@ -203,4 +200,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

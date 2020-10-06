@@ -1,15 +1,13 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatRetrieveDeviceIdsInput : IAndroidLogcatTaskInput
     {
-        internal ADB adb;
+        internal AndroidBridge.ADB adb;
         internal bool notifyListeners;
     }
 
@@ -246,4 +244,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

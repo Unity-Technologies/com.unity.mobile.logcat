@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.Android;
 using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;

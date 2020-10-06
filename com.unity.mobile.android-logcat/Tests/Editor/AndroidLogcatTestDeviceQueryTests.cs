@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Unity.Android.Logcat;
-using UnityEditor.Android;
 
 
 class AndroidLogcatDeviceQueryTests : AndroidLogcatRuntimeTestBase
