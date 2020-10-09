@@ -2,11 +2,8 @@ using System.Collections.Generic;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using System.Text;
-
-[assembly: InternalsVisibleTo("Unity.Mobile.AndroidLogcat.EditorTests")]
 
 namespace Unity.Android.Logcat
 {
