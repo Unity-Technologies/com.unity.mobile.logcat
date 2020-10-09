@@ -2,23 +2,18 @@
     "name": "Unity.Mobile.AndroidLogcat.EditorTests",
     "references": [
         "Unity.Mobile.AndroidLogcat.Editor",
-        "Unity.PerformanceTesting",
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "Unity.PerformanceTesting"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
     ],
     "includePlatforms": [
         "Editor"
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "nunit.framework.dll"
-    ],
-    "autoReferenced": false,
-    "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
-    ],
-    "versionDefines": [],
-    "noEngineReferences": false
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "versionDefines": []
 }
