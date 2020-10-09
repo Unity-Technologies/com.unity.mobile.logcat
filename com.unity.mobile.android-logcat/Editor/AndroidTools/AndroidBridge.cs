@@ -16,7 +16,14 @@ namespace Unity.Android.Logcat
     /// </summary>
     class AndroidBridge
     {
-        private static int s_AndroidExtensionsExists = -1;
+        enum ExtensionState
+        {
+            Undefined,
+            Unavalaible,
+            Available
+        }
+
+        private static ExtensionState s_AndroidExtensionsState = ExtensionState.Undefined;
         private static Assembly s_AndroidExtensions;
         private static readonly string kAndroidLogcatWarningIssued = nameof(kAndroidLogcatWarningIssued);
 
@@ -25,7 +32,7 @@ namespace Unity.Android.Logcat
             get
             {
                 // Fast exit, since reflection is very slow
-                if (s_AndroidExtensionsExists == 0)
+                if (s_AndroidExtensionsState == ExtensionState.Unavalaible)
                     return null;
 
                 if (s_AndroidExtensions != null)
@@ -33,11 +40,11 @@ namespace Unity.Android.Logcat
                 var assemblyName = "UnityEditor.Android.Extensions";
                 s_AndroidExtensions = AppDomain.CurrentDomain.GetAssemblies()
                     .FirstOrDefault(a => a.FullName.Contains(assemblyName));
-                s_AndroidExtensionsExists = s_AndroidExtensions == null ? 0 : 1;
+                s_AndroidExtensionsState = s_AndroidExtensions == null ? ExtensionState.Unavalaible : ExtensionState.Available;
 
                 // Warn user once why logcat is disabled
                 if (SessionState.GetBool(kAndroidLogcatWarningIssued, false) == false &&
-                    s_AndroidExtensionsExists == 0)
+                    s_AndroidExtensionsState == ExtensionState.Unavalaible)
                 {
                     SessionState.SetBool(kAndroidLogcatWarningIssued, true);
                     Debug.LogWarning($"{assemblyName} assembly not found, android logcat will be disabled.");
@@ -56,7 +63,7 @@ namespace Unity.Android.Logcat
             private static MethodInfo s_GetADBPathMethodInfo;
             private static MethodInfo s_RunMethodInfo;
 
-            private System.Object m_ADBObject;
+            private readonly System.Object m_ADBObject;
 
             private static Type UnderlyingType
             {
@@ -73,10 +80,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            internal System.Object UnderlyingObject
-            {
-                get => m_ADBObject;
-            }
+            internal System.Object UnderlyingObject => m_ADBObject;
 
             private static MethodInfo GetInstanceMethodInfo
             {
@@ -237,12 +241,18 @@ namespace Unity.Android.Logcat
                 }
             }
 
+            /// <summary>
+            /// Matches to UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath
+            /// </summary>
             public static string ndkRootPath
             {
                 get => (string)NdkRootPathProperty.GetValue(null);
                 set => NdkRootPathProperty.SetValue(null, value);
             }
 
+            /// <summary>
+            /// /// Matches to UnityEditor.Android.AndroidExternalToolsSettings.sdkRootPath
+            /// </summary>
             public static string sdkRootPath
             {
                 get => (string)SdkRootPathProperty.GetValue(null);
