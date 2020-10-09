@@ -24,7 +24,7 @@ namespace Unity.Android.Logcat
 #else
             var directoriesToChecks = new[]
             {
-                Path.GetFullPath(Path.Combine(Path.GetDirectoryName(UnityEditor.Android.ADB.GetInstance().GetADBPath()), @"..\..\NDK")),
+                Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AndroidBridge.ADB.GetInstance().GetADBPath()), @"..\..\NDK")),
                 EditorPrefs.GetString("AndroidNdkRootR16b"),
                 System.Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT")
             };
