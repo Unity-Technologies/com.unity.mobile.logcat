@@ -398,8 +398,10 @@ namespace Unity.Android.Logcat
                 unresolvedAddresses[key].Add(new UnresolvedAddress() { logEntryIndex = i, unresolvedAddress = address });
             }
 
-            var engineDirectory = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
+                return;
 
+            var engineDirectory = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
 
             // Resolve addresses
             foreach (var u in unresolvedAddresses)
