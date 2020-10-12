@@ -51,7 +51,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:
-    logs:
+    {{ platform.name }}_{{ editor.version }}_{{ module_support.name }}_logs:
       paths:
         - "upm-ci~/test-results/**/*"
   dependencies:
