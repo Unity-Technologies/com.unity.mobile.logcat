@@ -1,8 +1,6 @@
-#if PLATFORM_ANDROID
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
@@ -12,7 +10,7 @@ namespace Unity.Android.Logcat
         private string m_Addr2LinePath;
         private string m_NMPath;
         private string m_ReadElfPath;
-        private UnityEditor.Android.ADB m_ADB;
+        private AndroidBridge.ADB m_ADB;
 
         internal AndroidTools()
         {
@@ -20,14 +18,14 @@ namespace Unity.Android.Logcat
             if (Application.platform != RuntimePlatform.WindowsEditor)
                 platformTag = "darwin-x86_64";
 #if UNITY_2019_3_OR_NEWER
-            m_NDKDirectory = UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath;
+            m_NDKDirectory = AndroidBridge.AndroidExternalToolsSettings.ndkRootPath;
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "llvm-nm");
 #else
             var directoriesToChecks = new[]
             {
-                Path.GetFullPath(Path.Combine(Path.GetDirectoryName(UnityEditor.Android.ADB.GetInstance().GetADBPath()), @"..\..\NDK")),
-                EditorPrefs.GetString("AndroidNdkRootR16b"),
+                Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AndroidBridge.ADB.GetInstance().GetADBPath()), @"..\..\NDK")),
+                UnityEditor.EditorPrefs.GetString("AndroidNdkRootR16b"),
                 System.Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT")
             };
 
@@ -105,16 +103,15 @@ namespace Unity.Android.Logcat
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
         }
 
-        internal UnityEditor.Android.ADB ADB
+        internal AndroidBridge.ADB ADB
         {
             get
             {
                 if (m_ADB == null)
-                    m_ADB = UnityEditor.Android.ADB.GetInstance();
+                    m_ADB = AndroidBridge.ADB.GetInstance();
 
                 return m_ADB;
             }
         }
     }
 }
-#endif

@@ -1,3 +1,4 @@
+using System;
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
@@ -106,6 +107,12 @@ myandroid2 device
     [TestCase(false, Description = "Runtime is kept, only editor window is restarted")]
     public void SavedSelectedDeviceIsPickedDuringRestart(bool restartRuntime)
     {
+        if (!AndroidBridge.AndroidExtensionsInstalled && restartRuntime)
+        {
+            Console.WriteLine("Test ignored, since Android Logcat deserialization doesn't work when Android Support is not installed");
+            return;
+        }
+
         InitRuntimeStatic(true);
         try
         {
@@ -141,6 +148,11 @@ myandroid2 device
     [TestCase(false, Description = "Runtime is kept, only editor window is restarted")]
     public void SavedSelectedPackageIsPickedDuringRestart(bool restartRuntime)
     {
+        if (!AndroidBridge.AndroidExtensionsInstalled && restartRuntime)
+        {
+            Console.WriteLine("Test ignored, since Android Logcat deserialization doesn't work when Android Support is not installed");
+            return;
+        }
         InitRuntimeStatic(true);
         try
         {

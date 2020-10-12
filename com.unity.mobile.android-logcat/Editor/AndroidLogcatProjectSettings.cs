@@ -1,9 +1,6 @@
-#if PLATFORM_ANDROID
 using System;
 using System.IO;
-using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEditor.Android;
 using System.Collections.Generic;
 using System.Linq;
 using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
@@ -297,5 +294,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-
-#endif

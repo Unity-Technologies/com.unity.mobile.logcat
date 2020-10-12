@@ -1,4 +1,3 @@
-#if UNITY_ANDROID
 using System;
 using System.Collections.Generic;
 using UnityEditor;
@@ -264,4 +263,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

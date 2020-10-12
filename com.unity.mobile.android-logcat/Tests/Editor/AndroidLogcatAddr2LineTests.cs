@@ -1,6 +1,5 @@
 using NUnit.Framework;
 using UnityEditor;
-using UnityEditor.Android;
 using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -46,6 +45,12 @@ public class AndroidLogcatAddr2LineTests
 
     private void CanResolveStacktraces(string abi)
     {
+        if (!AndroidBridge.AndroidExtensionsInstalled)
+        {
+            System.Console.WriteLine("Test ignored, because Android Support is not installed");
+            return;
+        }
+
         if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
         {
             System.Console.WriteLine("Test ignored");

@@ -1,10 +1,6 @@
-#if PLATFORM_ANDROID
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditor.Android;
 using System.Text;
 using UnityEngine;
 
@@ -38,7 +34,7 @@ namespace Unity.Android.Logcat
 
         class AndroidLogcatQueryMemoryInput : IAndroidLogcatTaskInput
         {
-            internal ADB adb;
+            internal AndroidBridge.ADB adb;
             internal int packageProcessId;
             internal string packageName;
             internal string deviceId;
@@ -189,7 +185,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Dispatcher.Schedule(
                 new AndroidLogcatQueryMemoryInput()
                 {
-                    adb = ADB.GetInstance(),
+                    adb = AndroidBridge.ADB.GetInstance(),
                     packageProcessId = m_ExpectedPackageFromRequest.processId,
                     packageName = m_ExpectedPackageFromRequest.name,
                     deviceId = device.Id
@@ -654,5 +650,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-
-#endif

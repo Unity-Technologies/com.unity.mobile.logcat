@@ -3,16 +3,12 @@ using System.IO;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
-#if PLATFORM_ANDROID
-using UnityEditor.Android;
-#endif
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
         [SerializeField] private string m_ImagePath;
-#if PLATFORM_ANDROID
         private AndroidLogcatRuntimeBase m_Runtime;
         private GUIContent[] m_Devices;
         private int m_SelectedDevice;
@@ -24,7 +20,7 @@ namespace Unity.Android.Logcat
 
         internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
         {
-            internal ADB adb;
+            internal AndroidBridge.ADB adb;
             internal string deviceId;
         }
 
@@ -42,6 +38,9 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
 
@@ -63,6 +62,9 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
             m_SelectedDevice = 0;
         }
@@ -121,6 +123,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             EditorGUILayout.BeginVertical();
             GUILayout.Space(5);
 
@@ -198,13 +206,5 @@ namespace Unity.Android.Logcat
 
             maxSize = new Vector2(Math.Max(m_ImageTexture.width, position.width), m_ImageTexture.height + kButtonAreaHeight);
         }
-
-#else
-        internal void OnGUI()
-        {
-            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
-        }
-
-#endif
     }
 }

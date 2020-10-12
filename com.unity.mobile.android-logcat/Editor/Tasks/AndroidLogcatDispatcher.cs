@@ -1,8 +1,5 @@
-#if PLATFORM_ANDROID
 using System.Collections.Generic;
 using System;
-using UnityEditor;
-using UnityEngine;
 using System.Threading;
 using UnityEngine.Profiling;
 
@@ -208,4 +205,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

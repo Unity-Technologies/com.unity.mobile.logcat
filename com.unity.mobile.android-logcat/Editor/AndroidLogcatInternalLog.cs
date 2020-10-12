@@ -6,13 +6,13 @@ using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
-#if PLATFORM_ANDROID
     internal class AndroidLogcatInternalLog : EditorWindow
     {
         static AndroidLogcatInternalLog ms_Instance = null;
         static StringBuilder ms_LogEntries = new StringBuilder();
 
         Vector2 m_ScrollPosition = Vector2.zero;
+
         public static void ShowLog(bool immediate)
         {
             if (ms_Instance == null)
@@ -48,17 +48,26 @@ namespace Unity.Android.Logcat
 
         public void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
             ms_Instance = this;
         }
 
         public void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             GUILayout.BeginHorizontal();
             int count;
             lock (ms_LogEntries)
             {
                 count = ms_LogEntries.Length;
             }
+
             GUILayout.Label("Entries: " + count);
             if (GUILayout.Button("Clear"))
             {
@@ -67,16 +76,19 @@ namespace Unity.Android.Logcat
                     ms_LogEntries = new StringBuilder();
                 }
             }
+
             GUILayout.EndHorizontal();
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
-                var menuItems = new[] { new GUIContent("Copy All") };
-                EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0), menuItems.ToArray(), -1, MenuSelection, null);
+                var menuItems = new[] {new GUIContent("Copy All")};
+                EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
+                    menuItems.ToArray(), -1, MenuSelection, null);
             }
 
             m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);
-            GUILayout.TextArea(ms_LogEntries.ToString(), AndroidLogcatStyles.internalLogStyle, GUILayout.ExpandHeight(true));
+            GUILayout.TextArea(ms_LogEntries.ToString(), AndroidLogcatStyles.internalLogStyle,
+                GUILayout.ExpandHeight(true));
             GUILayout.EndScrollView();
         }
 
@@ -91,13 +103,4 @@ namespace Unity.Android.Logcat
             }
         }
     }
-#else
-    internal class AndroidLogcatInternalLog : EditorWindow
-    {
-        internal void OnGUI()
-        {
-            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
-        }
-    }
-#endif
 }

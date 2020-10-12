@@ -1,14 +1,5 @@
-#if PLATFORM_ANDROID
-using System.Collections.Generic;
 using System.Diagnostics;
 using System;
-using System.Text.RegularExpressions;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using UnityEditor;
-using UnityEditor.Android;
-using System.Text;
-
 
 namespace Unity.Android.Logcat
 {
@@ -23,7 +14,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatMessageProvider : IAndroidLogcatMessageProvider
     {
         private Process m_LogcatProcess;
-        private ADB m_ADB;
+        private AndroidBridge.ADB m_ADB;
         private string m_Filter;
         private AndroidLogcat.Priority m_Priority;
         private int m_PackageID;
@@ -31,7 +22,7 @@ namespace Unity.Android.Logcat
         private string m_DeviceId;
         private Action<string> m_LogCallbackAction;
 
-        internal AndroidLogcatMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
         {
             m_ADB = adb;
             m_Filter = filter;
@@ -110,4 +101,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

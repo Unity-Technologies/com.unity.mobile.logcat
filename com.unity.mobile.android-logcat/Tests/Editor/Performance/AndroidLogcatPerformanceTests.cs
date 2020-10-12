@@ -1,4 +1,4 @@
-#if UNITY_2019_2_OR_NEWER
+#if ENABLE_PERFORMANCE_TESTS
 using System.IO;
 using NUnit.Framework;
 using Unity.Android.Logcat;

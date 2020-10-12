@@ -1,12 +1,5 @@
-#if PLATFORM_ANDROID
-using System.Collections.Generic;
-using System.Diagnostics;
 using System;
-using System.Text.RegularExpressions;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEditor;
-using UnityEditor.Android;
 using System.IO;
 
 
@@ -54,7 +47,7 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_DeviceQuery; }
         }
 
-        public abstract IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
+        public abstract IAndroidLogcatMessageProvider CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
@@ -111,7 +104,7 @@ namespace Unity.Android.Logcat
 
         protected override string ProjectSettingsPath { get => kProjectSettingsPath; }
 
-        public override IAndroidLogcatMessageProvider CreateMessageProvider(ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
+        public override IAndroidLogcatMessageProvider CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)
         {
             return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, deviceId, logCallbackAction);
@@ -150,4 +143,3 @@ namespace Unity.Android.Logcat
         }
     }
 }
-#endif

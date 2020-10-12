@@ -9,8 +9,6 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatStacktraceWindow : EditorWindow
     {
-#if PLATFORM_ANDROID
-
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
 
@@ -193,6 +191,9 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             if (string.IsNullOrEmpty(m_Text))
             {
@@ -235,6 +236,12 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             EditorGUI.BeginChangeCheck();
@@ -260,15 +267,5 @@ namespace Unity.Android.Logcat
             DoInfoGUI();
             GUILayout.EndHorizontal();
         }
-
-#else
-        internal void OnGUI()
-        {
-#if !PLATFORM_ANDROID
-            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
-#endif
-        }
-
-#endif
     }
 }

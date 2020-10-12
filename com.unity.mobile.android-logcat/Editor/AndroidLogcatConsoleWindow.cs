@@ -5,15 +5,10 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
-#if PLATFORM_ANDROID
-using UnityEditor.Android;
-#endif
 
 namespace Unity.Android.Logcat
 {
-    internal partial class AndroidLogcatConsoleWindow : EditorWindow
-#if PLATFORM_ANDROID
-        , IHasCustomMenu
+    internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu
     {
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
@@ -89,6 +84,9 @@ namespace Unity.Android.Logcat
 
         protected void OnEnableInternal(AndroidLogcatRuntimeBase runtime)
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             AndroidLogcatInternalLog.Log("OnEnable");
             m_Runtime = runtime;
 
@@ -121,6 +119,9 @@ namespace Unity.Android.Logcat
 
         internal void OnDisable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             if (m_Runtime == null)
             {
                 AndroidLogcatInternalLog.Log("Runtime was already destroyed.");
@@ -413,6 +414,12 @@ namespace Unity.Android.Logcat
 
         internal void OnGUI()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+            {
+                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+                return;
+            }
+
             if (m_ApplySettings)
             {
                 ApplySettings(m_Runtime.Settings);
@@ -854,17 +861,6 @@ namespace Unity.Android.Logcat
             Repaint();
         }
 
-#else
-    {
-        internal void OnGUI()
-        {
-        #if !PLATFORM_ANDROID
-            AndroidLogcatUtilities.ShowActivePlatformNotAndroidMessage();
-        #endif
-        }
-
-#endif
-
         [MenuItem("Window/Analysis/Android Logcat &6")]
         internal static AndroidLogcatConsoleWindow ShowWindow()
         {
@@ -880,9 +876,7 @@ namespace Unity.Android.Logcat
             }
 
             wnd.titleContent = new GUIContent("Android Logcat");
-#if PLATFORM_ANDROID
             wnd.AutoSelectPackage = autoSelectPackage;
-#endif
             wnd.Show();
             wnd.Focus();
 
