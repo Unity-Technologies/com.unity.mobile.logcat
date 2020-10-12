@@ -7,7 +7,7 @@ test_editors:
 test_platforms:
   - name: win
     type: Unity::VM
-    image: mobile/android-execution-r19:latest
+    image: package-ci/win10:stable
     flavor: b1.large
   - name: mac
     type: Unity::VM::osx
