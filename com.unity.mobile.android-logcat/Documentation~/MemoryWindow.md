@@ -39,9 +39,9 @@ Here's an example of memory dump:
 
 <img hspace="25" src="images/MemoryGroups.png">
 
-* **Resident Set Size (PSS)**
+* **Resident Set Size (RSS)**
  
-  The total **used** memory of the application which is currently stored in RAM, unlike **PSS** memory, **RSS** will include both shared and non-shared memory pages.
+  The total **used** memory of the application which is currently stored in RAM, unlike **PSS** memory, **RSS** will include both shared and non-shared memory pages. For example., apps which access the same library will be sharing memory pages.
 
   **Note:** This metric is only visible on Android 11 or higher.
 
