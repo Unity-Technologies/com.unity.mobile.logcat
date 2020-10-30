@@ -10,6 +10,7 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal enum MemoryGroup
     {
+        ResidentSetSize,
         ProportionalSetSize,
         HeapAlloc,
         HeapSize
@@ -36,9 +37,19 @@ namespace Unity.Android.Logcat
         private MemoryGroup[] m_MemoryGroups = (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup));
         private Dictionary<MemoryType, UInt64>[] m_Data = new Dictionary<MemoryType, UInt64>[Enum.GetValues(typeof(MemoryGroup)).Length];
 
+        private Regex m_RssAvailable = new Regex(@"Pss\s+Private\s+Private\s+SwapPss\s+Rss\s+Heap\s+Heap\s+Heap", RegexOptions.IgnoreCase);
+        private Regex m_PssOnlyData = new Regex(@"([\w\s]+):\s+(\d+).*", RegexOptions.IgnoreCase);
+        private Regex m_PssAndRssData = new Regex(@"([\w\s]+):\s+(\d+)\s*(\d*)\n", RegexOptions.IgnoreCase);
+        private Regex m_PssAndRssTotal = new Regex(@"\s+TOTAL PSS:\s+(\d+)\s+TOTAL RSS:\s+(\d+).*", RegexOptions.IgnoreCase);
+
         private Dictionary<MemoryType, UInt64> GetPSSMemoryGroup()
         {
             return m_Data[(int)MemoryGroup.ProportionalSetSize];
+        }
+
+        private Dictionary<MemoryType, UInt64> GetRSSMemoryGroup()
+        {
+            return m_Data[(int)MemoryGroup.ResidentSetSize];
         }
 
         private Dictionary<MemoryType, UInt64> GetHeapAllocGroup()
@@ -86,26 +97,50 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal void ParseAppSummary(string appSummary)
+        private void ParseAppSummaryData(Match match, int groupId, Dictionary<MemoryType, UInt64> data)
         {
-            Dictionary<MemoryType, UInt64> data = GetPSSMemoryGroup();
-            string pattern = @"([\w\s]+):\s+(\d+)";
+            var name = match.Groups[1].Value.Trim().ToLower();
+            var value = match.Groups[groupId].Value;
+            var sizeInKBytes = string.IsNullOrEmpty(value) ? 0 : UInt64.Parse(value);
+            MemoryType type = NameToMemoryType(name);
+            if (type != MemoryType.Unknown)
+                data[type] = sizeInKBytes * kOneKiloByte;
+        }
 
-            Regex r = new Regex(pattern, RegexOptions.IgnoreCase);
-            MatchCollection matches = r.Matches(appSummary);
-            UInt64 dummy;
-            foreach (Match match in matches)
+        private void ParseAppSummary(string appSummary)
+        {
+            Dictionary<MemoryType, UInt64> pssData = GetPSSMemoryGroup();
+            Dictionary<MemoryType, UInt64> rssData = GetRSSMemoryGroup();
+
+            bool rssDataAvailable = appSummary.Contains("Rss(KB)");
+            MatchCollection matches;
+            if (rssDataAvailable)
             {
-                var name = match.Groups[1].Value.Trim().ToLower();
-                var sizeInKBytes = UInt64.Parse(match.Groups[2].Value);
-                MemoryType type = NameToMemoryType(name);
-                if (type != MemoryType.Unknown)
-                    data[type] = sizeInKBytes * kOneKiloByte;
+                matches = m_PssAndRssData.Matches(appSummary);
+                foreach (Match match in matches)
+                {
+                    ParseAppSummaryData(match, 2, pssData);
+                    ParseAppSummaryData(match, 3, rssData);
+                }
+
+                var totalMemoryMatch = m_PssAndRssTotal.Match(appSummary);
+                if (!totalMemoryMatch.Success)
+                    throw new Exception("Failed to find total pss and rss size in\n" + appSummary);
+
+                pssData[MemoryType.Total] = UInt64.Parse(totalMemoryMatch.Groups[1].Value) * kOneKiloByte;
+                rssData[MemoryType.Total] = UInt64.Parse(totalMemoryMatch.Groups[2].Value) * kOneKiloByte;
+            }
+            else
+            {
+                matches = m_PssOnlyData.Matches(appSummary);
+                foreach (Match match in matches)
+                    ParseAppSummaryData(match, 2, pssData);
             }
 
-            if (!data.TryGetValue(MemoryType.NativeHeap, out dummy))
+            UInt64 dummy;
+            if (!pssData.TryGetValue(MemoryType.NativeHeap, out dummy))
             {
-                throw new Exception("Failed to find native heap size in\n" + appSummary);
+                throw new Exception("Failed to find pss native heap size in\n" + appSummary);
             }
         }
 
@@ -123,7 +158,11 @@ namespace Unity.Android.Logcat
 
         internal void ParseHeapInformation(string heapInformation)
         {
-            var postFix = @"\s+\S+\s+\S+\s+\S+\s+\S+\s+(?<heapSize>\S+)\s+(?<heapAlloc>\S+)\s+\S+";
+            string postFix;
+            if (m_RssAvailable.Match(heapInformation).Success)
+                postFix = @"\s+\S+\s+\S+\s+\S+\s+\S+\s+(?<rssSize>\S+)\s+(?<heapSize>\S+)\s+(?<heapAlloc>\S+)\s+\S+";
+            else
+                postFix = @"\s+\S+\s+\S+\s+\S+\s+\S+\s+(?<heapSize>\S+)\s+(?<heapAlloc>\S+)\s+\S+";
 
             Regex native = new Regex("Native Heap" + postFix, RegexOptions.IgnoreCase);
             Regex java = new Regex("Dalvik Heap" + postFix, RegexOptions.IgnoreCase);
@@ -175,6 +214,7 @@ namespace Unity.Android.Logcat
             int appSummary = contents.IndexOf("App Summary");
             if (appSummary == -1)
                 throw new Exception("Failed to find App Summary:\n" + contents);
+            contents = contents.Replace("\r", "");
             ParseHeapInformation(contents.Substring(0, appSummary));
             ParseAppSummary(contents.Substring(appSummary));
         }
