@@ -4,6 +4,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.Profiling;
 
 public class MemoryAllocations : MonoBehaviour
 {
@@ -278,11 +279,35 @@ public class MemoryAllocations : MonoBehaviour
         }
     }
 
+    internal static string UInt64ToSizeString(UInt64 value)
+    {
+        if (value < 0)
+            return "unknown";
+        if (value == 0)
+            return "0 Bytes";
+        float val = (float)value;
+        string[] scale = new string[] { "TB", "GB", "MB", "KB", "Bytes" };
+        int idx = scale.Length - 1;
+        while (val > 1000.0f && idx >= 0)
+        {
+            val /= 1000f;
+            idx--;
+        }
+
+        if (idx < 0)
+            return "<error>";
+
+        return string.Format("{0:#.##} {1}", val, scale[idx]);
+    }
+
     void OnGUI()
     {
 #if !UNITY_EDITOR
         GUI.matrix = Matrix4x4.Scale(Vector3.one * 5);
 #endif
+        GUILayout.Label($"Profiler Total Allocated: {UInt64ToSizeString((ulong)Profiler.GetTotalAllocatedMemoryLong())}");
+        GUILayout.Label($"Profiler Total Reserved: {UInt64ToSizeString((ulong)Profiler.GetTotalReservedMemoryLong())}");
+        GUILayout.Label($"System Memory Size: {SystemInfo.systemMemorySize} MB");
         GUILayout.Space(20);
         m_MemoryType = (MemoryType)GUILayout.Toolbar((int)m_MemoryType, m_ToolbarItems);
         switch (m_MemoryType)
