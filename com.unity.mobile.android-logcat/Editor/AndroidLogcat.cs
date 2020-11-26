@@ -81,7 +81,7 @@ namespace Unity.Android.Logcat
         private readonly int m_PackagePid;
         private readonly Priority m_MessagePriority;
         private string m_Filter;
-        private readonly bool m_FilterIsRegex;
+        private bool m_FilterIsRegex;
         private Regex m_ManualFilterRegex;
         private readonly string[] m_Tags;
 
@@ -101,7 +101,7 @@ namespace Unity.Android.Logcat
 
         public event Action<IAndroidLogcatDevice> Connected;
 
-        private IAndroidLogcatMessageProvider m_MessageProvider;
+        private AndroidLogcatMessageProviderBase m_MessageProvider;
 
         private List<string> m_CachedLogLines = new List<string>();
 
@@ -123,7 +123,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public IAndroidLogcatMessageProvider MessageProvider
+        public AndroidLogcatMessageProviderBase MessageProvider
         {
             get { return m_MessageProvider; }
         }
@@ -156,23 +156,22 @@ namespace Unity.Android.Logcat
                 return;
             }
 
+            this.m_Filter = filter;
             if (!this.m_FilterIsRegex)
-            {
-                this.m_Filter = filter;
                 return;
-            }
 
             try
             {
-                this.m_Filter = filter;
                 m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
             }
             catch (Exception ex)
             {
-                var error = string.Format("Input search filter '{0}' is not a valid regular expression.", Regex.Escape(m_Filter));
-                AndroidLogcatInternalLog.Log(error);
+                AndroidLogcatInternalLog.Log($"Input search filter '{m_Filter}' is not a valid regular expression.\n{ex}");
 
-                throw new ArgumentException(error, ex);
+                // Silently disable filtering if supplied regex is wrong
+                m_Filter = string.Empty;
+                m_ManualFilterRegex = null;
+                m_FilterIsRegex = false;
             }
         }
 
@@ -180,8 +179,7 @@ namespace Unity.Android.Logcat
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.Update += OnUpdate;
-
-            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, Filter, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device != null ? m_Device.Id : null, OnDataReceived);
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, m_Device.SupportsFilteringByRegex ? Filter : string.Empty, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device, OnDataReceived);
             m_MessageProvider.Start();
 
             Connected?.Invoke(Device);
@@ -499,7 +497,10 @@ namespace Unity.Android.Logcat
         private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
-            if (message == null)
+            // You can receive empty string on old devices like LG 5.0
+            // Note: Even if the logcat message is empty, the incoming string still have to contain info about time/pid/tid/etc
+            //       If it contains nothing, ignore it
+            if (string.IsNullOrEmpty(message))
                 return;
 
             lock (m_CachedLogLines)

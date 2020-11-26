@@ -3,34 +3,43 @@ using System;
 
 namespace Unity.Android.Logcat
 {
-    internal interface IAndroidLogcatMessageProvider
+    internal abstract class AndroidLogcatMessageProviderBase
     {
-        void Start();
-        void Stop();
-        void Kill();
-        bool HasExited { get; }
-    }
+        protected AndroidBridge.ADB m_ADB;
+        protected string m_Filter;
+        protected AndroidLogcat.Priority m_Priority;
+        protected int m_PackageID;
+        protected string m_LogPrintFormat;
+        protected IAndroidLogcatDevice m_Device;
+        protected Action<string> m_LogCallbackAction;
 
-    internal class AndroidLogcatMessageProvider : IAndroidLogcatMessageProvider
-    {
-        private Process m_LogcatProcess;
-        private AndroidBridge.ADB m_ADB;
-        private string m_Filter;
-        private AndroidLogcat.Priority m_Priority;
-        private int m_PackageID;
-        private string m_LogPrintFormat;
-        private string m_DeviceId;
-        private Action<string> m_LogCallbackAction;
-
-        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProviderBase(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
             m_ADB = adb;
             m_Filter = filter;
             m_Priority = priority;
             m_PackageID = packageID;
             m_LogPrintFormat = logPrintFormat;
-            m_DeviceId = deviceId;
+            m_Device = device;
             m_LogCallbackAction = logCallbackAction;
+
+            if (device != null && !device.SupportsFilteringByRegex && !string.IsNullOrEmpty(m_Filter))
+                throw new Exception($"Device '{device.Id}' doesn't support filtering by regex, by filter was specified?");
+        }
+
+        public abstract void Start();
+        public abstract void Stop();
+        public abstract void Kill();
+        public abstract bool HasExited { get; }
+    }
+
+    internal class AndroidLogcatMessageProvider : AndroidLogcatMessageProviderBase
+    {
+        private Process m_LogcatProcess;
+
+        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+            : base(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction)
+        {
         }
 
         private string PriorityEnumToString(AndroidLogcat.Priority priority)
@@ -47,12 +56,12 @@ namespace Unity.Android.Logcat
             // Note: We're not using --regex argument, because some older Android device (prior to 7.0) doesn't support that
             var priority = PriorityEnumToString(m_Priority);
             if (m_PackageID > 0)
-                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", m_DeviceId, m_PackageID, m_LogPrintFormat, priority, filterArg);
+                return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", m_Device.Id, m_PackageID, m_LogPrintFormat, priority, filterArg);
 
-            return string.Format("-s {0} logcat -v {1} *:{2} {3}", m_DeviceId, m_LogPrintFormat, priority, filterArg);
+            return string.Format("-s {0} logcat -v {1} *:{2} {3}", m_Device.Id, m_LogPrintFormat, priority, filterArg);
         }
 
-        public void Start()
+        public override void Start()
         {
             var arguments = LogcatArguments();
             AndroidLogcatInternalLog.Log("\n\nStarting logcat\n\n");
@@ -72,7 +81,7 @@ namespace Unity.Android.Logcat
             m_LogcatProcess.BeginErrorReadLine();
         }
 
-        public void Stop()
+        public override void Stop()
         {
             if (m_LogcatProcess != null && !m_LogcatProcess.HasExited)
                 m_LogcatProcess.Kill();
@@ -80,14 +89,14 @@ namespace Unity.Android.Logcat
             m_LogcatProcess = null;
         }
 
-        public void Kill()
+        public override void Kill()
         {
             // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
             AndroidLogcatInternalLog.Log("Stopping logcat (process id {0})", m_LogcatProcess.Id);
             m_LogcatProcess.Kill();
         }
 
-        public bool HasExited
+        public override bool HasExited
         {
             get
             {
