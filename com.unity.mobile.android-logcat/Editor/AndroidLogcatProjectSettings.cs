@@ -8,7 +8,7 @@ using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 namespace Unity.Android.Logcat
 {
     [Serializable]
-    internal class AndroidLogcatProjectSettings
+    internal class AndroidLogcatUserSettings
     {
         internal const int kMaxExitedPackages = 5;
 
@@ -243,7 +243,7 @@ namespace Unity.Android.Logcat
             get => m_SymbolPaths;
         }
 
-        internal AndroidLogcatProjectSettings()
+        internal AndroidLogcatUserSettings()
         {
             Reset();
         }
@@ -258,7 +258,7 @@ namespace Unity.Android.Logcat
             m_SymbolPaths = new List<ReordableListItem>();
         }
 
-        internal static AndroidLogcatProjectSettings Load(string path)
+        internal static AndroidLogcatUserSettings Load(string path)
         {
             if (!File.Exists(path))
                 return null;
@@ -269,7 +269,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                var settings = new AndroidLogcatProjectSettings();
+                var settings = new AndroidLogcatUserSettings();
                 JsonUtility.FromJsonOverwrite(jsonString, settings);
                 settings.m_KnownPackages = PackagesToDictionary(settings.m_KnownPackagesForSerialization);
                 return settings;
@@ -281,7 +281,7 @@ namespace Unity.Android.Logcat
             return null;
         }
 
-        internal static void Save(AndroidLogcatProjectSettings settings, string path, AndroidLogcatRuntimeBase runtime)
+        internal static void Save(AndroidLogcatUserSettings settings, string path, AndroidLogcatRuntimeBase runtime)
         {
             if (settings == null)
                 throw new NullReferenceException(nameof(settings));

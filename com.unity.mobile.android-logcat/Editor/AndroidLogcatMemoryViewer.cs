@@ -104,7 +104,7 @@ namespace Unity.Android.Logcat
             m_Parent = parent;
             m_Runtime = runtime;
             m_Material = (Material)EditorGUIUtility.LoadRequired("SceneView/HandleLines.mat");
-            m_State = m_Runtime.ProjectSettings.MemoryViewerState;
+            m_State = m_Runtime.UserSettings.MemoryViewerState;
 
             for (int i = 0; i < kMaxEntries; i++)
                 m_Entries[i] = new AndroidMemoryStatistics();
