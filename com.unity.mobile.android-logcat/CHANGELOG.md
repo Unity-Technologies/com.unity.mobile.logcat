@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix Memory Window on Android 11. Android 11 started dumping RSS memory, which was previously unexpected by Memory Window.
  - Include RSS memory in Memory window. 
 
+### Changes
+ - Memory window will be disabled by default, since it causes **Explicit concurrent copying GC freed** messages to be printed in the logcat which might unwanted behavior.
+
 ## [1.2.0] - 2020-08-18
 
 ### Fix & Improvements.

@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
         public float MemoryWindowWidth;
         public bool[] MemoryTypeEnabled;
         public MemoryGroup MemoryGroup = MemoryGroup.HeapAlloc;
-        public MemoryViewerBehavior Behavior = MemoryViewerBehavior.Auto;
+        public MemoryViewerBehavior Behavior = MemoryViewerBehavior.Hidden;
     }
 
     internal class AndroidLogcatMemoryViewer
