@@ -95,7 +95,7 @@ namespace Unity.Android.Logcat
             if (m_SelectedDevice != null && !m_Devices.Keys.Contains(m_SelectedDevice.Id))
                 throw new Exception("Selected device is not among our listed devices");
 
-            m_Runtime.ProjectSettings.LastSelectedDeviceId = m_SelectedDevice != null ? m_SelectedDevice.Id : "";
+            m_Runtime.UserSettings.LastSelectedDeviceId = m_SelectedDevice != null ? m_SelectedDevice.Id : "";
 
             if (notifyListeners)
                 DeviceSelected?.Invoke(m_SelectedDevice);
