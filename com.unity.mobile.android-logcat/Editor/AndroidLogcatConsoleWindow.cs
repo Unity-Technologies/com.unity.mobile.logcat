@@ -852,14 +852,14 @@ namespace Unity.Android.Logcat
             var message = string.Empty;
             if (m_LogCat != null && m_LogCat.IsConnected)
             {
-                var text = m_Runtime.ProjectSettings.Filter;
-                var regex = m_Runtime.ProjectSettings.FilterIsRegularExpression ? "On" : "Off";
-                var tags = m_Runtime.ProjectSettings.Tags.ToString();
-                message = $"Filtering with Priority '{m_Runtime.ProjectSettings.SelectedPriority}'";
+                var text = m_Runtime.UserSettings.Filter;
+                var regex = m_Runtime.UserSettings.FilterIsRegularExpression ? "On" : "Off";
+                var tags = m_Runtime.UserSettings.Tags.ToString();
+                message = $"Filtering with Priority '{m_Runtime.UserSettings.SelectedPriority}'";
                 if (!string.IsNullOrEmpty(tags))
-                    message += $", Tags '{m_Runtime.ProjectSettings.Tags.ToString()}'";
+                    message += $", Tags '{m_Runtime.UserSettings.Tags.ToString()}'";
                 if (!string.IsNullOrEmpty(text))
-                    message += $", Text '{m_Runtime.ProjectSettings.Filter}', Regex '{regex}' ";
+                    message += $", Text '{m_Runtime.UserSettings.Filter}', Regex '{regex}' ";
             }
 
             UpdateStatusBar(message);
