@@ -9,12 +9,12 @@ namespace Unity.Android.Logcat
     {
         protected AndroidLogcatDispatcher m_Dispatcher;
         protected AndroidLogcatSettings m_Settings;
-        protected AndroidLogcatProjectSettings m_ProjectSettings;
+        protected AndroidLogcatUserSettings m_UserSettings;
         protected AndroidTools m_Tools;
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
         protected bool m_Initialized;
 
-        protected abstract string ProjectSettingsPath { get; }
+        protected abstract string UserSettingsPath { get; }
 
         private void ValidateIsInitialized()
         {
@@ -32,9 +32,9 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_Settings; }
         }
 
-        public AndroidLogcatProjectSettings ProjectSettings
+        public AndroidLogcatUserSettings UserSettings
         {
-            get { ValidateIsInitialized(); return m_ProjectSettings; }
+            get { ValidateIsInitialized(); return m_UserSettings; }
         }
 
         public AndroidTools Tools
@@ -60,12 +60,12 @@ namespace Unity.Android.Logcat
 
             m_Settings = LoadEditorSettings();
 
-            Directory.CreateDirectory(Path.GetDirectoryName(ProjectSettingsPath));
-            m_ProjectSettings = AndroidLogcatProjectSettings.Load(ProjectSettingsPath);
-            if (m_ProjectSettings == null)
+            Directory.CreateDirectory(Path.GetDirectoryName(UserSettingsPath));
+            m_UserSettings = AndroidLogcatUserSettings.Load(UserSettingsPath);
+            if (m_UserSettings == null)
             {
-                m_ProjectSettings = new AndroidLogcatProjectSettings();
-                m_ProjectSettings.Reset();
+                m_UserSettings = new AndroidLogcatUserSettings();
+                m_UserSettings.Reset();
             }
 
             m_Tools = CreateAndroidTools();
@@ -78,12 +78,12 @@ namespace Unity.Android.Logcat
         {
             Closing?.Invoke();
             // ProjectSettings is accessing some information from runtime during save
-            AndroidLogcatProjectSettings.Save(m_ProjectSettings, ProjectSettingsPath, this);
+            AndroidLogcatUserSettings.Save(m_UserSettings, UserSettingsPath, this);
             SaveEditorSettings(m_Settings);
 
             m_Initialized = false;
             m_Settings = null;
-            m_ProjectSettings = null;
+            m_UserSettings = null;
             m_Tools = null;
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
@@ -100,9 +100,9 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatRuntime : AndroidLogcatRuntimeBase
     {
-        private static readonly string kProjectSettingsPath = Path.Combine("ProjectSettings", "AndroidLogcatSettings.asset");
+        private static readonly string kUserSettingsPath = Path.Combine("UserSettings", "AndroidLogcatSettings.asset");
 
-        protected override string ProjectSettingsPath { get => kProjectSettingsPath; }
+        protected override string UserSettingsPath { get => kUserSettingsPath; }
 
         public override IAndroidLogcatMessageProvider CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId,
             Action<string> logCallbackAction)

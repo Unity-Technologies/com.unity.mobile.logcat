@@ -186,7 +186,7 @@ namespace Unity.Android.Logcat
             }
 
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            m_ResolvedStacktraces = ResolveAddresses(lines, m_Runtime.Settings.StacktraceResolveRegex, m_Runtime.ProjectSettings.SymbolPaths, m_Runtime.Tools);
+            m_ResolvedStacktraces = ResolveAddresses(lines, m_Runtime.Settings.StacktraceResolveRegex, m_Runtime.UserSettings.SymbolPaths, m_Runtime.Tools);
         }
 
         private void OnEnable()

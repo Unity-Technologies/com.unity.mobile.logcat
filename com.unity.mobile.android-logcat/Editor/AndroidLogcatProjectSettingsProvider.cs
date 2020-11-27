@@ -16,7 +16,7 @@ namespace Unity.Android.Logcat
         public AndroidLogcatProjectSettingsProvider(string path, SettingsScope scope)
             : base(path, scope)
         {
-            m_SymbolList = new AndroidLogcatSymbolList(AndroidLogcatManager.instance.Runtime.ProjectSettings.SymbolPaths);
+            m_SymbolList = new AndroidLogcatSymbolList(AndroidLogcatManager.instance.Runtime.UserSettings.SymbolPaths);
         }
 
         public override void OnGUI(string searchContext)
