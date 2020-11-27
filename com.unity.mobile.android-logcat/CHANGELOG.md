@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Include RSS memory in Memory window. 
  - Moved ProjectSettings\AndroidLogcatSettings.asset to UserSettings\AndroidLogcatSettings.asset, since this file wasn't meant to be commited.
 
+### Changes
+ - Memory window will be disabled by default, since it causes **Explicit concurrent copying GC freed** messages to be printed in the logcat which might unwanted behavior.
+
 ## [1.2.0] - 2020-08-18
 
 ### Fix & Improvements.
