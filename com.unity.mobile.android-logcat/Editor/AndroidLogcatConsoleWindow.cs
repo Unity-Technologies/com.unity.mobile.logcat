@@ -320,7 +320,7 @@ namespace Unity.Android.Logcat
 
         private void OnLogcatConnected(IAndroidLogcatDevice device)
         {
-            UpdateStatusBar(string.Empty);
+            UpdateStatusBar();
         }
 
         private void RemoveMessages(int count)
@@ -847,7 +847,20 @@ namespace Unity.Android.Logcat
 
         public void UpdateStatusBar()
         {
-            UpdateStatusBar(string.Empty);
+            var message = string.Empty;
+            if (m_LogCat != null && m_LogCat.IsConnected)
+            {
+                var text = m_Runtime.ProjectSettings.Filter;
+                var regex = m_Runtime.ProjectSettings.FilterIsRegularExpression ? "On" : "Off";
+                var tags = m_Runtime.ProjectSettings.Tags.ToString();
+                message = $"Filtering with Priority '{m_Runtime.ProjectSettings.SelectedPriority}'";
+                if (!string.IsNullOrEmpty(tags))
+                    message += $", Tags '{m_Runtime.ProjectSettings.Tags.ToString()}'";
+                if (!string.IsNullOrEmpty(text))
+                    message += $", Text '{m_Runtime.ProjectSettings.Filter}', Regex '{regex}' ";
+            }
+
+            UpdateStatusBar(message);
         }
 
         public void UpdateStatusBar(string message)
