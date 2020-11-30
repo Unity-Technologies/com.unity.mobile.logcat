@@ -166,17 +166,23 @@ namespace Unity.Android.Logcat
                 return string.Empty;
 
             var tags = "";
+            int tagsFound = 0;
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Entries.Count; i++)
             {
-                if (i > (int)AndroidLogcatTagType.FirstValidTag)
+                if (!m_Entries[i].Selected)
+                    continue;
+
+                if (tagsFound > 0)
                     tags += ", ";
-                if (i > (int)AndroidLogcatTagType.FirstValidTag + 3)
+
+                if (tagsFound >= 3)
                 {
                     tags += "...";
                     return tags;
                 }
 
                 tags += m_Entries[i].Name;
+                tagsFound++;
             }
 
             return tags;
