@@ -312,7 +312,7 @@ namespace Unity.Android.Logcat
                 PriorityStringToEnum(m.Groups["priority"].Value),
                 m.Groups["tag"].Value,
                 m.Groups["msg"].Value);
-            
+
             return entry;
         }
 
@@ -331,7 +331,7 @@ namespace Unity.Android.Logcat
                     throw new InvalidOperationException(string.Format("Invalid `priority` ({0}) in log entry.", priority));
             }
         }
-        
+
         private void OnDataReceived(string message)
         {
             // You can receive null string, when you put out USB cable out of PC and logcat connection is lost
