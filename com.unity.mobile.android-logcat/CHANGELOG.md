@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changes
  - Memory window will be disabled by default, since it causes **Explicit concurrent copying GC freed** messages to be printed in the logcat which might unwanted behavior.
+ - Remove automatic stacktrace resolving when receiving logcat messages, since in some cases it's impossible to automatically determine the correct symbol path, this creates a misleading behavior, where displayed stacktraces are incorrect. Please use Stacktrace Utility instead.
 
 ## [1.2.0] - 2020-08-18
 
