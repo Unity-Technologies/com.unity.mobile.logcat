@@ -159,6 +159,34 @@ namespace Unity.Android.Logcat
             for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Entries.Count; i++)
                 m_Entries[i].Selected = !isNoFilterSelected;
         }
+
+        public override string ToString()
+        {
+            if (m_Entries[(int)AndroidLogcatTagType.NoFilter].Selected)
+                return string.Empty;
+
+            var tags = "";
+            int tagsFound = 0;
+            for (int i = (int)AndroidLogcatTagType.FirstValidTag; i < m_Entries.Count; i++)
+            {
+                if (!m_Entries[i].Selected)
+                    continue;
+
+                if (tagsFound > 0)
+                    tags += ", ";
+
+                if (tagsFound >= 3)
+                {
+                    tags += "...";
+                    return tags;
+                }
+
+                tags += m_Entries[i].Name;
+                tagsFound++;
+            }
+
+            return tags;
+        }
     }
 
     internal class AndroidLogcatTagListPopup : PopupWindowContent

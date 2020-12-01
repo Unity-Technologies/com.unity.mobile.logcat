@@ -121,6 +121,26 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal static string ProcessOutputFromPS(string psOutput)
+        {
+            using (var sr = new StringReader(psOutput))
+            {
+                string line;
+                while ((line = sr.ReadLine().Trim()) != null)
+                {
+                    if (line.Contains("NAME"))
+                        continue;
+
+                    // The process name is always the last split
+                    var entries = line.Split(new[] { ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (entries.Length > 0)
+                        return entries[entries.Length - 1];
+                }
+            }
+
+            return string.Empty;
+        }
+
         public static string GetPackageNameFromPid(AndroidBridge.ADB adb, IAndroidLogcatDevice device, int processId)
         {
             if (device == null)
@@ -128,27 +148,18 @@ namespace Unity.Android.Logcat
 
             try
             {
-                string cmd = string.Format("-s {0} shell ps -p {1} -o NAME", device.Id, processId);
+                // Note: Flag -o doesn't work on Android 5.0 devices (tested on LGE LG-D620, 5.0.2)
+                string cmd = string.Format("-s {0} shell ps -p {1}", device.Id, processId);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);
                 if (string.IsNullOrEmpty(output))
                     return string.Empty;
 
-                using (var sr = new StringReader(output))
-                {
-                    string line;
-                    while ((line = sr.ReadLine().Trim()) != null)
-                    {
-                        if (line.Equals("NAME"))
-                            continue;
-
-                        return line;
-                    }
-                }
-
-                AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
-                return string.Empty;
+                var result = ProcessOutputFromPS(output);
+                if (string.IsNullOrEmpty(result))
+                    AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
+                return result;
             }
             catch (Exception ex)
             {

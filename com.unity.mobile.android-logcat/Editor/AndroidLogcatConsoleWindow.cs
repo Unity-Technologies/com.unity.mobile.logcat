@@ -320,7 +320,7 @@ namespace Unity.Android.Logcat
 
         private void OnLogcatConnected(IAndroidLogcatDevice device)
         {
-            UpdateStatusBar(string.Empty);
+            UpdateStatusBar();
         }
 
         private void RemoveMessages(int count)
@@ -655,7 +655,9 @@ namespace Unity.Android.Logcat
                 int selectedPackagedId = SelectedPackage == null || SelectedPackage.processId == 0 ? 0 : -1;
                 for (int i = 0; i < packages.Count; i++)
                 {
-                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName);
+                    // Note: Some processes are named like /system/bin/something, this creates problems with Unity GUI, since it treats / in special way
+                    //       Replace it with unicode slash, while it won't display this in pretty way, it's still better than not displaying anything
+                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName.Replace("/", " \u2215"));
 
                     if (packages[i] != null && SelectedPackage != null && SelectedPackage.name == packages[i].name && SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;
@@ -847,7 +849,20 @@ namespace Unity.Android.Logcat
 
         public void UpdateStatusBar()
         {
-            UpdateStatusBar(string.Empty);
+            var message = string.Empty;
+            if (m_LogCat != null && m_LogCat.IsConnected)
+            {
+                var text = m_Runtime.UserSettings.Filter;
+                var regex = m_Runtime.UserSettings.FilterIsRegularExpression ? "On" : "Off";
+                var tags = m_Runtime.UserSettings.Tags.ToString();
+                message = $"Filtering with Priority '{m_Runtime.UserSettings.SelectedPriority}'";
+                if (!string.IsNullOrEmpty(tags))
+                    message += $", Tags '{m_Runtime.UserSettings.Tags.ToString()}'";
+                if (!string.IsNullOrEmpty(text))
+                    message += $", Text '{m_Runtime.UserSettings.Filter}', Regex '{regex}' ";
+            }
+
+            UpdateStatusBar(message);
         }
 
         public void UpdateStatusBar(string message)

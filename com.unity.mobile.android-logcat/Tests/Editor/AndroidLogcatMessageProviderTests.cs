@@ -8,32 +8,24 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine.TestTools;
 
-internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
+internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBase
 {
-#pragma warning disable 0414
-    private AndroidBridge.ADB m_ADB;
-    private string m_Filter;
-    private AndroidLogcat.Priority m_Priority;
-    private int m_PackageID;
-    private string m_LogPrintFormat;
-    private string m_DeviceId;
-    private Action<string> m_LogCallbackAction;
     private bool m_Started;
-
     private List<string> m_FakeMessages;
-#pragma warning restore 0414
-    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, string deviceId, Action<string> logCallbackAction)
-    {
-        m_ADB = adb;
-        m_Filter = filter;
-        m_Priority = priority;
-        m_PackageID = packageID;
-        m_LogPrintFormat = logPrintFormat;
-        m_DeviceId = deviceId;
-        m_LogCallbackAction = logCallbackAction;
+    private Regex m_Regex;
 
+    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        : base(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction)
+    {
         m_FakeMessages = new List<string>();
         m_Started = false;
+        if (!string.IsNullOrEmpty(m_Filter))
+            m_Regex = new Regex(m_Filter);
+    }
+
+    internal Regex LogParseRegex
+    {
+        get { return m_Device.SupportYearFormat ? AndroidLogcat.m_LogCatEntryYearRegex : AndroidLogcat.m_LogCatEntryThreadTimeRegex; }
     }
 
     public void SupplyFakeMessage(string message)
@@ -45,29 +37,43 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
     private void FlushFakeMessages()
     {
-        foreach (var m in m_FakeMessages)
+        var regex = LogParseRegex;
+        foreach (var message in m_FakeMessages)
         {
-            m_LogCallbackAction(m);
+            if (!string.IsNullOrEmpty(message))
+            {
+                var m = regex.Match(message);
+
+                // Simulate filtering by PID
+                if (m_Device.SupportsFilteringByPid && m_PackageID > 0 && Int32.Parse(m.Groups["pid"].Value) != m_PackageID)
+                    continue;
+
+                // Simulate filtering by text
+                if (m_Device.SupportsFilteringByRegex && m_Regex != null && !m_Regex.Match(message).Success)
+                    continue;
+            }
+
+            m_LogCallbackAction(message);
         }
         m_FakeMessages.Clear();
     }
 
-    public void Start()
+    public override void Start()
     {
         m_Started = true;
         FlushFakeMessages();
     }
 
-    public void Stop()
+    public override void Stop()
     {
         m_Started = false;
     }
 
-    public void Kill()
+    public override void Kill()
     {
     }
 
-    public bool HasExited
+    public override bool HasExited
     {
         get
         {
@@ -78,14 +84,26 @@ internal class AndroidLogcatFakeMessageProvider : IAndroidLogcatMessageProvider
 
 internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
+    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90")};
+
+    private static void SupplyFakeMessages(AndroidLogcatFakeMessageProvider provider, IAndroidLogcatDevice device, string[] messages)
+    {
+        foreach (var m in messages)
+        {
+            if (device.APILevel > 23)
+                provider.SupplyFakeMessage("1991-" + m);
+            else
+                provider.SupplyFakeMessage(m);
+        }
+    }
+
     [Test]
     public void RegexFilterCorrectlyFormed()
     {
-        var devices = new AndroidLogcatFakeDevice[] {new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90")};
         var filter = ".*abc";
         InitRuntime();
 
-        foreach (var device in devices)
+        foreach (var device in kDevices)
         {
             foreach (var isRegexEnabled in new[] {true, false})
             {
@@ -112,55 +130,118 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     }
 
     [Test]
-    public void ManualRegexFilteringWorksAndroid60Devices()
+    public void ManualRegexFilteringWorks()
     {
         var messages = new[]
         {
             @"10-25 14:27:56.862  2255  2255 I chromium: Help",
-            @"10-25 14:27:56.863  2255  2255 I chromium: .abc"
+            @"10-25 14:27:56.863  2255  2255 I chromium: .abc",
+            // Empty lines were reported by devices like LG with Android 5
+            @"",
+            null
         };
 
         InitRuntime();
-        foreach (var regexIsEnabled in new[] {true, false})
+        foreach (var device in kDevices)
         {
-            foreach (var filter in new[] {"", ".abc", "...."})
+            foreach (var regexIsEnabled in new[] {true, false})
             {
-                var entries = new List<string>();
-                var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60("Fake60"), -1,
-                    AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
-                logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                foreach (var filter in new[] {"", ".abc", "...."})
                 {
-                    entries.AddRange(e.Select(m => m.message));
-                };
-                logcat.Start();
+                    var entries = new List<string>();
+                    var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
+                    logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                    {
+                        entries.AddRange(e.Select(m => m.message));
+                    };
+                    logcat.Start();
 
-                var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
-                foreach (var m in messages)
-                    provider.SupplyFakeMessage(m);
+                    SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
 
-                m_Runtime.OnUpdate();
-                if (filter == "")
-                {
-                    Assert.IsTrue(entries.Contains(".abc"));
-                    Assert.IsTrue(entries.Contains("Help"));
-                }
-                else if (filter == ".abc")
-                {
-                    Assert.IsTrue(entries.Contains(".abc"));
-                    Assert.IsTrue(!entries.Contains("Help"));
-                }
-                else if (filter == "....")
-                {
-                    if (regexIsEnabled)
+                    m_Runtime.OnUpdate();
+                    // We always ignore empty lines
+                    Assert.IsFalse(entries.Contains(""));
+                    Assert.IsFalse(entries.Contains(null));
+                    if (filter == "")
                     {
                         Assert.IsTrue(entries.Contains(".abc"));
                         Assert.IsTrue(entries.Contains("Help"));
                     }
-                    else
+                    else if (filter == ".abc")
                     {
-                        Assert.IsFalse(entries.Contains(".abc"));
-                        Assert.IsFalse(entries.Contains("Help"));
+                        Assert.IsTrue(entries.Contains(".abc"));
+                        Assert.IsTrue(!entries.Contains("Help"));
                     }
+                    else if (filter == "....")
+                    {
+                        if (regexIsEnabled)
+                        {
+                            Assert.IsTrue(entries.Contains(".abc"));
+                            Assert.IsTrue(entries.Contains("Help"));
+                        }
+                        else
+                        {
+                            Assert.IsFalse(entries.Contains(".abc"));
+                            Assert.IsFalse(entries.Contains("Help"));
+                        }
+                    }
+
+                    logcat.Stop();
+                }
+            }
+        }
+
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void ManualPidFilteringWorks()
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  1  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2  2255 I chromium: .abc",
+            @"10-25 14:27:56.863  3  2255 I chromium: "
+        };
+
+        InitRuntime();
+
+        foreach (var device in kDevices)
+        {
+            foreach (var pid in new[] {-1, 0, 1})
+            {
+                var processIds = new List<int>();
+                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
+                logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                {
+                    processIds.AddRange(e.Select(m => m.processId));
+                };
+                logcat.Start();
+
+                SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
+
+                m_Runtime.OnUpdate();
+
+                switch (pid)
+                {
+                    // Should accept messages from any process id
+                    case -1:
+                        Assert.IsTrue(processIds.Contains(1));
+                        Assert.IsTrue(processIds.Contains(2));
+                        Assert.IsTrue(processIds.Contains(3));
+                        break;
+                    // Should accept messages from any process id
+                    case 0:
+                        Assert.IsTrue(processIds.Contains(1));
+                        Assert.IsTrue(processIds.Contains(2));
+                        Assert.IsTrue(processIds.Contains(3));
+                        break;
+                    // Should accept messages from process id which equals 1
+                    case 1:
+                        Assert.IsTrue(processIds.Contains(1));
+                        Assert.IsFalse(processIds.Contains(2));
+                        Assert.IsFalse(processIds.Contains(3));
+                        break;
                 }
 
                 logcat.Stop();
@@ -171,55 +252,12 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     }
 
     [Test]
-    public void ManualPidFilteringWorksAndroid60Devices()
+    public void MessageProviderForAndroid60DevicesDontAcceptFilter()
     {
-        var messages = new[]
-        {
-            @"10-25 14:27:56.862  1  2255 I chromium: Help",
-            @"10-25 14:27:56.863  2  2255 I chromium: .abc"
-        };
-
         InitRuntime();
-
-        foreach (var pid in new[] { -1, 0, 1 })
-        {
-            var processIds = new List<int>();
-            var logcat = new AndroidLogcat(m_Runtime, null, new AndroidLogcatFakeDevice60("Fake60"), pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
-            logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
-            {
-                processIds.AddRange(e.Select(m => m.processId));
-            };
-            logcat.Start();
-
-            var provider = (AndroidLogcatFakeMessageProvider)logcat.MessageProvider;
-            foreach (var m in messages)
-                provider.SupplyFakeMessage(m);
-
-            m_Runtime.OnUpdate();
-
-            switch (pid)
-            {
-                // Should accept messages from any process id
-                case -1:
-                    Assert.IsTrue(processIds.Contains(1));
-                    Assert.IsTrue(processIds.Contains(2));
-                    break;
-                // Should accept messages from any process id
-                case 0:
-                    Assert.IsTrue(processIds.Contains(1));
-                    Assert.IsTrue(processIds.Contains(2));
-                    break;
-                // Should accept messages from process id which equals 1
-                case 1:
-                    Assert.IsTrue(processIds.Contains(1));
-                    Assert.IsFalse(processIds.Contains(2));
-                    break;
-            }
-
-            logcat.Stop();
-        }
-
-
+        Assert.Throws(typeof(Exception), () =>
+            m_Runtime.CreateMessageProvider(null, "Test", AndroidLogcat.Priority.Verbose, -1, "sds", new AndroidLogcatFakeDevice60("Fake60"), null)
+        );
         ShutdownRuntime();
     }
 }

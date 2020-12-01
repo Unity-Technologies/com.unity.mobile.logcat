@@ -24,4 +24,30 @@ public class AndroidLogcatGeneralTests
             Assert.AreEqual(v.Key, AndroidLogcatUtilities.ParseVersion(v.Value));
         }
     }
+
+    [Test]
+    public void ParsePIDNameTests()
+    {
+        // Produced by adb.exe shell ps -p 816
+        var android90Output1 = @"
+USER           PID  PPID     VSZ    RSS WCHAN            ADDR S NAME
+system         816     1   24396   2296 0                   0 S /test/thermal-daemon
+";
+        // Produced by adb.exe shell ps -p 816 -o NAME
+        var android90Output2 = @"
+USER           PID  PPID     VSZ    RSS WCHAN            ADDR S NAME
+system         816     1   24396   2296 0                   0 S /test/thermal-daemon
+";
+
+        // Produced by adb.exe -s shell ps -p 279
+        // Note: -o NAME doesn't work on Android 5.0
+        var android50Output = @"
+USER     PID   PPID  VSIZE  RSS   PRIO  NICE  RTPRI SCHED   WCHAN    PC        NAME
+root      279   1     24908  908   20    0     0     0     ffffffff 00000000 S /system/bin/netd
+";
+
+        Assert.AreEqual("/test/thermal-daemon", AndroidLogcatUtilities.ProcessOutputFromPS(android90Output1));
+        Assert.AreEqual("/test/thermal-daemon", AndroidLogcatUtilities.ProcessOutputFromPS(android90Output2));
+        Assert.AreEqual("/system/bin/netd", AndroidLogcatUtilities.ProcessOutputFromPS(android50Output));
+    }
 }
