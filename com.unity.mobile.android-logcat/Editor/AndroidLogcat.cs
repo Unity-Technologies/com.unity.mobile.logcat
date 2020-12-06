@@ -188,7 +188,6 @@ namespace Unity.Android.Logcat
         internal void Stop()
         {
             m_CachedLogLines.Clear();
-            m_BuildInfos.Clear();
             m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
@@ -263,7 +262,6 @@ namespace Unity.Android.Logcat
             if (entries.Count == 0)
                 return;
 
-            ResolveStackTrace(entries);
             LogEntriesAdded(entries);
         }
 
@@ -313,18 +311,6 @@ namespace Unity.Android.Logcat
                 m.Groups["tag"].Value,
                 m.Groups["msg"].Value);
 
-            if ((entry.priority == Priority.Info && entry.tag.GetHashCode() == kUnityHashCode && entry.message.StartsWith("Built from")) ||
-                (entry.priority == Priority.Error && entry.tag.GetHashCode() == kCrashHashCode && entry.message.StartsWith("Build type")))
-            {
-                m_BuildInfos[entry.processId] = AndroidLogcatUtilities.ParseBuildInfo(entry.message);
-            }
-
-            if (entry.priority == Priority.Fatal && entry.tag.GetHashCode() == kDebugHashCode && entry.message.StartsWith("pid:"))
-            {
-                // Crash reported by Android for some pid, need to update buildInfo information for this new pid as well
-                ParseCrashBuildInfo(entry.processId, entry.message);
-            }
-
             return entry;
         }
 
@@ -342,156 +328,6 @@ namespace Unity.Android.Logcat
                 default:
                     throw new InvalidOperationException(string.Format("Invalid `priority` ({0}) in log entry.", priority));
             }
-        }
-
-        private void ParseCrashBuildInfo(int processId, string msg)
-        {
-            var reg = new Regex(@"pid: '(.+)'");
-            Match match = reg.Match(msg);
-
-            if (match.Success)
-            {
-                int pid = Int32.Parse(match.Groups[1].Value);
-                if (pid != processId && m_BuildInfos.ContainsKey(pid))
-                    m_BuildInfos[processId] = m_BuildInfos[pid];
-            }
-        }
-
-        public struct UnresolvedAddress
-        {
-            public int logEntryIndex;
-            public string unresolvedAddress;
-        };
-
-        private void ResolveStackTrace(List<LogEntry> entries)
-        {
-            var unresolvedAddresses = new Dictionary<KeyValuePair<BuildInfo, string>, List<UnresolvedAddress>>();
-
-            // Gather unresolved address if there are any
-            for (int i = 0; i < entries.Count; i++)
-            {
-                var entry = entries[i];
-                // Only process stacktraces from Error/Fatal priorities
-                if (entry.priority != Priority.Error && entry.priority != Priority.Fatal)
-                    continue;
-
-                // Only process stacktraces if tag is "CRASH" or "DEBUG"
-                if (entry.tag.GetHashCode() != kCrashHashCode && entry.tag.GetHashCode() != kDebugHashCode)
-                    continue;
-
-                BuildInfo buildInfo;
-                // Unknown build info, that means we don't know where the symbols are located
-                if (!m_BuildInfos.TryGetValue(entry.processId, out buildInfo))
-                    continue;
-
-                string address, libName;
-                if (!AndroidLogcatUtilities.ParseCrashLine(m_Runtime.Settings.StacktraceResolveRegex, entry.message, out address, out libName))
-                    continue;
-
-                List<UnresolvedAddress> addresses;
-                var key = new KeyValuePair<BuildInfo, string>(buildInfo, libName);
-                if (!unresolvedAddresses.TryGetValue(key, out addresses))
-                    unresolvedAddresses[key] = new List<UnresolvedAddress>();
-
-                unresolvedAddresses[key].Add(new UnresolvedAddress() { logEntryIndex = i, unresolvedAddress = address });
-            }
-
-            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
-                return;
-
-            var engineDirectory = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
-
-            // Resolve addresses
-            foreach (var u in unresolvedAddresses)
-            {
-                var buildInfo = u.Key.Key;
-                var libName = u.Key.Value;
-
-                var addresses = u.Value;
-                var symbolPath = CombinePaths(engineDirectory, "Variations", buildInfo.scriptingImplementation, buildInfo.buildType, "Symbols", buildInfo.cpu);
-                var libpath = AndroidLogcatUtilities.GetSymbolFile(symbolPath, libName);
-
-                // For optimizations purposes, we batch addresses which belong to same library, so addr2line can be ran less
-                try
-                {
-                    string[] result;
-                    if (!string.IsNullOrEmpty(libpath))
-                        result = m_Runtime.Tools.RunAddr2Line(libpath, addresses.Select(m => m.unresolvedAddress).ToArray());
-                    else
-                    {
-                        result = new string[addresses.Count];
-                        for (int i = 0; i < addresses.Count; i++)
-                            result[i] = string.Empty;
-                    }
-
-                    for (int i = 0; i < addresses.Count; i++)
-                    {
-                        var idx = addresses[i].logEntryIndex;
-                        var append = string.IsNullOrEmpty(result[i]) ? "(Not Resolved)" : result[i];
-                        entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, append, false)};
-                    }
-                }
-                catch (Exception ex)
-                {
-                    for (int i = 0; i < addresses.Count; i++)
-                    {
-                        var idx = addresses[i].logEntryIndex;
-                        entries[idx] = new LogEntry(entries[idx]) { message = ModifyLogEntry(entries[idx].message, "(Addr2Line failure)", true) };
-                        var errorMessage = new StringBuilder();
-                        errorMessage.AppendLine("Addr2Line failure");
-                        errorMessage.AppendLine("Full Entry Message: " + entries[idx].message);
-                        errorMessage.AppendLine("Scripting Backend: " + buildInfo.scriptingImplementation);
-                        errorMessage.AppendLine("Build Type: " + buildInfo.buildType);
-                        errorMessage.AppendLine("CPU: " + buildInfo.cpu);
-                        errorMessage.AppendLine(ex.Message);
-                        UnityEngine.Debug.LogError(errorMessage.ToString());
-                    }
-                }
-            }
-        }
-
-        private string CombinePaths(params string[] paths)
-        {
-            // Unity hasn't implemented System.IO.Path(string[]), we have to do it on our own.
-            if (paths.Length == 0)
-                return "";
-
-            string path = paths[0];
-            for (int i = 1; i < paths.Length; ++i)
-                path = System.IO.Path.Combine(path, paths[i]);
-            return path;
-        }
-
-        private bool ParseCrashMessage(string msg, out string address, out string libName)
-        {
-            var match = m_CrashMessageRegex.Match(msg);
-            if (match.Success)
-            {
-                address = match.Groups[1].Value;
-                libName = match.Groups[2].Value;
-                return true;
-            }
-            address = null;
-            libName = null;
-            return false;
-        }
-
-        private string ModifyLogEntry(string msg, string appendText, bool keeplOriginalMessage)
-        {
-            if (keeplOriginalMessage)
-            {
-                return msg + " " + appendText;
-            }
-            else
-            {
-                var match = m_CrashMessageRegex.Match(msg);
-                return match.Success ? match.Groups[0].Value + " " + appendText : msg + " " + appendText;
-            }
-        }
-
-        private string PriorityEnumToString(Priority priority)
-        {
-            return priority.ToString().Substring(0, 1);
         }
 
         private void OnDataReceived(string message)
@@ -524,8 +360,6 @@ namespace Unity.Android.Logcat
         {
             get { return m_Device.SupportYearFormat ? kYearTime : kThreadTime; }
         }
-
-        private Dictionary<int, BuildInfo> m_BuildInfos = new Dictionary<int, BuildInfo>();
 
         internal static Regex m_CrashMessageRegex = new Regex(@"^\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)", RegexOptions.Compiled);
         // Regex for messages produced via 'adb logcat -s -v year *:V'
