@@ -156,6 +156,12 @@ public class AndroidLogcatStacktraceTests
             return;
         }
 
+        if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
+        {
+            System.Console.WriteLine("Test ignored, SDK & NDK are not available.");
+            return;
+        }
+
         var tools = new AndroidTools();
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
         var symbolsDirectory = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols");
