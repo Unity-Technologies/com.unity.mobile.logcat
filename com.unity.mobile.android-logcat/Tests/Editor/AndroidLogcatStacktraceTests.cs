@@ -24,7 +24,7 @@ public class AndroidLogcatStacktraceTests
         return string.Empty;
     }
 
-    string GetSymbolAddressUsingReadElf(AndroidTools tools, string symbolFilePath, string symbolName)
+    static string GetSymbolAddressUsingReadElf(AndroidTools tools, string symbolFilePath, string symbolName)
     {
         // Regex for
         //     63: 000000000000083c   144 FUNC    GLOBAL DEFAULT   10 JNI_OnLoad
@@ -150,6 +150,12 @@ public class AndroidLogcatStacktraceTests
     [Test]
     public void CanCorrectlyPickSymbol()
     {
+        if (!AndroidBridge.AndroidExtensionsInstalled)
+        {
+            System.Console.WriteLine("Test ignored, because Android Support is not installed");
+            return;
+        }
+
         var tools = new AndroidTools();
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
         var symbolsDirectory = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols");
