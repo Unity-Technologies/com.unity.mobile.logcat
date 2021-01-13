@@ -4,9 +4,9 @@ using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
 
-public class AndroidLogcatAddr2LineTests
+public class AndroidLogcatStacktraceTests
 {
-    string GetSymbolAddressUsingNM(AndroidTools tools, string symbolFilePath, string symbolName)
+    static string GetSymbolAddressUsingNM(AndroidTools tools, string symbolFilePath, string symbolName)
     {
         // With NDK 16, calling nm.exe shows an  error
         // System.Exception : L:\UnityInstalls\2019.1.7f1\Editor\Data\PlaybackEngines\AndroidPlayer\NDK\toolchains\aarch64-linux-android-4.9\prebuilt\windows-x86_64\bin\aarch64-linux-android-nm.exe -extern-only "L:\UnityInstalls\2019.1.7f1\Editor\Data\PlaybackEngines\AndroidPlayer\Variations\il2cpp\Development\Symbols\arm64-v8a\libmain.sym.so"
@@ -43,6 +43,22 @@ public class AndroidLogcatAddr2LineTests
         return string.Empty;
     }
 
+    private static string GetSymbolPath(string abi, string libraryFile)
+    {
+        var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+        return AndroidLogcatUtilities.GetSymbolFile(Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}"), libraryFile);
+    }
+
+    private static string GetSymbolAddress(AndroidTools tools, string symbolPath, string symbolName)
+    {
+#if UNITY_2019_3_OR_NEWER
+        var targetAddress = GetSymbolAddressUsingNM(tools, symbolPath, symbolName);
+#else
+        var targetAddress = GetSymbolAddressUsingReadElf(tools, symbolPath, symbolName);
+#endif
+        return targetAddress;
+    }
+
     private void CanResolveStacktraces(string abi)
     {
         if (!AndroidBridge.AndroidExtensionsInstalled)
@@ -58,14 +74,10 @@ public class AndroidLogcatAddr2LineTests
         }
         var tools = new AndroidTools();
         const string symbolName = "JNI_OnLoad";
-        var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+
         var expectedOutput = symbolName + " at ??:?";
-        var symbolPath = Path.GetFullPath(Path.Combine(playerPackage, "Variations/il2cpp/Development/Symbols/" + abi + "/libmain.sym.so"));
-#if UNITY_2019_3_OR_NEWER
-        var targetAddress = GetSymbolAddressUsingNM(tools, symbolPath, symbolName);
-#else
-        var targetAddress = GetSymbolAddressUsingReadElf(tools, symbolPath, symbolName);
-#endif
+        var symbolPath = GetSymbolPath(abi, "libmain.so");
+        var targetAddress = GetSymbolAddress(tools, symbolPath, symbolName);
 
         Assert.IsNotEmpty(targetAddress, "Failed to find address for " + symbolName);
         var resolvedSymbols = tools.RunAddr2Line(symbolPath, new[] { targetAddress });
