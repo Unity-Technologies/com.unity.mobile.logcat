@@ -374,7 +374,7 @@ namespace Unity.Android.Logcat
         /// <returns></returns>
         internal static string GetSymbolFile(string symbolPath, string libraryFile)
         {
-            var fullPath = Path.Combine(symbolPath, libraryFile);
+            var fullPath = Path.GetFullPath(Path.Combine(symbolPath, libraryFile));
             if (File.Exists(fullPath))
                 return fullPath;
 
@@ -382,7 +382,7 @@ namespace Unity.Android.Logcat
             foreach (var e in extensionsToTry)
             {
                 // Try sym.so extension
-                fullPath = Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + e);
+                fullPath = Path.GetFullPath(Path.Combine(symbolPath, Path.GetFileNameWithoutExtension(libraryFile) + e));
                 if (File.Exists(fullPath))
                     return fullPath;
             }
@@ -390,12 +390,19 @@ namespace Unity.Android.Logcat
             return string.Empty;
         }
 
-        internal static string GetSymbolFile(IReadOnlyList<ReordableListItem> symbolPaths, string libraryFile)
+        internal static string GetSymbolFile(IReadOnlyList<ReordableListItem> symbolPaths, string abi, string libraryFile)
         {
             foreach (var symbolPath in symbolPaths)
             {
                 if (!symbolPath.Enabled)
                     continue;
+
+                if (!string.IsNullOrEmpty(abi))
+                {
+                    var fileWithABI = GetSymbolFile(Path.Combine(symbolPath.Name, abi), libraryFile);
+                    if (!string.IsNullOrEmpty(fileWithABI))
+                        return fileWithABI;
+                }
 
                 var file = GetSymbolFile(symbolPath.Name, libraryFile);
                 if (!string.IsNullOrEmpty(file))

@@ -107,7 +107,7 @@ namespace Unity.Android.Logcat
             foreach (var key in keys)
             {
                 var addresses = unresolved.GetAllAddresses(key);
-                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, key.Library);
+                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, key.ABI, key.Library);
 
                 // Symbol file not found, set 'not found' messages for all addresses of this library
                 if (string.IsNullOrEmpty(symbolFile))
