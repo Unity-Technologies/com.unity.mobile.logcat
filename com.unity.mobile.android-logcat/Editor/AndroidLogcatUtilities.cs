@@ -8,6 +8,11 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatUtilities
     {
+        internal static readonly string kAbiArm64 = "arm64-v8a";
+        internal static readonly string kAbiArmV7 = "armeabi-v7a";
+        internal static readonly string kAbiX86 = "x86";
+        internal static readonly string kAbiX86_64 = "x86-64";
+
         /// <summary>
         /// Capture the screenshot on the given device.
         /// </summary>
@@ -400,8 +405,9 @@ namespace Unity.Android.Logcat
             return string.Empty;
         }
 
-        internal static bool ParseCrashLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string address, out string libName)
+        internal static bool ParseCrashLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string abi, out string address, out string libName)
         {
+            abi = string.Empty;
             foreach (var regexItem in regexs)
             {
                 if (!regexItem.Enabled)
@@ -410,6 +416,19 @@ namespace Unity.Android.Logcat
                 var match = new Regex(regexItem.Name).Match(msg);
                 if (match.Success)
                 {
+                    var rawAbi = match.Groups["abi"].Value;
+                    if (!string.IsNullOrEmpty(rawAbi))
+                    {
+                        if (rawAbi.Equals("arm"))
+                            abi = kAbiArmV7;
+                        else if (rawAbi.Equals("arm64"))
+                            abi = kAbiArm64;
+                        else if (rawAbi.Equals("x86"))
+                            abi = kAbiX86;
+                        else if (rawAbi.Equals("x86_64"))
+                            abi = kAbiX86_64;
+                    }
+
                     address = match.Groups["address"].Value;
                     libName = match.Groups["libName"].Value + ".so";
                     return true;

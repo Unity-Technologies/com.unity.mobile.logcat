@@ -14,47 +14,53 @@ namespace Unity.Android.Logcat
 
         class UnresolvedAddresses
         {
-            Dictionary<string, Dictionary<string, string>> m_Addresses = new Dictionary<string, Dictionary<string, string>>();
+            internal struct AddressKey
+            {
+                internal string ABI { set; get; }
+                internal string Library { set; get; }
+            }
 
-            private Dictionary<string, string> GetOrCreateAddressMap(string libraryName)
+            Dictionary<AddressKey, Dictionary<string, string>> m_Addresses = new Dictionary<AddressKey, Dictionary<string, string>>();
+
+            private Dictionary<string, string> GetOrCreateAddressMap(AddressKey key)
             {
                 Dictionary<string, string> addresses;
-                if (m_Addresses.TryGetValue(libraryName, out addresses))
+                if (m_Addresses.TryGetValue(key, out addresses))
                     return addresses;
                 addresses = new Dictionary<string, string>();
-                m_Addresses[libraryName] = addresses;
+                m_Addresses[key] = addresses;
                 return addresses;
             }
 
-            internal void CreateAddressEntry(string libraryName, string address)
+            internal void CreateAddressEntry(AddressKey key, string address)
             {
-                var addresses = GetOrCreateAddressMap(libraryName);
+                var addresses = GetOrCreateAddressMap(key);
                 addresses[address] = string.Empty;
             }
 
-            internal void SetAddressValue(string libraryName, string address, string value)
+            internal void SetAddressValue(AddressKey key, string address, string value)
             {
-                var addresses = GetOrCreateAddressMap(libraryName);
+                var addresses = GetOrCreateAddressMap(key);
                 addresses[address] = value;
             }
 
-            internal string GetAddressValue(string libraryName, string address)
+            internal string GetAddressValue(AddressKey key, string address)
             {
-                var addresses = GetOrCreateAddressMap(libraryName);
+                var addresses = GetOrCreateAddressMap(key);
                 string value = string.Empty;
                 if (addresses.TryGetValue(address, out value))
                     return value;
                 return string.Empty;
             }
 
-            internal IReadOnlyList<string> GetAllLibraries()
+            internal IReadOnlyList<AddressKey> GetKeys()
             {
                 return m_Addresses.Keys.ToArray();
             }
 
-            internal IReadOnlyList<string> GetAllAddresses(string libraryName)
+            internal IReadOnlyList<string> GetAllAddresses(AddressKey key)
             {
-                return m_Addresses[libraryName].Keys.ToArray();
+                return m_Addresses[key].Keys.ToArray();
             }
         }
 
@@ -91,26 +97,26 @@ namespace Unity.Android.Logcat
             {
                 string address;
                 string library;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out address, out library))
+                string abi;
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
                     continue;
-                unresolved.CreateAddressEntry(library, address);
+                unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() {ABI = abi, Library = library}, address);
             }
 
-            var libraries = unresolved.GetAllLibraries();
-            foreach (var library in libraries)
+            var keys = unresolved.GetKeys();
+            foreach (var key in keys)
             {
-                var addresses = unresolved.GetAllAddresses(library);
-                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, library);
+                var addresses = unresolved.GetAllAddresses(key);
+                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, key.Library);
 
                 // Symbol file not found, set 'not found' messages for all addresses of this library
                 if (string.IsNullOrEmpty(symbolFile))
                 {
-                    var value = $"<color={m_RedColor}>({library} not found)</color>";
+                    var value = $"<color={m_RedColor}>({key.Library} not found)</color>";
                     foreach (var a in addresses)
-                        unresolved.SetAddressValue(library, a, value);
+                        unresolved.SetAddressValue(key, a, value);
                     continue;
                 }
-
 
                 try
                 {
@@ -124,7 +130,7 @@ namespace Unity.Android.Logcat
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         AndroidLogcatInternalLog.Log($"{addresses[i]} ---> {result[i]}");
-                        unresolved.SetAddressValue(library, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
+                        unresolved.SetAddressValue(key, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
                     }
                 }
                 catch (Exception ex)
@@ -138,36 +144,14 @@ namespace Unity.Android.Logcat
             {
                 string address;
                 string library;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out address, out library))
+                string abi;
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
                 {
                     output += l;
                 }
                 else
                 {
-                    /*
-                    string resolved = string.Format(" <color={0}>(Not resolved)</color>", m_RedColor);
-                    var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, library);
-                    if (string.IsNullOrEmpty(symbolFile))
-                    {
-                        resolved = string.Format(" <color={0}>({1} not found)</color>", m_RedColor, library);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var result = tools.RunAddr2Line(symbolFile, new[] { address });
-                            AndroidLogcatInternalLog.Log("addr2line \"{0}\" {1}", symbolFile, address);
-                            if (!string.IsNullOrEmpty(result[0]))
-                                resolved = string.Format(" <color={0}>({1})</color>", m_GreenColor, result[0].Trim());
-                        }
-                        catch (Exception ex)
-                        {
-                            return string.Format("Exception while running addr2line ('{0}', {1}):\n{2}", symbolFile, address, ex.Message);
-                        }
-                    }
-                    */
-
-                    output += l.Replace(address, address + " " + unresolved.GetAddressValue(library, address));
+                    output += l.Replace(address, address + " " + unresolved.GetAddressValue(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address));
                 }
 
                 output += Environment.NewLine;
