@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased] - 2021-01-01
 
 ### Fix & Improvements.
- - Removed limitation where Android Logcat could only be used while active Editor platform is Android. Note: Android Support is still required to be installed for Android Logcat to work.
+ - Removed limitation where Android Logcat could only be used while the active Editor platform is Android. Note: Android Support is still required to be installed for Android Logcat to work.
  - Fix Memory Window on Android 11. Android 11 started dumping RSS memory, which was previously unexpected by Memory Window.
  - Include RSS memory in Memory window. 
  - Moved ProjectSettings\AndroidLogcatSettings.asset to UserSettings\AndroidLogcatSettings.asset, since this file wasn't meant to be commited. 
- - Fix various issues where logcat would incorretly perform search on phone below Android 7.0
- - Display information in status bar by which data the messages are filtered, this should help with situtions where no messages are displayed logcat, only because a very specific tag or search filter is set.
- - Corretly get process name on Android 5.0 devices, previously processes with names like /system/bin/netd, would be resolved incorrectly
+ - Fix various issues where logcat would incorrectly perform search on the phone below Android 7.0
+ - Display the information in status bar by which data the messages are filtered, this should help with situtions where no messages are displayed logcat, only because a very specific tag or search filter is set.
+ - Correctly get process name on Android 5.0 devices, previously processes with names like /system/bin/netd, would be resolved incorrectly.
+ - You can now specify symbol path without CPU archtecture, if crash line will contain information about ABI, stacktrace utility will append the required CPU architecture.
 
 ### Changes
  - Memory window will be disabled by default, since it causes **Explicit concurrent copying GC freed** messages to be printed in the logcat which might unwanted behavior.
