@@ -8,7 +8,11 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatSettings
     {
-        internal static string kSettingsName = "AndroidLogcatSettings";
+        // Bump this version, whenever adding a new property or changing default
+        // This will force settings to be reset
+        private const int kVersion = 1;
+
+        internal static string kSettingsName = "AndroidLogcatSettings" + kVersion;
 
         // Since querying memory from device is a lengthy operation, here's a cap 500 ms, setting it too low  will make memory request to be delayed
         internal static int kMinMemoryRequestIntervalMS = 500;
