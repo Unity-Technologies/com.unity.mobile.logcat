@@ -41,6 +41,10 @@ pack:
 {% for editor in test_editors %}
 {% for platform in test_platforms %}
 {% for module_support in test_module_support %}
+{% if platform.name == "linux" and module_support.name == "android" and editor.version == "2019.2" or editor.version == "2019.4" %}
+   {% continue %}
+{% endif %}
+
 test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
   name : Test {{ editor.version }} on {{ platform.name }} with install '{{ module_support.name }}'
   agent:
@@ -88,6 +92,9 @@ test_all_trigger:
     {% for editor in test_editors %}
     {% for platform in test_platforms %}
     {% for module_support in test_module_support %}
+    {% if platform.name == "linux" and module_support.name == "android" and editor.version == "2019.2" or editor.version == "2019.4" %}
+        {% continue %}
+    {% endif %}
     - .yamato/upm-ci.yml#test_{{platform.name}}_{{editor.version}}_{{ module_support.name }}
     {% endfor %}
     {% endfor %}
