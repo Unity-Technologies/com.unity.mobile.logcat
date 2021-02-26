@@ -15,7 +15,7 @@ test_platforms:
     flavor: m1.mac
   - name: linux
     type: Unity::VM
-    image: desktop/ubuntu-18.04-desktop-katana
+    image: package-ci/ubuntu:stable
     flavor: b1.large
 test_module_support:
   - name: no_support
