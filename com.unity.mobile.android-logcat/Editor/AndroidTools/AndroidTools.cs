@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -6,10 +7,10 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidTools
     {
-        private string m_NDKDirectory;
-        private string m_Addr2LinePath;
-        private string m_NMPath;
-        private string m_ReadElfPath;
+        private readonly string m_NDKDirectory;
+        private readonly string m_Addr2LinePath;
+        private readonly string m_NMPath;
+        private readonly string m_ReadElfPath;
         private AndroidBridge.ADB m_ADB;
 
         internal AndroidTools()
@@ -46,6 +47,13 @@ namespace Unity.Android.Logcat
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "aarch64-linux-android-nm");
 #endif
+            var sourceProperties = Path.Combine(m_NDKDirectory, "source.properties");
+            if (!File.Exists(sourceProperties))
+            {
+                Debug.LogError($"NDK directory '{m_NDKDirectory}' doesn't exist or is invalid (Failed to locate source.properties), please set it in Preferences->External Tools and restart the Editor.");
+                return;
+            }
+
             m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
             m_ReadElfPath = Path.Combine(binPath, "aarch64-linux-android-readelf");
             if (Application.platform == RuntimePlatform.WindowsEditor)

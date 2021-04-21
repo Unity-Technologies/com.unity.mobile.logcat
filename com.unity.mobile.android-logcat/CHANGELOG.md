@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixes & Improvements.
  - Fix error 'Unable to find required resource at Fonts/consola.ttf' when using logcat package with 2021.2.
+ - Provide user friendly message when NDK directory is incorrect or is not set.
 
 ## [1.2.1] - 2021-01-21
 
