@@ -10,7 +10,9 @@ namespace Unity.Android.Logcat
 
         public void OnPostprocessBuild(BuildReport report)
         {
-            if ((report.summary.options & BuildOptions.AutoRunPlayer) != 0 && AndroidLogcatConsoleWindow.ShowDuringBuildRun)
+            if ((report.summary.options & BuildOptions.AutoRunPlayer) != 0 &&
+                report.summary.platform == BuildTarget.Android &&
+                AndroidLogcatConsoleWindow.ShowDuringBuildRun)
                 AndroidLogcatConsoleWindow.ShowNewOrExisting(true);
         }
     }
