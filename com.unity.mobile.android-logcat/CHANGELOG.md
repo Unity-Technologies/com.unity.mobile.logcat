@@ -4,9 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2021-04-21
+
+### Fixes & Improvements.
+ - Fix error 'Unable to find required resource at Fonts/consola.ttf' when using logcat package with 2021.2.
+
 ## [1.2.1] - 2021-01-21
 
-### Fix & Improvements.
+### Fixes & Improvements.
  - Removed limitation where Android Logcat could only be used while the active Editor platform is Android. Note: Android Support is still required to be installed for Android Logcat to work.
  - Fix Memory Window on Android 11. Android 11 started dumping RSS memory, which was previously unexpected by Memory Window.
  - Include RSS memory in Memory window. 
@@ -22,7 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.2.0] - 2020-08-18
 
-### Fix & Improvements.
+### Fixes & Improvements.
  - Correctly resolve top activity when device is locked.
  - Improved Stacktrace Utility, it's easier to set symbol paths and regexes.
  - Consola font is now selectable in Logcat settings.
@@ -45,13 +50,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.1.1] - 2020-03-12
 
-### Fix & Improvements.
+### Fixes & Improvements.
  - Fix warnings in scripts when active Editor platform is not Android.
  - Fix regex issues with logcat messages.
 
 ## [1.1.0] - 2020-02-14
 
-### Fix & Improvements.
+### Fixes & Improvements.
  - Added feature 'Filter by process id'
  - Fixed addr2line functionality, when we try to resolve stacktrace
  - Correctly open Terminal on macOS Catalina
@@ -72,7 +77,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  
 ## [1.0.0] - 2019-07-18
 
-### Fix & Improvements.
+### Fixes & Improvements.
 - Added Open Terminal button
 - Use monospace font for displaying log messages, this makes text align properly when displaying addresses
 - Fix performance issues whene there's no Android device attached, the device querying will happen on worker thread.
