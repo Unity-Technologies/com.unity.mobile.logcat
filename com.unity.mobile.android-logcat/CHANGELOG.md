@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixes & Improvements.
  - Fix error 'Unable to find required resource at Fonts/consola.ttf' when using logcat package with 2021.2.
  - Provide user friendly message when NDK directory is incorrect or is not set.
+ - The NDK presence will only be checked when it's actually needed, for ex., when resolving stacktraces.
  - Don't show Add/Remove Tag menu item, if tag is empty.
  - Don't show Filter By Process Id menu item, if process id is invalid.
  - When using AutoRun, logcat will appear automatically if you're building only for Android, previously it would appear for any platform, which is undesired.

@@ -7,14 +7,24 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidTools
     {
-        private readonly string m_NDKDirectory;
-        private readonly string m_Addr2LinePath;
-        private readonly string m_NMPath;
-        private readonly string m_ReadElfPath;
+        private string m_NDKDirectory;
+        private string m_Addr2LinePath;
+        private string m_NMPath;
+        private string m_ReadElfPath;
         private AndroidBridge.ADB m_ADB;
 
+        private bool m_Initialized;
         internal AndroidTools()
         {
+            m_Initialized = false;
+        }
+
+        private void InitializeIfNeeded()
+        {
+            if (m_Initialized)
+                return;
+            m_Initialized = true;
+
             string platformTag = "windows-x86_64";
             if (Application.platform != RuntimePlatform.WindowsEditor)
                 platformTag = "darwin-x86_64";
@@ -82,6 +92,8 @@ namespace Unity.Android.Logcat
 
         internal string[] RunAddr2Line(string symbolFilePath, string[] addresses)
         {
+            InitializeIfNeeded();
+
             // https://sourceware.org/binutils/docs/binutils/addr2line.html
             var args = "-C -f -p -e \"" + symbolFilePath + "\" " + string.Join(" ", addresses.ToArray());
             AndroidLogcatInternalLog.Log($"\"{m_Addr2LinePath}\" {args}");
@@ -93,6 +105,8 @@ namespace Unity.Android.Logcat
 
         internal string[] RunNM(string symbolFilePath)
         {
+            InitializeIfNeeded();
+
             var result = Shell.RunProcess(
                 m_NMPath,
                 "-extern-only \"" + symbolFilePath + "\"",
@@ -103,6 +117,8 @@ namespace Unity.Android.Logcat
 
         internal string[] RunReadElf(string symbolFilePath)
         {
+            InitializeIfNeeded();
+
             var result = Shell.RunProcess(
                 m_ReadElfPath,
                 "-Ws \"" + symbolFilePath + "\"",
