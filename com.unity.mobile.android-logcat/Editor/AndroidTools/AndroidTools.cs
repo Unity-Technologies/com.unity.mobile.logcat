@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using NUnit.Framework.Interfaces;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -13,25 +14,17 @@ namespace Unity.Android.Logcat
         private string m_ReadElfPath;
         private AndroidBridge.ADB m_ADB;
 
-        private bool m_Initialized;
         internal AndroidTools()
         {
-            m_Initialized = false;
         }
 
-        private void InitializeIfNeeded()
+        private void ResolvePathsIfNeeded()
         {
-            if (m_Initialized)
-                return;
-            m_Initialized = true;
-
             string platformTag = "windows-x86_64";
             if (Application.platform != RuntimePlatform.WindowsEditor)
                 platformTag = "darwin-x86_64";
 #if UNITY_2019_3_OR_NEWER
-            m_NDKDirectory = AndroidBridge.AndroidExternalToolsSettings.ndkRootPath;
-            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", platformTag, "bin");
-            m_NMPath = Path.Combine(binPath, "llvm-nm");
+            var ndkDirectory = AndroidBridge.AndroidExternalToolsSettings.ndkRootPath;
 #else
             var directoriesToChecks = new[]
             {
@@ -40,29 +33,36 @@ namespace Unity.Android.Logcat
                 System.Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT")
             };
 
-            m_NDKDirectory = string.Empty;
+            ndkDirectory = string.Empty;
             foreach (var d in directoriesToChecks)
             {
                 if (string.IsNullOrEmpty(d))
                     continue;
                 if (!Directory.Exists(d))
                     continue;
-                m_NDKDirectory = d;
+                ndkDirectory = d;
                 break;
             }
+#endif
+            if (string.IsNullOrEmpty(ndkDirectory))
+                throw new Exception("Failed to locate NDK directory");
 
-            if (string.IsNullOrEmpty(m_NDKDirectory))
-                throw new System.Exception("Failed to locate NDK directory");
+            var sourceProperties = Path.Combine(ndkDirectory, "source.properties");
+            if (!File.Exists(sourceProperties))
+                throw new Exception($"NDK directory '{ndkDirectory}' doesn't exist or is invalid (Failed to locate source.properties), please set it in Preferences->External Tools.");
 
+            if (!string.IsNullOrEmpty(ndkDirectory) && !string.IsNullOrEmpty(m_NDKDirectory) && m_NDKDirectory.Equals(ndkDirectory))
+                return;
+
+            m_NDKDirectory = ndkDirectory;
+
+#if UNITY_2019_3_OR_NEWER
+            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", platformTag, "bin");
+            m_NMPath = Path.Combine(binPath, "llvm-nm");
+#else
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "aarch64-linux-android-nm");
 #endif
-            var sourceProperties = Path.Combine(m_NDKDirectory, "source.properties");
-            if (!File.Exists(sourceProperties))
-            {
-                Debug.LogError($"NDK directory '{m_NDKDirectory}' doesn't exist or is invalid (Failed to locate source.properties), please set it in Preferences->External Tools and restart the Editor.");
-                return;
-            }
 
             m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
             m_ReadElfPath = Path.Combine(binPath, "aarch64-linux-android-readelf");
@@ -72,10 +72,6 @@ namespace Unity.Android.Logcat
                 m_NMPath += ".exe";
                 m_ReadElfPath += ".exe";
             }
-
-            // Addr2Line is important for us, so show an error, if it's not found
-            if (!File.Exists(m_Addr2LinePath))
-                Debug.LogError("Failed to locate " + m_Addr2LinePath);
         }
 
         internal void ValidateResult(ShellReturnInfo result)
@@ -92,7 +88,11 @@ namespace Unity.Android.Logcat
 
         internal string[] RunAddr2Line(string symbolFilePath, string[] addresses)
         {
-            InitializeIfNeeded();
+            ResolvePathsIfNeeded();
+
+            // Addr2Line is important for us, so show an error, if it's not found
+            if (!File.Exists(m_Addr2LinePath))
+                throw new Exception("Failed to locate " + m_Addr2LinePath);
 
             // https://sourceware.org/binutils/docs/binutils/addr2line.html
             var args = "-C -f -p -e \"" + symbolFilePath + "\" " + string.Join(" ", addresses.ToArray());
@@ -105,7 +105,10 @@ namespace Unity.Android.Logcat
 
         internal string[] RunNM(string symbolFilePath)
         {
-            InitializeIfNeeded();
+            ResolvePathsIfNeeded();
+
+            if (!File.Exists(m_NMPath))
+                throw new Exception("Failed to locate " + m_NMPath);
 
             var result = Shell.RunProcess(
                 m_NMPath,
@@ -117,7 +120,10 @@ namespace Unity.Android.Logcat
 
         internal string[] RunReadElf(string symbolFilePath)
         {
-            InitializeIfNeeded();
+            ResolvePathsIfNeeded();
+
+            if (!File.Exists(m_ReadElfPath))
+                throw new Exception("Failed to locate " + m_ReadElfPath);
 
             var result = Shell.RunProcess(
                 m_ReadElfPath,
