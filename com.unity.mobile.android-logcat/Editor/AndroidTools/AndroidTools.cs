@@ -33,7 +33,7 @@ namespace Unity.Android.Logcat
                 System.Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT")
             };
 
-            ndkDirectory = string.Empty;
+            var ndkDirectory = string.Empty;
             foreach (var d in directoriesToChecks)
             {
                 if (string.IsNullOrEmpty(d))
