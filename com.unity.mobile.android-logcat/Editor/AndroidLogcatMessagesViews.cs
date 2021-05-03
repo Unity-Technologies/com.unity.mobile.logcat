@@ -436,27 +436,70 @@ namespace Unity.Android.Logcat
                     continue;
                 entries.Add(m_LogEntries[si]);
             }
-            var menuItems = new List<string>();
-            menuItems.AddRange(new[] { "Copy", "Select All", "", "Save Selection..." });
+
+            var contextMenu = new AndroidContextMenu();
+            contextMenu.Add(ContextMenuItem.Copy, "Copy");
+            contextMenu.Add(ContextMenuItem.SelectAll, "Select All");
+            contextMenu.AddSplitter();
+            contextMenu.Add(ContextMenuItem.SaveSelection, "Save Selection...");
 
             if (entries.Count > 0)
             {
-                menuItems.Add("");
-                menuItems.Add("Add tag '" + entries[0].tag + "'");
-                menuItems.Add("Remove tag '" + entries[0].tag + "'");
-                menuItems.Add("");
-                menuItems.Add("Filter by process id '" + entries[0].processId + "'");
+                var tag = entries[0].tag;
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    contextMenu.AddSplitter();
+                    contextMenu.Add(ContextMenuItem.AddTag, $"Add tag '{tag}'");
+                    contextMenu.Add(ContextMenuItem.RemoveTag, $"Remove tag '{tag}'");
+                }
+
+                var processId = entries[0].processId;
+                if (processId >= 0)
+                {
+                    contextMenu.AddSplitter();
+                    contextMenu.Add(ContextMenuItem.FilterByProcessId, $"Filter by process id '{processId}'");
+                }
             }
 
-            var enabled = Enumerable.Repeat(true, menuItems.Count).ToArray();
-            var separator = new bool[menuItems.Count];
-            EditorUtility.DisplayCustomMenuWithSeparators(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
-                menuItems.ToArray(),
-                enabled,
-                separator,
-                null,
-                MenuSelection,
-                entries.ToArray());
+            contextMenu.UserData = entries.ToArray();
+            contextMenu.Show(e.mousePosition, MenuSelection);
+        }
+
+        private void MenuSelection(object userData, string[] options, int selected)
+        {
+            var contextMenu = (AndroidContextMenu)userData;
+            var entries = (AndroidLogcat.LogEntry[])contextMenu.UserData;
+            var item = contextMenu.GetItemAt(selected);
+            if (item == null)
+                return;
+
+            switch (item.Item)
+            {
+                // Copy
+                case ContextMenuItem.Copy:
+                    EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries);
+                    break;
+                // Select All
+                case ContextMenuItem.SelectAll:
+                    SelectAll();
+                    break;
+                // Save to File
+                case ContextMenuItem.SaveSelection:
+                    SaveToFile(entries);
+                    break;
+                // Add tag
+                case ContextMenuItem.AddTag:
+                    AddTag(entries[0].tag);
+                    break;
+                // Remove tag
+                case ContextMenuItem.RemoveTag:
+                    RemoveTag(entries[0].tag);
+                    break;
+                // Filter by process id
+                case ContextMenuItem.FilterByProcessId:
+                    FilterByProcessId(entries[0].processId);
+                    break;
+            }
         }
 
         private bool DoMouseEventsForLogEntry(Rect logEntryRect, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
@@ -587,37 +630,6 @@ namespace Unity.Android.Logcat
             }
 
             return contents.ToString();
-        }
-
-        private void MenuSelection(object userData, string[] options, int selected)
-        {
-            switch (selected)
-            {
-                // Copy
-                case 0:
-                    EditorGUIUtility.systemCopyBuffer = LogEntriesToString((AndroidLogcat.LogEntry[])userData);
-                    break;
-                // Select All
-                case 1:
-                    SelectAll();
-                    break;
-                // Save to File
-                case 3:
-                    SaveToFile((AndroidLogcat.LogEntry[])userData);
-                    break;
-                // Add tag
-                case 5:
-                    AddTag(((AndroidLogcat.LogEntry[])userData)[0].tag);
-                    break;
-                // Remove tag
-                case 6:
-                    RemoveTag(((AndroidLogcat.LogEntry[])userData)[0].tag);
-                    break;
-                // Filter by process id
-                case 8:
-                    FilterByProcessId(((AndroidLogcat.LogEntry[])userData)[0].processId);
-                    break;
-            }
         }
 
         private void TryToOpenFileFromLogEntry(AndroidLogcat.LogEntry entry)

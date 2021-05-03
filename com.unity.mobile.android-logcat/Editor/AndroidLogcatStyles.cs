@@ -98,7 +98,7 @@ namespace Unity.Android.Logcat
 
         public static Font GetFont()
         {
-            return (Font)EditorGUIUtility.LoadRequired(UnityEditor.Experimental.EditorResources.fontsPath + "consola.ttf");
+            return (Font)EditorGUIUtility.LoadRequired("Packages/com.unity.mobile.android-logcat/Editor/Resources/consola.ttf");
         }
 
         internal class StatusWheel

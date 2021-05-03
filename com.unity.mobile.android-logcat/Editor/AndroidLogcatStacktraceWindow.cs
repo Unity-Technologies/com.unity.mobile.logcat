@@ -165,9 +165,22 @@ namespace Unity.Android.Logcat
             m_ResolvedStacktraces = String.Empty;
             if (string.IsNullOrEmpty(m_Text))
             {
-                m_ResolvedStacktraces = string.Format(" <color={0}>(Please add some log with addresses first)</color>", m_RedColor);
+                m_ResolvedStacktraces = $"<color={m_RedColor}>Please add some log with addresses first.</color>";
                 return;
             }
+
+            if (m_Runtime.Settings.StacktraceResolveRegex.Count == 0)
+            {
+                m_ResolvedStacktraces = $"<color={m_RedColor}>No stacktrace regular expressions found.\nClick <b>Configure Regex</b> and configure Stacktrace Regex.</color>";
+                return;
+            }
+
+            if (m_Runtime.UserSettings.SymbolPaths.Count == 0)
+            {
+                m_ResolvedStacktraces = $"<color={m_RedColor}>At least one symbol path needs to be specified.\nClick Configure Symbol Paths and add the necessary symbol path.</color>";
+                return;
+            }
+
 
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             m_ResolvedStacktraces = ResolveAddresses(lines, m_Runtime.Settings.StacktraceResolveRegex, m_Runtime.UserSettings.SymbolPaths, m_Runtime.Tools);
