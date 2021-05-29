@@ -370,6 +370,9 @@ namespace Unity.Android.Logcat
                 case ToolsContextMenu.ScreenCapture:
                     AndroidLogcatScreenCaptureWindow.ShowWindow();
                     break;
+                case ToolsContextMenu.ScreenRecorder:
+                    AndroidLogcatScreenRecorderWindow.ShowWindow();
+                    break;
                 case ToolsContextMenu.OpenTerminal:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(m_Runtime.Tools.ADB.GetADBPath()));
                     break;
@@ -396,7 +399,8 @@ namespace Unity.Android.Logcat
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
                 var contextMenu = new AndroidContextMenu<ToolsContextMenu>();
-                contextMenu.Add(ToolsContextMenu.ScreenCapture, "Screen Capture");
+                contextMenu.Add(ToolsContextMenu.ScreenCapture, "Screen/Capture");
+                contextMenu.Add(ToolsContextMenu.ScreenRecorder, "Screen/Recorder");
                 contextMenu.Add(ToolsContextMenu.OpenTerminal, "Open Terminal");
                 contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
                 var b = m_Runtime.UserSettings.MemoryViewerState.Behavior;

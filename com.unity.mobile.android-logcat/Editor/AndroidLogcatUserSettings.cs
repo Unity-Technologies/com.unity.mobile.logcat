@@ -12,6 +12,25 @@ namespace Unity.Android.Logcat
     {
         internal const int kMaxExitedPackages = 5;
 
+        [Serializable]
+        internal class ScreenRecorderSettings
+        {
+            [SerializeField]
+            internal bool VideoSizeEnabled;
+            [SerializeField]
+            internal uint VideoSizeX;
+            [SerializeField]
+            internal uint VideoSizeY;
+            [SerializeField]
+            internal bool BitRateEnabled;
+            [SerializeField]
+            internal ulong BitRate;
+            [SerializeField]
+            internal bool DisplayIdEnabled;
+            [SerializeField]
+            internal string DisplayId;
+        }
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -31,6 +50,8 @@ namespace Unity.Android.Logcat
         private bool m_FilterIsRegularExpression;
         [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
+        [SerializeField]
+        private ScreenRecorderSettings m_ScreenRecorderSettings;
 
         public string LastSelectedDeviceId
         {
@@ -85,6 +106,9 @@ namespace Unity.Android.Logcat
                 return m_SelectedPriority;
             }
         }
+
+        public ScreenRecorderSettings RecorderSettings { set => m_ScreenRecorderSettings = value; get => m_ScreenRecorderSettings; }
+
 
         private void RefreshPackagesForSerialization()
         {
@@ -256,6 +280,16 @@ namespace Unity.Android.Logcat
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
+
+            m_ScreenRecorderSettings = new ScreenRecorderSettings();
+            m_ScreenRecorderSettings.BitRateEnabled = false;
+            m_ScreenRecorderSettings.DisplayIdEnabled = false;
+            m_ScreenRecorderSettings.VideoSizeEnabled = false;
+
+            m_ScreenRecorderSettings.BitRate = 4000000;
+            m_ScreenRecorderSettings.VideoSizeX = 1280;
+            m_ScreenRecorderSettings.VideoSizeY = 720;
+            m_ScreenRecorderSettings.DisplayId = string.Empty;
         }
 
         internal static AndroidLogcatUserSettings Load(string path)
