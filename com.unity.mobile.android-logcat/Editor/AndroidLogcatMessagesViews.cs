@@ -437,11 +437,11 @@ namespace Unity.Android.Logcat
                 entries.Add(m_LogEntries[si]);
             }
 
-            var contextMenu = new AndroidContextMenu();
-            contextMenu.Add(ContextMenuItem.Copy, "Copy");
-            contextMenu.Add(ContextMenuItem.SelectAll, "Select All");
+            var contextMenu = new AndroidContextMenu<MessagesContextMenu>();
+            contextMenu.Add(MessagesContextMenu.Copy, "Copy");
+            contextMenu.Add(MessagesContextMenu.SelectAll, "Select All");
             contextMenu.AddSplitter();
-            contextMenu.Add(ContextMenuItem.SaveSelection, "Save Selection...");
+            contextMenu.Add(MessagesContextMenu.SaveSelection, "Save Selection...");
 
             if (entries.Count > 0)
             {
@@ -449,15 +449,15 @@ namespace Unity.Android.Logcat
                 if (!string.IsNullOrEmpty(tag))
                 {
                     contextMenu.AddSplitter();
-                    contextMenu.Add(ContextMenuItem.AddTag, $"Add tag '{tag}'");
-                    contextMenu.Add(ContextMenuItem.RemoveTag, $"Remove tag '{tag}'");
+                    contextMenu.Add(MessagesContextMenu.AddTag, $"Add tag '{tag}'");
+                    contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{tag}'");
                 }
 
                 var processId = entries[0].processId;
                 if (processId >= 0)
                 {
                     contextMenu.AddSplitter();
-                    contextMenu.Add(ContextMenuItem.FilterByProcessId, $"Filter by process id '{processId}'");
+                    contextMenu.Add(MessagesContextMenu.FilterByProcessId, $"Filter by process id '{processId}'");
                 }
             }
 
@@ -467,7 +467,7 @@ namespace Unity.Android.Logcat
 
         private void MenuSelection(object userData, string[] options, int selected)
         {
-            var contextMenu = (AndroidContextMenu)userData;
+            var contextMenu = (AndroidContextMenu<MessagesContextMenu>)userData;
             var entries = (AndroidLogcat.LogEntry[])contextMenu.UserData;
             var item = contextMenu.GetItemAt(selected);
             if (item == null)
@@ -476,27 +476,27 @@ namespace Unity.Android.Logcat
             switch (item.Item)
             {
                 // Copy
-                case ContextMenuItem.Copy:
+                case MessagesContextMenu.Copy:
                     EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries);
                     break;
                 // Select All
-                case ContextMenuItem.SelectAll:
+                case MessagesContextMenu.SelectAll:
                     SelectAll();
                     break;
                 // Save to File
-                case ContextMenuItem.SaveSelection:
+                case MessagesContextMenu.SaveSelection:
                     SaveToFile(entries);
                     break;
                 // Add tag
-                case ContextMenuItem.AddTag:
+                case MessagesContextMenu.AddTag:
                     AddTag(entries[0].tag);
                     break;
                 // Remove tag
-                case ContextMenuItem.RemoveTag:
+                case MessagesContextMenu.RemoveTag:
                     RemoveTag(entries[0].tag);
                     break;
                 // Filter by process id
-                case ContextMenuItem.FilterByProcessId:
+                case MessagesContextMenu.FilterByProcessId:
                     FilterByProcessId(entries[0].processId);
                     break;
             }

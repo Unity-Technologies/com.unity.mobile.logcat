@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    internal enum ContextMenuItem
+    internal enum MessagesContextMenu
     {
         None,
         Copy,
@@ -17,17 +17,30 @@ namespace Unity.Android.Logcat
         FilterByProcessId
     }
 
-    class AndroidContextMenu
+    internal enum ToolsContextMenu
+    {
+        None,
+        ScreenCapture,
+        OpenTerminal,
+        StacktraceUtility,
+        MemoryBehaviorAuto,
+        MemoryBehaviorManual,
+        MemoryBehaviorHidden
+    }
+
+    class AndroidContextMenu<T>
     {
         internal class MenuItemData
         {
-            public ContextMenuItem Item { get; }
+            public T Item { get; }
             public string Name { get; }
+            public bool Selected { get; }
 
-            public MenuItemData(ContextMenuItem item, string name)
+            public MenuItemData(T item, string name, bool selected)
             {
                 Item = item;
                 Name = name;
+                Selected = selected;
             }
         }
 
@@ -35,17 +48,33 @@ namespace Unity.Android.Logcat
 
         private List<MenuItemData> m_Items = new List<MenuItemData>();
 
-        public void Add(ContextMenuItem item, string name)
+        public void Add(T item, string name, bool selected = false)
         {
-            m_Items.Add(new MenuItemData(item, name));
+            m_Items.Add(new MenuItemData(item, name, selected));
         }
 
         public void AddSplitter()
         {
-            Add(ContextMenuItem.None, string.Empty);
+            Add(default, string.Empty);
         }
 
         public string[] Names => m_Items.Select(i => i.Name).ToArray();
+
+        private int[] Selected
+        {
+            get
+            {
+                var selected = new List<int>();
+                for (int i = 0; i < m_Items.Count; i++)
+                {
+                    if (!m_Items[i].Selected)
+                        continue;
+                    selected.Add(i);
+                }
+
+                return selected.ToArray();
+            }
+        }
 
         public MenuItemData GetItemAt(int selected)
         {
@@ -62,7 +91,7 @@ namespace Unity.Android.Logcat
                 Names,
                 enabled,
                 separator,
-                null,
+                Selected,
                 callback,
                 this);
         }

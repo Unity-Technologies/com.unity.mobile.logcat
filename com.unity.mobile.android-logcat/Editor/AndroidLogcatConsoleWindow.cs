@@ -360,24 +360,29 @@ namespace Unity.Android.Logcat
 
         private void MenuToolsSelection(object userData, string[] options, int selected)
         {
-            switch (selected)
+            var contextMenu = (AndroidContextMenu<ToolsContextMenu>)userData;
+            var item = contextMenu.GetItemAt(selected);
+            if (item == null)
+                return;
+
+            switch (item.Item)
             {
-                case 0:
+                case ToolsContextMenu.ScreenCapture:
                     AndroidLogcatScreenCaptureWindow.ShowWindow();
                     break;
-                case 1:
+                case ToolsContextMenu.OpenTerminal:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(m_Runtime.Tools.ADB.GetADBPath()));
                     break;
-                case 2:
+                case ToolsContextMenu.StacktraceUtility:
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                     break;
-                case 3:
+                case ToolsContextMenu.MemoryBehaviorAuto:
                     m_Runtime.UserSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Auto;
                     break;
-                case 4:
+                case ToolsContextMenu.MemoryBehaviorManual:
                     m_Runtime.UserSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Manual;
                     break;
-                case 5:
+                case ToolsContextMenu.MemoryBehaviorHidden:
                     m_Runtime.UserSettings.MemoryViewerState.Behavior = MemoryViewerBehavior.Hidden;
                     break;
             }
@@ -390,25 +395,15 @@ namespace Unity.Android.Logcat
 
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
-                var names = new[]
-                {
-                    "Screen Capture",
-                    "Open Terminal",
-                    "Stacktrace Utility",
-                    "Memory Window/Auto Capture",
-                    "Memory Window/Manual Capture",
-                    "Memory Window/Disabled"
-                }.Select(m => new GUIContent(m)).ToArray();
-
-                int selected = -1;
-                switch (m_Runtime.UserSettings.MemoryViewerState.Behavior)
-                {
-                    case MemoryViewerBehavior.Auto: selected = 3; break;
-                    case MemoryViewerBehavior.Manual: selected = 4; break;
-                    case MemoryViewerBehavior.Hidden: selected = 5; break;
-                }
-
-                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names, selected, MenuToolsSelection, null);
+                var contextMenu = new AndroidContextMenu<ToolsContextMenu>();
+                contextMenu.Add(ToolsContextMenu.ScreenCapture, "Screen Capture");
+                contextMenu.Add(ToolsContextMenu.OpenTerminal, "Open Terminal");
+                contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
+                var b = m_Runtime.UserSettings.MemoryViewerState.Behavior;
+                contextMenu.Add(ToolsContextMenu.MemoryBehaviorAuto, "Memory Window/Auto Capture", b == MemoryViewerBehavior.Auto);
+                contextMenu.Add(ToolsContextMenu.MemoryBehaviorManual, "Memory Window/Manual Capture", b == MemoryViewerBehavior.Manual);
+                contextMenu.Add(ToolsContextMenu.MemoryBehaviorHidden, "Memory Window/Disabled", b == MemoryViewerBehavior.Hidden);
+                contextMenu.Show(new Vector2(rect.x, rect.yMax), MenuToolsSelection);
             }
         }
 
