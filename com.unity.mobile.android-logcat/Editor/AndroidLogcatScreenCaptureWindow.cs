@@ -6,12 +6,9 @@ using System.Linq;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatScreenCaptureWindow : EditorWindow
+    internal class AndroidLogcatScreenCaptureWindow : AndroidLogcatToolsBaseWindow
     {
         [SerializeField] private string m_ImagePath;
-        private AndroidLogcatRuntimeBase m_Runtime;
-        private GUIContent[] m_Devices;
-        private int m_SelectedDevice;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private const int kButtonAreaHeight = 30;
@@ -32,54 +29,8 @@ namespace Unity.Android.Logcat
 
         public static void ShowWindow()
         {
-            AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
+            var win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
             win.QueueScreenCapture();
-        }
-
-        private void OnEnable()
-        {
-            if (!AndroidBridge.AndroidExtensionsInstalled)
-                return;
-
-            m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
-
-            DeviceQuery_DevicesUpdated();
-
-            if (m_Runtime.DeviceQuery.SelectedDevice != null)
-            {
-                var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
-                for (int i = 0; i < m_Devices.Length; i++)
-                {
-                    if (id == m_Devices[i].text)
-                    {
-                        m_SelectedDevice = i;
-                        break;
-                    }
-                }
-            }
-        }
-
-        private void OnDisable()
-        {
-            if (!AndroidBridge.AndroidExtensionsInstalled)
-                return;
-
-            m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
-            m_SelectedDevice = 0;
-        }
-
-        private void DeviceQuery_DevicesUpdated()
-        {
-            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected)
-                .Select(m => new GUIContent(m.Value.Id)).ToArray();
-        }
-
-        private string GetDeviceId()
-        {
-            if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
-                return string.Empty;
-            return m_Devices[m_SelectedDevice].text;
         }
 
         private void QueueScreenCapture()
@@ -123,28 +74,15 @@ namespace Unity.Android.Logcat
 
         void OnGUI()
         {
-            if (!AndroidBridge.AndroidExtensionsInstalled)
-            {
-                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
+            if (!DoIsSupportedGUI())
                 return;
-            }
 
             EditorGUILayout.BeginVertical();
             GUILayout.Space(5);
-
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-
-            GUIContent statusIcon = GUIContent.none;
-            if (m_CaptureCount > 0)
-            {
-                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
-                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
-                Repaint();
-            }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
-
+            DoProgressGUI(m_CaptureCount > 0);
             EditorGUI.BeginChangeCheck();
-            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
+            DoSelectedDeviceGUI();
             if (EditorGUI.EndChangeCheck())
                 QueueScreenCapture();
 
@@ -153,7 +91,7 @@ namespace Unity.Android.Logcat
                 QueueScreenCapture();
             EditorGUI.EndDisabledGroup();
 
-            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton, GUILayout.Width(kSaveButtonWidth)))
             {
                 var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
                 if (!string.IsNullOrEmpty(path))
