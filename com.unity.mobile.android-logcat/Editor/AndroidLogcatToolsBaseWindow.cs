@@ -10,7 +10,7 @@ namespace Unity.Android.Logcat
     {
         protected const float kSaveButtonWidth = 100;
         protected AndroidLogcatRuntimeBase m_Runtime;
-        private GUIContent[] m_Devices;
+        private IAndroidLogcatDevice[] m_Devices;
         private int m_SelectedDevice;
 
 
@@ -29,35 +29,49 @@ namespace Unity.Android.Logcat
                 var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
                 for (int i = 0; i < m_Devices.Length; i++)
                 {
-                    if (id == m_Devices[i].text)
+                    if (id == m_Devices[i].Id)
                     {
                         m_SelectedDevice = i;
                         break;
                     }
                 }
             }
+
+            m_Runtime.Closing += OnDisable;
         }
 
         protected virtual void OnDisable()
         {
+            if (m_Runtime == null)
+                return;
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
 
             m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
             m_SelectedDevice = 0;
+            m_Runtime = null;
         }
 
         private void DeviceQuery_DevicesUpdated()
         {
-            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected)
-                .Select(m => new GUIContent(m.Value.Id)).ToArray();
+            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
+        }
+
+        protected IAndroidLogcatDevice SelectedDevice
+        {
+            get
+            {
+                if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
+                    return null;
+                return m_Devices[m_SelectedDevice];
+            }
         }
 
         protected string GetDeviceId()
         {
             if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
                 return string.Empty;
-            return m_Devices[m_SelectedDevice].text;
+            return m_Devices[m_SelectedDevice].Id;
         }
 
         protected void DoProgressGUI(bool spin)
@@ -74,7 +88,10 @@ namespace Unity.Android.Logcat
 
         protected void DoSelectedDeviceGUI()
         {
-            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup, GUILayout.MaxWidth(300));
+            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice,
+                m_Devices.Select(m => new GUIContent(m.Id)).ToArray(),
+                AndroidLogcatStyles.toolbarPopup,
+                GUILayout.MaxWidth(300));
         }
 
         protected bool DoIsSupportedGUI()
