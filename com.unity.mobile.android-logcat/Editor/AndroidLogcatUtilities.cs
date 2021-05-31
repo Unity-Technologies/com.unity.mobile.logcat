@@ -126,6 +126,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static bool KillProcesss(AndroidBridge.ADB adb, IAndroidLogcatDevice device, int pid)
+        {
+            try
+            {
+                var cmd = $"-s {device.Id} shell kill {pid}";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                adb.Run(new[] { cmd }, $"Unable to kill process {pid}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return false;
+            }
+        }
+
         internal static string ProcessOutputFromPS(string psOutput)
         {
             using (var sr = new StringReader(psOutput))
