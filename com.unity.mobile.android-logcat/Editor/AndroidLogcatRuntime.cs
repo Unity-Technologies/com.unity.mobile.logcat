@@ -12,6 +12,7 @@ namespace Unity.Android.Logcat
         protected AndroidLogcatUserSettings m_UserSettings;
         protected AndroidTools m_Tools;
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
+        protected AndroidLogcatScreenRecorder m_ScreenRecorder;
         protected bool m_Initialized;
 
         protected abstract string UserSettingsPath { get; }
@@ -47,10 +48,16 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_DeviceQuery; }
         }
 
+        public AndroidLogcatScreenRecorder ScreenRecorder
+        {
+            get { ValidateIsInitialized(); return m_ScreenRecorder; }
+        }
+
         public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
+        protected abstract AndroidLogcatScreenRecorder CreateScreenRecorder();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -70,6 +77,7 @@ namespace Unity.Android.Logcat
 
             m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
+            m_ScreenRecorder = CreateScreenRecorder();
 
             m_Initialized = true;
         }
@@ -85,6 +93,7 @@ namespace Unity.Android.Logcat
             m_Settings = null;
             m_UserSettings = null;
             m_Tools = null;
+            m_ScreenRecorder = null;
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
         }
@@ -104,6 +113,13 @@ namespace Unity.Android.Logcat
 
         protected override string UserSettingsPath { get => kUserSettingsPath; }
 
+        private bool m_SubscribeToEditorUpdate;
+
+        internal AndroidLogcatRuntime(bool subscribeToEditorUpdate = true)
+        {
+            m_SubscribeToEditorUpdate = subscribeToEditorUpdate;
+        }
+
         public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
             return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction);
@@ -111,14 +127,16 @@ namespace Unity.Android.Logcat
 
         public override void Initialize()
         {
-            EditorApplication.update += OnUpdate;
+            if (m_SubscribeToEditorUpdate)
+                EditorApplication.update += OnUpdate;
             base.Initialize();
         }
 
         public override void Shutdown()
         {
             base.Shutdown();
-            EditorApplication.update -= OnUpdate;
+            if (m_SubscribeToEditorUpdate)
+                EditorApplication.update -= OnUpdate;
         }
 
         protected override AndroidLogcatDeviceQueryBase CreateDeviceQuery()
@@ -129,6 +147,11 @@ namespace Unity.Android.Logcat
         protected override AndroidTools CreateAndroidTools()
         {
             return new AndroidTools();
+        }
+
+        protected override AndroidLogcatScreenRecorder CreateScreenRecorder()
+        {
+            return new AndroidLogcatScreenRecorder(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()
