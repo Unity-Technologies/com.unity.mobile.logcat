@@ -4,7 +4,7 @@ test_editors:
   - version: 2020.3
   - version: trunk
 test_editors_for_integration:
-..- version: 2020.3
+  - version: 2020.3
 test_platforms:
   - name: win
     type: Unity::VM
