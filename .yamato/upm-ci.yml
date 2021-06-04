@@ -52,6 +52,8 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     type: {{ platform.type }}
     image: {{ platform.image }}
     flavor: {{ platform.flavor}}
+  variables:
+    SKIP_INTEGRATION_TESTS: 1
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
