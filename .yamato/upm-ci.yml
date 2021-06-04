@@ -53,7 +53,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     image: {{ platform.image }}
     flavor: {{ platform.flavor}}
   variables:
-    SKIP_INTEGRATION_TESTS: 1
+    ANDROID_DEVICE_IS_AVAILABLE: 0
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
@@ -78,6 +78,8 @@ test_integration_{{ editor.version }}:
     type: Unity::VM
     image: mobile/android-execution-r19:stable
     flavor: b1.xlarge
+  variables:
+    ANDROID_DEVICE_IS_AVAILABLE: 1
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
