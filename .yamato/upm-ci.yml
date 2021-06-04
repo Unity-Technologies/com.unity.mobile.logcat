@@ -3,6 +3,8 @@ test_editors:
   - version: 2019.4
   - version: 2020.3
   - version: trunk
+test_editors_for_integration:
+..- version: 2020.3
 test_platforms:
   - name: win
     type: Unity::VM
@@ -67,6 +69,27 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
 {% endfor %}
 {% endfor %}
 
+{% for editor in test_editors_for_integration %}
+test_integration_{{ editor.version }}:
+  name : Test Integration {{ editor.version }}
+  agent:
+    type: Unity::VM
+    image: mobile/android-execution-r19:stable
+    flavor: b1.xlarge
+  commands:
+    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
+    - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
+    - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
+    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+  artifacts:
+    win_{{ editor.version }}_integration_logs:
+      paths:
+        - "upm-ci~/test-results/**/*"
+  dependencies:
+    - .yamato/upm-ci.yml#pack
+{% endfor %}
+
+
 test_all_trigger:
   name: Tests Trigger
   agent:
@@ -88,6 +111,9 @@ test_all_trigger:
         - "upm-ci~/packages/**/*"
   dependencies:
     - .yamato/upm-ci.yml#pack
+    {% for editor in test_editors_for_integration %}
+    - .yamato/upm-ci.yml#test_integration_{{ editor.version }}
+    {% endfor %}
     {% for editor in test_editors %}
     {% for platform in test_platforms %}
     {% for module_support in test_module_support %}
