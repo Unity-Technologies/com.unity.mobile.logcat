@@ -99,9 +99,11 @@ test_all_trigger:
   commands:
     - dir
   triggers:
-    branches:
-      only:
-        - "/.*/"
+    cancel_old_ci: true
+    pull_requests:
+      - targets:
+          only:
+            - "master"
   artifacts:
     logs:
       paths:
