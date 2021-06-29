@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using NUnit.Framework.Interfaces;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
