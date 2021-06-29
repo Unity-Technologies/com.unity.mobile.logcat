@@ -23,6 +23,7 @@ public class AndroidLogcatNetTests
         var logcatAssembly = CompilationPipeline.GetAssemblies(AssembliesType.Editor).FirstOrDefault(a => a.name.Equals("Unity.Mobile.AndroidLogcat.Editor"));
         Assert.IsNotNull(logcatAssembly, "Failed to find Android Logcat assembly");
         return logcatAssembly;
+       
     }
 
     /// <summary>
@@ -60,6 +61,7 @@ public class AndroidLogcatNetTests
             Assert.AreEqual(1, r.Value, $"'{r.Key}' was expected to be referenced once, but was referenced {r.Value} times, please adjust expectations, maybe the reference is no longer needed?");
         }
     }
+
 
     /// <summary>
     /// Check that we don't have unexpected using <namespace>;
