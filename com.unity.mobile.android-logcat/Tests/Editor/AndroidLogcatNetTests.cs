@@ -37,13 +37,17 @@ public class AndroidLogcatNetTests
         {
             "mscorlib",
             "System",
-            "UnityEditor",
             "UnityEngine.IMGUIModule",
             "UnityEngine.CoreModule",
             "UnityEngine.TextRenderingModule",
             "System.Core",
             "UnityEngine.ImageConversionModule",
-            "UnityEngine.JSONSerializeModule"
+            "UnityEngine.JSONSerializeModule",
+#if UNITY_2020_3_OR_NEWER
+            "UnityEditor.CoreModule",
+#else
+            "UnityEditor",
+#endif
         });
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
