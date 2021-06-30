@@ -43,7 +43,6 @@
   },
   "registry": "https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-candidates",
   "testables": [
-    "com.unity.mobile.android-logcat",
-    "com.unity.test-framework.performance"
+    "com.unity.mobile.android-logcat"
   ]
 }
