@@ -81,7 +81,7 @@ namespace Unity.Android.Logcat
             var e = Event.current;
             if (e.type == EventType.MouseDown && e.button == 1)
             {
-                var menuItems = new[] {new GUIContent("Copy All")};
+                var menuItems = new[] { new GUIContent("Copy All") };
                 EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
                     menuItems.ToArray(), -1, MenuSelection, null);
             }
