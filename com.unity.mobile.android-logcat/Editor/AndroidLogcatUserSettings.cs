@@ -30,6 +30,8 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private bool m_FilterIsRegularExpression;
         [SerializeField]
+        private bool m_FilterMatchCase;
+        [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
 
         public string LastSelectedDeviceId
@@ -235,6 +237,18 @@ namespace Unity.Android.Logcat
             get
             {
                 return m_FilterIsRegularExpression;
+            }
+        }
+
+        public bool FilterMatchCase
+        {
+            set
+            {
+                m_FilterMatchCase = value;
+            }
+            get
+            {
+                return m_FilterMatchCase;
             }
         }
 

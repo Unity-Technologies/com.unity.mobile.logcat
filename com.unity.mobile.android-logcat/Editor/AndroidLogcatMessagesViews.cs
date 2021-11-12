@@ -270,7 +270,7 @@ namespace Unity.Android.Logcat
             // Extra message count ensures that there's an empty space below when we scrolling all the way down
             // This way it's easier to see that there's no more messages
             const int kExtraMessageCount = 5;
-            totalWindowRect.height = AndroidLogcatStyles.kLogEntryFixedHeight * (m_LogEntries.Count + kExtraMessageCount);
+            totalWindowRect.height = AndroidLogcatStyles.kLogEntryFixedHeight * (m_LogCat.FilteredEntries.Count + kExtraMessageCount);
             totalWindowRect.width = Mathf.Max(totalWindowRect.width, m_MaxLogEntryWidth);
 
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
@@ -280,11 +280,11 @@ namespace Unity.Android.Logcat
 
             EditorGUI.BeginChangeCheck();
             m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, false);
-            int startItem = (int)(m_ScrollPosition.y / totalWindowRect.height * (kExtraMessageCount + m_LogEntries.Count));
+            int startItem = (int)(m_ScrollPosition.y / totalWindowRect.height * (kExtraMessageCount + m_LogCat.FilteredEntries.Count));
 
             // Check if we need to enable autoscrolling
             if (EditorGUI.EndChangeCheck() || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                m_Autoscroll = startItem + maxVisibleItems - kExtraMessageCount >= m_LogEntries.Count;
+                m_Autoscroll = startItem + maxVisibleItems - kExtraMessageCount >= m_LogCat.FilteredEntries.Count;
             else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
                 m_Autoscroll = false;
 
@@ -296,14 +296,14 @@ namespace Unity.Android.Logcat
 
             // Only draw items which can be visible on the screen
             // There can be thousands of log entries, drawing them all would kill performance
-            for (int i = startItem; i - startItem < maxVisibleItems && i < m_LogEntries.Count; i++)
+            for (int i = startItem; i - startItem < maxVisibleItems && i < m_LogCat.FilteredEntries.Count; i++)
             {
                 bool selected = m_SelectedIndices.Contains(i);
                 var selectionRect = new Rect(visibleWindowRect.x, visibleWindowRect.y + AndroidLogcatStyles.kLogEntryFixedHeight * i, totalWindowRect.width, AndroidLogcatStyles.kLogEntryFixedHeight);
 
                 if (e.type == EventType.Repaint)
                 {
-                    var le = m_LogEntries[i];
+                    var le = m_LogCat.FilteredEntries[i];
                     if (selected)
                         AndroidLogcatStyles.background.Draw(selectionRect, false, false, true, false);
                     else
@@ -406,7 +406,7 @@ namespace Unity.Android.Logcat
                 if (isLogEntrySelected && m_SelectedIndices.Count == 1)
                 {
                     if ((Time.realtimeSinceStartup - doubleClickStart) < 0.3f)
-                        TryToOpenFileFromLogEntry(m_LogEntries[logEntryIndex]);
+                        TryToOpenFileFromLogEntry(m_LogCat.FilteredEntries[logEntryIndex]);
                     doubleClickStart = -1;
                 }
                 else
@@ -432,9 +432,9 @@ namespace Unity.Android.Logcat
             var entries = new List<AndroidLogcat.LogEntry>();
             foreach (var si in m_SelectedIndices)
             {
-                if (si > m_LogEntries.Count - 1)
+                if (si > m_LogCat.FilteredEntries.Count - 1)
                     continue;
-                entries.Add(m_LogEntries[si]);
+                entries.Add(m_LogCat.FilteredEntries[si]);
             }
 
             var contextMenu = new AndroidContextMenu();
@@ -554,9 +554,9 @@ namespace Unity.Android.Logcat
                             var entries = new List<AndroidLogcat.LogEntry>(m_SelectedIndices.Count);
                             foreach (var si in m_SelectedIndices)
                             {
-                                if (si >= m_LogEntries.Count)
+                                if (si >= m_LogCat.FilteredEntries.Count)
                                     continue;
-                                entries.Add(m_LogEntries[si]);
+                                entries.Add(m_LogCat.FilteredEntries[si]);
                             }
                             EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries.ToArray());
                             e.Use();
@@ -568,9 +568,9 @@ namespace Unity.Android.Logcat
                             var logEntries = new List<AndroidLogcat.LogEntry>();
                             foreach (var si in m_SelectedIndices)
                             {
-                                if (si > m_LogEntries.Count - 1)
+                                if (si > m_LogCat.FilteredEntries.Count - 1)
                                     continue;
-                                logEntries.Add(m_LogEntries[si]);
+                                logEntries.Add(m_LogCat.FilteredEntries[si]);
                             }
                             SaveToFile(logEntries.ToArray());
                             e.Use();
@@ -592,7 +592,7 @@ namespace Unity.Android.Logcat
         private void SelectAll()
         {
             m_SelectedIndices.Clear();
-            for (int si = 0; si < m_LogEntries.Count; si++)
+            for (int si = 0; si < m_LogCat.FilteredEntries.Count; si++)
                 m_SelectedIndices.Add(si);
         }
 

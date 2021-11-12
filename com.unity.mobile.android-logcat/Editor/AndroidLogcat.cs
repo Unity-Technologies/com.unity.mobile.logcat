@@ -19,6 +19,8 @@ namespace Unity.Android.Logcat
             Fatal
         }
 
+
+
         public struct LogEntry
         {
             public const string kTimeFormatWithYear = "yyyy/MM/dd HH:mm:ss.fff";
@@ -26,7 +28,7 @@ namespace Unity.Android.Logcat
             public static string s_TimeFormat = kTimeFormatWithYear;
             public LogEntry(string msg)
             {
-                message =  msg;
+                message = msg;
                 tag = string.Empty;
                 dateTime = new DateTime();
                 processId = -1;
@@ -80,10 +82,10 @@ namespace Unity.Android.Logcat
         private readonly IAndroidLogcatDevice m_Device;
         private readonly int m_PackagePid;
         private readonly Priority m_MessagePriority;
-        private string m_Filter;
-        private bool m_FilterIsRegex;
-        private Regex m_ManualFilterRegex;
         private readonly string[] m_Tags;
+        private readonly FilterOptions m_FilterOptions;
+        private List<AndroidLogcat.LogEntry> m_RawLogEntries = new List<AndroidLogcat.LogEntry>();
+        private List<AndroidLogcat.LogEntry> m_FilteredLogEntries = new List<AndroidLogcat.LogEntry>();
 
         public IAndroidLogcatDevice Device { get { return m_Device; } }
 
@@ -91,11 +93,10 @@ namespace Unity.Android.Logcat
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
-        public string Filter { get { return m_Filter; }  set { m_Filter = value; } }
-
         public string[] Tags { get { return m_Tags; } }
 
-        public event Action<List<LogEntry>> LogEntriesAdded;
+        public event Action<IReadOnlyList<LogEntry>> RawLogEntriesAdded;
+        public event Action<IReadOnlyList<LogEntry>> FilteredLogEntriesAdded;
 
         public event Action<IAndroidLogcatDevice> Disconnected;
 
@@ -104,6 +105,11 @@ namespace Unity.Android.Logcat
         private AndroidLogcatMessageProviderBase m_MessageProvider;
 
         private List<string> m_CachedLogLines = new List<string>();
+
+        public IReadOnlyList<LogEntry> RawEntries => m_RawLogEntries;
+        public IReadOnlyList<LogEntry> FilteredEntries => m_FilteredLogEntries;
+
+        public FilterOptions FilterOptions => m_FilterOptions;
 
         public bool IsConnected
         {
@@ -128,58 +134,49 @@ namespace Unity.Android.Logcat
             get { return m_MessageProvider; }
         }
 
-        public AndroidLogcat(AndroidLogcatRuntimeBase runtime, AndroidBridge.ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat()
+        {
+            m_FilterOptions = new FilterOptions();
+        }
+
+        public AndroidLogcat(AndroidLogcatRuntimeBase runtime,
+            AndroidBridge.ADB adb,
+            IAndroidLogcatDevice device,
+            int packagePid,
+            Priority priority,
+            FilterOptions filterOptions,
+            string[] tags)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
             this.m_MessagePriority = priority;
-            this.m_FilterIsRegex = filterIsRegex;
-            InitFilterRegex(filter);
+            this.m_FilterOptions = filterOptions;
             this.m_Tags = tags;
+
+            m_FilterOptions.OnFilterChanged = OnFilterChanged;
 
             LogEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogEntry.kTimeFormatWithYear : LogEntry.kTimeFormatWithoutYear);
         }
 
-        private void InitFilterRegex(string filter)
+        private void ClearEntries()
         {
-            if (string.IsNullOrEmpty(filter))
-                return;
+            m_RawLogEntries.Clear();
+            m_FilteredLogEntries.Clear();
+        }
 
-            if (m_Device.SupportsFilteringByRegex)
-            {
-                // When doing searching by filter, we use --regex command.
-                // Note: there's no command line argument to disable or enable regular expressions for logcat
-                // Thus when we want to disable regular expressions, we simply provide filter with escaped characters to --regex command
-                this.m_Filter = m_FilterIsRegex ? filter : Regex.Escape(filter);
-                return;
-            }
-
-            this.m_Filter = filter;
-            if (!this.m_FilterIsRegex)
-                return;
-
-            try
-            {
-                m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
-            }
-            catch (Exception ex)
-            {
-                AndroidLogcatInternalLog.Log($"Input search filter '{m_Filter}' is not a valid regular expression.\n{ex}");
-
-                // Silently disable filtering if supplied regex is wrong
-                m_Filter = string.Empty;
-                m_ManualFilterRegex = null;
-                m_FilterIsRegex = false;
-            }
+        private void OnFilterChanged()
+        {
+            m_FilteredLogEntries.Clear();
+            FilterEntries(m_RawLogEntries);
         }
 
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.Update += OnUpdate;
-            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, m_Device.SupportsFilteringByRegex ? Filter : string.Empty, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device, OnDataReceived);
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device, OnDataReceived);
             m_MessageProvider.Start();
 
             Connected?.Invoke(Device);
@@ -187,6 +184,8 @@ namespace Unity.Android.Logcat
 
         internal void Stop()
         {
+            if (m_Runtime == null)
+                return;
             m_CachedLogLines.Clear();
             m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
@@ -206,6 +205,8 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
             var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
             AndroidLogcatInternalLog.Log(adbOutput);
+
+            ClearEntries();
         }
 
         void OnUpdate()
@@ -230,7 +231,6 @@ namespace Unity.Android.Logcat
 
                 var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = !m_Device.SupportsFilteringByRegex  && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -251,8 +251,8 @@ namespace Unity.Android.Logcat
                     if (needFilterByTags && !MatchTagsFilter(m.Groups["tag"].Value))
                         continue;
 
-                    if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
-                        continue;
+                    //if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
+                    //    continue;
 
                     entries.Add(ParseLogEntry(m));
                 }
@@ -261,8 +261,42 @@ namespace Unity.Android.Logcat
 
             if (entries.Count == 0)
                 return;
+            // TODO:
+            /*
+            if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
+            {
+                RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
+            }
+            */
 
-            LogEntriesAdded(entries);
+            m_RawLogEntries.AddRange(entries);
+            if (RawLogEntriesAdded != null)
+                RawLogEntriesAdded(entries);
+            FilterEntries(entries);
+        }
+
+        private void FilterEntries(IEnumerable<LogEntry> unfilteredEntries)
+        {
+            var filteredEntries = new List<LogEntry>();
+            if (string.IsNullOrEmpty(m_FilterOptions.Filter))
+            {
+                filteredEntries = unfilteredEntries.ToList();
+            }
+            else
+            {
+                foreach (var entry in unfilteredEntries)
+                {
+                    if (!m_FilterOptions.Matches(entry.message))
+                        continue;
+                    filteredEntries.Add(entry);
+                }
+            }
+
+            if (filteredEntries.Count == 0)
+                return;
+            m_FilteredLogEntries.AddRange(filteredEntries);
+            if (FilteredLogEntriesAdded != null)
+                FilteredLogEntriesAdded(filteredEntries);
         }
 
         private LogEntry LogEntryParserErrorFor(string msg)
@@ -279,11 +313,6 @@ namespace Unity.Android.Logcat
             }
 
             return false;
-        }
-
-        private bool MatchSearchFilter(string msg)
-        {
-            return m_FilterIsRegex ? m_ManualFilterRegex.Match(msg).Success : msg.Contains(Filter);
         }
 
         private LogEntry ParseLogEntry(Match m)
@@ -347,7 +376,7 @@ namespace Unity.Android.Logcat
 
         internal Regex LogParseRegex
         {
-            get { return m_Device.SupportYearFormat  ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+            get { return m_Device.SupportYearFormat ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
         }
 
         /// <summary>

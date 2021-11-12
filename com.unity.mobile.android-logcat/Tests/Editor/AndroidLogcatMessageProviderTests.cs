@@ -12,15 +12,12 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
 {
     private bool m_Started;
     private List<string> m_FakeMessages;
-    private Regex m_Regex;
 
-    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
-        : base(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        : base(adb, priority, packageID, logPrintFormat, device, logCallbackAction)
     {
         m_FakeMessages = new List<string>();
         m_Started = false;
-        if (!string.IsNullOrEmpty(m_Filter))
-            m_Regex = new Regex(m_Filter);
     }
 
     internal Regex LogParseRegex
@@ -46,10 +43,6 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
 
                 // Simulate filtering by PID
                 if (m_Device.SupportsFilteringByPid && m_PackageID > 0 && Int32.Parse(m.Groups["pid"].Value) != m_PackageID)
-                    continue;
-
-                // Simulate filtering by text
-                if (m_Device.SupportsFilteringByRegex && m_Regex != null && !m_Regex.Match(message).Success)
                     continue;
             }
 
@@ -84,7 +77,7 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
 
 internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
-    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90")};
+    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90") };
 
     private static void SupplyFakeMessages(AndroidLogcatFakeMessageProvider provider, IAndroidLogcatDevice device, string[] messages)
     {
@@ -97,6 +90,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         }
     }
 
+    // TODO match case filter
     [Test]
     public void RegexFilterCorrectlyFormed()
     {
@@ -105,24 +99,21 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         foreach (var device in kDevices)
         {
-            foreach (var isRegexEnabled in new[] {true, false})
+            foreach (var isRegexEnabled in new[] { true, false })
             {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc",
-                    isRegexEnabled, new string[] {});
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
+                    new FilterOptions()
+                    {
+                        Filter = ".*abc",
+                        UseRegularExpressions = isRegexEnabled,
+                        MatchCase = true
+                    },
+                    new string[] { });
                 var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName,
                     isRegexEnabled.ToString());
 
-                if (device.SupportsFilteringByRegex)
-                {
-                    if (isRegexEnabled)
-                        Assert.IsTrue(logcat.Filter.Equals(filter), message);
-                    else
-                        Assert.IsTrue(logcat.Filter.Equals(Regex.Escape(filter)), message);
-                }
-                else
-                {
-                    Assert.IsTrue(logcat.Filter.Equals(filter), message);
-                }
+                Assert.IsTrue(logcat.FilterOptions.Filter.Equals(filter), message);
+
             }
         }
 
@@ -144,13 +135,19 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         InitRuntime();
         foreach (var device in kDevices)
         {
-            foreach (var regexIsEnabled in new[] {true, false})
+            foreach (var regexIsEnabled in new[] { true, false })
             {
-                foreach (var filter in new[] {"", ".abc", "...."})
+                foreach (var filter in new[] { "", ".abc", "...." })
                 {
                     var entries = new List<string>();
-                    var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
-                    logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                    var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
+                        new FilterOptions
+                        {
+                            Filter = filter,
+                            UseRegularExpressions = regexIsEnabled,
+                            MatchCase = true
+                        }, new string[] { });
+                    logcat.FilteredLogEntriesAdded += (IReadOnlyList<AndroidLogcat.LogEntry> e) =>
                     {
                         entries.AddRange(e.Select(m => m.message));
                     };
@@ -208,11 +205,16 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         foreach (var device in kDevices)
         {
-            foreach (var pid in new[] {-1, 0, 1})
+            foreach (var pid in new[] { -1, 0, 1 })
             {
                 var processIds = new List<int>();
-                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
-                logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, AndroidLogcat.Priority.Verbose,
+                    new FilterOptions
+                    {
+                        Filter = "",
+                        UseRegularExpressions = false
+                    }, new string[] { });
+                logcat.FilteredLogEntriesAdded += (IReadOnlyList<AndroidLogcat.LogEntry> e) =>
                 {
                     processIds.AddRange(e.Select(m => m.processId));
                 };
@@ -221,6 +223,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                 SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
 
                 m_Runtime.OnUpdate();
+
 
                 switch (pid)
                 {
@@ -248,16 +251,6 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             }
         }
 
-        ShutdownRuntime();
-    }
-
-    [Test]
-    public void MessageProviderForAndroid60DevicesDontAcceptFilter()
-    {
-        InitRuntime();
-        Assert.Throws(typeof(Exception), () =>
-            m_Runtime.CreateMessageProvider(null, "Test", AndroidLogcat.Priority.Verbose, -1, "sds", new AndroidLogcatFakeDevice60("Fake60"), null)
-        );
         ShutdownRuntime();
     }
 }

@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
         private Rect m_IpWindowScreenRect;
 
 
-        private  IReadOnlyList<PackageInformation> PackagesForSelectedDevice
+        private IReadOnlyList<PackageInformation> PackagesForSelectedDevice
         {
             get { return m_Runtime.UserSettings.GetKnownPackages(m_Runtime.DeviceQuery.SelectedDevice); }
         }
@@ -27,13 +27,10 @@ namespace Unity.Android.Logcat
         private SearchField m_SearchField;
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private AndroidLogcat m_LogCat;
+        private AndroidLogcat m_LogCat = new AndroidLogcat();
         private AndroidLogcatStatusBar m_StatusBar;
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
-
-        private List<AndroidLogcat.LogEntry> m_LogEntries = new List<AndroidLogcat.LogEntry>();
-
         private const byte kSpace = 3;
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
         private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
@@ -283,7 +280,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_LogCat != null && m_LogCat.IsConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
+            if (m_LogCat.IsConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
@@ -323,8 +320,11 @@ namespace Unity.Android.Logcat
             UpdateStatusBar();
         }
 
+
+        // TODO: Remove?
         private void RemoveMessages(int count)
         {
+            /*
             m_LogEntries.RemoveRange(0, count);
 
             // Modify selection indices
@@ -334,15 +334,11 @@ namespace Unity.Android.Logcat
             // Remove selection indices which point to removed lines
             while (m_SelectedIndices.Count > 0 && m_SelectedIndices[0] < 0)
                 m_SelectedIndices.RemoveAt(0);
+            */
         }
 
-        private void OnNewLogEntryAdded(List<AndroidLogcat.LogEntry> entries)
+        private void OnNewLogEntryAdded(IReadOnlyList<AndroidLogcat.LogEntry> entries)
         {
-            m_LogEntries.AddRange(entries);
-            if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
-            {
-                RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
-            }
             Repaint();
         }
 
@@ -435,12 +431,11 @@ namespace Unity.Android.Logcat
 
                 EditorGUI.BeginDisabledGroup(!m_StatusBar.Connected);
                 HandleSelectedPackage();
+                EditorGUI.EndDisabledGroup();
 
                 HandleSearchField();
 
                 SetRegex(GUILayout.Toggle(m_Runtime.UserSettings.FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
-
-                EditorGUI.EndDisabledGroup();
 
                 GUILayout.Space(kSpace);
 
@@ -498,19 +493,25 @@ namespace Unity.Android.Logcat
 
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
+                // TODO
+                /*
                 int count = 10000;
                 var entries = new List<AndroidLogcat.LogEntry>(count);
                 for (int i = 0; i < count; i++)
                     entries.Add(new AndroidLogcat.LogEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
                 OnNewLogEntryAdded(entries);
                 Repaint();
+                */
             }
 
             if (GUILayout.Button("Remove Log Line", AndroidLogcatStyles.toolbarButton))
             {
+                // TODO:
+                /*
                 if (m_LogEntries.Count > 0)
                     RemoveMessages(1);
                 Repaint();
+                */
             }
 
             // Have a sane number which represents that we cannot keep up with async items in queue
@@ -635,7 +636,7 @@ namespace Unity.Android.Logcat
                 List<PackageInformation> packages = new List<PackageInformation>(PackagesForSelectedDevice);
 
                 var appName = PlayerSettings.applicationIdentifier;
-                packages.Sort(delegate(PackageInformation x, PackageInformation y)
+                packages.Sort(delegate (PackageInformation x, PackageInformation y)
                 {
                     if (x.name == appName && !x.exited)
                         return -1;
@@ -704,7 +705,8 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.UserSettings.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
-            RestartLogCat();
+            m_LogCat.FilterOptions.Filter = m_Runtime.UserSettings.Filter;
+            ;
         }
 
         private void SetRegex(bool newValue)
@@ -713,7 +715,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.UserSettings.FilterIsRegularExpression = newValue;
-            RestartLogCat();
+            m_LogCat.FilterOptions.UseRegularExpressions = m_Runtime.UserSettings.FilterIsRegularExpression;
         }
 
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
@@ -784,8 +786,6 @@ namespace Unity.Android.Logcat
         {
             StopLogCat();
 
-            m_LogEntries.Clear();
-
             StartLogcat();
         }
 
@@ -803,10 +803,14 @@ namespace Unity.Android.Logcat
                 device,
                 SelectedPackage == null ? 0 : SelectedPackage.processId,
                 m_Runtime.UserSettings.SelectedPriority,
-                m_Runtime.UserSettings.Filter,
-                m_Runtime.UserSettings.FilterIsRegularExpression,
+                new FilterOptions()
+                {
+                    Filter = m_Runtime.UserSettings.Filter,
+                    UseRegularExpressions = m_Runtime.UserSettings.FilterIsRegularExpression,
+                    MatchCase = m_Runtime.UserSettings.FilterMatchCase
+                },
                 m_Runtime.UserSettings.Tags.GetSelectedTags());
-            m_LogCat.LogEntriesAdded += OnNewLogEntryAdded;
+            m_LogCat.FilteredLogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.Disconnected += OnLogcatDisconnected;
             m_LogCat.Connected += OnLogcatConnected;
 
@@ -815,23 +819,14 @@ namespace Unity.Android.Logcat
 
         private void StopLogCat()
         {
-            if (m_LogCat != null)
-                m_LogCat.Stop();
-            m_LogCat = null;
+            m_LogCat.Stop();
+
             UpdateStatusBar();
         }
 
         private void ClearLogCat()
         {
-            if (m_LogCat == null)
-            {
-                m_LogEntries.Clear();
-                m_SelectedIndices.Clear();
-                return;
-            }
-
             m_LogCat.Stop();
-            m_LogEntries.Clear();
             m_SelectedIndices.Clear();
             m_LogCat.Clear();
             m_LogCat.Start();
@@ -850,7 +845,7 @@ namespace Unity.Android.Logcat
         public void UpdateStatusBar()
         {
             var message = string.Empty;
-            if (m_LogCat != null && m_LogCat.IsConnected)
+            if (m_LogCat.IsConnected)
             {
                 var text = m_Runtime.UserSettings.Filter;
                 var regex = m_Runtime.UserSettings.FilterIsRegularExpression ? "On" : "Off";
@@ -870,7 +865,7 @@ namespace Unity.Android.Logcat
             if (m_StatusBar == null)
                 return;
 
-            m_StatusBar.Connected = m_LogCat != null && m_LogCat.IsConnected;
+            m_StatusBar.Connected = m_LogCat.IsConnected;
             m_StatusBar.Message = message;
 
             Repaint();

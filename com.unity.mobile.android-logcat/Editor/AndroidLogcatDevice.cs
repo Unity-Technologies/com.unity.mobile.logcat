@@ -45,11 +45,6 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
-        internal bool SupportsFilteringByRegex
-        {
-            get { return OSVersion >= kAndroidVersion70; }
-        }
-
         internal bool SupportsFilteringByPid
         {
             get { return OSVersion >= kAndroidVersion70; }
