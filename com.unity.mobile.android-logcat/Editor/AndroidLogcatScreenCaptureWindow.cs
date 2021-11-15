@@ -89,7 +89,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = id},
+                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = id },
                 ExecuteScreenCapture,
                 IntegrateCaptureScreenShot,
                 false);

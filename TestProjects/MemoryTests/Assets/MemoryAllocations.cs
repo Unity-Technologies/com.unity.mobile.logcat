@@ -35,10 +35,10 @@ public class MemoryAllocations : MonoBehaviour
 
     GUIContent[] m_ToolbarItems = ((MemoryType[])Enum.GetValues(typeof(MemoryType))).Select(m => new GUIContent(m.ToString())).ToArray();
 
-    #if UNITY_IOS
+#if UNITY_IOS
     [DllImport("__Internal")]
     private static extern int _iOSGetTotalNativeMemoryMB();
-    #endif
+#endif
 
     void Start()
     {
@@ -104,9 +104,9 @@ public class MemoryAllocations : MonoBehaviour
     void DoNativeGUI()
     {
         var message = $"Native Memory allocated {GetAllocatedNativeMemoryMB()} MB";
-        #if UNITY_IOS
+#if UNITY_IOS
         message += $", ObjC: {_iOSGetTotalNativeMemoryMB()}";
-        #endif
+#endif
         GUILayout.Label(message);
         if (GUILayout.Button($"Allocate {kAllocationUnityInMb}MB of Native Memory"))
         {

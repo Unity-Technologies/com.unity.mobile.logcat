@@ -26,7 +26,7 @@ namespace Unity.Android.Logcat
             public static string s_TimeFormat = kTimeFormatWithYear;
             public LogEntry(string msg)
             {
-                message =  msg;
+                message = msg;
                 tag = string.Empty;
                 dateTime = new DateTime();
                 processId = -1;
@@ -91,7 +91,7 @@ namespace Unity.Android.Logcat
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
-        public string Filter { get { return m_Filter; }  set { m_Filter = value; } }
+        public string Filter { get { return m_Filter; } set { m_Filter = value; } }
 
         public string[] Tags { get { return m_Tags; } }
 
@@ -230,7 +230,7 @@ namespace Unity.Android.Logcat
 
                 var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = !m_Device.SupportsFilteringByRegex  && !string.IsNullOrEmpty(Filter);
+                var needFilterBySearch = !m_Device.SupportsFilteringByRegex && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -347,7 +347,7 @@ namespace Unity.Android.Logcat
 
         internal Regex LogParseRegex
         {
-            get { return m_Device.SupportYearFormat  ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+            get { return m_Device.SupportYearFormat ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
         }
 
         /// <summary>

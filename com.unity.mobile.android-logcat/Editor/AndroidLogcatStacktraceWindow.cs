@@ -88,7 +88,7 @@ namespace Unity.Android.Logcat
             wnd.Focus();
         }
 
-        internal static string ResolveAddresses(string[] lines, IReadOnlyList<ReordableListItem> regexes,  IReadOnlyList<ReordableListItem> symbolPaths, AndroidTools tools)
+        internal static string ResolveAddresses(string[] lines, IReadOnlyList<ReordableListItem> regexes, IReadOnlyList<ReordableListItem> symbolPaths, AndroidTools tools)
         {
             var output = string.Empty;
             // Calling addr2line for every address is costly, that's why we need to do it in batch
@@ -100,7 +100,7 @@ namespace Unity.Android.Logcat
                 string abi;
                 if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
                     continue;
-                unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() {ABI = abi, Library = library}, address);
+                unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address);
             }
 
             var keys = unresolved.GetKeys();
@@ -242,7 +242,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             EditorGUI.BeginChangeCheck();
-            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] {new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.Fixed, GUILayout.ExpandWidth(true));
+            m_WindowMode = (WindowMode)GUILayout.Toolbar((int)m_WindowMode, new[] { new GUIContent("Original"), new GUIContent("Resolved"), }, "LargeButton", GUI.ToolbarButtonSize.Fixed, GUILayout.ExpandWidth(true));
             if (EditorGUI.EndChangeCheck())
                 SelectWindowMode(m_WindowMode);
 
