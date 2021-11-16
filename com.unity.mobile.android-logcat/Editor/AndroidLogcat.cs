@@ -93,8 +93,6 @@ namespace Unity.Android.Logcat
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
-        public string Filter { get { return m_Filter; } set { m_Filter = value; } }
-
         public string[] Tags { get { return m_Tags; } }
 
         public event Action<IReadOnlyList<LogEntry>> RawLogEntriesAdded;
@@ -232,7 +230,6 @@ namespace Unity.Android.Logcat
 
                 var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = !m_Device.SupportsFilteringByRegex && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {

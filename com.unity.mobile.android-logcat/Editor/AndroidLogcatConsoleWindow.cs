@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
         private SearchField m_SearchField;
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private AndroidLogcat m_LogCat = new AndroidLogcat();
+        private AndroidLogcat m_LogCat;
         private AndroidLogcatStatusBar m_StatusBar;
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
@@ -280,7 +280,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_LogCat.IsConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
+            if (m_LogCat != null && m_LogCat.IsConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
@@ -814,17 +814,21 @@ namespace Unity.Android.Logcat
 
         private void StopLogCat()
         {
-            m_LogCat.Stop();
+            if (m_LogCat != null)
+                m_LogCat.Stop();
 
             UpdateStatusBar();
         }
 
         private void ClearLogCat()
         {
-            m_LogCat.Stop();
-            m_SelectedIndices.Clear();
-            m_LogCat.Clear();
-            m_LogCat.Start();
+            if (m_LogCat != null)
+            {
+                m_LogCat.Stop();
+                m_SelectedIndices.Clear();
+                m_LogCat.Clear();
+                m_LogCat.Start();
+            }
         }
 
         public static void ShowInternalLog()
@@ -840,7 +844,7 @@ namespace Unity.Android.Logcat
         public void UpdateStatusBar()
         {
             var message = string.Empty;
-            if (m_LogCat.IsConnected)
+            if (m_LogCat != null && m_LogCat.IsConnected)
             {
                 var text = m_Runtime.UserSettings.Filter;
                 var regex = m_Runtime.UserSettings.FilterIsRegularExpression ? "On" : "Off";
@@ -860,7 +864,7 @@ namespace Unity.Android.Logcat
             if (m_StatusBar == null)
                 return;
 
-            m_StatusBar.Connected = m_LogCat.IsConnected;
+            m_StatusBar.Connected = m_LogCat != null && m_LogCat.IsConnected;
             m_StatusBar.Message = message;
 
             Repaint();
