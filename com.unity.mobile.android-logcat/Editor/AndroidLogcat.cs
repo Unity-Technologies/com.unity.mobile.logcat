@@ -184,10 +184,9 @@ namespace Unity.Android.Logcat
 
         internal void Stop()
         {
-            if (m_Runtime == null)
-                return;
             m_CachedLogLines.Clear();
-            m_Runtime.Update -= OnUpdate;
+            if (m_Runtime != null)
+                m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
