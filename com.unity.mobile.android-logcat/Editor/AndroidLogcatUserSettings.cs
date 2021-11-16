@@ -26,11 +26,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
         [SerializeField]
-        private string m_Filter;
-        [SerializeField]
-        private bool m_FilterIsRegularExpression;
-        [SerializeField]
-        private bool m_FilterMatchCase;
+        private FilterOptions m_FilterOptions;
         [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
 
@@ -216,42 +212,17 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public string Filter
+        public FilterOptions FilterOptions
         {
             set
             {
-                m_Filter = value;
+                m_FilterOptions = value;
             }
             get
             {
-                return m_Filter;
+                return m_FilterOptions;
             }
         }
-
-        public bool FilterIsRegularExpression
-        {
-            set
-            {
-                m_FilterIsRegularExpression = value;
-            }
-            get
-            {
-                return m_FilterIsRegularExpression;
-            }
-        }
-
-        public bool FilterMatchCase
-        {
-            set
-            {
-                m_FilterMatchCase = value;
-            }
-            get
-            {
-                return m_FilterMatchCase;
-            }
-        }
-
         public List<ReordableListItem> SymbolPaths
         {
             get => m_SymbolPaths;
@@ -270,6 +241,7 @@ namespace Unity.Android.Logcat
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
+            m_FilterOptions = new FilterOptions();
         }
 
         internal static AndroidLogcatUserSettings Load(string path)

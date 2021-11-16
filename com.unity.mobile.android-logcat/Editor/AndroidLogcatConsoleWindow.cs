@@ -430,7 +430,7 @@ namespace Unity.Android.Logcat
 
                 HandleSearchField();
 
-                SetRegex(GUILayout.Toggle(m_Runtime.UserSettings.FilterIsRegularExpression, kRegexText, AndroidLogcatStyles.toolbarButton));
+                SetRegex(GUILayout.Toggle(m_Runtime.UserSettings.FilterOptions.UseRegularExpressions, kRegexText, AndroidLogcatStyles.toolbarButton));
 
                 GUILayout.Space(kSpace);
 
@@ -671,7 +671,7 @@ namespace Unity.Android.Logcat
 
         private void HandleSearchField()
         {
-            var newFilter = m_SearchField.OnToolbarGUI(m_Runtime.UserSettings.Filter, null);
+            var newFilter = m_SearchField.OnToolbarGUI(m_Runtime.UserSettings.FilterOptions.Filter, null);
             SetFilter(newFilter);
         }
 
@@ -696,21 +696,22 @@ namespace Unity.Android.Logcat
 
         private void SetFilter(string newFilter)
         {
-            if (newFilter == m_Runtime.UserSettings.Filter)
+            if (newFilter == m_Runtime.UserSettings.FilterOptions.Filter)
                 return;
 
-            m_Runtime.UserSettings.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
-            m_LogCat.FilterOptions.Filter = m_Runtime.UserSettings.Filter;
-            ;
+            m_Runtime.UserSettings.FilterOptions.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
+            if (m_LogCat != null)
+                m_LogCat.FilterOptions.Filter = m_Runtime.UserSettings.FilterOptions.Filter;
         }
 
         private void SetRegex(bool newValue)
         {
-            if (newValue == m_Runtime.UserSettings.FilterIsRegularExpression)
+            if (newValue == m_Runtime.UserSettings.FilterOptions.UseRegularExpressions)
                 return;
 
-            m_Runtime.UserSettings.FilterIsRegularExpression = newValue;
-            m_LogCat.FilterOptions.UseRegularExpressions = m_Runtime.UserSettings.FilterIsRegularExpression;
+            m_Runtime.UserSettings.FilterOptions.UseRegularExpressions = newValue;
+            if (m_LogCat != null)
+                m_LogCat.FilterOptions.UseRegularExpressions = m_Runtime.UserSettings.FilterOptions.UseRegularExpressions;
         }
 
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
@@ -798,12 +799,7 @@ namespace Unity.Android.Logcat
                 device,
                 SelectedPackage == null ? 0 : SelectedPackage.processId,
                 m_Runtime.UserSettings.SelectedPriority,
-                new FilterOptions()
-                {
-                    Filter = m_Runtime.UserSettings.Filter,
-                    UseRegularExpressions = m_Runtime.UserSettings.FilterIsRegularExpression,
-                    MatchCase = m_Runtime.UserSettings.FilterMatchCase
-                },
+                m_Runtime.UserSettings.FilterOptions,
                 m_Runtime.UserSettings.Tags.GetSelectedTags());
             m_LogCat.FilteredLogEntriesAdded += OnNewLogEntryAdded;
             m_LogCat.Disconnected += OnLogcatDisconnected;
@@ -822,13 +818,16 @@ namespace Unity.Android.Logcat
 
         private void ClearLogCat()
         {
-            if (m_LogCat != null)
+            if (m_LogCat == null)
             {
-                m_LogCat.Stop();
                 m_SelectedIndices.Clear();
-                m_LogCat.Clear();
-                m_LogCat.Start();
+                return;
             }
+
+            m_LogCat.Stop();
+            m_SelectedIndices.Clear();
+            m_LogCat.Clear();
+            m_LogCat.Start();
         }
 
         public static void ShowInternalLog()
@@ -846,14 +845,15 @@ namespace Unity.Android.Logcat
             var message = string.Empty;
             if (m_LogCat != null && m_LogCat.IsConnected)
             {
-                var text = m_Runtime.UserSettings.Filter;
-                var regex = m_Runtime.UserSettings.FilterIsRegularExpression ? "On" : "Off";
+                var text = m_Runtime.UserSettings.FilterOptions.Filter;
+                var regex = m_Runtime.UserSettings.FilterOptions.UseRegularExpressions ? "On" : "Off";
+                // TODO: match caase
                 var tags = m_Runtime.UserSettings.Tags.ToString();
                 message = $"Filtering with Priority '{m_Runtime.UserSettings.SelectedPriority}'";
                 if (!string.IsNullOrEmpty(tags))
                     message += $", Tags '{m_Runtime.UserSettings.Tags.ToString()}'";
                 if (!string.IsNullOrEmpty(text))
-                    message += $", Text '{m_Runtime.UserSettings.Filter}', Regex '{regex}' ";
+                    message += $", Text '{m_Runtime.UserSettings.FilterOptions.Filter}', Regex '{regex}' ";
             }
 
             UpdateStatusBar(message);

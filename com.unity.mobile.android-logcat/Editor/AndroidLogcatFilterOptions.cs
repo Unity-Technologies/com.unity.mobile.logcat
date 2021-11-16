@@ -4,15 +4,19 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using UnityEditor;
 using System.Text;
+using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
+    [Serializable]
     class FilterOptions
     {
-        private string m_Filter;
-        private bool m_UseRegularExpressions;
-        private bool m_MatchCase;
-        private Regex m_CachedRegex;
+        [SerializeField]
+        protected string m_Filter;
+        [SerializeField]
+        protected bool m_UseRegularExpressions;
+        [SerializeField]
+        protected bool m_MatchCase;
 
         public FilterOptions()
         {
@@ -72,21 +76,25 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public bool Matches(string message)
+        protected virtual void OnUpdate()
         {
-            if (m_UseRegularExpressions)
-            {
-                return m_CachedRegex.Match(message).Success;
-            }
-            else
-            {
-                if (m_MatchCase)
-                    return message.IndexOf(m_Filter, StringComparison.InvariantCulture) != -1;
-                return message.IndexOf(m_Filter, StringComparison.InvariantCultureIgnoreCase) != -1;
-            }
+            OnFilterChanged?.Invoke();
+        }
+    }
+
+    class LogcatFilterOptions : FilterOptions
+    {
+        private Regex m_CachedRegex;
+
+        public LogcatFilterOptions(FilterOptions options)
+        {
+            m_Filter = options.Filter;
+            m_MatchCase = options.MatchCase;
+            m_UseRegularExpressions = options.UseRegularExpressions;
+            OnUpdate();
         }
 
-        private void OnUpdate()
+        protected override void OnUpdate()
         {
             if (m_UseRegularExpressions)
             {
@@ -115,5 +123,20 @@ namespace Unity.Android.Logcat
 
             OnFilterChanged?.Invoke();
         }
+
+        public bool Matches(string message)
+        {
+            if (m_UseRegularExpressions)
+            {
+                return m_CachedRegex.Match(message).Success;
+            }
+            else
+            {
+                if (m_MatchCase)
+                    return message.IndexOf(m_Filter, StringComparison.InvariantCulture) != -1;
+                return message.IndexOf(m_Filter, StringComparison.InvariantCultureIgnoreCase) != -1;
+            }
+        }
     }
+
 }
