@@ -27,6 +27,12 @@ namespace Unity.Android.Logcat
         MemoryBehaviorHidden
     }
 
+    internal enum FilterContextMenu
+    {
+        UseRegularExpressions,
+        MatchCase
+    }
+
     class AndroidContextMenu<T>
     {
         internal class MenuItemData

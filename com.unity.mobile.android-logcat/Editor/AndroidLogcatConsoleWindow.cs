@@ -13,7 +13,7 @@ namespace Unity.Android.Logcat
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
         private GUIContent kReconnect = new GUIContent(L10n.Tr("Reconnect"), L10n.Tr("Restart logcat process."));
         private GUIContent kDisconnect = new GUIContent(L10n.Tr("Disconnect"), L10n.Tr("Stop logcat process."));
-        private GUIContent kRegexText = new GUIContent(L10n.Tr("Regex"), L10n.Tr("Treat contents in search field as regex expression."));
+        private GUIContent kFilterOptions = new GUIContent(L10n.Tr("Filter Options"));
         private GUIContent kClearButtonText = new GUIContent(L10n.Tr("Clear"), L10n.Tr("Clears logcat by executing adb logcat -c."));
 
         private Rect m_IpWindowScreenRect;
@@ -429,8 +429,7 @@ namespace Unity.Android.Logcat
                 EditorGUI.EndDisabledGroup();
 
                 HandleSearchField();
-
-                SetRegex(GUILayout.Toggle(m_Runtime.UserSettings.FilterOptions.UseRegularExpressions, kRegexText, AndroidLogcatStyles.toolbarButton));
+                HandleFilterOptions();
 
                 GUILayout.Space(kSpace);
 
@@ -675,6 +674,45 @@ namespace Unity.Android.Logcat
             SetFilter(newFilter);
         }
 
+
+        private void HandleFilterOptions()
+        {
+            GUILayout.Label(kFilterOptions, AndroidLogcatStyles.toolbarPopupCenter);
+            var rect = GUILayoutUtility.GetLastRect();
+
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
+            {
+                var filterOptions = m_Runtime.UserSettings.FilterOptions;
+                var contextMenu = new AndroidContextMenu<FilterContextMenu>();
+                contextMenu.Add(FilterContextMenu.UseRegularExpressions, "Use Regular Expressions", filterOptions.UseRegularExpressions);
+                contextMenu.Add(FilterContextMenu.MatchCase, "Match Case", filterOptions.MatchCase);
+
+                void SearchOptionsSelection(object userData, string[] options, int selected)
+                {
+                    var sender = (AndroidContextMenu<FilterContextMenu>)userData;
+                    var item = sender.GetItemAt(selected);
+                    if (item == null)
+                        return;
+                    switch (item.Item)
+                    {
+                        case FilterContextMenu.UseRegularExpressions:
+                            filterOptions.UseRegularExpressions = !filterOptions.UseRegularExpressions;
+                            if (m_LogCat != null)
+                                m_LogCat.FilterOptions.UseRegularExpressions = filterOptions.UseRegularExpressions;
+                            break;
+                        case FilterContextMenu.MatchCase:
+                            filterOptions.MatchCase = !filterOptions.MatchCase;
+                            if (m_LogCat != null)
+                                m_LogCat.FilterOptions.MatchCase = filterOptions.MatchCase;
+                            break;
+                    }
+                }
+
+                contextMenu.Show(new Vector2(rect.x, rect.yMax), SearchOptionsSelection);
+            }
+
+        }
+
         private void OnSelectedDevice(IAndroidLogcatDevice device)
         {
             if (device == null)
@@ -702,16 +740,6 @@ namespace Unity.Android.Logcat
             m_Runtime.UserSettings.FilterOptions.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
             if (m_LogCat != null)
                 m_LogCat.FilterOptions.Filter = m_Runtime.UserSettings.FilterOptions.Filter;
-        }
-
-        private void SetRegex(bool newValue)
-        {
-            if (newValue == m_Runtime.UserSettings.FilterOptions.UseRegularExpressions)
-                return;
-
-            m_Runtime.UserSettings.FilterOptions.UseRegularExpressions = newValue;
-            if (m_LogCat != null)
-                m_LogCat.FilterOptions.UseRegularExpressions = m_Runtime.UserSettings.FilterOptions.UseRegularExpressions;
         }
 
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
@@ -842,19 +870,15 @@ namespace Unity.Android.Logcat
 
         public void UpdateStatusBar()
         {
-            var message = string.Empty;
-            if (m_LogCat != null && m_LogCat.IsConnected)
-            {
-                var text = m_Runtime.UserSettings.FilterOptions.Filter;
-                var regex = m_Runtime.UserSettings.FilterOptions.UseRegularExpressions ? "On" : "Off";
-                // TODO: match caase
-                var tags = m_Runtime.UserSettings.Tags.ToString();
-                message = $"Filtering with Priority '{m_Runtime.UserSettings.SelectedPriority}'";
-                if (!string.IsNullOrEmpty(tags))
-                    message += $", Tags '{m_Runtime.UserSettings.Tags.ToString()}'";
-                if (!string.IsNullOrEmpty(text))
-                    message += $", Text '{m_Runtime.UserSettings.FilterOptions.Filter}', Regex '{regex}' ";
-            }
+            var filterOptions = m_Runtime.UserSettings.FilterOptions;
+            var text = filterOptions.Filter;
+            var regex = filterOptions.UseRegularExpressions ? "On" : "Off";
+            var tags = m_Runtime.UserSettings.Tags.ToString();
+            var message = $"Filtering with Priority '{m_Runtime.UserSettings.SelectedPriority}'";
+            if (!string.IsNullOrEmpty(tags))
+                message += $", Tags '{m_Runtime.UserSettings.Tags.ToString()}'";
+            if (!string.IsNullOrEmpty(text))
+                message += $", Text '{filterOptions.Filter}', Regex '{regex}' Match Case '{filterOptions.MatchCase}'. ";
 
             UpdateStatusBar(message);
         }

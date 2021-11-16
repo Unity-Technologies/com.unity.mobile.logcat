@@ -43,9 +43,6 @@ namespace Unity.Android.Logcat
         {
             set
             {
-                if (string.IsNullOrEmpty(m_Filter))
-                    value = false;
-
                 if (m_UseRegularExpressions == value)
                     return;
                 m_UseRegularExpressions = value;
@@ -54,7 +51,7 @@ namespace Unity.Android.Logcat
 
             get
             {
-                return m_MatchCase;
+                return m_UseRegularExpressions;
             }
         }
 
@@ -62,9 +59,6 @@ namespace Unity.Android.Logcat
         {
             set
             {
-                if (string.IsNullOrEmpty(m_Filter))
-                    value = false;
-
                 if (m_MatchCase == value)
                     return;
                 m_MatchCase = value;
@@ -72,7 +66,7 @@ namespace Unity.Android.Logcat
             }
             get
             {
-                return m_UseRegularExpressions;
+                return m_MatchCase;
             }
         }
 
