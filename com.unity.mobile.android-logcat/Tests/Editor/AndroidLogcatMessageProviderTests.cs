@@ -90,40 +90,13 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         }
     }
 
-    // TODO match case filter
-    [Test]
-    public void RegexFilterCorrectlyFormed()
-    {
-        var filter = ".*abc";
-        InitRuntime();
-
-        foreach (var device in kDevices)
-        {
-            foreach (var isRegexEnabled in new[] { true, false })
-            {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
-                    new FilterOptions()
-                    {
-                        Filter = ".*abc",
-                        UseRegularExpressions = isRegexEnabled,
-                        MatchCase = true
-                    },
-                    new string[] { });
-                var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName,
-                    isRegexEnabled.ToString());
-
-                Assert.IsTrue(logcat.FilterOptions.Filter.Equals(filter), message);
-
-            }
-        }
-
-        ShutdownRuntime();
-    }
 
     [Test]
-    [TestCase(true)]
-    [TestCase(false)]
-    public void FilteringWorksWithRegularExpressions(bool matchCase)
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    public void FilteringWorks(bool useRegularExpressions, bool matchCase)
     {
         var messages = new[]
         {
@@ -134,46 +107,97 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             null
         };
 
-        InitRuntime();
-        foreach (var device in kDevices)
+        var checks = new KeyValuePair<string, Action<IReadOnlyList<string>>>[]
         {
-            foreach (var filter in new[] { "", ".*abc", "....", ".*ABC" })
-            {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
-                    new FilterOptions
-                    {
-                        Filter = filter,
-                        UseRegularExpressions = true,
-                        MatchCase = matchCase
-                    }, new string[] { });
-                logcat.Start();
-
-                SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
-
-                m_Runtime.OnUpdate();
-                var entries = logcat.FilteredEntries.Select(e => e.message).ToList();
-
-                // We always ignore empty lines
-                Assert.IsFalse(entries.Contains(""));
-                Assert.IsFalse(entries.Contains(null));
-
-                if (filter == "")
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                "",
+                new Action<IReadOnlyList<string>>((entries) =>
                 {
                     Assert.IsTrue(entries.Contains(".abc"));
                     Assert.IsTrue(entries.Contains("Help"));
-                }
-                else if (filter == "*.abc")
+                })
+            ),
+
+
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                ".*abc",
+                new Action<IReadOnlyList<string>>((entries) =>
+                {
+                    if (useRegularExpressions)
+                    {
+                        Assert.IsTrue(entries.Contains(".abc"));
+                        Assert.IsFalse(entries.Contains("Help"));
+                    }
+                    else
+                    {
+                        Assert.IsFalse(entries.Contains(".abc"));
+                        Assert.IsFalse(entries.Contains("Help"));
+                    }
+                })
+            ),
+
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                ".abc",
+                new Action<IReadOnlyList<string>>((entries) =>
                 {
                     Assert.IsTrue(entries.Contains(".abc"));
                     Assert.IsFalse(entries.Contains("Help"));
-                }
-                else if (filter == "....")
+                })
+            ),
+
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                "....",
+                new Action<IReadOnlyList<string>>((entries) =>
                 {
-                    Assert.IsTrue(entries.Contains(".abc"));
-                    Assert.IsTrue(entries.Contains("Help"));
-                }
-                else if (filter == "*.ABC")
+                    if (useRegularExpressions)
+                    {
+                        Assert.IsTrue(entries.Contains(".abc"));
+                        Assert.IsTrue(entries.Contains("Help"));
+                    }
+                    else
+                    {
+                        Assert.IsFalse(entries.Contains(".abc"));
+                        Assert.IsFalse(entries.Contains("Help"));
+                    }
+                })
+            ),
+
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                ".*ABC",
+                new Action<IReadOnlyList<string>>((entries) =>
                 {
+                    if (useRegularExpressions)
+                    {
+                        if (matchCase)
+                        {
+                            Assert.IsFalse(entries.Contains(".abc"));
+                            Assert.IsFalse(entries.Contains("Help"));
+                        }
+                        else
+                        {
+                            Assert.IsTrue(entries.Contains(".abc"));
+                            Assert.IsFalse(entries.Contains("Help"));
+                        }
+                    }
+                    else
+                    {
+                        Assert.IsFalse(entries.Contains(".abc"));
+                        Assert.IsFalse(entries.Contains("Help"));
+                    }
+                })
+            ),
+
+            new KeyValuePair<string, Action<IReadOnlyList<string>>>
+            (
+                ".ABC",
+                new Action<IReadOnlyList<string>>((entries) =>
+                {
+
                     if (matchCase)
                     {
                         Assert.IsFalse(entries.Contains(".abc"));
@@ -184,39 +208,20 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                         Assert.IsTrue(entries.Contains(".abc"));
                         Assert.IsFalse(entries.Contains("Help"));
                     }
-                }
-
-                logcat.Stop();
-            }
-        }
-
-        ShutdownRuntime();
-    }
-
-    [Test]
-    [TestCase(true)]
-    [TestCase(false)]
-    public void FilteringWorksWithoutRegularExpressions(bool matchCase)
-    {
-        var messages = new[]
-        {
-            @"10-25 14:27:56.862  2255  2255 I chromium: Help",
-            @"10-25 14:27:56.863  2255  2255 I chromium: .abc",
-            // Empty lines were reported by devices like LG with Android 5
-            @"",
-            null
+                })
+            ),
         };
 
         InitRuntime();
         foreach (var device in kDevices)
         {
-            foreach (var filter in new[] { "", ".abc", "*.abc", "....", ".ABC" })
+            foreach (var check in checks)
             {
                 var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
                     new FilterOptions
                     {
-                        Filter = filter,
-                        UseRegularExpressions = false,
+                        Filter = check.Key,
+                        UseRegularExpressions = useRegularExpressions,
                         MatchCase = matchCase
                     }, new string[] { });
                 logcat.Start();
@@ -225,48 +230,14 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
                 m_Runtime.OnUpdate();
                 var entries = logcat.FilteredEntries.Select(e => e.message).ToList();
-
                 // We always ignore empty lines
                 Assert.IsFalse(entries.Contains(""));
                 Assert.IsFalse(entries.Contains(null));
 
-                if (filter == "")
-                {
-                    Assert.IsTrue(entries.Contains(".abc"));
-                    Assert.IsTrue(entries.Contains("Help"));
-                }
-                else if (filter == "*.abc")
-                {
-                    Assert.IsFalse(entries.Contains(".abc"));
-                    Assert.IsFalse(entries.Contains("Help"));
-                }
-                else if (filter == ".abc")
-                {
-                    Assert.IsTrue(entries.Contains(".abc"));
-                    Assert.IsFalse(entries.Contains("Help"));
-                }
-                else if (filter == "....")
-                {
-                    Assert.IsFalse(entries.Contains(".abc"));
-                    Assert.IsFalse(entries.Contains("Help"));
-                }
-                else if (filter == ".ABC")
-                {
-                    if (matchCase)
-                    {
-                        Assert.IsFalse(entries.Contains(".abc"));
-                        Assert.IsFalse(entries.Contains("Help"));
-                    }
-                    else
-                    {
-                        Assert.IsTrue(entries.Contains(".abc"));
-                        Assert.IsFalse(entries.Contains("Help"));
-                    }
-                }
+                check.Value(entries);
 
                 logcat.Stop();
             }
-
         }
 
         ShutdownRuntime();
