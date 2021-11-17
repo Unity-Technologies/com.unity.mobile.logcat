@@ -25,7 +25,6 @@ namespace Unity.Android.Logcat
         private List<int> m_SelectedIndices = new List<int>();
         private Vector2 m_ScrollPosition = Vector2.zero;
         private float m_MaxLogEntryWidth = 0.0f;
-        private static readonly List<LogcatEntry> kNoEntries = new List<LogcatEntry>();
 
         private bool m_Autoscroll = true;
         private float doubleClickStart = -1;
