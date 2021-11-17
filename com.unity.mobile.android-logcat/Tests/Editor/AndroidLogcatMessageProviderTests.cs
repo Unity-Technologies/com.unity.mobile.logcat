@@ -237,6 +237,9 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                 check.Value(entries);
 
                 logcat.Stop();
+
+                // Logcat was stopped, check that our filter still works
+                check.Value(entries);
             }
         }
 
