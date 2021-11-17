@@ -41,6 +41,38 @@ namespace Unity.Android.Logcat
 
         public IReadOnlyList<LogcatEntry> RawEntries => m_RawLogEntries;
         public IReadOnlyList<LogcatEntry> FilteredEntries => m_FilteredLogEntries;
+        public IReadOnlyList<LogcatEntry> GetSelectedFilteredEntries(out int minIndex, out int maxIndex)
+        {
+            minIndex = int.MaxValue;
+            maxIndex = int.MinValue;
+
+            var selectedEntries = new List<LogcatEntry>(FilteredEntries.Count);
+            for (int i = 0; i < FilteredEntries.Count; i++)
+            {
+                if (!FilteredEntries[i].Selected)
+                    continue;
+
+                if (i < minIndex)
+                    minIndex = i;
+                if (i > maxIndex)
+                    maxIndex = i;
+                selectedEntries.Add(FilteredEntries[i]);
+            }
+
+            return selectedEntries;
+        }
+
+        public void ClearSelectedEntries()
+        {
+            foreach (var e in FilteredEntries)
+                e.Selected = false;
+        }
+
+        public void SelectAllEntries()
+        {
+            foreach (var e in FilteredEntries)
+                e.Selected = true;
+        }
 
         public FilterOptions FilterOptions => m_FilterOptions;
 
@@ -229,7 +261,6 @@ namespace Unity.Android.Logcat
 
             if (filteredEntries.Count == 0)
                 return;
-
 
             m_FilteredLogEntries.AddRange(filteredEntries);
             if (FilteredLogEntriesAdded != null)

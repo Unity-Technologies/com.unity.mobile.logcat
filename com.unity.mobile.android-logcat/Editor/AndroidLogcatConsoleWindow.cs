@@ -848,12 +848,10 @@ namespace Unity.Android.Logcat
         {
             if (m_LogCat == null)
             {
-                m_SelectedIndices.Clear();
                 return;
             }
 
             m_LogCat.Stop();
-            m_SelectedIndices.Clear();
             m_LogCat.Clear();
             m_LogCat.Start();
         }

@@ -7,6 +7,7 @@ namespace Unity.Android.Logcat
         [Flags]
         enum Flags
         {
+            None,
             Selected
         }
 
