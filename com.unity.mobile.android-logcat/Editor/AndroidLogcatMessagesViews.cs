@@ -559,7 +559,7 @@ namespace Unity.Android.Logcat
                                     continue;
                                 entries.Add(m_LogEntries[si]);
                             }
-                            EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries.ToArray());
+                            EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries);
                             e.Use();
                         }
                         break;
@@ -573,7 +573,7 @@ namespace Unity.Android.Logcat
                                     continue;
                                 logEntries.Add(m_LogEntries[si]);
                             }
-                            SaveToFile(logEntries.ToArray());
+                            SaveToFile(logEntries);
                             e.Use();
                         }
                         break;
@@ -597,7 +597,7 @@ namespace Unity.Android.Logcat
                 m_SelectedIndices.Add(si);
         }
 
-        private void SaveToFile(LogcatEntry[] logEntries)
+        private void SaveToFile(IEnumerable<LogcatEntry> logEntries)
         {
             var contents = LogEntriesToString(logEntries);
             var filePath = EditorUtility.SaveFilePanel("Save selected logs", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
@@ -605,7 +605,7 @@ namespace Unity.Android.Logcat
                 File.WriteAllText(filePath, contents);
         }
 
-        private string LogEntriesToString(LogcatEntry[] entries)
+        private string LogEntriesToString(IEnumerable<LogcatEntry> entries)
         {
             var contents = new StringBuilder();
             foreach (var l in entries)
