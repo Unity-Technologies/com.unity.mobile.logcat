@@ -30,13 +30,19 @@ namespace Unity.Android.Logcat
         /// <param name="args"></param>
         public static void Log(string message, params object[] args)
         {
+            Log(string.Format(message, args));
+        }
+
+        public static void Log(string message)
+        {
             lock (ms_LogEntries)
             {
                 var timedMessage = AndroidLogcatDispatcher.isMainThread ? "[MainThread]" : "[WorkThread] ";
-                timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + string.Format(message, args);
+                timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + message;
                 ms_LogEntries.AppendLine(timedMessage);
 
                 Console.WriteLine("[Logcat] " + timedMessage);
+
             }
 
             if (AndroidLogcatDispatcher.isMainThread && ms_Instance != null)
