@@ -13,7 +13,7 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
     private bool m_Started;
     private List<string> m_FakeMessages;
 
-    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         : base(adb, priority, packageID, logPrintFormat, device, logCallbackAction)
     {
         m_FakeMessages = new List<string>();
@@ -217,7 +217,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         {
             foreach (var check in checks)
             {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose,
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose,
                     new FilterOptions
                     {
                         Filter = check.Key,
@@ -260,13 +260,13 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             foreach (var pid in new[] { -1, 0, 1 })
             {
                 var processIds = new List<int>();
-                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, AndroidLogcat.Priority.Verbose,
+                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, Priority.Verbose,
                     new FilterOptions
                     {
                         Filter = "",
                         UseRegularExpressions = false
                     }, new string[] { });
-                logcat.FilteredLogEntriesAdded += (IReadOnlyList<AndroidLogcat.LogEntry> e) =>
+                logcat.FilteredLogEntriesAdded += (IReadOnlyList<LogcatEntry> e) =>
                 {
                     processIds.AddRange(e.Select(m => m.processId));
                 };

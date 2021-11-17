@@ -9,7 +9,7 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
 
     protected override string UserSettingsPath { get => kUserSettingsPath; }
 
-    public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+    public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
     {
         return new AndroidLogcatFakeMessageProvider(adb, priority, packageID, logPrintFormat, device, logCallbackAction);
     }
