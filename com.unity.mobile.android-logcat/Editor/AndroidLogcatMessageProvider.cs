@@ -6,13 +6,13 @@ namespace Unity.Android.Logcat
     internal abstract class AndroidLogcatMessageProviderBase
     {
         protected AndroidBridge.ADB m_ADB;
-        protected AndroidLogcat.Priority m_Priority;
+        protected Priority m_Priority;
         protected int m_PackageID;
         protected string m_LogPrintFormat;
         protected IAndroidLogcatDevice m_Device;
         protected Action<string> m_LogCallbackAction;
 
-        internal AndroidLogcatMessageProviderBase(AndroidBridge.ADB adb, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProviderBase(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
             m_ADB = adb;
             m_Priority = priority;
@@ -32,12 +32,12 @@ namespace Unity.Android.Logcat
     {
         private Process m_LogcatProcess;
 
-        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
             : base(adb, priority, packageID, logPrintFormat, device, logCallbackAction)
         {
         }
 
-        private string PriorityEnumToString(AndroidLogcat.Priority priority)
+        private string PriorityEnumToString(Priority priority)
         {
             return priority.ToString().Substring(0, 1);
         }

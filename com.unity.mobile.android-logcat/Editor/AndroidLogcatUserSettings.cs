@@ -17,7 +17,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private PackageInformation m_SelectedPackage;
         [SerializeField]
-        private AndroidLogcat.Priority m_SelectedPriority;
+        private Priority m_SelectedPriority;
         private Dictionary<string, List<PackageInformation>> m_KnownPackages;
         [SerializeField]
         private List<PackageInformation> m_KnownPackagesForSerialization;
@@ -72,7 +72,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcat.Priority SelectedPriority
+        public Priority SelectedPriority
         {
             set
             {
@@ -236,7 +236,7 @@ namespace Unity.Android.Logcat
         internal void Reset()
         {
             m_SelectedDeviceId = string.Empty;
-            m_SelectedPriority = AndroidLogcat.Priority.Verbose;
+            m_SelectedPriority = Priority.Verbose;
             m_Tags = new AndroidLogcatTags();
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
