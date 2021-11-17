@@ -109,7 +109,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal void SetMessageColor(AndroidLogcat.Priority priority, Color color)
+        internal void SetMessageColor(Priority priority, Color color)
         {
             var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
 
@@ -123,7 +123,7 @@ namespace Unity.Android.Logcat
             InvokeOnSettingsChanged();
         }
 
-        internal Color GetMessageColor(AndroidLogcat.Priority priority)
+        internal Color GetMessageColor(Priority priority)
         {
             var messages = EditorGUIUtility.isProSkin ? m_MessageColorsProSkin : m_MessageColorsFreeSkin;
             if ((int)priority < messages.Count)
@@ -155,12 +155,12 @@ namespace Unity.Android.Logcat
             m_MaxMessageCount = 60000;
             m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Resources/consola.ttf");
             m_MessageFontSize = 11;
-            if (Enum.GetValues(typeof(AndroidLogcat.Priority)).Length != 6)
+            if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
             m_MessageColorsProSkin = new List<Color>();
             m_MessageColorsFreeSkin = new List<Color>();
-            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
+            foreach (var p in (Priority[])Enum.GetValues(typeof(Priority)))
             {
                 m_MessageColorsProSkin.Add(GetDefaultColor(p, true));
                 m_MessageColorsFreeSkin.Add(GetDefaultColor(p, false));
@@ -205,9 +205,9 @@ namespace Unity.Android.Logcat
             return columns;
         }
 
-        private Color GetDefaultColor(AndroidLogcat.Priority priority, bool isProSkin)
+        private Color GetDefaultColor(Priority priority, bool isProSkin)
         {
-            if (Enum.GetValues(typeof(AndroidLogcat.Priority)).Length != 6)
+            if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
             if (isProSkin)
