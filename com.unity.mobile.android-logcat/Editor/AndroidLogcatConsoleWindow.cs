@@ -32,7 +32,7 @@ namespace Unity.Android.Logcat
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
 
-        private List<AndroidLogcat.LogEntry> m_LogEntries = new List<AndroidLogcat.LogEntry>();
+        private List<LogcatEntry> m_LogEntries = new List<LogcatEntry>();
 
         private const byte kSpace = 3;
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
@@ -496,7 +496,7 @@ namespace Unity.Android.Logcat
                 int count = 10000;
                 var entries = new List<LogcatEntry>(count);
                 for (int i = 0; i < count; i++)
-                    entries.Add(new LogcatEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
+                    entries.Add(new LogcatEntry("Dummy " + UnityEngine.Random.Range(0, int.MaxValue)) { processId = m_LogEntries.Count + i, tag = "sdsd" });
                 OnNewLogEntryAdded(entries);
                 Repaint();
             }
