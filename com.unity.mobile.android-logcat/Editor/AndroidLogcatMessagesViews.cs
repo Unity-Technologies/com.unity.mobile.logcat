@@ -113,7 +113,7 @@ namespace Unity.Android.Logcat
                         case Column.Priority:
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
-                                var priorities = (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority));
+                                var priorities = (Priority[])Enum.GetValues(typeof(Priority));
                                 EditorUtility.DisplayCustomMenu(new Rect(Event.current.mousePosition, Vector2.zero), priorities.Select(m => new GUIContent(m.ToString())).ToArray(), (int)m_Runtime.UserSettings.SelectedPriority, PrioritySelection, null);
                             }
                             break;
@@ -186,7 +186,7 @@ namespace Unity.Android.Logcat
 
         private void PrioritySelection(object userData, string[] options, int selected)
         {
-            SetSelectedPriority((AndroidLogcat.Priority)selected);
+            SetSelectedPriority((Priority)selected);
         }
 
         private void DoMouseEventsForHeaderToolbar(Rect headerRect)
@@ -245,14 +245,14 @@ namespace Unity.Android.Logcat
             style.Draw(rc, new GUIContent(value), 0);
         }
 
-        private GUIStyle GetIconStyle(AndroidLogcat.Priority priority)
+        private GUIStyle GetIconStyle(Priority priority)
         {
             switch (priority)
             {
-                case AndroidLogcat.Priority.Warn:
+                case Priority.Warn:
                     return AndroidLogcatStyles.warningSmallStyle;
-                case AndroidLogcat.Priority.Error:
-                case AndroidLogcat.Priority.Fatal:
+                case Priority.Error:
+                case Priority.Fatal:
                     return AndroidLogcatStyles.errorSmallStyle;
                 default:
                     return AndroidLogcatStyles.infoSmallStyle;
@@ -315,7 +315,7 @@ namespace Unity.Android.Logcat
                     }
                     var style = AndroidLogcatStyles.priorityStyles[(int)le.priority];
                     DoIconLogEntryItem(visibleWindowRect, i, Column.Icon, "", GetIconStyle(le.priority), AndroidLogcatStyles.kSmallIconSize);
-                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat), style);
+                    DoLogEntryItem(visibleWindowRect, i, Column.Time, le.dateTime.ToString(LogcatEntry.s_TimeFormat), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ProcessId, le.processId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.ThreadId, le.threadId.ToString(), style);
                     DoLogEntryItem(visibleWindowRect, i, Column.Priority, le.priority.ToString(), style);
@@ -429,7 +429,7 @@ namespace Unity.Android.Logcat
 
         void DoContextMenu(Event e)
         {
-            var entries = new List<AndroidLogcat.LogEntry>();
+            var entries = new List<LogcatEntry>();
             foreach (var si in m_SelectedIndices)
             {
                 if (si > m_LogEntries.Count - 1)
@@ -468,7 +468,7 @@ namespace Unity.Android.Logcat
         private void MenuSelection(object userData, string[] options, int selected)
         {
             var contextMenu = (AndroidContextMenu<MessagesContextMenu>)userData;
-            var entries = (AndroidLogcat.LogEntry[])contextMenu.UserData;
+            var entries = (LogcatEntry[])contextMenu.UserData;
             var item = contextMenu.GetItemAt(selected);
             if (item == null)
                 return;
@@ -551,28 +551,28 @@ namespace Unity.Android.Logcat
                     case KeyCode.C:
                         if (hasCtrlOrCmd)
                         {
-                            var entries = new List<AndroidLogcat.LogEntry>(m_SelectedIndices.Count);
+                            var entries = new List<LogcatEntry>(m_SelectedIndices.Count);
                             foreach (var si in m_SelectedIndices)
                             {
                                 if (si >= m_LogEntries.Count)
                                     continue;
                                 entries.Add(m_LogEntries[si]);
                             }
-                            EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries.ToArray());
+                            EditorGUIUtility.systemCopyBuffer = LogEntriesToString(entries);
                             e.Use();
                         }
                         break;
                     case KeyCode.S:
                         if (hasCtrlOrCmd)
                         {
-                            var logEntries = new List<AndroidLogcat.LogEntry>();
+                            var logEntries = new List<LogcatEntry>();
                             foreach (var si in m_SelectedIndices)
                             {
                                 if (si > m_LogEntries.Count - 1)
                                     continue;
                                 logEntries.Add(m_LogEntries[si]);
                             }
-                            SaveToFile(logEntries.ToArray());
+                            SaveToFile(logEntries);
                             e.Use();
                         }
                         break;
@@ -596,7 +596,7 @@ namespace Unity.Android.Logcat
                 m_SelectedIndices.Add(si);
         }
 
-        private void SaveToFile(AndroidLogcat.LogEntry[] logEntries)
+        private void SaveToFile(IEnumerable<LogcatEntry> logEntries)
         {
             var contents = LogEntriesToString(logEntries);
             var filePath = EditorUtility.SaveFilePanel("Save selected logs", "", PlayerSettings.applicationIdentifier + "-logcat", "txt");
@@ -604,7 +604,7 @@ namespace Unity.Android.Logcat
                 File.WriteAllText(filePath, contents);
         }
 
-        private string LogEntriesToString(AndroidLogcat.LogEntry[] entries)
+        private string LogEntriesToString(IEnumerable<LogcatEntry> entries)
         {
             var contents = new StringBuilder();
             foreach (var l in entries)
@@ -618,7 +618,7 @@ namespace Unity.Android.Logcat
                         entry += " ";
                     switch ((Column)i)
                     {
-                        case Column.Time: entry += l.dateTime.ToString(AndroidLogcat.LogEntry.s_TimeFormat); break;
+                        case Column.Time: entry += l.dateTime.ToString(LogcatEntry.s_TimeFormat); break;
                         case Column.ProcessId: entry += l.processId; break;
                         case Column.ThreadId: entry += l.threadId; break;
                         case Column.Priority: entry += l.priority; break;
@@ -632,7 +632,7 @@ namespace Unity.Android.Logcat
             return contents.ToString();
         }
 
-        private void TryToOpenFileFromLogEntry(AndroidLogcat.LogEntry entry)
+        private void TryToOpenFileFromLogEntry(LogcatEntry entry)
         {
             Regex re = new Regex(@"at.*\s([^\s]+):(\d+)");
             var match = re.Match(entry.message);

@@ -32,7 +32,7 @@ namespace Unity.Android.Logcat
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
 
-        private List<AndroidLogcat.LogEntry> m_LogEntries = new List<AndroidLogcat.LogEntry>();
+        private List<LogcatEntry> m_LogEntries = new List<LogcatEntry>();
 
         private const byte kSpace = 3;
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
@@ -159,7 +159,7 @@ namespace Unity.Android.Logcat
             AndroidLogcatStyles.priorityDefaultStyle.font = settings.MessageFont;
             AndroidLogcatStyles.priorityDefaultStyle.fontSize = settings.MessageFontSize;
             AndroidLogcatStyles.priorityDefaultStyle.fixedHeight = fixedHeight;
-            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
+            foreach (var p in (Priority[])Enum.GetValues(typeof(Priority)))
             {
                 AndroidLogcatStyles.priorityStyles[(int)p].normal.textColor = settings.GetMessageColor(p);
                 AndroidLogcatStyles.priorityStyles[(int)p].font = settings.MessageFont;
@@ -336,7 +336,7 @@ namespace Unity.Android.Logcat
                 m_SelectedIndices.RemoveAt(0);
         }
 
-        private void OnNewLogEntryAdded(List<AndroidLogcat.LogEntry> entries)
+        private void OnNewLogEntryAdded(List<LogcatEntry> entries)
         {
             m_LogEntries.AddRange(entries);
             if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
@@ -494,9 +494,9 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
                 int count = 10000;
-                var entries = new List<AndroidLogcat.LogEntry>(count);
+                var entries = new List<LogcatEntry>(count);
                 for (int i = 0; i < count; i++)
-                    entries.Add(new AndroidLogcat.LogEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
+                    entries.Add(new LogcatEntry("Dummy " + UnityEngine.Random.Range(0, int.MaxValue)) { processId = m_LogEntries.Count + i, tag = "sdsd" });
                 OnNewLogEntryAdded(entries);
                 Repaint();
             }
@@ -684,7 +684,7 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
-        private void SetSelectedPriority(AndroidLogcat.Priority newPriority)
+        private void SetSelectedPriority(Priority newPriority)
         {
             if (newPriority != m_Runtime.UserSettings.SelectedPriority)
             {
