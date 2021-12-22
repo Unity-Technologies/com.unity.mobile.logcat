@@ -1,5 +1,3 @@
-
-
 namespace Unity.Android.Logcat
 {
     enum Priority
@@ -11,5 +9,4 @@ namespace Unity.Android.Logcat
         Error,
         Fatal
     }
-
 }
