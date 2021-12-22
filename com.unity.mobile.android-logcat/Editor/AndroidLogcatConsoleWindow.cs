@@ -677,7 +677,7 @@ namespace Unity.Android.Logcat
 
         private void HandleFilterOptions()
         {
-            GUILayout.Label(kFilterOptions, AndroidLogcatStyles.toolbarPopupCenter);
+            GUILayout.Label(kFilterOptions, AndroidLogcatStyles.toolbarPopupCenter, GUILayout.ExpandWidth(false));
             var rect = GUILayoutUtility.GetLastRect();
 
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
