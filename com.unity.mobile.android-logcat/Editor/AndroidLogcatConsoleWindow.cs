@@ -74,6 +74,8 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private bool IsLogcatConnected => m_LogCat != null && m_LogCat.IsConnected;
+
         internal void OnEnable()
         {
             OnEnableInternal(AndroidLogcatManager.instance.Runtime);
@@ -280,7 +282,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (m_LogCat != null && m_LogCat.IsConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
+            if (IsLogcatConnected && m_Runtime.UserSettings.MemoryViewerState.Behavior == MemoryViewerBehavior.Auto)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
@@ -318,23 +320,6 @@ namespace Unity.Android.Logcat
         private void OnLogcatConnected(IAndroidLogcatDevice device)
         {
             UpdateStatusBar();
-        }
-
-
-        // TODO: Remove?
-        private void RemoveMessages(int count)
-        {
-            /*
-            m_LogEntries.RemoveRange(0, count);
-
-            // Modify selection indices
-            for (int i = 0; i < m_SelectedIndices.Count; i++)
-                m_SelectedIndices[i] -= count;
-
-            // Remove selection indices which point to removed lines
-            while (m_SelectedIndices.Count > 0 && m_SelectedIndices[0] < 0)
-                m_SelectedIndices.RemoveAt(0);
-            */
         }
 
         private void OnNewLogEntryAdded(IReadOnlyList<LogcatEntry> entries)
@@ -485,28 +470,7 @@ namespace Unity.Android.Logcat
                 AutoSelectPackage = true;
             }
 
-            if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
-            {
-                // TODO
-                /*
-                int count = 10000;
-                var entries = new List<LogcatEntry>(count);
-                for (int i = 0; i < count; i++)
-                    entries.Add(new LogcatEntry() { processId = m_LogEntries.Count + i, message = "Dummy " + UnityEngine.Random.Range(0, int.MaxValue), tag = "sdsd" });
-                OnNewLogEntryAdded(entries);
-                Repaint();
-                */
-            }
-
-            if (GUILayout.Button("Remove Log Line", AndroidLogcatStyles.toolbarButton))
-            {
-                // TODO:
-                /*
-                if (m_LogEntries.Count > 0)
-                    RemoveMessages(1);
-                Repaint();
-                */
-            }
+            m_LogCat?.DoDebuggingGUI();
 
             // Have a sane number which represents that we cannot keep up with async items in queue
             // Usually this indicates a bug, since async operations starts being more and more delayed
@@ -886,7 +850,7 @@ namespace Unity.Android.Logcat
             if (m_StatusBar == null)
                 return;
 
-            m_StatusBar.Connected = m_LogCat != null && m_LogCat.IsConnected;
+            m_StatusBar.Connected = IsLogcatConnected;
             m_StatusBar.Message = message;
 
             Repaint();

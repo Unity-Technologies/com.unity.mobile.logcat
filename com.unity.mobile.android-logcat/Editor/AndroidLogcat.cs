@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
-using UnityEditor;
+using UnityEngine;
 using System.Text;
 
 namespace Unity.Android.Logcat
@@ -182,6 +182,11 @@ namespace Unity.Android.Logcat
                 return;
             }
 
+            ProcessCachedLogLines();
+        }
+
+        void ProcessCachedLogLines()
+        {
             List<LogcatEntry> entries = new List<LogcatEntry>();
             lock (m_CachedLogLines)
             {
@@ -210,9 +215,6 @@ namespace Unity.Android.Logcat
                     if (needFilterByTags && !MatchTagsFilter(m.Groups["tag"].Value))
                         continue;
 
-                    //if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
-                    //    continue;
-
                     entries.Add(ParseLogEntry(m));
                 }
                 m_CachedLogLines.Clear();
@@ -220,17 +222,15 @@ namespace Unity.Android.Logcat
 
             if (entries.Count == 0)
                 return;
-            // TODO:
-            /*
-            if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
-            {
-                RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
-            }
-            */
 
             m_RawLogEntries.AddRange(entries);
             if (RawLogEntriesAdded != null)
                 RawLogEntriesAdded(entries);
+
+            var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
+            if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
+                m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
+
             FilterEntries(entries);
         }
 
@@ -265,6 +265,10 @@ namespace Unity.Android.Logcat
             m_FilteredLogEntries.AddRange(filteredEntries);
             if (FilteredLogEntriesAdded != null)
                 FilteredLogEntriesAdded(filteredEntries);
+
+            var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
+            if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
+                m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
         }
 
         private LogcatEntry LogEntryParserErrorFor(string msg)
@@ -340,6 +344,27 @@ namespace Unity.Android.Logcat
             {
                 m_CachedLogLines.Add(message);
             }
+        }
+
+        private static int s_DebuggingMessageId;
+
+        internal void DoDebuggingGUI()
+        {
+            if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
+            {
+                int count = 10000;
+                var entries = new List<LogcatEntry>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    var pid = 123;
+                    var tid = 234;
+                    OnDataReceived($"2022-01-31 12:43:40.003   {pid}   {tid} I DummyTag: Dummy Message {s_DebuggingMessageId}");
+                    s_DebuggingMessageId++;
+                }
+
+                ProcessCachedLogLines();
+            }
+            GUILayout.Label($"Raw: {m_RawLogEntries.Count} Filtered: {m_FilteredLogEntries.Count}");
         }
 
         internal Regex LogParseRegex

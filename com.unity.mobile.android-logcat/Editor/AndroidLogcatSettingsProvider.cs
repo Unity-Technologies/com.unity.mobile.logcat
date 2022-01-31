@@ -10,7 +10,8 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxMessageCount = new GUIContent("Max Count", "The maximum number of messages.");
+            public static GUIContent maxRawMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages (Which are kept in cache). 0 - no limit.");
+            public static GUIContent maxFilteredMessageCount = new GUIContent("Max Filtered Messages", "The maximum number of filtered messages (Which are shown on the screen), cannot be bigger than unfiltered message count. 0 - no limit.");
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
@@ -35,10 +36,15 @@ namespace Unity.Android.Logcat
         {
             var settings = Settings;
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
-            settings.MaxMessageCount =
-                EditorGUILayout.IntSlider(Styles.maxMessageCount, settings.MaxMessageCount, 1, 100000);
-            settings.MessageFont =
-                (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
+            settings.MaxUnfilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxRawMessageCount, settings.MaxUnfilteredMessageCount, 0, 100000);
+
+            var filteredMessageCount = EditorGUILayout.IntSlider(Styles.maxFilteredMessageCount, settings.MaxFilteredMessageCount, 0, 100000);
+            if (settings.MaxUnfilteredMessageCount > 0)
+                filteredMessageCount = Math.Min(filteredMessageCount, settings.MaxUnfilteredMessageCount);
+            settings.MaxFilteredMessageCount = filteredMessageCount;
+
+
+            settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
             settings.MessageFontSize = EditorGUILayout.IntSlider(Styles.fontSize, settings.MessageFontSize, 5, 25);
 
             GUILayout.Space(20);

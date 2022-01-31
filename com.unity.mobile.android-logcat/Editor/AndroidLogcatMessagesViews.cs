@@ -133,17 +133,21 @@ namespace Unity.Android.Logcat
                     switch ((Column)c)
                     {
                         case Column.Priority:
+                            EditorGUI.BeginDisabledGroup(!IsLogcatConnected);
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
                                 var priorities = (Priority[])Enum.GetValues(typeof(Priority));
                                 EditorUtility.DisplayCustomMenu(new Rect(Event.current.mousePosition, Vector2.zero), priorities.Select(m => new GUIContent(m.ToString())).ToArray(), (int)m_Runtime.UserSettings.SelectedPriority, PrioritySelection, null);
                             }
+                            EditorGUI.EndDisabledGroup();
                             break;
                         case Column.Tag:
+                            EditorGUI.BeginDisabledGroup(!IsLogcatConnected);
                             if (GUI.Button(buttonRect, d.content, AndroidLogcatStyles.columnHeader))
                             {
                                 m_Runtime.UserSettings.Tags.DoGUI(new Rect(Event.current.mousePosition, Vector2.zero), buttonRect);
                             }
+                            EditorGUI.EndDisabledGroup();
                             break;
                         default:
                             GUI.Label(buttonRect, d.content, AndroidLogcatStyles.columnHeader);
