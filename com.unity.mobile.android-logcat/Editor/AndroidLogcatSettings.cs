@@ -74,6 +74,7 @@ namespace Unity.Android.Logcat
                 if (m_MaxUnfilteredMessageCount == value)
                     return;
                 m_MaxUnfilteredMessageCount = value;
+                m_MaxFilteredMessageCount = ValidateFilteredMessageCount(m_MaxFilteredMessageCount);
                 InvokeOnSettingsChanged();
             }
             get
@@ -86,6 +87,7 @@ namespace Unity.Android.Logcat
         {
             set
             {
+                value = ValidateFilteredMessageCount(value);
                 if (m_MaxFilteredMessageCount == value)
                     return;
                 m_MaxFilteredMessageCount = value;
@@ -95,6 +97,13 @@ namespace Unity.Android.Logcat
             {
                 return m_MaxFilteredMessageCount;
             }
+        }
+
+        private int ValidateFilteredMessageCount(int newFilteredMessageCount)
+        {
+            if (MaxUnfilteredMessageCount > 0)
+                newFilteredMessageCount = Math.Min(newFilteredMessageCount, MaxUnfilteredMessageCount);
+            return newFilteredMessageCount;
         }
 
         internal Font MessageFont

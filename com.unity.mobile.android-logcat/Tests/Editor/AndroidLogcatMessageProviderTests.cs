@@ -77,7 +77,8 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
 
 internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
-    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90") };
+    private static IAndroidLogcatDevice kDefaultDevice = new AndroidLogcatFakeDevice90("Fake90");
+    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), kDefaultDevice };
 
     private static void SupplyFakeMessages(AndroidLogcatFakeMessageProvider provider, IAndroidLogcatDevice device, string[] messages)
     {
@@ -305,6 +306,58 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                 logcat.Stop();
             }
         }
+
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void MessagesSettingsWork()
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  1  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2  2255 I chromium: .abc",
+            @"10-25 14:27:56.863  3  2255 I chromium: "
+        };
+
+        InitRuntime();
+
+        m_Runtime.Settings.MaxUnfilteredMessageCount = 20;
+        m_Runtime.Settings.MaxFilteredMessageCount = 20;
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
+        logcat.Start();
+
+        for (int i = 0; i < 30; i++)
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
+                new[] { $"10-25 14:27:56.862  1  2255 I chromium: {i}" });
+
+        m_Runtime.OnUpdate();
+
+        Assert.AreEqual(20, logcat.FilteredEntries.Count);
+        Assert.AreEqual(20, logcat.RawEntries.Count);
+
+        // The first messages are removed (With string from 0 to 9)
+        Assert.AreEqual(10.ToString(), logcat.FilteredEntries[0].message);
+        Assert.AreEqual(10.ToString(), logcat.RawEntries[0].message);
+
+        m_Runtime.Settings.MaxFilteredMessageCount = 10;
+        logcat.ValidateRawEntries();
+        logcat.ValidateFilteredEntries();
+        Assert.AreEqual(10, logcat.FilteredEntries.Count);
+        Assert.AreEqual(20, logcat.RawEntries.Count);
+        Assert.AreEqual(20.ToString(), logcat.FilteredEntries[0].message);
+
+        // Remove limiters and see that no messages are dropped
+        m_Runtime.Settings.MaxUnfilteredMessageCount = 0;
+        m_Runtime.Settings.MaxFilteredMessageCount = 0;
+        for (int i = 0; i < 30; i++)
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
+                new[] { $"10-25 14:27:56.862  1  2255 I chromium: {i + 30}" });
+
+        Assert.AreEqual(40, logcat.FilteredEntries.Count);
+        Assert.AreEqual(50, logcat.RawEntries.Count);
+
+        logcat.Stop();
 
         ShutdownRuntime();
     }

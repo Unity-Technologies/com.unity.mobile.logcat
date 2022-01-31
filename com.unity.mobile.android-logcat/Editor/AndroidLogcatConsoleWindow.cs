@@ -165,6 +165,10 @@ namespace Unity.Android.Logcat
                 AndroidLogcatStyles.priorityStyles[(int)p].fontSize = settings.MessageFontSize;
                 AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
             }
+
+            m_LogCat?.ValidateFilteredEntries();
+            m_LogCat?.ValidateRawEntries();
+
             Repaint();
         }
 

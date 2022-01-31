@@ -227,20 +227,24 @@ namespace Unity.Android.Logcat
             if (RawLogEntriesAdded != null)
                 RawLogEntriesAdded(entries);
 
-            var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
-            if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
-                m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
+            ValidateRawEntries();
 
             FilterEntries(entries);
         }
 
-        //private void LimitEntries(List<AndroidLogcat.LogcatEntry> entries)
-        //{
-        //    if (m_LogEntries.Count > m_Runtime.Settings.MaxMessageCount)
-        //    {
-        //        RemoveMessages(m_LogEntries.Count - m_Runtime.Settings.MaxMessageCount);
-        //    }
-        //}
+        public void ValidateRawEntries()
+        {
+            var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
+            if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
+                m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
+        }
+
+        public void ValidateFilteredEntries()
+        {
+            var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
+            if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
+                m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
+        }
 
         private void FilterEntries(IEnumerable<LogcatEntry> unfilteredEntries)
         {
@@ -266,9 +270,7 @@ namespace Unity.Android.Logcat
             if (FilteredLogEntriesAdded != null)
                 FilteredLogEntriesAdded(filteredEntries);
 
-            var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
-            if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
-                m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
+            ValidateFilteredEntries();
         }
 
         private LogcatEntry LogEntryParserErrorFor(string msg)

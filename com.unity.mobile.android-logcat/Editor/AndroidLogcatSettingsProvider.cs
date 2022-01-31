@@ -37,12 +37,7 @@ namespace Unity.Android.Logcat
             var settings = Settings;
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
             settings.MaxUnfilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxRawMessageCount, settings.MaxUnfilteredMessageCount, 0, 100000);
-
-            var filteredMessageCount = EditorGUILayout.IntSlider(Styles.maxFilteredMessageCount, settings.MaxFilteredMessageCount, 0, 100000);
-            if (settings.MaxUnfilteredMessageCount > 0)
-                filteredMessageCount = Math.Min(filteredMessageCount, settings.MaxUnfilteredMessageCount);
-            settings.MaxFilteredMessageCount = filteredMessageCount;
-
+            settings.MaxFilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxFilteredMessageCount, settings.MaxFilteredMessageCount, 0, 100000);
 
             settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
             settings.MessageFontSize = EditorGUILayout.IntSlider(Styles.fontSize, settings.MessageFontSize, 5, 25);
