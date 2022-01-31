@@ -10,8 +10,8 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxRawMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages (Which are kept in cache). 0 - no limit.");
-            public static GUIContent maxFilteredMessageCount = new GUIContent("Max Filtered Messages", "The maximum number of filtered messages (Which are shown on the screen), cannot be bigger than unfiltered message count. 0 - no limit.");
+            public static GUIContent maxUnfilteredMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages which are kept in cache and are used when filtering messages. 0 - no limit.");
+            public static GUIContent maxFilteredMessageCount = new GUIContent("Max Filtered Messages", "The maximum number of filtered messages which are shown in the list, cannot be bigger than unfiltered message count. 0 - no limit.");
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
@@ -36,7 +36,7 @@ namespace Unity.Android.Logcat
         {
             var settings = Settings;
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
-            settings.MaxUnfilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxRawMessageCount, settings.MaxUnfilteredMessageCount, 0, 100000);
+            settings.MaxUnfilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxUnfilteredMessageCount, settings.MaxUnfilteredMessageCount, 0, 100000);
             settings.MaxFilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxFilteredMessageCount, settings.MaxFilteredMessageCount, 0, 100000);
 
             settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
