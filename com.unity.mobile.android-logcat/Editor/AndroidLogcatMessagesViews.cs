@@ -30,9 +30,9 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                if (m_LogCat == null)
+                if (m_Logcat == null)
                     return kNoEntries;
-                return m_LogCat.FilteredEntries;
+                return m_Logcat.FilteredEntries;
             }
         }
 
@@ -40,10 +40,10 @@ namespace Unity.Android.Logcat
         {
             minIndex = int.MaxValue;
             maxIndex = int.MinValue;
-            if (m_LogCat == null)
+            if (m_Logcat == null)
                 return kNoEntries;
 
-            return m_LogCat.GetSelectedFilteredEntries(out minIndex, out maxIndex);
+            return m_Logcat.GetSelectedFilteredEntries(out minIndex, out maxIndex);
         }
 
         public IReadOnlyList<LogcatEntry> SelectedFilteredEntries => GetSelectedFilteredEntries(out var minIndex, out var maxIndex);
@@ -433,7 +433,7 @@ namespace Unity.Android.Logcat
                     if (e.button == 0 ||
                         (e.button == 1 && !entry.Selected))
                     {
-                        m_LogCat?.ClearSelectedEntries();
+                        m_Logcat?.ClearSelectedEntries();
                         entry.Selected = true;
                     }
                     doubleClickStart = Time.realtimeSinceStartup;
@@ -490,7 +490,7 @@ namespace Unity.Android.Logcat
                     break;
                 // Select All
                 case MessagesContextMenu.SelectAll:
-                    m_LogCat?.SelectAllEntries();
+                    m_Logcat?.SelectAllEntries();
                     break;
                 // Save to File
                 case MessagesContextMenu.SaveSelection:
@@ -552,7 +552,7 @@ namespace Unity.Android.Logcat
                     case KeyCode.A:
                         if (hasCtrlOrCmd)
                         {
-                            m_LogCat?.SelectAllEntries();
+                            m_Logcat?.SelectAllEntries();
                             e.Use();
                             requestRepaint = true;
                         }

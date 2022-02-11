@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
         private SearchField m_SearchField;
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private AndroidLogcat m_LogCat;
+        private AndroidLogcat m_Logcat;
         private AndroidLogcatStatusBar m_StatusBar;
         private DateTime m_TimeOfLastAutoConnectUpdate;
         private DateTime m_TimeOfLastAutoConnectStart;
@@ -74,7 +74,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private bool IsLogcatConnected => m_LogCat != null && m_LogCat.IsConnected;
+        private bool IsLogcatConnected => m_Logcat != null && m_Logcat.IsConnected;
 
         internal void OnEnable()
         {
@@ -149,7 +149,7 @@ namespace Unity.Android.Logcat
 
         private void ApplySettings(AndroidLogcatSettings settings)
         {
-            AndroidLogcatUtilities.ApplySettings(settings, m_LogCat);
+            AndroidLogcatUtilities.ApplySettings(settings, m_Logcat);
             Repaint();
         }
 
@@ -455,7 +455,7 @@ namespace Unity.Android.Logcat
                 AutoSelectPackage = true;
             }
 
-            m_LogCat?.DoDebuggingGUI();
+            m_Logcat?.DoDebuggingGUI();
 
             // Have a sane number which represents that we cannot keep up with async items in queue
             // Usually this indicates a bug, since async operations starts being more and more delayed
@@ -646,13 +646,13 @@ namespace Unity.Android.Logcat
                     {
                         case FilterContextMenu.UseRegularExpressions:
                             filterOptions.UseRegularExpressions = !filterOptions.UseRegularExpressions;
-                            if (m_LogCat != null)
-                                m_LogCat.FilterOptions.UseRegularExpressions = filterOptions.UseRegularExpressions;
+                            if (m_Logcat != null)
+                                m_Logcat.FilterOptions.UseRegularExpressions = filterOptions.UseRegularExpressions;
                             break;
                         case FilterContextMenu.MatchCase:
                             filterOptions.MatchCase = !filterOptions.MatchCase;
-                            if (m_LogCat != null)
-                                m_LogCat.FilterOptions.MatchCase = filterOptions.MatchCase;
+                            if (m_Logcat != null)
+                                m_Logcat.FilterOptions.MatchCase = filterOptions.MatchCase;
                             break;
                     }
                 }
@@ -687,8 +687,8 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.UserSettings.FilterOptions.Filter = string.IsNullOrEmpty(newFilter) ? string.Empty : newFilter;
-            if (m_LogCat != null)
-                m_LogCat.FilterOptions.Filter = m_Runtime.UserSettings.FilterOptions.Filter;
+            if (m_Logcat != null)
+                m_Logcat.FilterOptions.Filter = m_Runtime.UserSettings.FilterOptions.Filter;
         }
 
         private void CheckIfPackagesExited(Dictionary<string, int> cache)
@@ -770,7 +770,7 @@ namespace Unity.Android.Logcat
             if (m_Runtime.Tools == null)
                 return;
 
-            m_LogCat = new AndroidLogcat(
+            m_Logcat = new AndroidLogcat(
                 m_Runtime,
                 m_Runtime.Tools.ADB,
                 device,
@@ -778,31 +778,31 @@ namespace Unity.Android.Logcat
                 m_Runtime.UserSettings.SelectedPriority,
                 m_Runtime.UserSettings.FilterOptions,
                 m_Runtime.UserSettings.Tags.GetSelectedTags());
-            m_LogCat.FilteredLogEntriesAdded += OnNewLogEntryAdded;
-            m_LogCat.Disconnected += OnLogcatDisconnected;
-            m_LogCat.Connected += OnLogcatConnected;
+            m_Logcat.FilteredLogEntriesAdded += OnNewLogEntryAdded;
+            m_Logcat.Disconnected += OnLogcatDisconnected;
+            m_Logcat.Connected += OnLogcatConnected;
 
-            m_LogCat.Start();
+            m_Logcat.Start();
         }
 
         private void StopLogCat()
         {
-            if (m_LogCat != null)
-                m_LogCat.Stop();
+            if (m_Logcat != null)
+                m_Logcat.Stop();
 
             UpdateStatusBar();
         }
 
         private void ClearLogCat()
         {
-            if (m_LogCat == null)
+            if (m_Logcat == null)
             {
                 return;
             }
 
-            m_LogCat.Stop();
-            m_LogCat.Clear();
-            m_LogCat.Start();
+            m_Logcat.Stop();
+            m_Logcat.Clear();
+            m_Logcat.Start();
         }
 
         public static void ShowInternalLog()
