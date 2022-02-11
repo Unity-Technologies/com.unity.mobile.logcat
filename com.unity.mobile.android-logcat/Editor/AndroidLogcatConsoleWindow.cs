@@ -166,8 +166,8 @@ namespace Unity.Android.Logcat
                 AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
             }
 
-            m_LogCat?.ValidateFilteredEntries();
-            m_LogCat?.ValidateRawEntries();
+            m_LogCat?.StripFilteredEntriesIfNeeded();
+            m_LogCat?.StripRawEntriesIfNeeded();
 
             Repaint();
         }

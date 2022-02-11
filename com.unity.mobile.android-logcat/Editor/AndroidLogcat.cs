@@ -28,7 +28,6 @@ namespace Unity.Android.Logcat
 
         public string[] Tags { get { return m_Tags; } }
 
-        public event Action<IReadOnlyList<LogcatEntry>> RawLogEntriesAdded;
         public event Action<IReadOnlyList<LogcatEntry>> FilteredLogEntriesAdded;
 
         public event Action<IAndroidLogcatDevice> Disconnected;
@@ -224,22 +223,20 @@ namespace Unity.Android.Logcat
                 return;
 
             m_RawLogEntries.AddRange(entries);
-            if (RawLogEntriesAdded != null)
-                RawLogEntriesAdded(entries);
 
-            ValidateRawEntries();
+            StripRawEntriesIfNeeded();
 
             FilterEntries(entries);
         }
 
-        public void ValidateRawEntries()
+        public void StripRawEntriesIfNeeded()
         {
             var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
             if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
                 m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
         }
 
-        public void ValidateFilteredEntries()
+        public void StripFilteredEntriesIfNeeded()
         {
             var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
             if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
@@ -267,10 +264,9 @@ namespace Unity.Android.Logcat
                 return;
 
             m_FilteredLogEntries.AddRange(filteredEntries);
-            if (FilteredLogEntriesAdded != null)
-                FilteredLogEntriesAdded(filteredEntries);
+            FilteredLogEntriesAdded?.Invoke(filteredEntries);
 
-            ValidateFilteredEntries();
+            StripFilteredEntriesIfNeeded();
         }
 
         private LogcatEntry LogEntryParserErrorFor(string msg)

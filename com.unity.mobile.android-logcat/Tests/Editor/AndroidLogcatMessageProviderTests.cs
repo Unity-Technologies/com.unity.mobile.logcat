@@ -341,8 +341,8 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         Assert.AreEqual(10.ToString(), logcat.RawEntries[0].message);
 
         m_Runtime.Settings.MaxFilteredMessageCount = 10;
-        logcat.ValidateRawEntries();
-        logcat.ValidateFilteredEntries();
+        logcat.StripRawEntriesIfNeeded();
+        logcat.StripFilteredEntriesIfNeeded();
         Assert.AreEqual(10, logcat.FilteredEntries.Count);
         Assert.AreEqual(20, logcat.RawEntries.Count);
         Assert.AreEqual(20.ToString(), logcat.FilteredEntries[0].message);
