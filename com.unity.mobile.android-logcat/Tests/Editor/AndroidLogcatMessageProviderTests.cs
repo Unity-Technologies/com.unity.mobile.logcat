@@ -313,13 +313,6 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     [Test]
     public void MessagesSettingsWork()
     {
-        var messages = new[]
-        {
-            @"10-25 14:27:56.862  1  2255 I chromium: Help",
-            @"10-25 14:27:56.863  2  2255 I chromium: .abc",
-            @"10-25 14:27:56.863  3  2255 I chromium: "
-        };
-
         InitRuntime();
 
         m_Runtime.Settings.MaxUnfilteredMessageCount = 20;
@@ -341,8 +334,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         Assert.AreEqual(10.ToString(), logcat.RawEntries[0].message);
 
         m_Runtime.Settings.MaxFilteredMessageCount = 10;
-        logcat.StripRawEntriesIfNeeded();
-        logcat.StripFilteredEntriesIfNeeded();
+        AndroidLogcatUtilities.ApplySettings(m_Runtime.Settings, logcat);
         Assert.AreEqual(10, logcat.FilteredEntries.Count);
         Assert.AreEqual(20, logcat.RawEntries.Count);
         Assert.AreEqual(20.ToString(), logcat.FilteredEntries[0].message);
@@ -356,6 +348,50 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         Assert.AreEqual(40, logcat.FilteredEntries.Count);
         Assert.AreEqual(50, logcat.RawEntries.Count);
+
+        logcat.Stop();
+
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void MessageSelectionWorks()
+    {
+        InitRuntime();
+
+        const int kMaxFilteredMessages = 20;
+
+        m_Runtime.Settings.MaxFilteredMessageCount = kMaxFilteredMessages;
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
+        logcat.Start();
+
+        for (int i = 0; i < kMaxFilteredMessages + 10; i++)
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
+                new[] { $"10-25 14:27:56.862  1  2255 I chromium: {i}" });
+
+        m_Runtime.OnUpdate();
+
+        var entries = logcat.GetSelectedFilteredEntries(out var minIdx, out var maxIdx);
+        Assert.AreEqual(0, entries.Count);
+        Assert.AreEqual(int.MaxValue, minIdx);
+        Assert.AreEqual(int.MinValue, maxIdx);
+
+        logcat.FilteredEntries[2].Selected = true;
+        logcat.FilteredEntries[18].Selected = true;
+
+        entries = logcat.GetSelectedFilteredEntries(out minIdx, out maxIdx);
+        Assert.AreEqual(2, entries.Count);
+        Assert.AreEqual(2, minIdx);
+        Assert.AreEqual(18, maxIdx);
+
+        // Entry at index 2 will be stripped
+        m_Runtime.Settings.MaxFilteredMessageCount = 10;
+        AndroidLogcatUtilities.ApplySettings(m_Runtime.Settings, logcat);
+
+        entries = logcat.GetSelectedFilteredEntries(out minIdx, out maxIdx);
+        Assert.AreEqual(1, entries.Count);
+        Assert.AreEqual(8, minIdx);
+        Assert.AreEqual(8, maxIdx);
 
         logcat.Stop();
 

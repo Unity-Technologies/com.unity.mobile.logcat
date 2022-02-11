@@ -149,26 +149,7 @@ namespace Unity.Android.Logcat
 
         private void ApplySettings(AndroidLogcatSettings settings)
         {
-            int fixedHeight = settings.MessageFontSize + 5;
-            AndroidLogcatStyles.kLogEntryFontSize = settings.MessageFontSize;
-            AndroidLogcatStyles.kLogEntryFixedHeight = fixedHeight;
-            AndroidLogcatStyles.background.fixedHeight = fixedHeight;
-            AndroidLogcatStyles.backgroundEven.fixedHeight = fixedHeight;
-            AndroidLogcatStyles.backgroundOdd.fixedHeight = fixedHeight;
-            AndroidLogcatStyles.priorityDefaultStyle.font = settings.MessageFont;
-            AndroidLogcatStyles.priorityDefaultStyle.fontSize = settings.MessageFontSize;
-            AndroidLogcatStyles.priorityDefaultStyle.fixedHeight = fixedHeight;
-            foreach (var p in (Priority[])Enum.GetValues(typeof(Priority)))
-            {
-                AndroidLogcatStyles.priorityStyles[(int)p].normal.textColor = settings.GetMessageColor(p);
-                AndroidLogcatStyles.priorityStyles[(int)p].font = settings.MessageFont;
-                AndroidLogcatStyles.priorityStyles[(int)p].fontSize = settings.MessageFontSize;
-                AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
-            }
-
-            m_LogCat?.StripFilteredEntriesIfNeeded();
-            m_LogCat?.StripRawEntriesIfNeeded();
-
+            AndroidLogcatUtilities.ApplySettings(settings, m_LogCat);
             Repaint();
         }
 
