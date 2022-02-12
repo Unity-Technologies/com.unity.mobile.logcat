@@ -74,6 +74,8 @@ namespace Unity.Android.Logcat
         {
             OnFilterChanged?.Invoke();
         }
+
+        public virtual bool IsValid => true;
     }
 
     class LogcatFilterOptions : FilterOptions
@@ -103,10 +105,6 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log($"Input search filter '{m_Filter}' is not a valid regular expression.\n{ex}");
 
-                    // Silently disable filtering if supplied regex is wrong
-                    m_Filter = string.Empty;
-                    m_MatchCase = false;
-                    m_UseRegularExpressions = false;
                     m_CachedRegex = null;
                 }
             }
@@ -122,6 +120,9 @@ namespace Unity.Android.Logcat
         {
             if (m_UseRegularExpressions)
             {
+                // Our regex was invalid, accept all messages
+                if (m_CachedRegex == null)
+                    return true;
                 return m_CachedRegex.Match(message).Success;
             }
             else
@@ -131,6 +132,8 @@ namespace Unity.Android.Logcat
                 return message.IndexOf(m_Filter, StringComparison.InvariantCultureIgnoreCase) != -1;
             }
         }
+
+        public override bool IsValid => !m_UseRegularExpressions || m_CachedRegex != null;
     }
 
 }

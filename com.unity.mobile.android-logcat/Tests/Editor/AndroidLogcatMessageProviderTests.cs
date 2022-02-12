@@ -84,7 +84,9 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     {
         foreach (var m in messages)
         {
-            if (device.APILevel > 23)
+            if (m == null)
+                provider.SupplyFakeMessage(null);
+            else if (device.APILevel > 23)
                 provider.SupplyFakeMessage("1991-" + m);
             else
                 provider.SupplyFakeMessage(m);
@@ -248,6 +250,43 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     }
 
     [Test]
+    public void InvalidRegexMatchesAllMessages()
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  2255  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2255  2255 I chromium: .abc",
+            // Empty lines were reported by devices like LG with Android 5
+            @"",
+            null
+        };
+
+        InitRuntime();
+
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose,
+            new FilterOptions() { UseRegularExpressions = true },
+            new string[] { });
+        logcat.Start();
+        SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice, messages);
+
+        m_Runtime.OnUpdate();
+
+        logcat.FilterOptions.Filter = "PPP";
+        Assert.AreEqual(3, logcat.RawEntries.Count);
+        Assert.AreEqual(0, logcat.FilteredEntries.Count);
+        Assert.AreEqual(true, logcat.FilterOptions.UseRegularExpressions);
+
+        logcat.FilterOptions.Filter = @"\P";
+        Assert.AreEqual(3, logcat.RawEntries.Count);
+        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+        Assert.AreEqual(true, logcat.FilterOptions.UseRegularExpressions);
+
+        logcat.Stop();
+
+        ShutdownRuntime();
+    }
+
+    [Test]
     public void ManualPidFilteringWorks()
     {
         var messages = new[]
@@ -345,6 +384,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         for (int i = 0; i < 30; i++)
             SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
                 new[] { $"10-25 14:27:56.862  1  2255 I chromium: {i + 30}" });
+        m_Runtime.OnUpdate();
 
         Assert.AreEqual(40, logcat.FilteredEntries.Count);
         Assert.AreEqual(50, logcat.RawEntries.Count);
