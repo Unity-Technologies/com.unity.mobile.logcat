@@ -619,7 +619,13 @@ namespace Unity.Android.Logcat
 
         private void HandleSearchField()
         {
+            var filterValid = m_Logcat != null ? m_Logcat.FilterOptions.IsValid : true;
+            var oldColor = GUI.color;
+            if (!filterValid)
+                GUI.color = Color.red;
             var newFilter = m_SearchField.OnToolbarGUI(m_Runtime.UserSettings.FilterOptions.Filter, null);
+            if (!filterValid)
+                GUI.color = oldColor;
             SetFilter(newFilter);
         }
 
