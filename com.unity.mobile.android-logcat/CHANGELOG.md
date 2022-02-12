@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixes & Improvements.
  - You can now perform text filtering when disconnected from the device, the filtering will be performed by the logcat package, previously it was performed by **adb logcat** command.
  - Text filtering has an option to ignore character casing.
- - Whenever entering new text filter selection of messages will persist.
+ - Whenever entering new text filter selection of messages will persist, the selection will reset if **adb logcat** command is reexecuted, for ex., picking new tag, picking new priority, etc.
  - There are new settings in Preferences->Android Logcat Settings:
     - Max Unfiltered Messages - controls how many unfiltered messages to keep in cache, you can remove the limit, and have as many messages as your memory let's you.
     - Max Filtered Messages - controls how many filtered messages display on the list, you can remove the limit, but it might cause UI issues.
