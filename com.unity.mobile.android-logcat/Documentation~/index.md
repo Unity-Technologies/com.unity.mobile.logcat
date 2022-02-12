@@ -20,11 +20,10 @@ Android Logcat Package is a utility for displaying log messages coming from an A
 		- Priority
 		- Tag
         - Process Id
-	- Search by
 		- Text
-		- Regex
 - Auto run
 - Screen capture
+- Memory Window
 - Stacktrace resolving
 
 ## **Using Android Logcat**

@@ -346,21 +346,26 @@ namespace Unity.Android.Logcat
 
         private static int s_DebuggingMessageId;
 
+        private void DbgAddLogLines()
+        {
+            int count = 10000;
+            var entries = new List<LogcatEntry>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var pid = 123;
+                var tid = 234;
+                OnDataReceived($"2022-01-31 12:43:40.003   {pid}   {tid} I DummyTag: Dummy Message {s_DebuggingMessageId}");
+                s_DebuggingMessageId++;
+            }
+
+            ProcessCachedLogLines();
+        }
         internal void DoDebuggingGUI()
         {
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
-                int count = 10000;
-                var entries = new List<LogcatEntry>(count);
-                for (int i = 0; i < count; i++)
-                {
-                    var pid = 123;
-                    var tid = 234;
-                    OnDataReceived($"2022-01-31 12:43:40.003   {pid}   {tid} I DummyTag: Dummy Message {s_DebuggingMessageId}");
-                    s_DebuggingMessageId++;
-                }
+                DbgAddLogLines();
 
-                ProcessCachedLogLines();
             }
             GUILayout.Label($"Raw: {m_RawLogEntries.Count} Filtered: {m_FilteredLogEntries.Count}");
         }
