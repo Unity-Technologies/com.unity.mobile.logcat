@@ -10,7 +10,7 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxUnfilteredMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages which are kept in cache and are used when filtering messages. 0 - no limit.");
+            public static GUIContent maxUnfilteredMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of unfiltered messages affects the performing of filtering. 0 - no limit.");
             public static GUIContent maxFilteredMessageCount = new GUIContent("Max Filtered Messages", "The maximum number of filtered messages which are shown in the list, cannot be bigger than unfiltered message count. 0 - no limit.");
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
