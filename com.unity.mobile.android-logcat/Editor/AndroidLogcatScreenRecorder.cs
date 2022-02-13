@@ -139,13 +139,14 @@ namespace Unity.Android.Logcat
             m_RecordingProcessErrors = new StringBuilder();
 
             m_RecordingProcess = new Process();
-            m_RecordingProcess.StartInfo.FileName = m_Runtime.Tools.ADB.GetADBPath();
-            m_RecordingProcess.StartInfo.Arguments = args;
-            m_RecordingProcess.StartInfo.RedirectStandardError = true;
-            m_RecordingProcess.StartInfo.RedirectStandardOutput = true;
-            m_RecordingProcess.StartInfo.RedirectStandardInput = true;
-            m_RecordingProcess.StartInfo.UseShellExecute = false;
-            m_RecordingProcess.StartInfo.CreateNoWindow = true;
+            var si = m_RecordingProcess.StartInfo;
+            si.FileName = m_Runtime.Tools.ADB.GetADBPath();
+            si.Arguments = args;
+            si.RedirectStandardError = true;
+            si.RedirectStandardOutput = true;
+            si.RedirectStandardInput = true;
+            si.UseShellExecute = false;
+            si.CreateNoWindow = true;
             m_RecordingProcess.OutputDataReceived += OutputDataReceived;
             m_RecordingProcess.ErrorDataReceived += OutputDataReceived;
             m_RecordingProcess.Start();
