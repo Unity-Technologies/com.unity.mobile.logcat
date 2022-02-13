@@ -121,7 +121,7 @@ namespace Unity.Android.Logcat
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log(ex.Message);
+                AndroidLogcatInternalLog.Log($"Failed to get process id for {packageName}:\n{ex.Message}");
                 return -1;
             }
         }
@@ -137,7 +137,7 @@ namespace Unity.Android.Logcat
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log(ex.Message);
+                AndroidLogcatInternalLog.Log($"Failed to kill process with process id {pid}:\n{ex.Message}");
                 return false;
             }
         }
