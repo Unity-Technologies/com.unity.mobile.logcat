@@ -83,7 +83,7 @@ namespace Unity.Android.Logcat
         {
             if (m_Recorder.IsRecording())
             {
-                if (GUILayout.Button(kStopRecording, AndroidLogcatStyles.toolbarButton))
+                if (GUILayout.Button(kStopRecording, AndroidLogcatStyles.toolbarButton, GUILayout.Width(kSaveButtonWidth)))
                 {
                     var device = m_Recorder.RecordingOnDevice;
                     m_Recorder.StopRecording();
@@ -97,7 +97,7 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                if (GUILayout.Button(kStartRecording, AndroidLogcatStyles.toolbarButton))
+                if (GUILayout.Button(kStartRecording, AndroidLogcatStyles.toolbarButton, GUILayout.Width(kSaveButtonWidth)))
                 {
                     m_Recorder.DeleteTempVideo();
                     m_Recorder.StartRecording(SelectedDevice);
@@ -126,11 +126,21 @@ namespace Unity.Android.Logcat
             EditorGUI.EndDisabledGroup();
         }
 
+        void DoOpenGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!File.Exists(m_Recorder.RecordingSavePath));
+            if (GUILayout.Button("Open", AndroidLogcatStyles.toolbarButton, GUILayout.Width(kSaveButtonWidth)))
+            {
+                Application.OpenURL(m_Recorder.RecordingSavePath);
+            }
+            EditorGUI.EndDisabledGroup();
+        }
+
         void DoRecordingSettingsGUI()
         {
             var rs = m_Runtime.UserSettings.RecorderSettings;
             var width = 100;
-            EditorGUILayout.LabelField("Override Recording settings", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Toggle to override recorder settings", EditorStyles.boldLabel);
 
 
             // TODO tooltips
@@ -174,7 +184,7 @@ namespace Unity.Android.Logcat
                 UnityEngine.Debug.Log("screen record pid is " + pid);
             }
 
-            CleanupRecordingOnDevice = GUILayout.Toggle(CleanupRecordingOnDevice, "Clean up Recording");
+            CleanupRecordingOnDevice = GUILayout.Toggle(CleanupRecordingOnDevice, "Clean up Recording on device");
             if (GUILayout.Button("Copy Recording from device", AndroidLogcatStyles.toolbarButton))
                 m_Recorder.CopyRecordingFromDevice(SelectedDevice);
 
@@ -240,6 +250,36 @@ namespace Unity.Android.Logcat
                 GUI.DrawTexture(videoRect, m_VideoPlayer.texture);
         }
 
+        void DoToobarGUI()
+        {
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+         
+            DoProgressGUI(m_Recorder.IsRecording());
+            DoSelectedDeviceGUI();
+
+            EditorGUI.BeginDisabledGroup(SelectedDevice == null);
+            {
+                GUILayout.FlexibleSpace();
+                DoRecordingGUI();
+                DoSaveGUI();
+                DoOpenGUI();
+            }
+            EditorGUI.EndDisabledGroup();
+          
+            EditorGUILayout.EndHorizontal();
+        }
+
+        void DoErrorsGUI()
+        {
+            var boxRect = GUILayoutUtility.GetLastRect();
+            var oldColor = GUI.color;
+            GUI.color = Color.grey;
+            GUI.Box(new Rect(0, boxRect.y + boxRect.height, Screen.width, Screen.height), GUIContent.none);
+            GUI.color = oldColor;
+            EditorGUILayout.Space(20);
+            EditorGUILayout.HelpBox(m_Recorder.Errors, MessageType.Error);
+        }
+
         void OnGUI()
         {
             if (!DoIsSupportedGUI())
@@ -250,41 +290,27 @@ namespace Unity.Android.Logcat
 
 
             EditorGUILayout.BeginVertical();
-            GUILayout.Space(5);
-
-            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-            DoProgressGUI(false);
-            DoSelectedDeviceGUI();
-
-            EditorGUI.BeginDisabledGroup(SelectedDevice == null);
             {
-                DoRecordingGUI();
-                DoSaveGUI();
+                GUILayout.Space(5);
+
+                DoToobarGUI();
+
+                if (Unsupported.IsDeveloperMode())
+                    DoDebuggingGUI();
+
+                EditorGUI.BeginDisabledGroup(m_Recorder.IsRecording());
+                {
+                    DoRecordingSettingsGUI();
+                }
+                EditorGUI.EndDisabledGroup();
             }
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
-
-            if (Unsupported.IsDeveloperMode())
-                DoDebuggingGUI();
-
-            EditorGUI.BeginDisabledGroup(m_Recorder.IsRecording());
-            DoRecordingSettingsGUI();
-
             EditorGUILayout.EndVertical();
 
-            EditorGUI.EndDisabledGroup();
             GUILayout.Space(5);
-
-            var boxRect = GUILayoutUtility.GetLastRect();
-            var oldColor = GUI.color;
-            GUI.color = Color.grey;
-            GUI.Box(new Rect(0, boxRect.y + boxRect.height, Screen.width, Screen.height), GUIContent.none);
-            GUI.color = oldColor;
 
             if (m_Recorder.Errors.Length > 0)
             {
-                EditorGUILayout.Space(20);
-                EditorGUILayout.HelpBox(m_Recorder.Errors, MessageType.Error);
+                DoErrorsGUI();
                 return;
             }
 
