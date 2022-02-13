@@ -98,7 +98,7 @@ namespace Unity.Android.Logcat
 
         public static Font GetFont()
         {
-            return (Font)EditorGUIUtility.LoadRequired("Packages/com.unity.mobile.android-logcat/Editor/Resources/consola.ttf");
+            return (Font)EditorGUIUtility.LoadRequired("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
         }
 
         internal class StatusWheel
@@ -137,7 +137,7 @@ namespace Unity.Android.Logcat
 
         public static Texture2D LoadIcon(string name)
         {
-            var tex = (Texture2D)EditorGUIUtility.Load($"Packages/com.unity.mobile.android-logcat/Editor/Resources/{name}.png");
+            var tex = (Texture2D)EditorGUIUtility.Load($"Packages/com.unity.mobile.android-logcat/Editor/Textures/{name}.png");
             return tex;
         }
 
