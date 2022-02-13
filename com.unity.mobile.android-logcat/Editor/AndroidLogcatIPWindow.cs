@@ -59,10 +59,10 @@ namespace Unity.Android.Logcat
         /// Please refer to https://developer.android.com/studio/command-line/adb#wireless for details.
         /// </summary>
         /// <param name="ip"> The ip address of the device that needs to be connected. Port can be included like 'device_ip_address:port'. Both IPV4 and IPV6 are supported. </param>
-        public  void ConnectDevice(string ip, string port)
+        public void ConnectDevice(string ip, string port)
         {
             EditorUtility.DisplayProgressBar("Connecting", "Connecting to " + ip + ":" + port, 0.0f);
-            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Runtime.Tools.ADB, ip = ip, port = port}, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
+            m_Runtime.Dispatcher.Schedule(new AndroidLogcatConnectToDeviceInput() { adb = m_Runtime.Tools.ADB, ip = ip, port = port }, AndroidLogcatConnectToDeviceTask.Execute, IntegrateConnectToDevice, false);
         }
 
         public void SetTCPIPAndConnectDevice(string deviceId, string ip, string port)

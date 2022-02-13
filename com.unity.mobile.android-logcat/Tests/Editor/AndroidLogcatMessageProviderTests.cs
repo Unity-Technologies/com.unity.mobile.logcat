@@ -14,7 +14,7 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
     private List<string> m_FakeMessages;
     private Regex m_Regex;
 
-    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+    internal AndroidLogcatFakeMessageProvider(AndroidBridge.ADB adb, string filter, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         : base(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction)
     {
         m_FakeMessages = new List<string>();
@@ -84,7 +84,7 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
 
 internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
-    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90")};
+    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), new AndroidLogcatFakeDevice90("Fake90") };
 
     private static void SupplyFakeMessages(AndroidLogcatFakeMessageProvider provider, IAndroidLogcatDevice device, string[] messages)
     {
@@ -105,10 +105,10 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         foreach (var device in kDevices)
         {
-            foreach (var isRegexEnabled in new[] {true, false})
+            foreach (var isRegexEnabled in new[] { true, false })
             {
-                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, ".*abc",
-                    isRegexEnabled, new string[] {});
+                var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose, ".*abc",
+                    isRegexEnabled, new string[] { });
                 var message = string.Format("Failure with {0} device, regex enabled: {1}", device.GetType().FullName,
                     isRegexEnabled.ToString());
 
@@ -144,13 +144,13 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         InitRuntime();
         foreach (var device in kDevices)
         {
-            foreach (var regexIsEnabled in new[] {true, false})
+            foreach (var regexIsEnabled in new[] { true, false })
             {
-                foreach (var filter in new[] {"", ".abc", "...."})
+                foreach (var filter in new[] { "", ".abc", "...." })
                 {
                     var entries = new List<string>();
-                    var logcat = new AndroidLogcat(m_Runtime, null, device, -1, AndroidLogcat.Priority.Verbose, filter, regexIsEnabled, new string[] {});
-                    logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                    var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose, filter, regexIsEnabled, new string[] { });
+                    logcat.LogEntriesAdded += (List<LogcatEntry> e) =>
                     {
                         entries.AddRange(e.Select(m => m.message));
                     };
@@ -208,11 +208,11 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         foreach (var device in kDevices)
         {
-            foreach (var pid in new[] {-1, 0, 1})
+            foreach (var pid in new[] { -1, 0, 1 })
             {
                 var processIds = new List<int>();
-                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, AndroidLogcat.Priority.Verbose, "", false, new string[] {});
-                logcat.LogEntriesAdded += (List<AndroidLogcat.LogEntry> e) =>
+                var logcat = new AndroidLogcat(m_Runtime, null, device, pid, Priority.Verbose, "", false, new string[] { });
+                logcat.LogEntriesAdded += (List<LogcatEntry> e) =>
                 {
                     processIds.AddRange(e.Select(m => m.processId));
                 };
@@ -256,7 +256,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     {
         InitRuntime();
         Assert.Throws(typeof(Exception), () =>
-            m_Runtime.CreateMessageProvider(null, "Test", AndroidLogcat.Priority.Verbose, -1, "sds", new AndroidLogcatFakeDevice60("Fake60"), null)
+            m_Runtime.CreateMessageProvider(null, "Test", Priority.Verbose, -1, "sds", new AndroidLogcatFakeDevice60("Fake60"), null)
         );
         ShutdownRuntime();
     }

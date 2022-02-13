@@ -14,9 +14,9 @@ namespace Unity.Android.Logcat
 
         protected override void OnPlusButtonClicked()
         {
-            var backends = new[] {"mono", "il2cpp"};
-            var buildTypes = new[] {"Debug", "Development", "Release"};
-            var cpu = new[] {"", "armeabi-v7a", "arm64-v8a"};
+            var backends = new[] { "mono", "il2cpp" };
+            var buildTypes = new[] { "Debug", "Development", "Release" };
+            var cpu = new[] { "", "armeabi-v7a", "arm64-v8a" };
             var names = new List<GUIContent>();
             var paths = new List<string>();
 

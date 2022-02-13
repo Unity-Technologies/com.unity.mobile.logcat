@@ -53,7 +53,7 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_ScreenRecorder; }
         }
 
-        public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
+        public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
@@ -120,7 +120,7 @@ namespace Unity.Android.Logcat
             m_SubscribeToEditorUpdate = subscribeToEditorUpdate;
         }
 
-        public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, AndroidLogcat.Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, string filter, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
             return new AndroidLogcatMessageProvider(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction);
         }

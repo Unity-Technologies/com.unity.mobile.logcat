@@ -43,7 +43,7 @@ namespace Unity.Android.Logcat
 
             GUILayout.Space(20);
             EditorGUILayout.LabelField("Message Colors", EditorStyles.boldLabel);
-            foreach (var p in (AndroidLogcat.Priority[])Enum.GetValues(typeof(AndroidLogcat.Priority)))
+            foreach (var p in (Priority[])Enum.GetValues(typeof(Priority)))
             {
                 settings.SetMessageColor(p, EditorGUILayout.ColorField(p.ToString(), settings.GetMessageColor(p)));
             }
