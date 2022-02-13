@@ -281,15 +281,17 @@ namespace Unity.Android.Logcat
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
 
-            m_ScreenRecorderSettings = new ScreenRecorderSettings();
-            m_ScreenRecorderSettings.BitRateEnabled = false;
-            m_ScreenRecorderSettings.DisplayIdEnabled = false;
-            m_ScreenRecorderSettings.VideoSizeEnabled = false;
+            m_ScreenRecorderSettings = new ScreenRecorderSettings
+            {
+                BitRateEnabled = false,
+                DisplayIdEnabled = false,
+                VideoSizeEnabled = false,
 
-            m_ScreenRecorderSettings.BitRate = 4000000;
-            m_ScreenRecorderSettings.VideoSizeX = 1280;
-            m_ScreenRecorderSettings.VideoSizeY = 720;
-            m_ScreenRecorderSettings.DisplayId = string.Empty;
+                BitRate = 4000000,
+                VideoSizeX = 1280,
+                VideoSizeY = 720,
+                DisplayId = string.Empty
+            };
         }
 
         internal static AndroidLogcatUserSettings Load(string path)
