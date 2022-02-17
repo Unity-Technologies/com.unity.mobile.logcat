@@ -1,5 +1,4 @@
-test_editors_for_integration:
-  - version: 2020.3
+{% metadata_file .yamato/config.metadata %}
   
 ---
 {% for editor in test_editors_for_integration %}
