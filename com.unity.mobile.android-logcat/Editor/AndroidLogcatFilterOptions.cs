@@ -23,6 +23,14 @@ namespace Unity.Android.Logcat
             m_Filter = string.Empty;
         }
 
+        public FilterOptions(FilterOptions options)
+        {
+            m_Filter = options.Filter;
+            m_MatchCase = options.MatchCase;
+            m_UseRegularExpressions = options.UseRegularExpressions;
+            OnUpdate();
+        }
+
         public Action OnFilterChanged { set; get; }
 
         public string Filter
@@ -83,11 +91,8 @@ namespace Unity.Android.Logcat
         private Regex m_CachedRegex;
 
         public LogcatFilterOptions(FilterOptions options)
+            : base (options)
         {
-            m_Filter = options.Filter;
-            m_MatchCase = options.MatchCase;
-            m_UseRegularExpressions = options.UseRegularExpressions;
-            OnUpdate();
         }
 
         protected override void OnUpdate()

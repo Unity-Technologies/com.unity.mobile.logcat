@@ -250,6 +250,80 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     }
 
     [Test]
+    public void FilteringCanReuseResults()
+    {
+        var messages = new[]
+{
+            @"10-25 14:27:56.862  2255  2255 I chromium: abc",
+            @"10-25 14:27:56.863  2255  2255 I chromium: abcd",
+            @"10-25 14:27:56.863  2255  2255 I chromium: abcde",
+            @"10-25 14:27:56.863  2255  2255 I chromium: ABCDE",
+        };
+
+        InitRuntime();
+
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose,
+            new FilterOptions() { UseRegularExpressions = false, MatchCase = false},
+            new string[] { });
+
+        var previousFilterChangedCallback = logcat.FilterOptions.OnFilterChanged;
+        var filteredResultsWereReused = false;
+
+        logcat.FilterOptions.OnFilterChanged = () =>
+        {
+            filteredResultsWereReused = logcat.CanReuseFilteredResults();
+            previousFilterChangedCallback();
+        };
+
+        logcat.Start();
+        SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice, messages);
+        m_Runtime.OnUpdate();
+
+        logcat.FilterOptions.Filter = "a";
+        Assert.AreEqual(true, filteredResultsWereReused);
+        Assert.AreEqual(4, logcat.FilteredEntries.Count);
+
+        // Match Case is set to false, we can reuse results filtered with 'a' letter
+        logcat.FilterOptions.Filter = "ABCD";
+        Assert.AreEqual(true, filteredResultsWereReused);
+        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+
+        // Since 'ABCD' filter filters more than 'abc', we cannot reuse previous results
+        logcat.FilterOptions.Filter = "abc";
+        Assert.AreEqual(false, filteredResultsWereReused);
+        Assert.AreEqual(4, logcat.FilteredEntries.Count);
+
+        // When MatchCase changes from false to true, we can reuse previous results
+        logcat.FilterOptions.MatchCase = true;
+        Assert.AreEqual(true, filteredResultsWereReused);
+        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+
+        // When MatchCase changes from true to false, previous results might be not enough
+        logcat.FilterOptions.MatchCase = false;
+        Assert.AreEqual(false, filteredResultsWereReused);
+        Assert.AreEqual(4, logcat.FilteredEntries.Count);
+
+        // Can reuse result, since we're changing filter from abc to abcd
+        logcat.FilterOptions.Filter = "abcd";
+        Assert.AreEqual(true, filteredResultsWereReused);
+        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+
+        // When using regex we're always using raw entries for filtering
+        logcat.FilterOptions.UseRegularExpressions = true;
+        Assert.AreEqual(false, filteredResultsWereReused);
+        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+
+        // Even though results could be reused, it's quite hard to determine with regex if previous results was higher set of current results
+        logcat.FilterOptions.Filter = "abcde";
+        Assert.AreEqual(false, filteredResultsWereReused);
+        Assert.AreEqual(2, logcat.FilteredEntries.Count);
+
+        logcat.Stop();
+
+        ShutdownRuntime();
+    }
+
+    [Test]
     public void InvalidRegexMatchesAllMessages()
     {
         var messages = new[]
@@ -437,4 +511,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         ShutdownRuntime();
     }
+
+    // TODO: filter reusage
+    // MAX filtered check
 }

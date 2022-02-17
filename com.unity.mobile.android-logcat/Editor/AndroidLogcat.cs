@@ -17,6 +17,7 @@ namespace Unity.Android.Logcat
         private readonly Priority m_MessagePriority;
         private readonly string[] m_Tags;
         private readonly LogcatFilterOptions m_FilterOptions;
+        private FilterOptions m_LastUsedFilterOptions;
         private List<LogcatEntry> m_RawLogEntries = new List<LogcatEntry>();
         private List<LogcatEntry> m_FilteredLogEntries = new List<LogcatEntry>();
 
@@ -112,6 +113,7 @@ namespace Unity.Android.Logcat
             this.m_PackagePid = packagePid;
             this.m_MessagePriority = priority;
             this.m_FilterOptions = new LogcatFilterOptions(filterOptions);
+            this.m_LastUsedFilterOptions = new FilterOptions(m_FilterOptions);
             this.m_Tags = tags;
 
             m_FilterOptions.OnFilterChanged = OnFilterChanged;
@@ -125,10 +127,38 @@ namespace Unity.Android.Logcat
             m_FilteredLogEntries.Clear();
         }
 
+        internal bool CanReuseFilteredResults()
+        {
+            if (m_LastUsedFilterOptions.UseRegularExpressions ||
+                m_FilterOptions.UseRegularExpressions)
+                return false;
+
+            // When changing match case from true to false, the previous set might not enough for new results
+            // But previous set will might be enough when changing Match Case from false to true
+            if (m_LastUsedFilterOptions.MatchCase != m_FilterOptions.MatchCase &&
+                m_LastUsedFilterOptions.MatchCase &&
+                !m_FilterOptions.MatchCase)
+                return false;
+           
+            return m_FilterOptions.Filter.Contains(m_LastUsedFilterOptions.Filter, StringComparison.InvariantCultureIgnoreCase);
+        }
+
         private void OnFilterChanged()
         {
-            m_FilteredLogEntries.Clear();
-            FilterEntries(m_RawLogEntries);
+            // Optimization, reuse previous results if possible
+            if (CanReuseFilteredResults())
+            {
+                FilterEntriesUsingFilteredEntries(m_FilteredLogEntries);
+            }
+            else
+            {
+                m_FilteredLogEntries.Clear();
+                FilterEntriesUsingRawEntries(m_RawLogEntries);
+            }
+
+            m_LastUsedFilterOptions.Filter = m_FilterOptions.Filter;
+            m_LastUsedFilterOptions.UseRegularExpressions = m_FilterOptions.UseRegularExpressions;
+            m_LastUsedFilterOptions.MatchCase = m_FilterOptions.MatchCase;
         }
 
         internal void Start()
@@ -226,7 +256,7 @@ namespace Unity.Android.Logcat
 
             StripRawEntriesIfNeeded();
 
-            FilterEntries(entries);
+            FilterEntriesUsingRawEntries(entries);
         }
 
         public void StripRawEntriesIfNeeded()
@@ -243,30 +273,52 @@ namespace Unity.Android.Logcat
                 m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
         }
 
-        private void FilterEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        private List<LogcatEntry> FilterEntries(IEnumerable<LogcatEntry> unfilteredEntries)
         {
             var filteredEntries = new List<LogcatEntry>();
+            foreach (var entry in unfilteredEntries)
+            {
+                if (!m_FilterOptions.Matches(entry.message))
+                    continue;
+                filteredEntries.Add(entry);
+            }
+
+            return filteredEntries;
+        }
+
+        private void FilterEntriesUsingRawEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        {
+            IReadOnlyList<LogcatEntry> filteredEntries;
             if (string.IsNullOrEmpty(m_FilterOptions.Filter))
             {
                 filteredEntries = unfilteredEntries.ToList();
             }
             else
             {
-                foreach (var entry in unfilteredEntries)
-                {
-                    if (!m_FilterOptions.Matches(entry.message))
-                        continue;
-                    filteredEntries.Add(entry);
-                }
+                filteredEntries = FilterEntries(unfilteredEntries);
             }
 
             if (filteredEntries.Count == 0)
                 return;
-
+  
             m_FilteredLogEntries.AddRange(filteredEntries);
             FilteredLogEntriesAdded?.Invoke(filteredEntries);
 
             StripFilteredEntriesIfNeeded();
+        }
+
+        private void FilterEntriesUsingFilteredEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        {
+            if (string.IsNullOrEmpty(m_FilterOptions.Filter))
+                return;
+
+            var filteredEntries = FilterEntries(unfilteredEntries);
+            m_FilteredLogEntries = filteredEntries;
+            if (filteredEntries.Count == 0)
+                return;
+             FilteredLogEntriesAdded?.Invoke(filteredEntries);
+
+            // No need to strip, since filtering from filtered entries, can only shrink the list, but not grow
         }
 
         private LogcatEntry LogEntryParserErrorFor(string msg)
