@@ -128,7 +128,7 @@ test_all_trigger:
     {% for editor in test_editors %}
     {% for platform in test_platforms %}
     {% for module_support in test_module_support %}
-    {% editor.version == "2019.4" %}
+    {% if editor.version == "2019.4" %}
         {% continue %}
     {% endif %}
     - .yamato/upm-ci.yml#test_{{platform.name}}_{{editor.version}}_{{ module_support.name }}
