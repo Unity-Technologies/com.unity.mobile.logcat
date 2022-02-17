@@ -181,7 +181,7 @@ namespace Unity.Android.Logcat
             m_MemoryRequestInterval = 500;
             m_MaxUnfilteredMessageCount = 60000;
             m_MaxFilteredMessageCount = 60000;
-            m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Resources/consola.ttf");
+            m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
