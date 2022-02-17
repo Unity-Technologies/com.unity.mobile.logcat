@@ -139,7 +139,7 @@ namespace Unity.Android.Logcat
                 m_LastUsedFilterOptions.MatchCase &&
                 !m_FilterOptions.MatchCase)
                 return false;
-           
+
             return m_FilterOptions.Filter.Contains(m_LastUsedFilterOptions.Filter, StringComparison.InvariantCultureIgnoreCase);
         }
 
@@ -273,9 +273,10 @@ namespace Unity.Android.Logcat
                 m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
         }
 
-        private List<LogcatEntry> FilterEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        private List<LogcatEntry> FilterEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
         {
-            var filteredEntries = new List<LogcatEntry>();
+            // Set capacity 10% for filtered entries from unfiltered entries to minimize unneeded allocations
+            var filteredEntries = new List<LogcatEntry>(unfilteredEntries.Count / 10);
             foreach (var entry in unfilteredEntries)
             {
                 if (!m_FilterOptions.Matches(entry.message))
@@ -286,7 +287,7 @@ namespace Unity.Android.Logcat
             return filteredEntries;
         }
 
-        private void FilterEntriesUsingRawEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        private void FilterEntriesUsingRawEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
         {
             IReadOnlyList<LogcatEntry> filteredEntries;
             if (string.IsNullOrEmpty(m_FilterOptions.Filter))
@@ -300,14 +301,14 @@ namespace Unity.Android.Logcat
 
             if (filteredEntries.Count == 0)
                 return;
-  
+
             m_FilteredLogEntries.AddRange(filteredEntries);
             FilteredLogEntriesAdded?.Invoke(filteredEntries);
 
             StripFilteredEntriesIfNeeded();
         }
 
-        private void FilterEntriesUsingFilteredEntries(IEnumerable<LogcatEntry> unfilteredEntries)
+        private void FilterEntriesUsingFilteredEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
         {
             if (string.IsNullOrEmpty(m_FilterOptions.Filter))
                 return;
@@ -316,7 +317,7 @@ namespace Unity.Android.Logcat
             m_FilteredLogEntries = filteredEntries;
             if (filteredEntries.Count == 0)
                 return;
-             FilteredLogEntriesAdded?.Invoke(filteredEntries);
+            FilteredLogEntriesAdded?.Invoke(filteredEntries);
 
             // No need to strip, since filtering from filtered entries, can only shrink the list, but not grow
         }

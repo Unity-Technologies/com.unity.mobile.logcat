@@ -263,7 +263,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         InitRuntime();
 
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose,
-            new FilterOptions() { UseRegularExpressions = false, MatchCase = false},
+            new FilterOptions() { UseRegularExpressions = false, MatchCase = false },
             new string[] { });
 
         var previousFilterChangedCallback = logcat.FilterOptions.OnFilterChanged;

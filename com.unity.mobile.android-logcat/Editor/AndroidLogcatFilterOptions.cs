@@ -91,7 +91,7 @@ namespace Unity.Android.Logcat
         private Regex m_CachedRegex;
 
         public LogcatFilterOptions(FilterOptions options)
-            : base (options)
+            : base(options)
         {
         }
 
