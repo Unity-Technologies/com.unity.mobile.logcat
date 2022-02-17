@@ -279,8 +279,17 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice, messages);
         m_Runtime.OnUpdate();
 
-        logcat.FilterOptions.Filter = "a";
+        logcat.FilterOptions.Filter = "ab";
         Assert.AreEqual(true, filteredResultsWereReused);
+        Assert.AreEqual(4, logcat.FilteredEntries.Count);
+
+        // Even though b is part of previous results, it needs to start with b, so result could be reused
+        logcat.FilterOptions.Filter = "b";
+        Assert.AreEqual(false, filteredResultsWereReused);
+        Assert.AreEqual(4, logcat.FilteredEntries.Count);
+
+        logcat.FilterOptions.Filter = "abc";
+        Assert.AreEqual(false, filteredResultsWereReused);
         Assert.AreEqual(4, logcat.FilteredEntries.Count);
 
         // Match Case is set to false, we can reuse results filtered with 'a' letter

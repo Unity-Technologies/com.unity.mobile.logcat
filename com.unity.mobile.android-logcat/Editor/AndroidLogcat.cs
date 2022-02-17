@@ -140,7 +140,7 @@ namespace Unity.Android.Logcat
                 !m_FilterOptions.MatchCase)
                 return false;
 
-            return m_FilterOptions.Filter.Contains(m_LastUsedFilterOptions.Filter, StringComparison.InvariantCultureIgnoreCase);
+            return m_FilterOptions.Filter.StartsWith(m_LastUsedFilterOptions.Filter, StringComparison.InvariantCultureIgnoreCase);
         }
 
         private void OnFilterChanged()
