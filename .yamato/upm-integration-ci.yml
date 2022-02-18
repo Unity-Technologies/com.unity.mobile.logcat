@@ -20,7 +20,7 @@ test_integration_{{ editor.version }}:
        start %ANDROID_SDK_ROOT%\platform-tools\adb.exe connect %BOKKEN_DEVICE_IP%
        REM List the connected devices
        start %ANDROID_SDK_ROOT%\platform-tools\adb.exe devices
-       REM ./utr.bat  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+       ./utr.bat  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
   artifacts:
     integration_{{ editor.version }}_logs:
       paths:
