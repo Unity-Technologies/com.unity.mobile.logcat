@@ -6,23 +6,21 @@ test_integration_{{ editor.version }}:
   name : Test Integration on {{ editor.version }}
   agent:
       type: Unity::mobile::shield
-      image: mobile/android-package-ci-win:latest
+      image: mobile/android-execution-base:stable
       flavor: b1.medium
   commands:
-    - |
-       # Download standalone UnityTestRunner
-       curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr.bat --output utr.bat
-       # Set the IP of the device. In case device gets lost, UTR will try to recconect to ANDROID_DEVICE_CONNECTION
-       set ANDROID_DEVICE_CONNECTION=%BOKKEN_DEVICE_IP%
-       # Establish an ADB connection with the device
-       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe connect %BOKKEN_DEVICE_IP%
-       # List the connected devices
-       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe devices
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
     - curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr.bat --output utr.bat
-    - ./utr.bat  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+    - |
+       REM Set the IP of the device. In case device gets lost, UTR will try to recconect to ANDROID_DEVICE_CONNECTION
+       set ANDROID_DEVICE_CONNECTION=%BOKKEN_DEVICE_IP%
+       REM Establish an ADB connection with the device
+       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe connect %BOKKEN_DEVICE_IP%
+       REM List the connected devices
+       start %ANDROID_SDK_ROOT%\platform-tools\adb.exe devices
+       ./utr.bat  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
   artifacts:
     integration_{{ editor.version }}_logs:
       paths:
