@@ -21,6 +21,7 @@ test_integration_{{ editor.version }}:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
+	- upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
   artifacts:
     integration_{{ editor.version }}_logs:
