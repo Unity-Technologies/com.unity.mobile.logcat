@@ -10,7 +10,7 @@ internal class AndroidLogcatRuntimeIntegrationMessages : AndroidLogcatIntegratio
     [UnityTest]
     public IEnumerator CanGetMessagesFromDevice()
     {
-        var logcat = new AndroidLogcat(Runtime, Runtime.Tools.ADB, Device, 0, Priority.Verbose, "", false, new string[] { });
+        var logcat = CreateLogcatInstance();
         var messageCount = 0;
         var lastMessage = string.Empty;
         logcat.LogEntriesAdded += (List<LogcatEntry> e) =>

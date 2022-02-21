@@ -53,6 +53,11 @@ internal class AndroidLogcatIntegrationTestBase
         m_Runtime = null;
     }
 
+    protected AndroidLogcat CreateLogcatInstance()
+    {
+        return new AndroidLogcat(Runtime, Runtime.Tools.ADB, Device, 0, Priority.Verbose, "", false, new string[] { });
+    }
+
     protected IEnumerator Waiting()
     {
 #if UNITY_EDITOR
