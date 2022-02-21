@@ -5,6 +5,7 @@ using Unity.Android.Logcat;
 using UnityEngine.TestTools;
 
 [TestFixture]
+[RequiresAndroidDevice]
 internal class AndroidLogcatRuntimeIntegrationMessages : AndroidLogcatIntegrationTestBase
 {
     [UnityTest]
