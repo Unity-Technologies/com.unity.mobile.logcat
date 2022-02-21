@@ -10,14 +10,17 @@ test_platforms:
     type: Unity::VM
     image: package-ci/win10:stable
     flavor: b1.large
+    move_alias: move
   - name: mac
     type: Unity::VM::osx
     image: package-ci/mac:stable
     flavor: m1.mac
+    move_alias: mv
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu:stable
     flavor: b1.large
+    move_alias: mv
 test_module_support:
   - name: no_support
     install_command:
@@ -56,7 +59,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
-    - move ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Integration/csc.rsp
+    - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Integration/csc.rsp
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
