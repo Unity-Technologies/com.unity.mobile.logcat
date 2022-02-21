@@ -16,6 +16,7 @@ namespace Unity.Android.Logcat
             Console.WriteLine($"Android Device Info Available: {androidDeviceInfoAvailable}");
 
             // Ignore test only if running on Yamato and device info is not available
+            // We always want our test to run when running locally
             ConditionalIgnoreAttribute.AddConditionalIgnoreMapping(nameof(RequiresAndroidDeviceAttribute), runningOnYamato && !androidDeviceInfoAvailable);
         }
     }
