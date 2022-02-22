@@ -7,7 +7,7 @@ using System.Collections;
 
 internal class AndroidLogcatIntegrationTestBase
 {
-    protected const float kDefaulTimeOut = 3.0f;
+    protected const float kDefaulTimeOut = 10.0f;
     private AndroidLogcatRuntime m_Runtime;
     private IAndroidLogcatDevice m_Device;
     private int m_Ticks;

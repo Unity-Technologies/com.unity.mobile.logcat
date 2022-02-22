@@ -1,2 +1,3 @@
 test_editors_for_integration:
   - version: 2020.3
+  - version: trunk
