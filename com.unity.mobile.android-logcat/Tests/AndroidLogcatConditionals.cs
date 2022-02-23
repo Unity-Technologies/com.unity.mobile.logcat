@@ -10,28 +10,10 @@ namespace Unity.Android.Logcat
         static OnLoad()
         {
             var runningOnYamato = Workspace.IsRunningOnYamato();
-            var androidDeviceInfo= Workspace.GetAndroidDeviceInfoAvailable();
+            var androidDeviceInfo = Workspace.GetAndroidDeviceInfo();
 
             Console.WriteLine($"Running On Yamato: {runningOnYamato}");
             Console.WriteLine($"Android Device Info: {androidDeviceInfo}");
-
-            if (!string.IsNullOrEmpty(androidDeviceInfo))
-            {
-#if UNITY_ANDROID
-                Console.WriteLine($"Connecting to Android Device");
-                var result = UnityEditor.Android.ADB.GetInstance().Run(new[]
-                {
-                    "connect",
-                    androidDeviceInfo
-                },
-                $"Failed to connect to '{androidDeviceInfo}'");
-
-                Console.WriteLine($"Result:\n{result}");
-#else
-                throw new Exception("Android Device Info is present, active platform has to be Android, if we want to connect to Android Device");
-#endif
-            }
-
 
             // Ignore test only if running on Yamato and device info is not available
             // We always want our test to run when running locally

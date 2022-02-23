@@ -1,5 +1,5 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.ests",
+    "name": "Unity.Mobile.AndroidLogcat.Tests",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

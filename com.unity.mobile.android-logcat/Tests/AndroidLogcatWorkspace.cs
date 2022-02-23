@@ -4,14 +4,14 @@ using UnityEngine.TestTools;
 
 namespace Unity.Android.Logcat
 {
-    class Workspace
+    public class Workspace
     {
         public static bool IsRunningOnYamato()
         {
             return Environment.GetEnvironmentVariable("YAMATO_PROJECT_ID") != null;
         }
 
-        public static string GetAndroidDeviceInfoAvailable()
+        public static string GetAndroidDeviceInfo()
         {
             var result = Environment.GetEnvironmentVariable("ANDROID_DEVICE_CONNECTION");
             if (result == null)

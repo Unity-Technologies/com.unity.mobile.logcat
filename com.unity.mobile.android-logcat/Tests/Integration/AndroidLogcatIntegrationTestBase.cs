@@ -35,6 +35,20 @@ internal class AndroidLogcatIntegrationTestBase
         m_Runtime = new AndroidLogcatRuntime();
         m_Runtime.Initialize();
 
+        var deviceInfo = Workspace.GetAndroidDeviceInfo();
+        if (!string.IsNullOrEmpty(deviceInfo))
+        {
+            Console.WriteLine($"Connecting to Android Device");
+            var result = m_Runtime.Tools.ADB.Run(new[]
+            {
+                "connect",
+                deviceInfo
+            },
+            $"Failed to connect to '{deviceInfo}'");
+
+            Console.WriteLine($"Result:\n{result}");
+        }
+
         m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
         m_Device = m_Runtime.DeviceQuery.FirstConnectedDevice;
