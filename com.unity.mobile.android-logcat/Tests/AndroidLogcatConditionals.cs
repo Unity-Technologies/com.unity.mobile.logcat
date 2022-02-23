@@ -30,7 +30,7 @@ namespace Unity.Android.Logcat
 
             // Ignore test only if running on Yamato and device info is not available
             // We always want our test to run when running locally
-            ConditionalIgnoreAttribute.AddConditionalIgnoreMapping(nameof(RequiresAndroidDeviceAttribute), runningOnYamato && !string.IsNullOrEmpty(androidDeviceInfo));
+            ConditionalIgnoreAttribute.AddConditionalIgnoreMapping(nameof(RequiresAndroidDeviceAttribute), runningOnYamato && string.IsNullOrEmpty(androidDeviceInfo));
         }
     }
 
