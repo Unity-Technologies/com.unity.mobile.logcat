@@ -11,9 +11,12 @@ namespace Unity.Android.Logcat
             return Environment.GetEnvironmentVariable("YAMATO_PROJECT_ID") != null;
         }
 
-        public static bool IsAndroidDeviceInfoAvailable()
+        public static string GetAndroidDeviceInfoAvailable()
         {
-            return Environment.GetEnvironmentVariable("ANDROID_DEVICE_CONNECTION") != null;
+            var result = Environment.GetEnvironmentVariable("ANDROID_DEVICE_CONNECTION");
+            if (result == null)
+                return string.Empty;
+            return result;
         }
     }
 }
