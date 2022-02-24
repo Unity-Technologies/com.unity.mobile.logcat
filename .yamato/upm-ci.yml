@@ -1,22 +1,27 @@
+{% metadata_file .yamato/config.metadata %}
+
 test_editors:
-  - version: 2019.2
   - version: 2019.4
   - version: 2020.3
   - version: 2021.2
+  - version: 2022.1
   - version: trunk
 test_platforms:
   - name: win
     type: Unity::VM
     image: package-ci/win10:stable
     flavor: b1.large
+    move_alias: move
   - name: mac
     type: Unity::VM::osx
     image: package-ci/mac:stable
     flavor: m1.mac
+    move_alias: mv
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu:stable
     flavor: b1.large
+    move_alias: mv
 test_module_support:
   - name: no_support
     install_command:
@@ -41,7 +46,7 @@ pack:
 {% for editor in test_editors %}
 {% for platform in test_platforms %}
 {% for module_support in test_module_support %}
-{% if platform.name == "linux" and module_support.name == "android" and editor.version == "2019.2" or editor.version == "2019.4" %}
+{% if editor.version == "2019.4" %}
    {% continue %}
 {% endif %}
 
@@ -55,6 +60,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
+    - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Integration/csc.rsp
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
     - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
@@ -77,9 +83,11 @@ test_all_trigger:
   commands:
     - dir
   triggers:
-    branches:
-      only:
-        - "/.*/"
+    cancel_old_ci: true
+    pull_requests:
+      - targets:
+          only:
+            - "master"
   artifacts:
     logs:
       paths:
@@ -89,10 +97,13 @@ test_all_trigger:
         - "upm-ci~/packages/**/*"
   dependencies:
     - .yamato/upm-ci.yml#pack
+    {% for editor in test_editors_for_integration %}
+    - .yamato/upm-integration-ci.yml#test_integration_{{ editor.version }}
+    {% endfor %}
     {% for editor in test_editors %}
     {% for platform in test_platforms %}
     {% for module_support in test_module_support %}
-    {% if platform.name == "linux" and module_support.name == "android" and editor.version == "2019.2" or editor.version == "2019.4" %}
+    {% if editor.version == "2019.4" %}
         {% continue %}
     {% endif %}
     - .yamato/upm-ci.yml#test_{{platform.name}}_{{editor.version}}_{{ module_support.name }}
