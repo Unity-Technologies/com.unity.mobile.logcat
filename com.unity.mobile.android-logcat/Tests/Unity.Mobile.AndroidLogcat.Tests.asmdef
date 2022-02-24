@@ -1,7 +1,6 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.EditorTests",
+    "name": "Unity.Mobile.AndroidLogcat.Tests",
     "references": [
-        "Unity.Mobile.AndroidLogcat.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
@@ -16,8 +15,7 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_INCLUDE_TESTS",
-        "!DISABLE_LOGCAT_TESTS"
+        "UNITY_INCLUDE_TESTS"
     ],
     "versionDefines": [],
     "noEngineReferences": false
