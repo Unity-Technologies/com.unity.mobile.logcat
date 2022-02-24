@@ -69,7 +69,7 @@ internal class AndroidLogcatIntegrationTestBase
 
     protected AndroidLogcat CreateLogcatInstance()
     {
-        return new AndroidLogcat(Runtime, Runtime.Tools.ADB, Device, 0, Priority.Verbose, "", false, new string[] { });
+        return new AndroidLogcat(Runtime, Runtime.Tools.ADB, Device, 0, Priority.Verbose, new FilterOptions(), new string[] { });
     }
 
     protected IEnumerator Waiting()

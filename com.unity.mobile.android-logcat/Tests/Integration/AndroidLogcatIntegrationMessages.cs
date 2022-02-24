@@ -14,7 +14,7 @@ internal class AndroidLogcatRuntimeIntegrationMessages : AndroidLogcatIntegratio
         var logcat = CreateLogcatInstance();
         var messageCount = 0;
         var lastMessage = string.Empty;
-        logcat.LogEntriesAdded += (List<LogcatEntry> e) =>
+        logcat.FilteredLogEntriesAdded += (IReadOnlyList<LogcatEntry> e) =>
         {
             if (e.Count == 0)
                 return;
