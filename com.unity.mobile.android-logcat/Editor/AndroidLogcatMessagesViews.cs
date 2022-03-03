@@ -459,8 +459,10 @@ namespace Unity.Android.Logcat
                 if (!string.IsNullOrEmpty(tag))
                 {
                     contextMenu.AddSplitter();
-                    contextMenu.Add(MessagesContextMenu.AddTag, $"Add tag '{tag}'");
-                    contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{tag}'");
+
+                    var fixedTag = AndroidLogcatUtilities.FixSlashesForIMGUI(tag);
+                    contextMenu.Add(MessagesContextMenu.AddTag, $"Add tag '{fixedTag}'");
+                    contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{fixedTag}'");
                 }
 
                 var processId = entry.processId;

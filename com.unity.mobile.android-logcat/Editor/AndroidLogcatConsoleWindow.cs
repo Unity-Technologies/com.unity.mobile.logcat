@@ -600,8 +600,7 @@ namespace Unity.Android.Logcat
                 for (int i = 0; i < packages.Count; i++)
                 {
                     // Note: Some processes are named like /system/bin/something, this creates problems with Unity GUI, since it treats / in special way
-                    //       Replace it with unicode slash, while it won't display this in pretty way, it's still better than not displaying anything
-                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : packages[i].DisplayName.Replace("/", " \u2215"));
+                    names[i] = new GUIContent(packages[i] == null ? "No Filter" : AndroidLogcatUtilities.FixSlashesForIMGUI(packages[i].DisplayName));
 
                     if (packages[i] != null && SelectedPackage != null && SelectedPackage.name == packages[i].name && SelectedPackage.processId == packages[i].processId)
                         selectedPackagedId = i;

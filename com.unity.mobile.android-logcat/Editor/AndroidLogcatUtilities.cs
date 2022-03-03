@@ -474,5 +474,12 @@ namespace Unity.Android.Logcat
             logcat?.StripFilteredEntriesIfNeeded();
             logcat?.StripRawEntriesIfNeeded();
         }
+
+        // When we use / in context menu, this creates submenu, which is no good
+        // Replace it with unicode slash, while it won't display this in pretty way, it's still better than not displaying anything
+        internal static string FixSlashesForIMGUI(string value)
+        {
+            return value.Replace("/", " \u2215");
+        }
     }
 }
