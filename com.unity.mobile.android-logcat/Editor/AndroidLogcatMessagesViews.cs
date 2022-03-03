@@ -443,7 +443,7 @@ namespace Unity.Android.Logcat
             GUIUtility.keyboardControl = keyboardControlId;
         }
 
-        void DoContextMenu(Event e)
+        void DoContextMenu(Event e, int logEntryIndex)
         {
             var entries = SelectedFilteredEntries;
             var contextMenu = new AndroidContextMenu<MessagesContextMenu>();
@@ -454,7 +454,8 @@ namespace Unity.Android.Logcat
 
             if (entries.Count > 0)
             {
-                var tag = entries[0].tag;
+                var entry = FilteredEntries[logEntryIndex];
+                var tag = entry.tag;
                 if (!string.IsNullOrEmpty(tag))
                 {
                     contextMenu.AddSplitter();
@@ -462,7 +463,7 @@ namespace Unity.Android.Logcat
                     contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{tag}'");
                 }
 
-                var processId = entries[0].processId;
+                var processId = entry.processId;
                 if (processId >= 0)
                 {
                     contextMenu.AddSplitter();
@@ -531,7 +532,7 @@ namespace Unity.Android.Logcat
             {
                 if (e.button == 1)
                 {
-                    DoContextMenu(e);
+                    DoContextMenu(e, logEntryIndex);
                     requestRepaint = true;
                     e.Use();
                 }
