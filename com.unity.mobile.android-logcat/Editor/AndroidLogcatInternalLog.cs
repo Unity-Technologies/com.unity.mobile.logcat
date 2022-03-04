@@ -8,6 +8,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatInternalLog : EditorWindow
     {
+        const int kMaxInternalLogBuffer = 15000;
         static AndroidLogcatInternalLog ms_Instance = null;
         static StringBuilder ms_LogEntries = new StringBuilder();
 
@@ -40,6 +41,14 @@ namespace Unity.Android.Logcat
                 var timedMessage = AndroidLogcatDispatcher.isMainThread ? "[MainThread]" : "[WorkThread] ";
                 timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + message;
                 ms_LogEntries.AppendLine(timedMessage);
+
+                const int MaxTriesToStripBuffer = 30;
+                for (int i = 0; i < MaxTriesToStripBuffer; i++)
+                {
+                    if (ms_LogEntries.Length < kMaxInternalLogBuffer)
+                        break;
+                    ms_LogEntries.Remove(0, Convert.ToString(ms_LogEntries).Split('\n').FirstOrDefault().Length + 1);
+                }
 
                 Console.WriteLine("[Logcat] " + timedMessage);
 
