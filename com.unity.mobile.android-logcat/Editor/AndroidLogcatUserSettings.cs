@@ -154,6 +154,12 @@ namespace Unity.Android.Logcat
             if (pid <= 0)
                 return null;
 
+            if (device == null)
+            {
+                Debug.LogError("Cannot create package information, since there's no Android device connected.");
+                return null;
+            }
+
             var packages = GetOrCreatePackagesForDevice(device);
             PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
             if (info != null)
