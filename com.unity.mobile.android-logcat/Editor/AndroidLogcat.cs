@@ -64,12 +64,21 @@ namespace Unity.Android.Logcat
 
         public void ClearSelectedEntries()
         {
-            foreach (var e in FilteredEntries)
+            foreach (var e in RawEntries)
                 e.Selected = false;
         }
 
-        public void SelectAllEntries()
+        public void SelectAllFilteredEntries()
         {
+            // Note: we're deselecting all raw entries first, to cover this scenario:
+            // - Suppose we have 10 entries
+            // - Select All
+            // - Set filter which would make 5 filtered entries from those 10
+            // - Select All
+            // - Clear filter
+            // - 10 entries are now visible, but selected are only 5, not 10
+            ClearSelectedEntries();
+
             foreach (var e in FilteredEntries)
                 e.Selected = true;
         }

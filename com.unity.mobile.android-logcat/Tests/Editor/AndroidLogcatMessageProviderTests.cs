@@ -520,6 +520,96 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         ShutdownRuntime();
     }
 
-    // TODO: filter reusage
-    // MAX filtered check
+    [Test]
+    public void MessageClearSelectionWorks()
+    {
+        var messages = new[]
+        {
+            "aaa",
+            "bbb",
+            "ccc"
+        };
+        InitRuntime();
+
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
+        logcat.Start();
+
+        foreach (var m in messages)
+        {
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
+                new[] { $"10-25 14:27:56.862  1  2255 I chromium: {m}" });
+        }
+
+        m_Runtime.OnUpdate();
+        // Select all raw entries
+        foreach (var e in logcat.RawEntries)
+            e.Selected = true;
+
+        logcat.FilterOptions.Filter = "aaa";
+        Assert.AreEqual(1, logcat.FilteredEntries.Count);
+        Assert.AreEqual(1, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+
+        logcat.ClearSelectedEntries();
+        Assert.AreEqual(0, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(0, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+        logcat.FilterOptions.Filter = string.Empty;
+        Assert.AreEqual(0, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(0, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+        logcat.Stop();
+
+        ShutdownRuntime();
+    }
+
+
+    [Test]
+    public void MessageSelectAllWorks()
+    {
+        var messages = new[]
+        {
+            "aaa",
+            "bbb",
+            "ccc"
+        };
+        InitRuntime();
+
+        var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
+        logcat.Start();
+
+        foreach (var m in messages)
+        {
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
+                new[] { $"10-25 14:27:56.862  1  2255 I chromium: {m}" });
+        }
+
+        m_Runtime.OnUpdate();
+
+        // Select All why filter was set to 'aaa'
+        logcat.FilterOptions.Filter = "aaa";
+        logcat.SelectAllFilteredEntries();
+        Assert.AreEqual(1, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(1, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+        logcat.FilterOptions.Filter = string.Empty;
+        Assert.AreEqual(1, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(1, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+        // Select All why filter was set to nothing
+        logcat.SelectAllFilteredEntries();
+        Assert.AreEqual(3, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(3, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+        // Again select all with filter 'aaa'.
+        // Note: it should deselect entries in raw, so when we reset filter they wouldn't be selected
+        logcat.FilterOptions.Filter = "aaa";
+        logcat.SelectAllFilteredEntries();
+        Assert.AreEqual(1, logcat.GetSelectedFilteredEntries(out var _, out var _).Count);
+        Assert.AreEqual(1, logcat.RawEntries.Where(e => e.Selected).ToArray().Length);
+
+
+        logcat.Stop();
+
+        ShutdownRuntime();
+    }
 }

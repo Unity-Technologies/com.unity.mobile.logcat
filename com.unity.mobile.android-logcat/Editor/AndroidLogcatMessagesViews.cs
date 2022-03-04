@@ -507,7 +507,7 @@ namespace Unity.Android.Logcat
                     break;
                 // Select All
                 case MessagesContextMenu.SelectAll:
-                    m_Logcat?.SelectAllEntries();
+                    m_Logcat?.SelectAllFilteredEntries();
                     break;
                 // Save to File
                 case MessagesContextMenu.SaveSelection:
@@ -569,7 +569,7 @@ namespace Unity.Android.Logcat
                     case KeyCode.A:
                         if (hasCtrlOrCmd)
                         {
-                            m_Logcat?.SelectAllEntries();
+                            m_Logcat?.SelectAllFilteredEntries();
                             e.Use();
                             requestRepaint = true;
                         }
