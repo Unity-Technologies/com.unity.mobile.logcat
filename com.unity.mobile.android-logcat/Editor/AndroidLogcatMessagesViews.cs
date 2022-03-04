@@ -485,7 +485,7 @@ namespace Unity.Android.Logcat
                 userData.TagProcessIdEntry = null;
             }
 
-            contextMenu.UserData = entries.ToArray();
+            contextMenu.UserData = userData;
             contextMenu.Show(e.mousePosition, MenuSelection);
         }
 
