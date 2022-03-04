@@ -469,15 +469,15 @@ namespace Unity.Android.Logcat
                     contextMenu.AddSplitter();
 
                     var fixedTag = AndroidLogcatUtilities.FixSlashesForIMGUI(tag);
-                    contextMenu.Add(MessagesContextMenu.AddTag, $"Add tag '{fixedTag}'");
-                    contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{fixedTag}'");
+                    contextMenu.Add(MessagesContextMenu.AddTag, $"Add tag '{fixedTag}'", false, IsLogcatConnected);
+                    contextMenu.Add(MessagesContextMenu.RemoveTag, $"Remove tag '{fixedTag}'", false, IsLogcatConnected);
                 }
 
                 var processId = userData.TagProcessIdEntry.processId;
                 if (processId >= 0)
                 {
                     contextMenu.AddSplitter();
-                    contextMenu.Add(MessagesContextMenu.FilterByProcessId, $"Filter by process id '{processId}'");
+                    contextMenu.Add(MessagesContextMenu.FilterByProcessId, $"Filter by process id '{processId}'", false, IsLogcatConnected);
                 }
             }
             else
