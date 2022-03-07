@@ -6,25 +6,20 @@ namespace Unity.Android.Logcat
     internal abstract class AndroidLogcatMessageProviderBase
     {
         protected AndroidBridge.ADB m_ADB;
-        protected string m_Filter;
         protected Priority m_Priority;
         protected int m_PackageID;
         protected string m_LogPrintFormat;
         protected IAndroidLogcatDevice m_Device;
         protected Action<string> m_LogCallbackAction;
 
-        internal AndroidLogcatMessageProviderBase(AndroidBridge.ADB adb, string filter, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        internal AndroidLogcatMessageProviderBase(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
             m_ADB = adb;
-            m_Filter = filter;
             m_Priority = priority;
             m_PackageID = packageID;
             m_LogPrintFormat = logPrintFormat;
             m_Device = device;
             m_LogCallbackAction = logCallbackAction;
-
-            if (device != null && !device.SupportsFilteringByRegex && !string.IsNullOrEmpty(m_Filter))
-                throw new Exception($"Device '{device.Id}' doesn't support filtering by regex, by filter was specified?");
         }
 
         public abstract void Start();
@@ -37,8 +32,8 @@ namespace Unity.Android.Logcat
     {
         private Process m_LogcatProcess;
 
-        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, string filter, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
-            : base(adb, filter, priority, packageID, logPrintFormat, device, logCallbackAction)
+        internal AndroidLogcatMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+            : base(adb, priority, packageID, logPrintFormat, device, logCallbackAction)
         {
         }
 
@@ -50,10 +45,9 @@ namespace Unity.Android.Logcat
         private string LogcatArguments()
         {
             var filterArg = string.Empty;
-            if (!string.IsNullOrEmpty(m_Filter))
-                filterArg = "--regex \"" + m_Filter + "\"";
-
-            // Note: We're not using --regex argument, because some older Android device (prior to 7.0) doesn't support that
+            // Note: We're doing the filtering manually and never ask logcat to do it.
+            //       This allows us to perform filtering even when logcat is disconnected
+            //       Previously logcat filtering was being done with --regex "<regex_expression>"
             var priority = PriorityEnumToString(m_Priority);
             if (m_PackageID > 0)
                 return string.Format("-s {0} logcat --pid={1} -v {2} *:{3} {4}", m_Device.Id, m_PackageID, m_LogPrintFormat, priority, filterArg);

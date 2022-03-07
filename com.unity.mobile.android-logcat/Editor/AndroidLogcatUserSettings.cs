@@ -26,9 +26,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
         [SerializeField]
-        private string m_Filter;
-        [SerializeField]
-        private bool m_FilterIsRegularExpression;
+        private FilterOptions m_FilterOptions;
         [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
 
@@ -156,6 +154,12 @@ namespace Unity.Android.Logcat
             if (pid <= 0)
                 return null;
 
+            if (device == null)
+            {
+                Debug.LogError("Cannot create package information, since there's no Android device connected.");
+                return null;
+            }
+
             var packages = GetOrCreatePackagesForDevice(device);
             PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
             if (info != null)
@@ -214,30 +218,17 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public string Filter
+        public FilterOptions FilterOptions
         {
             set
             {
-                m_Filter = value;
+                m_FilterOptions = value;
             }
             get
             {
-                return m_Filter;
+                return m_FilterOptions;
             }
         }
-
-        public bool FilterIsRegularExpression
-        {
-            set
-            {
-                m_FilterIsRegularExpression = value;
-            }
-            get
-            {
-                return m_FilterIsRegularExpression;
-            }
-        }
-
         public List<ReordableListItem> SymbolPaths
         {
             get => m_SymbolPaths;
@@ -256,6 +247,7 @@ namespace Unity.Android.Logcat
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
+            m_FilterOptions = new FilterOptions();
         }
 
         internal static AndroidLogcatUserSettings Load(string path)

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System;
 using System.Text.RegularExpressions;
 using System.Linq;
-using UnityEditor;
+using UnityEngine;
 using System.Text;
 
 namespace Unity.Android.Logcat
@@ -15,10 +15,11 @@ namespace Unity.Android.Logcat
         private readonly IAndroidLogcatDevice m_Device;
         private readonly int m_PackagePid;
         private readonly Priority m_MessagePriority;
-        private string m_Filter;
-        private bool m_FilterIsRegex;
-        private Regex m_ManualFilterRegex;
         private readonly string[] m_Tags;
+        private readonly LogcatFilterOptions m_FilterOptions;
+        private FilterOptions m_LastUsedFilterOptions;
+        private List<LogcatEntry> m_RawLogEntries = new List<LogcatEntry>();
+        private List<LogcatEntry> m_FilteredLogEntries = new List<LogcatEntry>();
 
         public IAndroidLogcatDevice Device { get { return m_Device; } }
 
@@ -26,11 +27,9 @@ namespace Unity.Android.Logcat
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
-        public string Filter { get { return m_Filter; } set { m_Filter = value; } }
-
         public string[] Tags { get { return m_Tags; } }
 
-        public event Action<List<LogcatEntry>> LogEntriesAdded;
+        public event Action<IReadOnlyList<LogcatEntry>> FilteredLogEntriesAdded;
 
         public event Action<IAndroidLogcatDevice> Disconnected;
 
@@ -40,6 +39,52 @@ namespace Unity.Android.Logcat
 
         private List<string> m_CachedLogLines = new List<string>();
 
+        public IReadOnlyList<LogcatEntry> RawEntries => m_RawLogEntries;
+        public IReadOnlyList<LogcatEntry> FilteredEntries => m_FilteredLogEntries;
+        public IReadOnlyList<LogcatEntry> GetSelectedFilteredEntries(out int minIndex, out int maxIndex)
+        {
+            minIndex = int.MaxValue;
+            maxIndex = int.MinValue;
+
+            var selectedEntries = new List<LogcatEntry>(FilteredEntries.Count);
+            for (int i = 0; i < FilteredEntries.Count; i++)
+            {
+                if (!FilteredEntries[i].Selected)
+                    continue;
+
+                if (i < minIndex)
+                    minIndex = i;
+                if (i > maxIndex)
+                    maxIndex = i;
+                selectedEntries.Add(FilteredEntries[i]);
+            }
+
+            return selectedEntries;
+        }
+
+        public void ClearSelectedEntries()
+        {
+            foreach (var e in RawEntries)
+                e.Selected = false;
+        }
+
+        public void SelectAllFilteredEntries()
+        {
+            // Note: we're deselecting all raw entries first, to cover this scenario:
+            // - Suppose we have 10 entries
+            // - Select All
+            // - Set filter which would make 5 filtered entries from those 10
+            // - Select All
+            // - Clear filter
+            // - 10 entries are now visible, but selected are only 5, not 10
+            ClearSelectedEntries();
+
+            foreach (var e in FilteredEntries)
+                e.Selected = true;
+        }
+
+        public FilterOptions FilterOptions => m_FilterOptions;
+
         public bool IsConnected
         {
             get
@@ -48,7 +93,13 @@ namespace Unity.Android.Logcat
                     return false;
                 try
                 {
-                    return !m_MessageProvider.HasExited;
+                    if (m_MessageProvider.HasExited)
+                        return false;
+
+                    if (m_Device == null)
+                        return false;
+
+                    return m_Device.State == IAndroidLogcatDevice.DeviceState.Connected;
                 }
                 catch (Exception ex)
                 {
@@ -63,58 +114,73 @@ namespace Unity.Android.Logcat
             get { return m_MessageProvider; }
         }
 
-        public AndroidLogcat(AndroidLogcatRuntimeBase runtime, AndroidBridge.ADB adb, IAndroidLogcatDevice device, int packagePid, Priority priority, string filter, bool filterIsRegex, string[] tags)
+        public AndroidLogcat(AndroidLogcatRuntimeBase runtime,
+            AndroidBridge.ADB adb,
+            IAndroidLogcatDevice device,
+            int packagePid,
+            Priority priority,
+            FilterOptions filterOptions,
+            string[] tags)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
             this.m_PackagePid = packagePid;
             this.m_MessagePriority = priority;
-            this.m_FilterIsRegex = filterIsRegex;
-            InitFilterRegex(filter);
+            this.m_FilterOptions = new LogcatFilterOptions(filterOptions);
+            this.m_LastUsedFilterOptions = new FilterOptions(m_FilterOptions);
             this.m_Tags = tags;
+
+            m_FilterOptions.OnFilterChanged = OnFilterChanged;
 
             LogcatEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogcatEntry.kTimeFormatWithYear : LogcatEntry.kTimeFormatWithoutYear);
         }
 
-        private void InitFilterRegex(string filter)
+        private void ClearEntries()
         {
-            if (string.IsNullOrEmpty(filter))
-                return;
+            m_RawLogEntries.Clear();
+            m_FilteredLogEntries.Clear();
+        }
 
-            if (m_Device.SupportsFilteringByRegex)
+        internal bool CanReuseFilteredResults()
+        {
+            if (m_LastUsedFilterOptions.UseRegularExpressions ||
+                m_FilterOptions.UseRegularExpressions)
+                return false;
+
+            // When changing match case from true to false, the previous set might not enough for new results
+            // But previous set will might be enough when changing Match Case from false to true
+            if (m_LastUsedFilterOptions.MatchCase != m_FilterOptions.MatchCase &&
+                m_LastUsedFilterOptions.MatchCase &&
+                !m_FilterOptions.MatchCase)
+                return false;
+
+            return m_FilterOptions.Filter.IndexOf(m_LastUsedFilterOptions.Filter, StringComparison.InvariantCultureIgnoreCase) != -1;
+        }
+
+        private void OnFilterChanged()
+        {
+            // Optimization, reuse previous results if possible
+            if (CanReuseFilteredResults())
             {
-                // When doing searching by filter, we use --regex command.
-                // Note: there's no command line argument to disable or enable regular expressions for logcat
-                // Thus when we want to disable regular expressions, we simply provide filter with escaped characters to --regex command
-                this.m_Filter = m_FilterIsRegex ? filter : Regex.Escape(filter);
-                return;
+                FilterEntriesUsingFilteredEntries(m_FilteredLogEntries);
+            }
+            else
+            {
+                m_FilteredLogEntries.Clear();
+                FilterEntriesUsingRawEntries(m_RawLogEntries);
             }
 
-            this.m_Filter = filter;
-            if (!this.m_FilterIsRegex)
-                return;
-
-            try
-            {
-                m_ManualFilterRegex = new Regex(m_Filter, RegexOptions.Compiled);
-            }
-            catch (Exception ex)
-            {
-                AndroidLogcatInternalLog.Log($"Input search filter '{m_Filter}' is not a valid regular expression.\n{ex}");
-
-                // Silently disable filtering if supplied regex is wrong
-                m_Filter = string.Empty;
-                m_ManualFilterRegex = null;
-                m_FilterIsRegex = false;
-            }
+            m_LastUsedFilterOptions.Filter = m_FilterOptions.Filter;
+            m_LastUsedFilterOptions.UseRegularExpressions = m_FilterOptions.UseRegularExpressions;
+            m_LastUsedFilterOptions.MatchCase = m_FilterOptions.MatchCase;
         }
 
         internal void Start()
         {
             // For logcat arguments and more details check https://developer.android.com/studio/command-line/logcat
             m_Runtime.Update += OnUpdate;
-            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, m_Device.SupportsFilteringByRegex ? Filter : string.Empty, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device, OnDataReceived);
+            m_MessageProvider = m_Runtime.CreateMessageProvider(adb, MessagePriority, m_Device.SupportsFilteringByPid ? PackagePid : 0, LogPrintFormat, m_Device, OnDataReceived);
             m_MessageProvider.Start();
 
             Connected?.Invoke(Device);
@@ -123,7 +189,8 @@ namespace Unity.Android.Logcat
         internal void Stop()
         {
             m_CachedLogLines.Clear();
-            m_Runtime.Update -= OnUpdate;
+            if (m_Runtime != null)
+                m_Runtime.Update -= OnUpdate;
             if (m_MessageProvider != null && !m_MessageProvider.HasExited)
             {
                 // NOTE: DONT CALL CLOSE, or ADB process will stay alive all the time
@@ -138,9 +205,19 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider != null)
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
-            AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
-            var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
-            AndroidLogcatInternalLog.Log(adbOutput);
+            if (m_Device.State == IAndroidLogcatDevice.DeviceState.Connected)
+            {
+                // If device is disconnected, this command would freeze, in the console I see message '-Waiting for device-'
+                AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
+                var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
+                AndroidLogcatInternalLog.Log(adbOutput);
+            }
+            else
+            {
+                AndroidLogcatInternalLog.Log($"Device {Device.Id} is not connected (State: {m_Device.State}), cannot clear messages");
+            }
+
+            ClearEntries();
         }
 
         void OnUpdate()
@@ -157,6 +234,11 @@ namespace Unity.Android.Logcat
                 return;
             }
 
+            ProcessCachedLogLines();
+        }
+
+        void ProcessCachedLogLines()
+        {
             List<LogcatEntry> entries = new List<LogcatEntry>();
             lock (m_CachedLogLines)
             {
@@ -165,7 +247,6 @@ namespace Unity.Android.Logcat
 
                 var needFilterByPid = !m_Device.SupportsFilteringByPid && PackagePid > 0;
                 var needFilterByTags = Tags != null && Tags.Length > 0;
-                var needFilterBySearch = !m_Device.SupportsFilteringByRegex && !string.IsNullOrEmpty(Filter);
                 Regex regex = LogParseRegex;
                 foreach (var logLine in m_CachedLogLines)
                 {
@@ -186,9 +267,6 @@ namespace Unity.Android.Logcat
                     if (needFilterByTags && !MatchTagsFilter(m.Groups["tag"].Value))
                         continue;
 
-                    if (needFilterBySearch && !MatchSearchFilter(m.Groups["msg"].Value))
-                        continue;
-
                     entries.Add(ParseLogEntry(m));
                 }
                 m_CachedLogLines.Clear();
@@ -197,7 +275,74 @@ namespace Unity.Android.Logcat
             if (entries.Count == 0)
                 return;
 
-            LogEntriesAdded(entries);
+            m_RawLogEntries.AddRange(entries);
+
+            StripRawEntriesIfNeeded();
+
+            FilterEntriesUsingRawEntries(entries);
+        }
+
+        public void StripRawEntriesIfNeeded()
+        {
+            var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
+            if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
+                m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
+        }
+
+        public void StripFilteredEntriesIfNeeded()
+        {
+            var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
+            if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
+                m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
+        }
+
+        private List<LogcatEntry> FilterEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
+        {
+            // Set capacity 10% for filtered entries from unfiltered entries to minimize unneeded allocations
+            var filteredEntries = new List<LogcatEntry>(unfilteredEntries.Count / 10);
+            foreach (var entry in unfilteredEntries)
+            {
+                if (!m_FilterOptions.Matches(entry.message))
+                    continue;
+                filteredEntries.Add(entry);
+            }
+
+            return filteredEntries;
+        }
+
+        private void FilterEntriesUsingRawEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
+        {
+            IReadOnlyList<LogcatEntry> filteredEntries;
+            if (string.IsNullOrEmpty(m_FilterOptions.Filter))
+            {
+                filteredEntries = unfilteredEntries.ToList();
+            }
+            else
+            {
+                filteredEntries = FilterEntries(unfilteredEntries);
+            }
+
+            if (filteredEntries.Count == 0)
+                return;
+
+            m_FilteredLogEntries.AddRange(filteredEntries);
+            FilteredLogEntriesAdded?.Invoke(filteredEntries);
+
+            StripFilteredEntriesIfNeeded();
+        }
+
+        private void FilterEntriesUsingFilteredEntries(IReadOnlyList<LogcatEntry> unfilteredEntries)
+        {
+            if (string.IsNullOrEmpty(m_FilterOptions.Filter))
+                return;
+
+            var filteredEntries = FilterEntries(unfilteredEntries);
+            m_FilteredLogEntries = filteredEntries;
+            if (filteredEntries.Count == 0)
+                return;
+            FilteredLogEntriesAdded?.Invoke(filteredEntries);
+
+            // No need to strip, since filtering from filtered entries, can only shrink the list, but not grow
         }
 
         private LogcatEntry LogEntryParserErrorFor(string msg)
@@ -214,11 +359,6 @@ namespace Unity.Android.Logcat
             }
 
             return false;
-        }
-
-        private bool MatchSearchFilter(string msg)
-        {
-            return m_FilterIsRegex ? m_ManualFilterRegex.Match(msg).Success : msg.Contains(Filter);
         }
 
         private LogcatEntry ParseLogEntry(Match m)
@@ -278,6 +418,32 @@ namespace Unity.Android.Logcat
             {
                 m_CachedLogLines.Add(message);
             }
+        }
+
+        private static int s_DebuggingMessageId;
+
+        private void DbgAddLogLines()
+        {
+            int count = 10000;
+            var entries = new List<LogcatEntry>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var pid = 123;
+                var tid = 234;
+                OnDataReceived($"2022-01-31 12:43:40.003   {pid}   {tid} I DummyTag: Dummy Message {s_DebuggingMessageId}");
+                s_DebuggingMessageId++;
+            }
+
+            ProcessCachedLogLines();
+        }
+        internal void DoDebuggingGUI()
+        {
+            if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
+            {
+                DbgAddLogLines();
+
+            }
+            GUILayout.Label($"Raw: {m_RawLogEntries.Count} Filtered: {m_FilteredLogEntries.Count}");
         }
 
         internal Regex LogParseRegex
