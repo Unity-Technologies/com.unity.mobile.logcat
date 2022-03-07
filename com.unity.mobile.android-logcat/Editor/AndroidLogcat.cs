@@ -93,7 +93,13 @@ namespace Unity.Android.Logcat
                     return false;
                 try
                 {
-                    return !m_MessageProvider.HasExited;
+                    if (m_MessageProvider.HasExited)
+                        return false;
+
+                    if (m_Device == null)
+                        return false;
+
+                    return m_Device.State == IAndroidLogcatDevice.DeviceState.Connected;
                 }
                 catch (Exception ex)
                 {
