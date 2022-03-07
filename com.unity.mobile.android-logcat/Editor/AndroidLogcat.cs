@@ -199,9 +199,17 @@ namespace Unity.Android.Logcat
             if (m_MessageProvider != null)
                 throw new InvalidOperationException("Cannot clear logcat when logcat process is alive.");
 
-            AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
-            var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
-            AndroidLogcatInternalLog.Log(adbOutput);
+            if (m_Device.State == IAndroidLogcatDevice.DeviceState.Connected)
+            {
+                // If device is disconnected, this command would freeze, in the console I see message '-Waiting for device-'
+                AndroidLogcatInternalLog.Log("{0} -s {1} logcat -c", adb.GetADBPath(), Device.Id);
+                var adbOutput = adb.Run(new[] { "-s", Device.Id, "logcat", "-c" }, "Failed to clear logcat.");
+                AndroidLogcatInternalLog.Log(adbOutput);
+            }
+            else
+            {
+                AndroidLogcatInternalLog.Log($"Device {Device.Id} is not connected (State: {m_Device.State}), cannot clear messages");
+            }
 
             ClearEntries();
         }
