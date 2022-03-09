@@ -24,20 +24,29 @@ internal class AndroidLogcatPackageTests : AndroidLogcatRuntimeTestBase
             }
 
             // All packages are alive, calling cleanup dead packages, shouldn't clean anything
-            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(fakeDevice);
+            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(fakeDevice, m_Runtime.Settings.MaxExitedPackagesToShow);
             var packages = m_Runtime.UserSettings.GetKnownPackages(fakeDevice);
             Assert.AreEqual(kPackagesToCreate, packages.Count);
 
             foreach (var p in packages)
                 p.SetExited();
 
-            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(fakeDevice);
+            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(fakeDevice, m_Runtime.Settings.MaxExitedPackagesToShow);
 
-            Assert.AreEqual(AndroidLogcatUserSettings.kMaxExitedPackages, packages.Count);
+            Assert.AreEqual(m_Runtime.Settings.MaxExitedPackagesToShow, packages.Count);
 
             // Check that recent packages are still there, only the old packages should be removed
             foreach (var p in packages)
                 Assert.IsTrue(p.processId > 5);
+
+            // Lower the number of max exited packages
+            m_Runtime.Settings.MaxExitedPackagesToShow = 4;
+            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(fakeDevice, m_Runtime.Settings.MaxExitedPackagesToShow);
+            packages = m_Runtime.UserSettings.GetKnownPackages(fakeDevice);
+            Assert.AreEqual(m_Runtime.Settings.MaxExitedPackagesToShow, packages.Count);
+
+            foreach (var p in packages)
+                Assert.IsTrue(p.processId > 6);
         }
         finally
         {

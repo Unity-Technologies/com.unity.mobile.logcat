@@ -452,8 +452,14 @@ namespace Unity.Android.Logcat
             UnityEditor.EditorGUILayout.HelpBox("Android Logcat requires Android support to be installed.", UnityEditor.MessageType.Info);
         }
 
-        internal static void ApplySettings(AndroidLogcatSettings settings, AndroidLogcat logcat)
+        internal static void ApplySettings(AndroidLogcatRuntimeBase runtime, AndroidLogcat logcat)
         {
+            if (runtime == null)
+                throw new NullReferenceException("AndroidLogcatRuntimeBase is null");
+            var settings = runtime.Settings;
+            var userSettings = runtime.UserSettings;
+            var selectedDevice = runtime.DeviceQuery.SelectedDevice;
+
             int fixedHeight = settings.MessageFontSize + 5;
             AndroidLogcatStyles.kLogEntryFontSize = settings.MessageFontSize;
             AndroidLogcatStyles.kLogEntryFixedHeight = fixedHeight;
@@ -473,6 +479,7 @@ namespace Unity.Android.Logcat
 
             logcat?.StripFilteredEntriesIfNeeded();
             logcat?.StripRawEntriesIfNeeded();
+            userSettings.CleanupDeadPackagesForDevice(selectedDevice, settings.MaxExitedPackagesToShow);
         }
 
         // When we use / in context menu, this creates submenu, which is no good
