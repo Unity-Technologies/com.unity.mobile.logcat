@@ -22,6 +22,13 @@ namespace Unity.Android.Logcat
             Message
         }
 
+        internal enum AutoScroll
+        {
+            None,
+            ScrollToEnd,
+            ScrollToSelectedItem
+        }
+
         private Vector2 m_ScrollPosition = Vector2.zero;
         private float m_MaxLogEntryWidth = 0.0f;
         private static readonly List<LogcatEntry> kNoEntries = new List<LogcatEntry>();
@@ -48,7 +55,7 @@ namespace Unity.Android.Logcat
 
         public IReadOnlyList<LogcatEntry> SelectedFilteredEntries => GetSelectedFilteredEntries(out var minIndex, out var maxIndex);
 
-        private bool m_Autoscroll = true;
+        private AutoScroll m_Autoscroll = AutoScroll.ScrollToEnd;
         private float doubleClickStart = -1;
 
         private ColumnData[] Columns
@@ -301,18 +308,49 @@ namespace Unity.Android.Logcat
 
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
-            if (m_Autoscroll)
-                m_ScrollPosition.y = totalWindowRect.height;
+            var scalar = (float)(kExtraMessageCount + FilteredEntries.Count) / totalWindowRect.height;
+            switch (m_Autoscroll)
+            {
+                case AutoScroll.ScrollToEnd:
+                    m_ScrollPosition.y = totalWindowRect.height;
+                    break;
+                case AutoScroll.ScrollToSelectedItem:
+                    {
+                        // Do the scrolling in repain event since maxVisibleItems depends on visibleWindowRect
+                        // And that one is calculated correctly only in Repaint event
+                        if (e.type != EventType.Repaint)
+                            break;
+                        var entries = GetSelectedFilteredEntries(out var selectedIdx, out var _);
+                        // Only scroll to item, if we have exatly one item selected
+                        if (entries.Count == 1)
+                        {
+                            int minVisible = (int)(m_ScrollPosition.y * scalar);
+                            int maxVisible = minVisible + maxVisibleItems;
+
+                            // Only adjust scroll if our selected items is not among visible items
+                            if (selectedIdx < minVisible)
+                                m_ScrollPosition.y = selectedIdx / scalar;
+                            if (selectedIdx > maxVisible - kExtraMessageCount)
+                                m_ScrollPosition.y = (selectedIdx - maxVisibleItems + kExtraMessageCount) / scalar;
+                        }
+                        m_Autoscroll = AutoScroll.None;
+                    }
+                    break;
+            }
 
             EditorGUI.BeginChangeCheck();
             m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, false);
-            int startItem = (int)(m_ScrollPosition.y / totalWindowRect.height * (kExtraMessageCount + FilteredEntries.Count));
+            var startItem = (int)(m_ScrollPosition.y * scalar);
 
             // Check if we need to enable autoscrolling
-            if (EditorGUI.EndChangeCheck() || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                m_Autoscroll = startItem + maxVisibleItems - kExtraMessageCount >= FilteredEntries.Count;
-            else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
-                m_Autoscroll = false;
+            var scrollChanged = EditorGUI.EndChangeCheck();
+            if (m_Autoscroll != AutoScroll.ScrollToSelectedItem)
+            {
+                if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
+                    m_Autoscroll = startItem + maxVisibleItems - kExtraMessageCount >= FilteredEntries.Count ? AutoScroll.ScrollToEnd : AutoScroll.None;
+                else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
+                    m_Autoscroll = AutoScroll.None;
+            }
 
             if (e.type == EventType.Repaint)
             {
@@ -557,6 +595,30 @@ namespace Unity.Android.Logcat
             return requestRepaint;
         }
 
+        private void DoNavigation(int direction)
+        {
+            if (m_Logcat == null)
+                return;
+            if (m_Logcat.FilteredEntries.Count == 0)
+                return;
+            var selectedEntries = GetSelectedFilteredEntries(out var minIdx, out var maxIdx);
+            var selectedItem = 0;
+            switch (direction)
+            {
+                case -1:
+                    selectedItem = selectedEntries.Count == 0 ? m_Logcat.FilteredEntries.Count - 1 : Math.Max(0, minIdx - 1);
+                    break;
+                case 1:
+                    selectedItem = selectedEntries.Count == 0 ? 0 : Math.Min(m_Logcat.FilteredEntries.Count - 1, maxIdx + 1);
+                    break;
+                default:
+                    throw new NotImplementedException($"Unsupported navigation: {direction}");
+            }
+            m_Logcat.ClearSelectedEntries();
+            m_Logcat.FilteredEntries[selectedItem].Selected = true;
+            m_Autoscroll = AutoScroll.ScrollToSelectedItem;
+        }
+
         private bool DoKeyEvents()
         {
             var requestRepaint = false;
@@ -587,6 +649,14 @@ namespace Unity.Android.Logcat
                             SaveToFile(SelectedFilteredEntries);
                             e.Use();
                         }
+                        break;
+                    case KeyCode.DownArrow:
+                        DoNavigation(1);
+                        requestRepaint = true;
+                        break;
+                    case KeyCode.UpArrow:
+                        DoNavigation(-1);
+                        requestRepaint = true;
                         break;
                     default:
                         break;
