@@ -455,7 +455,7 @@ namespace Unity.Android.Logcat
         internal static void ApplySettings(AndroidLogcatRuntimeBase runtime, AndroidLogcat logcat)
         {
             if (runtime == null)
-                throw new NullReferenceException("AndroidLogcatRuntimeBase is null");
+                throw new ArgumentNullException("AndroidLogcatRuntimeBase is null");
             var settings = runtime.Settings;
             var userSettings = runtime.UserSettings;
             var selectedDevice = runtime.DeviceQuery.SelectedDevice;
