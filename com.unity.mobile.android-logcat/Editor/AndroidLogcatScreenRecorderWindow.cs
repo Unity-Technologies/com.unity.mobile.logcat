@@ -254,7 +254,7 @@ namespace Unity.Android.Logcat
         void DoToobarGUI()
         {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-         
+
             DoProgressGUI(m_Recorder.IsRecording());
             DoSelectedDeviceGUI();
 
@@ -266,7 +266,7 @@ namespace Unity.Android.Logcat
                 DoOpenGUI();
             }
             EditorGUI.EndDisabledGroup();
-          
+
             EditorGUILayout.EndHorizontal();
         }
 

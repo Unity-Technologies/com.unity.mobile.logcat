@@ -14,7 +14,7 @@ namespace Unity.Android.Logcat
             Video
         }
 
-        [SerializeField] 
+        [SerializeField]
         private string m_ImagePath;
         [SerializeField]
         private Mode m_Mode;
@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
 
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
-        private AndroidLogcatScreenCapture m_ScreenCapture;
+        private AndroidLogcatCaptureScreenshot m_ScreenCapture;
 
         private IAndroidLogcatDevice[] m_Devices;
         private int m_SelectedDeviceIdx;
@@ -43,7 +43,7 @@ namespace Unity.Android.Logcat
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
             m_Runtime.Closing += OnDisable;
-            m_ScreenCapture = m_Runtime.ScreenCapture;
+            m_ScreenCapture = m_Runtime.CaptureScreenshot;
 
             OnDevicesUpdated();
             ResolveSelectedDeviceIndex();
@@ -64,7 +64,7 @@ namespace Unity.Android.Logcat
         {
             if (m_Runtime.DeviceQuery.SelectedDevice == null)
                 return;
-            
+
             var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
             for (int i = 0; i < m_Devices.Length; i++)
             {
@@ -73,7 +73,7 @@ namespace Unity.Android.Logcat
                     m_SelectedDeviceIdx = i;
                     break;
                 }
-            }  
+            }
         }
 
         private void OnDevicesUpdated()
@@ -147,7 +147,7 @@ namespace Unity.Android.Logcat
                 QueueScreenCapture();
 
             DoModeGUI();
-            
+
 
             EditorGUI.BeginDisabledGroup(m_ScreenCapture.Capturing);
             if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))

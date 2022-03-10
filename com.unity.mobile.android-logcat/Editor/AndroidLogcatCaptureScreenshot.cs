@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatScreenCapture
+    internal class AndroidLogcatCaptureScreenshot
     {
         internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
         {
@@ -34,7 +34,7 @@ namespace Unity.Android.Logcat
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
 
-        internal AndroidLogcatScreenCapture(AndroidLogcatRuntimeBase runtime)
+        internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
         }

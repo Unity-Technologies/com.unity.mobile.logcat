@@ -281,7 +281,7 @@ namespace Unity.Android.Logcat
                 VideoSizeX = 1280,
                 VideoSizeY = 720,
                 DisplayId = string.Empty
-            };   
+            };
         }
 
         internal static AndroidLogcatUserSettings Load(string path)

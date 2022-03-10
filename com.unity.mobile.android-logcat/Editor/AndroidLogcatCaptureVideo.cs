@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatScreenRecorder
+    internal class AndroidLogcatCaptureVideo
     {
         private readonly string kVideoPathOnDevice = "/sdcard/logcat_video.mp4";
         private string VideoTempPath => Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
         internal string Errors => m_RecordingProcessErrors != null ? m_RecordingProcessErrors.ToString() : string.Empty;
         internal IAndroidLogcatDevice RecordingOnDevice => m_RecordingOnDevice;
 
-        internal AndroidLogcatScreenRecorder(AndroidLogcatRuntimeBase runtime)
+        internal AndroidLogcatCaptureVideo(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
             m_Runtime.Update += Update;

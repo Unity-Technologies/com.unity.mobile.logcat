@@ -12,8 +12,8 @@ namespace Unity.Android.Logcat
         protected AndroidLogcatUserSettings m_UserSettings;
         protected AndroidTools m_Tools;
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
-        protected AndroidLogcatScreenCapture m_ScreenCapture;
-        protected AndroidLogcatScreenRecorder m_ScreenRecorder;
+        protected AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
+        protected AndroidLogcatCaptureVideo m_CaptureVideo;
         protected bool m_Initialized;
 
         protected abstract string UserSettingsPath { get; }
@@ -49,14 +49,14 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_DeviceQuery; }
         }
 
-        public AndroidLogcatScreenRecorder ScreenRecorder
+        public AndroidLogcatCaptureVideo CaptureVideo
         {
-            get { ValidateIsInitialized(); return m_ScreenRecorder; }
+            get { ValidateIsInitialized(); return m_CaptureVideo; }
         }
 
-        public AndroidLogcatScreenCapture ScreenCapture
+        public AndroidLogcatCaptureScreenshot CaptureScreenshot
         {
-            get { ValidateIsInitialized(); return m_ScreenCapture; }
+            get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
 
 
@@ -65,8 +65,8 @@ namespace Unity.Android.Logcat
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
-        protected abstract AndroidLogcatScreenRecorder CreateScreenRecorder();
-        protected abstract AndroidLogcatScreenCapture CreateScreenCapture();
+        protected abstract AndroidLogcatCaptureVideo CreateScreenRecorder();
+        protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -86,8 +86,8 @@ namespace Unity.Android.Logcat
 
             m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
-            m_ScreenRecorder = CreateScreenRecorder();
-            m_ScreenCapture = CreateScreenCapture();
+            m_CaptureVideo = CreateScreenRecorder();
+            m_CaptureScreenshot = CreateScreenCapture();
 
             m_Initialized = true;
         }
@@ -103,7 +103,7 @@ namespace Unity.Android.Logcat
             m_Settings = null;
             m_UserSettings = null;
             m_Tools = null;
-            m_ScreenRecorder = null;
+            m_CaptureVideo = null;
             m_Dispatcher.Shutdown();
             m_Dispatcher = null;
         }
@@ -159,14 +159,14 @@ namespace Unity.Android.Logcat
             return new AndroidTools();
         }
 
-        protected override AndroidLogcatScreenRecorder CreateScreenRecorder()
+        protected override AndroidLogcatCaptureVideo CreateScreenRecorder()
         {
-            return new AndroidLogcatScreenRecorder(this);
+            return new AndroidLogcatCaptureVideo(this);
         }
 
-        protected override AndroidLogcatScreenCapture CreateScreenCapture()
+        protected override AndroidLogcatCaptureScreenshot CreateScreenCapture()
         {
-            return new AndroidLogcatScreenCapture(this);
+            return new AndroidLogcatCaptureScreenshot(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()

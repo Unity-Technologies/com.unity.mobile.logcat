@@ -30,11 +30,11 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
         return new AndroidLogcatSettings();
     }
 
-    protected override AndroidLogcatScreenRecorder CreateScreenRecorder()
+    protected override AndroidLogcatCaptureVideo CreateScreenRecorder()
     {
         return null;
     }
-    protected override AndroidLogcatScreenCapture CreateScreenCapture()
+    protected override AndroidLogcatCaptureScreenshot CreateScreenCapture()
     {
         return null;
     }
