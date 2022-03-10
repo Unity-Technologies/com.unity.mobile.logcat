@@ -33,6 +33,7 @@ namespace Unity.Android.Logcat
         public bool Capturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
+        public string ImagePath => m_ImagePath;
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)
         {

@@ -59,8 +59,6 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
 
-
-
         public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();

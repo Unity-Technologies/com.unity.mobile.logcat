@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using Unity.Android.Logcat;
 using System.Collections;
+using System.IO;
 
 internal class AndroidLogcatIntegrationTestBase
 {
@@ -109,5 +110,18 @@ internal class AndroidLogcatIntegrationTestBase
     protected static void Log(string message)
     {
         Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+    }
+
+    protected static string GetOrCreateArtifactsPath()
+    {
+        var name = TestContext.CurrentContext.Test.Name;
+        var root = Workspace.IsRunningOnYamato() ?
+            Path.Combine(Application.dataPath, "../../../upm-ci~/test-results/editor-android") :
+            Path.Combine(Application.dataPath, "../LocalTestResults");
+        Directory.CreateDirectory(root);
+
+        var path = Path.Combine(root, name);
+        Directory.CreateDirectory(path);
+        return path;
     }
 }

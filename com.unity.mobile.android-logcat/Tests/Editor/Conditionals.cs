@@ -18,5 +18,6 @@ public class RequiresAndroidDevice : ConditionalIgnoreAttribute
 {
     internal const string Name = nameof(RequiresAndroidDevice);
     public RequiresAndroidDevice() :
-        base(Name, "Requires Android Device") {}
+        base(Name, "Requires Android Device")
+    { }
 }
