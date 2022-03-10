@@ -3,11 +3,14 @@
 The log window contains multiple predefined columns, you can enable/disable them by right clicking on the columns.  
 ![Log Columns](images/log_columns.png)
 
-**Copy**  
+##### **Copy**
 The selected logs can be copied to the clipboard. You can right click on the messages and select **Copy**.
 
-**Save**  
+##### **Save**
 The selected logs can be saved to file. You can right click on the messages and select **Save Selection**.
 
-**Clear**  
+##### **Clear** 
 You can clear all the logs by clicking the **Clear** button on the toolbar.
+
+##### **Arrow Keys**
+You can use up and down arrow keys to navigate through log messages.
