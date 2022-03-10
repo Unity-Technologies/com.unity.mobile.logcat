@@ -147,12 +147,6 @@ namespace Unity.Android.Logcat
             m_ApplySettings = true;
         }
 
-        private void ApplySettings(AndroidLogcatSettings settings)
-        {
-            AndroidLogcatUtilities.ApplySettings(settings, m_Logcat);
-            Repaint();
-        }
-
         private void RemoveTag(string tag)
         {
             if (!m_Runtime.UserSettings.Tags.Remove(tag))
@@ -383,7 +377,8 @@ namespace Unity.Android.Logcat
 
             if (m_ApplySettings)
             {
-                ApplySettings(m_Runtime.Settings);
+                AndroidLogcatUtilities.ApplySettings(m_Runtime, m_Logcat);
+                Repaint();
                 m_ApplySettings = false;
             }
 
@@ -741,7 +736,7 @@ namespace Unity.Android.Logcat
                 m_Runtime.UserSettings.CreatePackageInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, selectedDevice);
             }
 
-            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice);
+            m_Runtime.UserSettings.CleanupDeadPackagesForDevice(m_Runtime.DeviceQuery.SelectedDevice, m_Runtime.Settings.MaxExitedPackagesToShow);
             AndroidLogcatInternalLog.Log("UpdateDebuggablePackages finished in " + (DateTime.Now - startTime).Milliseconds + " ms");
         }
 

@@ -10,8 +10,6 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatUserSettings
     {
-        internal const int kMaxExitedPackages = 5;
-
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -112,7 +110,7 @@ namespace Unity.Android.Logcat
             return packages;
         }
 
-        public void CleanupDeadPackagesForDevice(IAndroidLogcatDevice device)
+        public void CleanupDeadPackagesForDevice(IAndroidLogcatDevice device, int maxExitedPackagesToShow)
         {
             if (device == null)
                 return;
@@ -130,7 +128,7 @@ namespace Unity.Android.Logcat
             }
 
             // Need to remove the package which were added first, since they are the oldest packages
-            int deadPackagesToRemove = deadPackageCount - kMaxExitedPackages;
+            int deadPackagesToRemove = deadPackageCount - maxExitedPackagesToShow;
             if (deadPackagesToRemove <= 0)
                 return;
 

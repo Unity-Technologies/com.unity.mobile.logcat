@@ -49,6 +49,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<ReordableListItem> m_StacktraceResolveRegex;
 
+        [SerializeField]
+        private int m_MaxExitedPackagesToShow;
+
         internal int MemoryRequestIntervalMS
         {
             set
@@ -106,6 +109,20 @@ namespace Unity.Android.Logcat
             return newFilteredMessageCount;
         }
 
+        internal int MaxExitedPackagesToShow
+        {
+            set
+            {
+                if (m_MaxExitedPackagesToShow == value)
+                    return;
+                m_MaxExitedPackagesToShow = value;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_MaxExitedPackagesToShow;
+            }
+        }
         internal Font MessageFont
         {
             set
@@ -183,6 +200,7 @@ namespace Unity.Android.Logcat
             m_MaxFilteredMessageCount = 60000;
             m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
+            m_MaxExitedPackagesToShow = 4;
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
