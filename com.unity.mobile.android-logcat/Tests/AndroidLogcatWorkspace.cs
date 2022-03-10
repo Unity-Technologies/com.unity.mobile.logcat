@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
         {
             if (!Workspace.IsRunningOnYamato())
                 return Path.Combine(Application.dataPath, "../LocalTestResults");
-   
+
             var result = Environment.GetEnvironmentVariable("ARTIFACTS_PATH");
             if (string.IsNullOrEmpty(result))
                 throw new Exception("Couldn't get ARTIFACTS_PATH env variable, maybe env variable is not set?");
