@@ -422,9 +422,8 @@ namespace Unity.Android.Logcat
 
         private static int s_DebuggingMessageId;
 
-        private void DbgAddLogLines()
+        private void DbgAddLogLines(int count)
         {
-            int count = 10000;
             var entries = new List<LogcatEntry>(count);
             for (int i = 0; i < count; i++)
             {
@@ -438,10 +437,13 @@ namespace Unity.Android.Logcat
         }
         internal void DoDebuggingGUI()
         {
+            if (GUILayout.Button("Add Log line", AndroidLogcatStyles.toolbarButton))
+            {
+                DbgAddLogLines(1);
+            }
             if (GUILayout.Button("Add Log lines", AndroidLogcatStyles.toolbarButton))
             {
-                DbgAddLogLines();
-
+                DbgAddLogLines(10000);
             }
             GUILayout.Label($"Raw: {m_RawLogEntries.Count} Filtered: {m_FilteredLogEntries.Count}");
         }
