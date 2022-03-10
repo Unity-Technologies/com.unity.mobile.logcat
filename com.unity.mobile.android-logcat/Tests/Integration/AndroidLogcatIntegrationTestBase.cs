@@ -114,12 +114,10 @@ internal class AndroidLogcatIntegrationTestBase
 
     protected static string GetOrCreateArtifactsPath()
     {
-        var name = TestContext.CurrentContext.Test.Name;
-        var root = Workspace.IsRunningOnYamato() ?
-            Path.Combine(Application.dataPath, "../../../upm-ci~/test-results/editor-android") :
-            Path.Combine(Application.dataPath, "../LocalTestResults");
+        var root = Workspace.GetAritfactsPath();
         Directory.CreateDirectory(root);
 
+        var name = TestContext.CurrentContext.Test.Name;
         var path = Path.Combine(root, name);
         Directory.CreateDirectory(path);
         return path;

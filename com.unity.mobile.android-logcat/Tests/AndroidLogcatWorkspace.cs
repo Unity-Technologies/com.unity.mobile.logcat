@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEngine.TestTools;
+using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
@@ -17,6 +19,17 @@ namespace Unity.Android.Logcat
             if (result == null)
                 return string.Empty;
             return result;
+        }
+
+        public static string GetAritfactsPath()
+        {
+            if (!Workspace.IsRunningOnYamato())
+                return Path.Combine(Application.dataPath, "../LocalTestResults");
+   
+            var result = Environment.GetEnvironmentVariable("ARTIFACTS_PATH");
+            if (string.IsNullOrEmpty(result))
+                throw new Exception("Couldn't get ARTIFACTS_PATH env variable, maybe env variable is not set?");
+            return Path.Combine(Application.dataPath, "../../../", result);
         }
     }
 }
