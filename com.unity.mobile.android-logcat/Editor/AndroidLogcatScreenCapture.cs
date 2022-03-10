@@ -32,7 +32,6 @@ namespace Unity.Android.Logcat
 
         public bool Capturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
-        public string ImagePath => m_ImagePath;
         public string Error => m_Error;
 
         internal AndroidLogcatScreenCapture(AndroidLogcatRuntimeBase runtime)
@@ -84,8 +83,7 @@ namespace Unity.Android.Logcat
             if (!File.Exists(m_ImagePath))
                 return;
 
-            byte[] imageData;
-            imageData = File.ReadAllBytes(m_ImagePath);
+            var imageData = File.ReadAllBytes(m_ImagePath);
 
             m_ImageTexture = new Texture2D(2, 2);
             if (!m_ImageTexture.LoadImage(imageData))

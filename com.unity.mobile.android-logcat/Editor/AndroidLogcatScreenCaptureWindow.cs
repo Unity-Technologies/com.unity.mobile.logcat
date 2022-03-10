@@ -82,7 +82,9 @@ namespace Unity.Android.Logcat
 
         void OnCompleted()
         {
-            maxSize = new Vector2(Math.Max(m_ScreenCapture.ImageTexture.width, position.width), m_ScreenCapture.ImageTexture.height + kButtonAreaHeight);
+            var texture = m_ScreenCapture.ImageTexture;
+            if (texture != null)
+                maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
             Repaint();
         }
 
@@ -141,18 +143,8 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
             {
-                if (!string.IsNullOrEmpty(m_ScreenCapture.Error))
-                {
-                    EditorGUILayout.HelpBox(m_ScreenCapture.Error, MessageType.Error);
-                }
-                else
-                {
-                    if (m_ScreenCapture.ImageTexture != null)
-                    {
-                        Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        GUI.DrawTexture(rect, m_ScreenCapture.ImageTexture, ScaleMode.ScaleToFit);
-                    }
-                }
+                var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                m_ScreenCapture.DoGUI(rc);
             }
             EditorGUILayout.EndVertical();
         }
