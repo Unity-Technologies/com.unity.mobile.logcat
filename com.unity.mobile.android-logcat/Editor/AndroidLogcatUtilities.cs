@@ -467,5 +467,42 @@ namespace Unity.Android.Logcat
         {
             UnityEditor.EditorGUILayout.HelpBox("Android Logcat requires Android support to be installed.", UnityEditor.MessageType.Info);
         }
+
+        internal static void ApplySettings(AndroidLogcatRuntimeBase runtime, AndroidLogcat logcat)
+        {
+            if (runtime == null)
+                throw new ArgumentNullException("AndroidLogcatRuntimeBase is null");
+            var settings = runtime.Settings;
+            var userSettings = runtime.UserSettings;
+            var selectedDevice = runtime.DeviceQuery.SelectedDevice;
+
+            int fixedHeight = settings.MessageFontSize + 5;
+            AndroidLogcatStyles.kLogEntryFontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.kLogEntryFixedHeight = fixedHeight;
+            AndroidLogcatStyles.background.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundEven.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.backgroundOdd.fixedHeight = fixedHeight;
+            AndroidLogcatStyles.priorityDefaultStyle.font = settings.MessageFont;
+            AndroidLogcatStyles.priorityDefaultStyle.fontSize = settings.MessageFontSize;
+            AndroidLogcatStyles.priorityDefaultStyle.fixedHeight = fixedHeight;
+            foreach (var p in (Priority[])Enum.GetValues(typeof(Priority)))
+            {
+                AndroidLogcatStyles.priorityStyles[(int)p].normal.textColor = settings.GetMessageColor(p);
+                AndroidLogcatStyles.priorityStyles[(int)p].font = settings.MessageFont;
+                AndroidLogcatStyles.priorityStyles[(int)p].fontSize = settings.MessageFontSize;
+                AndroidLogcatStyles.priorityStyles[(int)p].fixedHeight = fixedHeight;
+            }
+
+            logcat?.StripFilteredEntriesIfNeeded();
+            logcat?.StripRawEntriesIfNeeded();
+            userSettings.CleanupDeadPackagesForDevice(selectedDevice, settings.MaxExitedPackagesToShow);
+        }
+
+        // When we use / in context menu, this creates submenu, which is no good
+        // Replace it with unicode slash, while it won't display this in pretty way, it's still better than not displaying anything
+        internal static string FixSlashesForIMGUI(string value)
+        {
+            return value.Replace("/", " \u2215");
+        }
     }
 }

@@ -27,7 +27,10 @@ namespace Unity.Android.Logcat
         private int m_MemoryRequestInterval;
 
         [SerializeField]
-        private int m_MaxMessageCount;
+        private int m_MaxUnfilteredMessageCount;
+
+        [SerializeField]
+        private int m_MaxFilteredMessageCount;
 
         [SerializeField]
         private Font m_MessageFont;
@@ -45,6 +48,9 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private List<ReordableListItem> m_StacktraceResolveRegex;
+
+        [SerializeField]
+        private int m_MaxExitedPackagesToShow;
 
         internal int MemoryRequestIntervalMS
         {
@@ -64,21 +70,59 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal int MaxMessageCount
+        internal int MaxUnfilteredMessageCount
         {
             set
             {
-                if (m_MaxMessageCount == value)
+                if (m_MaxUnfilteredMessageCount == value)
                     return;
-                m_MaxMessageCount = value;
+                m_MaxUnfilteredMessageCount = value;
+                m_MaxFilteredMessageCount = ValidateFilteredMessageCount(m_MaxFilteredMessageCount);
                 InvokeOnSettingsChanged();
             }
             get
             {
-                return m_MaxMessageCount;
+                return m_MaxUnfilteredMessageCount;
             }
         }
 
+        internal int MaxFilteredMessageCount
+        {
+            set
+            {
+                value = ValidateFilteredMessageCount(value);
+                if (m_MaxFilteredMessageCount == value)
+                    return;
+                m_MaxFilteredMessageCount = value;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_MaxFilteredMessageCount;
+            }
+        }
+
+        private int ValidateFilteredMessageCount(int newFilteredMessageCount)
+        {
+            if (MaxUnfilteredMessageCount > 0)
+                newFilteredMessageCount = Math.Min(newFilteredMessageCount, MaxUnfilteredMessageCount);
+            return newFilteredMessageCount;
+        }
+
+        internal int MaxExitedPackagesToShow
+        {
+            set
+            {
+                if (m_MaxExitedPackagesToShow == value)
+                    return;
+                m_MaxExitedPackagesToShow = value;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_MaxExitedPackagesToShow;
+            }
+        }
         internal Font MessageFont
         {
             set
@@ -152,9 +196,11 @@ namespace Unity.Android.Logcat
         internal void Reset()
         {
             m_MemoryRequestInterval = 500;
-            m_MaxMessageCount = 60000;
-            m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Resources/consola.ttf");
+            m_MaxUnfilteredMessageCount = 60000;
+            m_MaxFilteredMessageCount = 60000;
+            m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
+            m_MaxExitedPackagesToShow = 4;
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 

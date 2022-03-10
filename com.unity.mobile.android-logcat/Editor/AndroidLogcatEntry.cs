@@ -1,18 +1,37 @@
-using System.Collections.Generic;
 using System;
-using System.Text.RegularExpressions;
-using System.Linq;
-using UnityEditor;
-using System.Text;
 
 namespace Unity.Android.Logcat
 {
-
     class LogcatEntry
     {
+        [Flags]
+        enum Flags
+        {
+            None,
+            Selected
+        }
+
         public const string kTimeFormatWithYear = "yyyy/MM/dd HH:mm:ss.fff";
         public const string kTimeFormatWithoutYear = "MM/dd HH:mm:ss.fff";
         public static string s_TimeFormat = kTimeFormatWithYear;
+        private Flags m_Flags;
+
+        public bool Selected
+        {
+            set
+            {
+                if (value)
+                    m_Flags |= Flags.Selected;
+                else
+                    m_Flags &= ~Flags.Selected;
+            }
+
+            get
+            {
+                return m_Flags.HasFlag(Flags.Selected);
+            }
+        }
+
         public LogcatEntry(string msg)
         {
             message = msg;
@@ -22,16 +41,6 @@ namespace Unity.Android.Logcat
             threadId = -1;
             priority = Priority.Info;
             this.message = this.message.TrimEnd(new[] { '\r', '\n' });
-        }
-
-        public LogcatEntry(LogcatEntry entry)
-        {
-            this.dateTime = entry.dateTime;
-            this.processId = entry.processId;
-            this.threadId = entry.threadId;
-            this.priority = entry.priority;
-            this.tag = entry.tag;
-            this.message = entry.message;
         }
 
         public LogcatEntry(DateTime dateTime, int processId, int threadId, Priority priority, string tag, string message)

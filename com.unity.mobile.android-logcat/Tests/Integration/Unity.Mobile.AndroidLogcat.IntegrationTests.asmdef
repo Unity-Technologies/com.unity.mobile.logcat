@@ -1,9 +1,10 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.EditorTests",
+    "name": "Unity.Mobile.AndroidLogcat.IntegrationTests",
     "references": [
         "Unity.Mobile.AndroidLogcat.Editor",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "Unity.Mobile.AndroidLogcat.Tests"
     ],
     "includePlatforms": [
         "Editor"

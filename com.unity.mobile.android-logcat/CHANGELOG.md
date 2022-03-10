@@ -5,6 +5,21 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [1.3.0] - 2021-09-21
+### Fixes & Improvements.
+ - You can now perform text filtering when disconnected from the device, the filtering will be performed by the logcat package, previously it was performed by **adb logcat** command.
+ - Text filtering has an option to ignore character casing.
+ - Whenever entering new text filter selection of messages will persist, the selection will reset if **adb logcat** command is reexecuted, for ex., picking new tag, picking new priority, etc.
+ - There are new settings in Preferences->Android Logcat Settings:
+    - Max Unfiltered Messages - controls how many unfiltered messages to keep in cache, you can remove the limit, and have as many messages as your memory let's you.
+    - Max Filtered Messages - controls how many filtered messages display on the list, you can remove the limit, but it might cause UI issues.
+ - Fixed tiny issue, when right clicking on the log message, the tag and process id for context menu was being taken from the first selected item, now it will be taken from item which you're hovering on
+ - Fixed issue, when right clicking on the log message with tag containing forward slash, the menu would be incorrectly displayed.
+ - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device.
+ - Add setting for controlling how many exited packages to show in package selection.
+ - Add doc about known issue where logcat might work incorrectly if there more than one Editor instance running.
+
+### Fixes & Improvements.
+ - Bump minimum Unity version support from 2019.2 to 2019.4
 
 ## [1.2.2] - 2021-04-21
 

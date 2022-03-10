@@ -28,6 +28,12 @@ namespace Unity.Android.Logcat
         MemoryBehaviorHidden
     }
 
+    internal enum FilterContextMenu
+    {
+        UseRegularExpressions,
+        MatchCase
+    }
+
     class AndroidContextMenu<T>
     {
         internal class MenuItemData
@@ -35,12 +41,14 @@ namespace Unity.Android.Logcat
             public T Item { get; }
             public string Name { get; }
             public bool Selected { get; }
+            public bool Enabled { get; }
 
-            public MenuItemData(T item, string name, bool selected)
+            public MenuItemData(T item, string name, bool selected, bool enabled)
             {
                 Item = item;
                 Name = name;
                 Selected = selected;
+                Enabled = enabled;
             }
         }
 
@@ -48,9 +56,9 @@ namespace Unity.Android.Logcat
 
         private List<MenuItemData> m_Items = new List<MenuItemData>();
 
-        public void Add(T item, string name, bool selected = false)
+        public void Add(T item, string name, bool selected = false, bool enabled = true)
         {
-            m_Items.Add(new MenuItemData(item, name, selected));
+            m_Items.Add(new MenuItemData(item, name, selected, enabled));
         }
 
         public void AddSplitter()
@@ -85,7 +93,7 @@ namespace Unity.Android.Logcat
 
         public void Show(Vector2 mousePosition, EditorUtility.SelectMenuItemFunction callback)
         {
-            var enabled = Enumerable.Repeat(true, Names.Length).ToArray();
+            var enabled = m_Items.Select(i => i.Enabled).ToArray();
             var separator = new bool[Names.Length];
             EditorUtility.DisplayCustomMenuWithSeparators(new Rect(mousePosition.x, mousePosition.y, 0, 0),
                 Names,
