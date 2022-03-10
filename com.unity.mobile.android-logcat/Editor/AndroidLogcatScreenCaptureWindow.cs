@@ -8,14 +8,25 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
-        [SerializeField] private string m_ImagePath;
+        private enum Mode
+        {
+            Screenshot,
+            Video
+        }
+
+        [SerializeField] 
+        private string m_ImagePath;
+        [SerializeField]
+        private Mode m_Mode;
+
         private AndroidLogcatRuntimeBase m_Runtime;
-        private GUIContent[] m_Devices;
-        private int m_SelectedDevice;
 
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
         private AndroidLogcatScreenCapture m_ScreenCapture;
+
+        private IAndroidLogcatDevice[] m_Devices;
+        private int m_SelectedDeviceIdx;
 
 
         public static void ShowWindow()
@@ -30,23 +41,12 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
+            m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
+            m_Runtime.Closing += OnDisable;
             m_ScreenCapture = m_Runtime.ScreenCapture;
 
-            DeviceQuery_DevicesUpdated();
-
-            if (m_Runtime.DeviceQuery.SelectedDevice != null)
-            {
-                var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
-                for (int i = 0; i < m_Devices.Length; i++)
-                {
-                    if (id == m_Devices[i].text)
-                    {
-                        m_SelectedDevice = i;
-                        break;
-                    }
-                }
-            }
+            OnDevicesUpdated();
+            ResolveSelectedDeviceIndex();
         }
 
         private void OnDisable()
@@ -54,29 +54,45 @@ namespace Unity.Android.Logcat
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
 
-            m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
-            m_SelectedDevice = 0;
+            if (m_Runtime == null)
+                return;
+            m_Runtime.DeviceQuery.DevicesUpdated -= OnDevicesUpdated;
+            m_Runtime = null;
         }
 
-        private void DeviceQuery_DevicesUpdated()
+        private void ResolveSelectedDeviceIndex()
         {
-            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected)
-                .Select(m => new GUIContent(m.Value.Id)).ToArray();
+            if (m_Runtime.DeviceQuery.SelectedDevice == null)
+                return;
+            
+            var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
+            for (int i = 0; i < m_Devices.Length; i++)
+            {
+                if (id == m_Devices[i].Id)
+                {
+                    m_SelectedDeviceIdx = i;
+                    break;
+                }
+            }  
         }
 
-        private string GetDeviceId()
+        private void OnDevicesUpdated()
         {
-            if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
-                return string.Empty;
-            return m_Devices[m_SelectedDevice].text;
+            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
+        }
+
+        protected IAndroidLogcatDevice SelectedDevice
+        {
+            get
+            {
+                if (m_SelectedDeviceIdx < 0 || m_SelectedDeviceIdx > m_Devices.Length - 1)
+                    return null;
+                return m_Devices[m_SelectedDeviceIdx];
+            }
         }
 
         private void QueueScreenCapture()
         {
-            var id = GetDeviceId();
-            if (string.IsNullOrEmpty(id))
-                return;
-
             m_ScreenCapture.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnCompleted);
         }
 
@@ -86,6 +102,19 @@ namespace Unity.Android.Logcat
             if (texture != null)
                 maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
             Repaint();
+        }
+
+        private void DoSelectedDeviceGUI()
+        {
+            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
+                m_Devices.Select(m => new GUIContent(m.Id)).ToArray(),
+                AndroidLogcatStyles.toolbarPopup,
+                GUILayout.MaxWidth(300));
+        }
+
+        void DoModeGUI()
+        {
+            m_Mode = (Mode)EditorGUILayout.EnumPopup(m_Mode, AndroidLogcatStyles.toolbarPopup);
         }
 
         void OnGUI()
@@ -111,35 +140,26 @@ namespace Unity.Android.Logcat
             GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
 
             EditorGUI.BeginChangeCheck();
-            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
+
+            DoSelectedDeviceGUI();
+
             if (EditorGUI.EndChangeCheck())
                 QueueScreenCapture();
+
+            DoModeGUI();
+            
 
             EditorGUI.BeginDisabledGroup(m_ScreenCapture.Capturing);
             if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
                 QueueScreenCapture();
             EditorGUI.EndDisabledGroup();
 
-            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton))
-            {
-                var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
-                if (!string.IsNullOrEmpty(path))
-                {
-                    try
-                    {
-                        File.Copy(m_ImagePath, path, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
-                    }
-                }
-            }
+            m_ScreenCapture.DoSaveAsGUI();
+
             EditorGUILayout.EndHorizontal();
 
             GUILayout.Space(10);
-            var id = GetDeviceId();
-            if (string.IsNullOrEmpty(id))
+            if (m_Runtime.DeviceQuery.SelectedDevice == null)
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
             {

@@ -35,6 +35,7 @@ namespace Unity.Android.Logcat
             m_PortString = EditorPrefs.GetString(kAndroidLogcatLastPort, "5555");
 
             m_Runtime.DeviceQuery.DevicesUpdated += DevicesUpdated;
+            m_Runtime.Closing += OnDisable;
 
             // Disable progress bar just in case, if we have a stale process hanging where we peform adb connect
             EditorUtility.ClearProgressBar();
@@ -47,6 +48,7 @@ namespace Unity.Android.Logcat
             if (m_Runtime == null)
                 return;
             m_Runtime.DeviceQuery.DevicesUpdated -= DevicesUpdated;
+            m_Runtime = null;
         }
 
         private void DevicesUpdated()

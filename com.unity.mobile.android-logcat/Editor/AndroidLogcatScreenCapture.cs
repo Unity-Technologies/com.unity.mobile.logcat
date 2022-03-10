@@ -106,5 +106,24 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public void DoSaveAsGUI()
+        {
+            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton))
+            {
+                var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
+                if (!string.IsNullOrEmpty(path))
+                {
+                    try
+                    {
+                        File.Copy(m_ImagePath, path, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        UnityEngine.Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
+                    }
+                }
+            }
+        }
+
     }
 }

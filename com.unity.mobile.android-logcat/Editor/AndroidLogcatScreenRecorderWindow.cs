@@ -11,6 +11,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace Unity.Android.Logcat
 {
+    /*
     internal class AndroidLogcatScreenRecorderWindow : AndroidLogcatToolsBaseWindow
     {
         private GUIContent kStartRecording = new GUIContent(L10n.Tr("Start Recording"));
@@ -317,4 +318,5 @@ namespace Unity.Android.Logcat
             DoVideoPlayerGUI();
         }
     }
+    */
 }

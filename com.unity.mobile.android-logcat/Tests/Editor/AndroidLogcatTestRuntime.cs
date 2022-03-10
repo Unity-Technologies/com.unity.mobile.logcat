@@ -34,6 +34,10 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
     {
         return null;
     }
+    protected override AndroidLogcatScreenCapture CreateScreenCapture()
+    {
+        return null;
+    }
 
     protected override void SaveEditorSettings(AndroidLogcatSettings settings)
     {

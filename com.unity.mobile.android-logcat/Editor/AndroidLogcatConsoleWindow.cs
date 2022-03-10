@@ -331,7 +331,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatScreenCaptureWindow.ShowWindow();
                     break;
                 case ToolsContextMenu.ScreenRecorder:
-                    AndroidLogcatScreenRecorderWindow.ShowWindow();
+                   // AndroidLogcatScreenRecorderWindow.ShowWindow();
                     break;
                 case ToolsContextMenu.OpenTerminal:
                     AndroidLogcatUtilities.OpenTerminal(Path.GetDirectoryName(m_Runtime.Tools.ADB.GetADBPath()));
