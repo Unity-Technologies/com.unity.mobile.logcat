@@ -12,23 +12,11 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
         private GUIContent[] m_Devices;
         private int m_SelectedDevice;
-        private Texture2D m_ImageTexture = null;
-        private int m_CaptureCount;
+
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
-        private string m_Error;
+        private AndroidLogcatScreenCapture m_ScreenCapture;
 
-        internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
-        {
-            internal AndroidBridge.ADB adb;
-            internal string deviceId;
-        }
-
-        internal class AndroidLogcatCaptureScreenCaptureResult : IAndroidLogcatTaskResult
-        {
-            internal string imagePath;
-            internal string error;
-        }
 
         public static void ShowWindow()
         {
@@ -43,6 +31,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
+            m_ScreenCapture = m_Runtime.ScreenCapture;
 
             DeviceQuery_DevicesUpdated();
 
@@ -88,36 +77,12 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(id))
                 return;
 
-            m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = id },
-                ExecuteScreenCapture,
-                IntegrateCaptureScreenShot,
-                false);
-            m_CaptureCount++;
+            m_ScreenCapture.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnCompleted);
         }
 
-        private static IAndroidLogcatTaskResult ExecuteScreenCapture(IAndroidLogcatTaskInput input)
+        void OnCompleted()
         {
-            var i = (AndroidLogcatCaptureScreenCaptureInput)input;
-            string error;
-            var path = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId, out error);
-
-            return new AndroidLogcatCaptureScreenCaptureResult()
-            {
-                imagePath = path,
-                error = error
-            };
-        }
-
-        private void IntegrateCaptureScreenShot(IAndroidLogcatTaskResult result)
-        {
-            if (m_CaptureCount > 0)
-                m_CaptureCount--;
-            var captureResult = (AndroidLogcatCaptureScreenCaptureResult)result;
-            m_ImagePath = captureResult.imagePath;
-            m_Error = captureResult.error;
-            if (!string.IsNullOrEmpty(m_ImagePath))
-                LoadImage();
+            maxSize = new Vector2(Math.Max(m_ScreenCapture.ImageTexture.width, position.width), m_ScreenCapture.ImageTexture.height + kButtonAreaHeight);
             Repaint();
         }
 
@@ -135,7 +100,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
             GUIContent statusIcon = GUIContent.none;
-            if (m_CaptureCount > 0)
+            if (m_ScreenCapture.Capturing)
             {
                 int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
@@ -148,7 +113,7 @@ namespace Unity.Android.Logcat
             if (EditorGUI.EndChangeCheck())
                 QueueScreenCapture();
 
-            EditorGUI.BeginDisabledGroup(m_CaptureCount > 0);
+            EditorGUI.BeginDisabledGroup(m_ScreenCapture.Capturing);
             if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
                 QueueScreenCapture();
             EditorGUI.EndDisabledGroup();
@@ -176,35 +141,20 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
             {
-                if (!string.IsNullOrEmpty(m_Error))
+                if (!string.IsNullOrEmpty(m_ScreenCapture.Error))
                 {
-                    EditorGUILayout.HelpBox(m_Error, MessageType.Error);
+                    EditorGUILayout.HelpBox(m_ScreenCapture.Error, MessageType.Error);
                 }
                 else
                 {
-                    if (m_ImageTexture != null)
+                    if (m_ScreenCapture.ImageTexture != null)
                     {
                         Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
+                        GUI.DrawTexture(rect, m_ScreenCapture.ImageTexture, ScaleMode.ScaleToFit);
                     }
                 }
             }
             EditorGUILayout.EndVertical();
-        }
-
-        void LoadImage()
-        {
-            if (!File.Exists(m_ImagePath))
-                return;
-
-            byte[] imageData;
-            imageData = File.ReadAllBytes(m_ImagePath);
-
-            m_ImageTexture = new Texture2D(2, 2); // The size will be replaced by LoadImage().
-            if (!m_ImageTexture.LoadImage(imageData))
-                return;
-
-            maxSize = new Vector2(Math.Max(m_ImageTexture.width, position.width), m_ImageTexture.height + kButtonAreaHeight);
         }
     }
 }

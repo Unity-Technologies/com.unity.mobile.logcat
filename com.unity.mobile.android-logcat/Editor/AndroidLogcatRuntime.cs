@@ -12,6 +12,7 @@ namespace Unity.Android.Logcat
         protected AndroidLogcatUserSettings m_UserSettings;
         protected AndroidTools m_Tools;
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
+        protected AndroidLogcatScreenCapture m_ScreenCapture;
         protected AndroidLogcatScreenRecorder m_ScreenRecorder;
         protected bool m_Initialized;
 
@@ -53,12 +54,19 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_ScreenRecorder; }
         }
 
+        public AndroidLogcatScreenCapture ScreenCapture
+        {
+            get { ValidateIsInitialized(); return m_ScreenCapture; }
+        }
+
+
 
         public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
         protected abstract AndroidLogcatScreenRecorder CreateScreenRecorder();
+        protected abstract AndroidLogcatScreenCapture CreateScreenCapture();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -79,6 +87,7 @@ namespace Unity.Android.Logcat
             m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
             m_ScreenRecorder = CreateScreenRecorder();
+            m_ScreenCapture = CreateScreenCapture();
 
             m_Initialized = true;
         }
@@ -153,6 +162,11 @@ namespace Unity.Android.Logcat
         protected override AndroidLogcatScreenRecorder CreateScreenRecorder()
         {
             return new AndroidLogcatScreenRecorder(this);
+        }
+
+        protected override AndroidLogcatScreenCapture CreateScreenCapture()
+        {
+            return new AndroidLogcatScreenCapture(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()
