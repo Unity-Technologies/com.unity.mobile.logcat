@@ -455,7 +455,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         Assert.AreEqual(10.ToString(), logcat.RawEntries[0].message);
 
         m_Runtime.Settings.MaxFilteredMessageCount = 10;
-        AndroidLogcatUtilities.ApplySettings(m_Runtime.Settings, logcat);
+        AndroidLogcatUtilities.ApplySettings(m_Runtime, logcat);
         Assert.AreEqual(10, logcat.FilteredEntries.Count);
         Assert.AreEqual(20, logcat.RawEntries.Count);
         Assert.AreEqual(20.ToString(), logcat.FilteredEntries[0].message);
@@ -473,6 +473,14 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
+        ShutdownRuntime();
+    }
+
+    [Test]
+    public void CanApplySettingsWithNullLogcat()
+    {
+        InitRuntime();
+        AndroidLogcatUtilities.ApplySettings(m_Runtime, null);
         ShutdownRuntime();
     }
 
@@ -508,7 +516,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         // Entry at index 2 will be stripped
         m_Runtime.Settings.MaxFilteredMessageCount = 10;
-        AndroidLogcatUtilities.ApplySettings(m_Runtime.Settings, logcat);
+        AndroidLogcatUtilities.ApplySettings(m_Runtime, logcat);
 
         entries = logcat.GetSelectedFilteredEntries(out minIdx, out maxIdx);
         Assert.AreEqual(1, entries.Count);

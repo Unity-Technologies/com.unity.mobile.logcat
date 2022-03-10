@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - Max Filtered Messages - controls how many filtered messages display on the list, you can remove the limit, but it might cause UI issues.
  - Fixed tiny issue, when right clicking on the log message, the tag and process id for context menu was being taken from the first selected item, now it will be taken from item which you're hovering on
  - Fixed issue, when right clicking on the log message with tag containing forward slash, the menu would be incorrectly displayed.
- - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device.
+ - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device. - Add setting for controlling how many exited packages to show in package selection.
+ - Add doc about known issue where logcat might work incorrectly if there more than one Editor instance running.
  - You can now navigate through messages using arrow keys.
- 
+
 ### Fixes & Improvements.
  - Bump minimum Unity version support from 2019.2 to 2019.4
 
