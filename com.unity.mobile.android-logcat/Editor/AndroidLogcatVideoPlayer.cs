@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
 
             if (m_PlayerGO != null)
             {
-                GameObject.Destroy(m_PlayerGO);
+                GameObject.DestroyImmediate(m_PlayerGO);
                 m_PlayerGO = null;
             }
         }

@@ -23,7 +23,9 @@ namespace Unity.Android.Logcat
 
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
-        private AndroidLogcatCaptureScreenshot m_ScreenCapture;
+        private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
+        private AndroidLogcatCaptureVideo m_CaptureVideo;
+        private AndroidLogcatVideoPlayer m_VideoPlayer;
 
         private IAndroidLogcatDevice[] m_Devices;
         private int m_SelectedDeviceIdx;
@@ -43,7 +45,9 @@ namespace Unity.Android.Logcat
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
             m_Runtime.Closing += OnDisable;
-            m_ScreenCapture = m_Runtime.CaptureScreenshot;
+            m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
+            m_CaptureVideo = m_Runtime.CaptureVideo;
+            m_VideoPlayer = new AndroidLogcatVideoPlayer();
 
             OnDevicesUpdated();
             ResolveSelectedDeviceIndex();
@@ -51,6 +55,11 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            if (m_VideoPlayer != null)
+            {
+                m_VideoPlayer.Dispose();
+                m_VideoPlayer = null;
+            }
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
 
@@ -93,12 +102,12 @@ namespace Unity.Android.Logcat
 
         private void QueueScreenCapture()
         {
-            m_ScreenCapture.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnCompleted);
+            m_CaptureScreenshot.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnCompleted);
         }
 
         void OnCompleted()
         {
-            var texture = m_ScreenCapture.ImageTexture;
+            var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
                 maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
             Repaint();
@@ -131,7 +140,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
             GUIContent statusIcon = GUIContent.none;
-            if (m_ScreenCapture.Capturing)
+            if (m_CaptureScreenshot.Capturing)
             {
                 int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
@@ -144,17 +153,21 @@ namespace Unity.Android.Logcat
             DoSelectedDeviceGUI();
 
             if (EditorGUI.EndChangeCheck())
-                QueueScreenCapture();
+            {
+                switch (m_Mode)
+                {
+                    // We switched the device, do screenshot automatically, since it's nice
+                    case Mode.Screenshot:
+                        QueueScreenCapture();
+                        break;
+                    case Mode.Video:
+                        // Do nothing
+                        break;
+                }
+            }
 
             DoModeGUI();
-
-
-            EditorGUI.BeginDisabledGroup(m_ScreenCapture.Capturing);
-            if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
-                QueueScreenCapture();
-            EditorGUI.EndDisabledGroup();
-
-            m_ScreenCapture.DoSaveAsGUI();
+            DoCaptureGUI();
 
             EditorGUILayout.EndHorizontal();
 
@@ -162,10 +175,7 @@ namespace Unity.Android.Logcat
             if (m_Runtime.DeviceQuery.SelectedDevice == null)
                 EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
             else
-            {
-                var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                m_ScreenCapture.DoGUI(rc);
-            }
+                DoPreviewGUI();
             EditorGUILayout.EndVertical();
 
             /*
@@ -178,6 +188,39 @@ namespace Unity.Android.Logcat
                             args += $" --display-id {rs.DisplayId}";
                         args += $" {kVideoPathOnDevice}";
             */
+        }
+
+        private void DoCaptureGUI()
+        {
+            switch (m_Mode)
+            {
+                case Mode.Screenshot:
+                    EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.Capturing);
+                    if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
+                        QueueScreenCapture();
+                    EditorGUI.EndDisabledGroup();
+                    m_CaptureScreenshot.DoSaveAsGUI();
+                    break;
+                case Mode.Video:
+                    //TODO:
+                    break;
+            }
+        }
+
+        private void DoPreviewGUI()
+        {
+            switch (m_Mode)
+            {
+                case Mode.Screenshot:
+                    {
+                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        m_CaptureScreenshot.DoGUI(rc);
+                    }
+                    break;
+                case Mode.Video:
+                    // TODO:
+                    break;
+            }
         }
     }
 }
