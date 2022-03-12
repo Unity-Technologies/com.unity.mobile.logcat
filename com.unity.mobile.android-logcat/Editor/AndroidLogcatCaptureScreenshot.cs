@@ -30,7 +30,7 @@ namespace Unity.Android.Logcat
         private int m_CaptureCount;
         private string m_Error;
 
-        public bool Capturing => m_CaptureCount > 0;
+        public bool IsCapturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
         public string ImagePath => m_ImagePath;
@@ -106,25 +106,5 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
             }
         }
-
-        public void DoSaveAsGUI()
-        {
-            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton))
-            {
-                var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
-                if (!string.IsNullOrEmpty(path))
-                {
-                    try
-                    {
-                        File.Copy(m_ImagePath, path, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        UnityEngine.Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
-                    }
-                }
-            }
-        }
-
     }
 }

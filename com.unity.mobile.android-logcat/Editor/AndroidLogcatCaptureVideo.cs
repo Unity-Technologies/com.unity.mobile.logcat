@@ -43,7 +43,7 @@ namespace Unity.Android.Logcat
 
         private void Update()
         {
-            if (!IsRecording())
+            if (!IsRecording)
                 return;
 
             var currentTime = DateTime.Now;
@@ -105,10 +105,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal bool IsRecording()
-        {
-            return m_RecordingProcess != null;
-        }
+        internal bool IsRecording => m_RecordingProcess != null;
 
         internal void StartRecording(IAndroidLogcatDevice device,
             uint? videoSizeX = null,

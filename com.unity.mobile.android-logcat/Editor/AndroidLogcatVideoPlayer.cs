@@ -1,13 +1,6 @@
 using System;
-using System.Diagnostics;
-using System.IO;
 using UnityEngine;
-using UnityEditor;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using UnityEngine.Video;
-using Debug = System.Diagnostics.Debug;
 
 namespace Unity.Android.Logcat
 {
@@ -60,6 +53,13 @@ namespace Unity.Android.Logcat
 
             m_Player.url = path;
             m_Player.Play();
+        }
+
+        public bool IsPlaying()
+        {
+            if (m_Player == null)
+                return false;
+            return m_Player.isPlaying;
         }
 
         public Rect GetVideoRect()

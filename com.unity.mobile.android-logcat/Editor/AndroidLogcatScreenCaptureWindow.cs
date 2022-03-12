@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
         }
 
         [SerializeField]
-        private string m_ImagePath;
+        private string[] m_ImagePath;
         [SerializeField]
         private Mode m_Mode;
 
@@ -29,6 +29,42 @@ namespace Unity.Android.Logcat
 
         private IAndroidLogcatDevice[] m_Devices;
         private int m_SelectedDeviceIdx;
+
+        private bool IsCapturing
+        {
+            get
+            {
+                switch (m_Mode)
+                {
+                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
+                    case Mode.Video: return m_CaptureVideo.IsRecording;
+                    default:
+                        throw new NotImplementedException(m_Mode.ToString());
+                }
+            }
+        }
+
+        private string TemporaryPath
+        {
+            get
+            {
+                switch (m_Mode)
+                {
+                    case Mode.Screenshot: return m_CaptureScreenshot.ImagePath;
+                    case Mode.Video: return m_CaptureVideo.VideoPath;
+                    default:
+                        throw new NotImplementedException(m_Mode.ToString());
+                }
+            }
+        }
+
+        private string ExtensionForDialog
+        {
+            get
+            {
+                return Path.GetExtension(TemporaryPath).Substring(1);
+            }
+        }
 
 
         public static void ShowWindow()
@@ -137,16 +173,32 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
             GUILayout.Space(5);
 
+            DoToolbarGUI();
+
+            GUILayout.Space(10);
+            if (m_Runtime.DeviceQuery.SelectedDevice == null)
+                EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
+            else
+                DoPreviewGUI();
+            EditorGUILayout.EndVertical();
+
+            /*
+                        var rs = m_Runtime.UserSettings.RecorderSettings;
+                        if (rs.VideoSizeEnabled)
+                            args += $" --size {rs.VideoSizeX}x{rs.VideoSizeY}";
+                        if (rs.BitRateEnabled)
+                            args += $" --bit-rate {rs.BitRate}";
+                        if (rs.DisplayIdEnabled)
+                            args += $" --display-id {rs.DisplayId}";
+                        args += $" {kVideoPathOnDevice}";
+            */
+        }
+
+        private void DoToolbarGUI()
+        {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
-            GUIContent statusIcon = GUIContent.none;
-            if (m_CaptureScreenshot.Capturing)
-            {
-                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
-                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
-                Repaint();
-            }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            DoProgressGUI();
 
             EditorGUI.BeginChangeCheck();
 
@@ -168,26 +220,22 @@ namespace Unity.Android.Logcat
 
             DoModeGUI();
             DoCaptureGUI();
+            DoOpenGUI();
+            DoSaveAsGUI();
 
             EditorGUILayout.EndHorizontal();
+        }
 
-            GUILayout.Space(10);
-            if (m_Runtime.DeviceQuery.SelectedDevice == null)
-                EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
-            else
-                DoPreviewGUI();
-            EditorGUILayout.EndVertical();
-
-            /*
-                        var rs = m_Runtime.UserSettings.RecorderSettings;
-                        if (rs.VideoSizeEnabled)
-                            args += $" --size {rs.VideoSizeX}x{rs.VideoSizeY}";
-                        if (rs.BitRateEnabled)
-                            args += $" --bit-rate {rs.BitRate}";
-                        if (rs.DisplayIdEnabled)
-                            args += $" --display-id {rs.DisplayId}";
-                        args += $" {kVideoPathOnDevice}";
-            */
+        private void DoProgressGUI()
+        {
+            GUIContent statusIcon = GUIContent.none;
+            if (IsCapturing)
+            {
+                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
+                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
+                Repaint();
+            }
+            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
         }
 
         private void DoCaptureGUI()
@@ -195,16 +243,69 @@ namespace Unity.Android.Logcat
             switch (m_Mode)
             {
                 case Mode.Screenshot:
-                    EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.Capturing);
+                    EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.IsCapturing);
                     if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
                         QueueScreenCapture();
                     EditorGUI.EndDisabledGroup();
-                    m_CaptureScreenshot.DoSaveAsGUI();
                     break;
                 case Mode.Video:
-                    //TODO:
+                    if (m_CaptureVideo.IsRecording)
+                    {
+                        if (GUILayout.Button("Stop", AndroidLogcatStyles.toolbarButton))
+                        {
+                            m_CaptureVideo.StopRecording();
+                            m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
+                        }
+                    }
+                    else
+                    {
+                        if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
+                        {
+                            // TODO settings;
+                            m_CaptureVideo.StartRecording(SelectedDevice);
+                        }
+                    }
                     break;
             }
+        }
+
+        private void DoOpenGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            if (GUILayout.Button("Open", AndroidLogcatStyles.toolbarButton))
+                Application.OpenURL(TemporaryPath);
+            EditorGUI.EndDisabledGroup();
+        }
+
+        private void DoSaveAsGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            if (GUILayout.Button("Save As", AndroidLogcatStyles.toolbarButton))
+            {
+                var length = Enum.GetValues(typeof(Mode)).Length;
+                if (m_ImagePath == null || m_ImagePath.Length != length)
+                {
+                    var defaultDirectory = Path.Combine(Application.dataPath, "..");
+                    m_ImagePath = new string[length];
+                    for (int i = 0; i < length; i++)
+                        m_ImagePath[i] = defaultDirectory;
+                }
+
+                var path = EditorUtility.SaveFilePanel("Save Screen Capture", m_ImagePath[(int)m_Mode], Path.GetFileName(TemporaryPath), ExtensionForDialog);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    try
+                    {
+                        m_ImagePath[(int)m_Mode] = path;
+                        File.Copy(TemporaryPath, path, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        UnityEngine.Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
+                    }
+                }
+            }
+            EditorGUI.EndDisabledGroup();
         }
 
         private void DoPreviewGUI()
@@ -218,6 +319,9 @@ namespace Unity.Android.Logcat
                     }
                     break;
                 case Mode.Video:
+                    m_VideoPlayer.DoGUI();
+                    if (m_VideoPlayer.IsPlaying())
+                        Repaint();
                     // TODO:
                     break;
             }
