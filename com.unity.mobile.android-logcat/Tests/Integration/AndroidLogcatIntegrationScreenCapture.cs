@@ -36,7 +36,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Runtime.CaptureVideo.StartRecording(Device);
 
         yield return WaitForCondition("Waiting for Android's screenrecord to become active",
-            () => Runtime.CaptureVideo.IsAndroidScreenRecordingProcessActive(Device));
+            () => Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
 
         var start = DateTime.Now;
         yield return WaitForCondition("Recording video", () => (DateTime.Now - start).TotalSeconds > 5.0f);
@@ -44,9 +44,8 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.IsTrue(result, "Failed to stop the recording");
 
         yield return WaitForCondition("Waiting for Android's screenrecord to quit",
-            () => !Runtime.CaptureVideo.IsAndroidScreenRecordingProcessActive(Device));
+            () => !Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
 
-        Runtime.CaptureVideo.CopyRecordingFromDevice(Device);
         Assert.IsTrue(File.Exists(Runtime.CaptureVideo.VideoPath));
         File.Copy(Runtime.CaptureVideo.VideoPath, Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
     }

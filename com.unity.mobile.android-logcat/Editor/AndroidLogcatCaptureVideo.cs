@@ -10,17 +10,16 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatCaptureVideo
     {
-        private readonly string kVideoPathOnDevice = "/sdcard/logcat_video.mp4";
-        private string VideoTempPath => Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
+        private readonly string VideoPathOnDevice = "/sdcard/logcat_video.mp4";
+        private readonly string VideoPathOnHost = Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
         private AndroidLogcatRuntimeBase m_Runtime;
         private Process m_RecordingProcess;
         private StringBuilder m_RecordingProcessLog;
         private StringBuilder m_RecordingProcessErrors;
         private IAndroidLogcatDevice m_RecordingOnDevice;
-        private double m_RecordingCheckTime;
+        private DateTime m_RecordingCheckTime;
         internal string Errors => m_RecordingProcessErrors != null ? m_RecordingProcessErrors.ToString() : string.Empty;
-        internal IAndroidLogcatDevice RecordingOnDevice => m_RecordingOnDevice;
-        internal string VideoPath => VideoTempPath;
+        internal string VideoPath => VideoPathOnHost;
 
         internal AndroidLogcatCaptureVideo(AndroidLogcatRuntimeBase runtime)
         {
@@ -36,9 +35,9 @@ namespace Unity.Android.Logcat
             // Cache, since StopRecording will clear m_RecordingOnDevice
             var device = m_RecordingOnDevice;
             StopRecording();
-            DeleteRecordingOnDevice(device);
-            DeleteTempVideo();
-            KillScreenRecorderProcessOnDevice(device);
+            DeleteVideoOnDevice(device);
+            DeleteVideoOnHost();
+            KillRemoteRecorder(device);
             m_Runtime = null;
         }
 
@@ -47,8 +46,8 @@ namespace Unity.Android.Logcat
             if (!IsRecording())
                 return;
 
-            var currentTime = Time.realtimeSinceStartup;
-            if (currentTime - m_RecordingCheckTime > 1.0f)
+            var currentTime = DateTime.Now;
+            if ((currentTime - m_RecordingCheckTime).TotalSeconds > 1.0f)
             {
                 m_RecordingCheckTime = currentTime;
                 if (m_RecordingProcess.HasExited)
@@ -57,38 +56,47 @@ namespace Unity.Android.Logcat
                     m_RecordingProcessErrors.AppendLine();
                     m_RecordingProcessErrors.AppendLine(m_RecordingProcessLog.ToString());
                     ClearRecordingData();
-
-                    UnityEngine.Debug.Log("Check");
                 }
             }
         }
 
-        internal bool IsAndroidScreenRecordingProcessActive(IAndroidLogcatDevice device)
+        internal bool IsRemoteRecorderActive(IAndroidLogcatDevice device)
         {
             return AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord") != -1;
         }
 
-        private void KillScreenRecorderProcessOnDevice(IAndroidLogcatDevice device)
+        private void KillRemoteRecorder(IAndroidLogcatDevice device)
         {
+            if (device == null)
+                return;
             var pid = AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord");
             if (pid != -1)
                 AndroidLogcatUtilities.KillProcesss(m_Runtime.Tools.ADB, device, pid);
         }
 
-        internal void DeleteTempVideo()
+        private void DeleteVideoOnHost()
         {
-            if (File.Exists(VideoTempPath))
-                File.Delete(VideoTempPath);
+            try
+            {
+                if (File.Exists(VideoPathOnHost))
+                    File.Delete(VideoPathOnHost);
+            }
+            catch (Exception ex)
+            {
+                var msg = $"Failed to delete {VideoPathOnHost}\n{ex.Message}";
+                UnityEngine.Debug.LogWarning(msg);
+                AndroidLogcatInternalLog.Log(msg);
+            }
         }
 
-        internal void DeleteRecordingOnDevice(IAndroidLogcatDevice device)
+        private void DeleteVideoOnDevice(IAndroidLogcatDevice device)
         {
             try
             {
                 m_Runtime.Tools.ADB.Run(new[]
                 {
                     $"-s {device.Id}",
-                    $"shell rm {kVideoPathOnDevice}"
+                    $"shell rm {VideoPathOnDevice}"
                 }, "Failed to delete");
             }
             catch
@@ -102,7 +110,11 @@ namespace Unity.Android.Logcat
             return m_RecordingProcess != null;
         }
 
-        internal void StartRecording(IAndroidLogcatDevice device)
+        internal void StartRecording(IAndroidLogcatDevice device,
+            uint? videoSizeX = null,
+            uint? videoSizeY = null,
+            ulong? bitRate = null,
+            string displayId = null)
         {
             if (device == null)
                 throw new Exception("No device selected");
@@ -112,26 +124,26 @@ namespace Unity.Android.Logcat
 
             m_RecordingOnDevice = device;
 
-            KillScreenRecorderProcessOnDevice(m_RecordingOnDevice);
+            DeleteVideoOnHost();
+            KillRemoteRecorder(m_RecordingOnDevice);
 
             // If for some reason screen recorder is still running, abort.
-            if (IsAndroidScreenRecordingProcessActive(m_RecordingOnDevice))
+            if (IsRemoteRecorderActive(m_RecordingOnDevice))
             {
                 m_RecordingOnDevice = null;
-                throw new Exception("Android is already recording");
+                throw new Exception("screenrecord is already recording on the device, aborting...");
             }
 
-            DeleteRecordingOnDevice(m_RecordingOnDevice);
+            DeleteVideoOnDevice(m_RecordingOnDevice);
 
             var args = $"-s {m_RecordingOnDevice.Id} shell screenrecord";
-            var rs = m_Runtime.UserSettings.RecorderSettings;
-            if (rs.VideoSizeEnabled)
-                args += $" --size {rs.VideoSizeX}x{rs.VideoSizeY}";
-            if (rs.BitRateEnabled)
-                args += $" --bit-rate {rs.BitRate}";
-            if (rs.DisplayIdEnabled)
-                args += $" --display-id {rs.DisplayId}";
-            args += $" {kVideoPathOnDevice}";
+            if (videoSizeX != null && videoSizeY != null)
+                args += $" --size {videoSizeX}x{videoSizeY}";
+            if (bitRate != null)
+                args += $" --bit-rate {bitRate}";
+            if (displayId != null)
+                args += $" --display-id {displayId}";
+            args += $" {VideoPathOnDevice}";
 
             AndroidLogcatInternalLog.Log($"{m_Runtime.Tools.ADB.GetADBPath()} {args}");
 
@@ -153,6 +165,8 @@ namespace Unity.Android.Logcat
 
             m_RecordingProcess.BeginOutputReadLine();
             m_RecordingProcess.BeginErrorReadLine();
+
+            m_RecordingCheckTime = DateTime.Now;
         }
 
         private void OutputDataReceived(object sender, DataReceivedEventArgs e)
@@ -171,6 +185,9 @@ namespace Unity.Android.Logcat
                 m_RecordingProcess.Kill();
                 m_RecordingProcess.WaitForExit();
                 m_RecordingProcess.Close();
+
+                if (!CopyVideoFromDevice(m_RecordingOnDevice))
+                    KillRemoteRecorder(m_RecordingOnDevice);
             }
             finally
             {
@@ -185,20 +202,23 @@ namespace Unity.Android.Logcat
             m_RecordingOnDevice = null;
         }
 
-        internal void CopyRecordingFromDevice(IAndroidLogcatDevice device)
+        private bool CopyVideoFromDevice(IAndroidLogcatDevice device)
         {
+            if (device == null)
+                return false;
+
             try
             {
                 // Need to wait for Android Screen recording to finish up
                 // Otherwise the video will be incomplete
                 while (true)
                 {
-                    if (!IsAndroidScreenRecordingProcessActive(device))
+                    if (!IsRemoteRecorderActive(device))
                         break;
                     if (EditorUtility.DisplayCancelableProgressBar("Waiting for recording to finish", "Waiting for 'screenrecord' process to quit", 0.3f))
                     {
                         EditorUtility.ClearProgressBar();
-                        return;
+                        return false;
                     }
                     Thread.Sleep(500);
                 }
@@ -206,19 +226,21 @@ namespace Unity.Android.Logcat
                 // Give it a second to settle down
                 Thread.Sleep(1000);
 
-                EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {kVideoPathOnDevice} -> Temp/{Path.GetFileName(VideoTempPath)}", 0.6f);
+                EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {VideoPathOnDevice} -> Temp/{Path.GetFileName(VideoPathOnHost)}", 0.6f);
 
                 var msg = m_Runtime.Tools.ADB.Run(new[]
                 {
-                    $"-s {device.Id}",
-                    $"pull {kVideoPathOnDevice} \"{VideoTempPath}\""
+                    $"-s {m_RecordingOnDevice.Id}",
+                    $"pull {VideoPathOnDevice} \"{VideoPathOnHost}\""
                 }, "Failed to copy");
-                //m_Log.AppendLine(msg);
+                AndroidLogcatInternalLog.Log(msg);
             }
             finally
             {
                 EditorUtility.ClearProgressBar();
             }
+
+            return true;
         }
     }
 }

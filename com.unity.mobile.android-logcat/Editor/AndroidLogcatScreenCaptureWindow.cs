@@ -167,6 +167,17 @@ namespace Unity.Android.Logcat
                 m_ScreenCapture.DoGUI(rc);
             }
             EditorGUILayout.EndVertical();
+
+            /*
+                        var rs = m_Runtime.UserSettings.RecorderSettings;
+                        if (rs.VideoSizeEnabled)
+                            args += $" --size {rs.VideoSizeX}x{rs.VideoSizeY}";
+                        if (rs.BitRateEnabled)
+                            args += $" --bit-rate {rs.BitRate}";
+                        if (rs.DisplayIdEnabled)
+                            args += $" --display-id {rs.DisplayId}";
+                        args += $" {kVideoPathOnDevice}";
+            */
         }
     }
 }
