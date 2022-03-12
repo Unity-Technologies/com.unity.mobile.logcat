@@ -18,10 +18,9 @@ namespace Unity.Android.Logcat
         private StringBuilder m_RecordingProcessErrors;
         private IAndroidLogcatDevice m_RecordingOnDevice;
         private double m_RecordingCheckTime;
-
-        internal string RecordingSavePath => VideoTempPath;
         internal string Errors => m_RecordingProcessErrors != null ? m_RecordingProcessErrors.ToString() : string.Empty;
         internal IAndroidLogcatDevice RecordingOnDevice => m_RecordingOnDevice;
+        internal string VideoPath => VideoTempPath;
 
         internal AndroidLogcatCaptureVideo(AndroidLogcatRuntimeBase runtime)
         {
@@ -32,7 +31,7 @@ namespace Unity.Android.Logcat
 
         private void Cleanup()
         {
-            if (m_RecordingOnDevice == null)
+            if (m_RecordingOnDevice == null || m_Runtime == null)
                 return;
             // Cache, since StopRecording will clear m_RecordingOnDevice
             var device = m_RecordingOnDevice;
@@ -40,6 +39,7 @@ namespace Unity.Android.Logcat
             DeleteRecordingOnDevice(device);
             DeleteTempVideo();
             KillScreenRecorderProcessOnDevice(device);
+            m_Runtime = null;
         }
 
         private void Update()
@@ -63,7 +63,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private bool IsAndroidScreenRecordingProcessActive(IAndroidLogcatDevice device)
+        internal bool IsAndroidScreenRecordingProcessActive(IAndroidLogcatDevice device)
         {
             return AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord") != -1;
         }
