@@ -73,6 +73,9 @@ namespace Unity.Android.Logcat
                 return Rect.zero;
             }
 
+            if (m_Player.width == 0 || m_Player.height == 0)
+                return Rect.zero;
+
             float aspect = (float)m_Player.width / (float)m_Player.height;
             var rc = GUILayoutUtility.GetAspectRect(aspect);
             Rect r1, r2;
@@ -119,9 +122,9 @@ namespace Unity.Android.Logcat
                 DoVideoInfoGUI(rc);
             }
             else
+            {
                 EditorGUILayout.HelpBox("No video to show.", MessageType.Info);
-
-
+            }
         }
     }
 }

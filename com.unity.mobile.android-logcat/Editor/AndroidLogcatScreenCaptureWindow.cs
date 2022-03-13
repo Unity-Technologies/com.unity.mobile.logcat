@@ -196,6 +196,7 @@ namespace Unity.Android.Logcat
                 EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
             else
                 DoPreviewGUI();
+
             EditorGUILayout.EndVertical();
         }
 
@@ -348,7 +349,6 @@ namespace Unity.Android.Logcat
                         EditorGUILayout.HelpBox($"Recording{new String('.', (int)(Time.realtimeSinceStartup * 3) % 4 + 1)}\nClick Stop to stop the recording.", MessageType.Info);
                         break;
                     }
-
                     if (m_CaptureVideo.Errors.Length > 0)
                     {
                         DoVideoErrorsGUI();
