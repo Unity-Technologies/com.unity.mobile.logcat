@@ -37,6 +37,7 @@ You can use the **Screen Capture** button on the toolbar to capture:
 #### Overriding defaults
 
 You can override the following settings for the **screenrecord** by toggling them:
+* **Time Limit** - time limit in seconds, if not overriden - time limit is 180 seconds.
 * **Video Size** - if not overriden, device's main display resolution will be used as video size
 * **Bit Rate** - if not overriden, the default bit rate is 20000000 bits per second.
 * **Display Id** - if not overriden, the default display used is the primary display, to get display ids, execute **adb shell dumpsys SurfaceFlinger --display-id** in the terminal. 

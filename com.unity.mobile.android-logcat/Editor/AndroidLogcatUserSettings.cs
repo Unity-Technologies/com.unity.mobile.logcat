@@ -14,6 +14,10 @@ namespace Unity.Android.Logcat
         internal class VideoSettings
         {
             [SerializeField]
+            internal bool TimeLimitEnabled;
+            [SerializeField]
+            internal uint TimeLimit;
+            [SerializeField]
             internal bool VideoSizeEnabled;
             [SerializeField]
             internal uint VideoSizeX;
@@ -273,10 +277,12 @@ namespace Unity.Android.Logcat
 
             m_CaptureVideoSettings = new VideoSettings
             {
+                TimeLimitEnabled = false,
                 BitRateEnabled = false,
                 DisplayIdEnabled = false,
                 VideoSizeEnabled = false,
 
+                TimeLimit = 180,
                 BitRate = 4000000,
                 VideoSizeX = 1280,
                 VideoSizeY = 720,

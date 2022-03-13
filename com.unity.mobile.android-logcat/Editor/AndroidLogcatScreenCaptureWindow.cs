@@ -11,6 +11,7 @@ namespace Unity.Android.Logcat
         class Styles
         {
             // Note: Info acquired from adb shell screenrecord --help
+            public static GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
             public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
             public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit reate, the default is 20000000 bits.");
             public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs.");
@@ -153,15 +154,21 @@ namespace Unity.Android.Logcat
 
         private void QueueScreenCapture()
         {
-            m_CaptureScreenshot.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnCompleted);
+            m_CaptureScreenshot.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnScreenshotCompleted);
         }
 
-        void OnCompleted()
+        void OnScreenshotCompleted()
         {
             var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
                 maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
             Repaint();
+        }
+
+        void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result)
+        {
+            if (result == AndroidLogcatCaptureVideo.Result.Success)
+                m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
         }
 
         private void DoSelectedDeviceGUI()
@@ -259,18 +266,23 @@ namespace Unity.Android.Logcat
                         if (GUILayout.Button(Styles.StopVideo, AndroidLogcatStyles.toolbarButton))
                         {
                             m_CaptureVideo.StopRecording();
-                            m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
                         }
                     }
                     else
                     {
                         if (GUILayout.Button(Styles.CaptureVideo, AndroidLogcatStyles.toolbarButton))
                         {
+                            TimeSpan? timeLimit = null;
                             uint? videoSizeX = null;
                             uint? videoSizeY = null;
                             ulong? bitRate = null;
                             string displayId = null;
                             var vs = m_Runtime.UserSettings.CaptureVideoSettings;
+
+                            if (vs.TimeLimitEnabled)
+                            {
+                                timeLimit = TimeSpan.FromSeconds(vs.TimeLimit);
+                            }
                             if (vs.VideoSizeEnabled)
                             {
                                 videoSizeX = vs.VideoSizeX;
@@ -282,7 +294,7 @@ namespace Unity.Android.Logcat
                             if (vs.DisplayIdEnabled)
                                 displayId = vs.DisplayId;
 
-                            m_CaptureVideo.StartRecording(SelectedDevice, videoSizeX, videoSizeY, bitRate, displayId);
+                            m_CaptureVideo.StartRecording(SelectedDevice, OnVideoCompleted, timeLimit, videoSizeX, videoSizeY, bitRate, displayId);
                         }
                     }
                     break;
@@ -368,6 +380,15 @@ namespace Unity.Android.Logcat
             var width = 100;
             EditorGUILayout.LabelField("Toggle to override recorder settings", EditorStyles.boldLabel);
 
+            // Time Limit
+            EditorGUILayout.BeginHorizontal();
+            rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            EditorGUI.BeginDisabledGroup(!rs.TimeLimitEnabled);
+            rs.TimeLimit = Math.Max(5, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.TimeLimit));
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
+            // Video Size
             EditorGUILayout.BeginHorizontal();
             rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
             EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
