@@ -11,7 +11,7 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatUserSettings
     {
         [Serializable]
-        internal class ScreenRecorderSettings
+        internal class VideoSettings
         {
             [SerializeField]
             internal bool VideoSizeEnabled;
@@ -47,7 +47,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
         [SerializeField]
-        private ScreenRecorderSettings m_ScreenRecorderSettings;
+        private VideoSettings m_CaptureVideoSettings;
 
         public string LastSelectedDeviceId
         {
@@ -103,7 +103,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public ScreenRecorderSettings RecorderSettings { set => m_ScreenRecorderSettings = value; get => m_ScreenRecorderSettings; }
+        public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
 
 
         private void RefreshPackagesForSerialization()
@@ -271,7 +271,7 @@ namespace Unity.Android.Logcat
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
 
-            m_ScreenRecorderSettings = new ScreenRecorderSettings
+            m_CaptureVideoSettings = new VideoSettings
             {
                 BitRateEnabled = false,
                 DisplayIdEnabled = false,

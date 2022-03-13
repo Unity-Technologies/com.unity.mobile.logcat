@@ -2,9 +2,6 @@ using System;
 using UnityEngine;
 using UnityEditor;
 using System.IO;
-using System.Diagnostics;
-using System.Text;
-using System.Threading;
 
 namespace Unity.Android.Logcat
 {

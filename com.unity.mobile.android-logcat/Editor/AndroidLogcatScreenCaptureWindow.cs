@@ -8,6 +8,19 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
+        class Styles
+        {
+            // Note: Info acquired from adb shell screenrecord --help
+            public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
+            public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit reate, the default is 20000000 bits.");
+            public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs.");
+            public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
+            public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
+            public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
+            public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
+            public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
+            public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
+        }
         private enum Mode
         {
             Screenshot,
@@ -84,6 +97,8 @@ namespace Unity.Android.Logcat
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
+            if (File.Exists(m_CaptureVideo.VideoPath))
+                m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
 
             OnDevicesUpdated();
             ResolveSelectedDeviceIndex();
@@ -181,17 +196,6 @@ namespace Unity.Android.Logcat
             else
                 DoPreviewGUI();
             EditorGUILayout.EndVertical();
-
-            /*
-                        var rs = m_Runtime.UserSettings.RecorderSettings;
-                        if (rs.VideoSizeEnabled)
-                            args += $" --size {rs.VideoSizeX}x{rs.VideoSizeY}";
-                        if (rs.BitRateEnabled)
-                            args += $" --bit-rate {rs.BitRate}";
-                        if (rs.DisplayIdEnabled)
-                            args += $" --display-id {rs.DisplayId}";
-                        args += $" {kVideoPathOnDevice}";
-            */
         }
 
         private void DoToolbarGUI()
@@ -244,14 +248,14 @@ namespace Unity.Android.Logcat
             {
                 case Mode.Screenshot:
                     EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.IsCapturing);
-                    if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
+                    if (GUILayout.Button(Styles.CaptureScreenshot, AndroidLogcatStyles.toolbarButton))
                         QueueScreenCapture();
                     EditorGUI.EndDisabledGroup();
                     break;
                 case Mode.Video:
                     if (m_CaptureVideo.IsRecording)
                     {
-                        if (GUILayout.Button("Stop", AndroidLogcatStyles.toolbarButton))
+                        if (GUILayout.Button(Styles.StopVideo, AndroidLogcatStyles.toolbarButton))
                         {
                             m_CaptureVideo.StopRecording();
                             m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
@@ -259,10 +263,25 @@ namespace Unity.Android.Logcat
                     }
                     else
                     {
-                        if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
+                        if (GUILayout.Button(Styles.CaptureVideo, AndroidLogcatStyles.toolbarButton))
                         {
-                            // TODO settings;
-                            m_CaptureVideo.StartRecording(SelectedDevice);
+                            uint? videoSizeX = null;
+                            uint? videoSizeY = null;
+                            ulong? bitRate = null;
+                            string displayId = null;
+                            var vs = m_Runtime.UserSettings.CaptureVideoSettings;
+                            if (vs.VideoSizeEnabled)
+                            {
+                                videoSizeX = vs.VideoSizeX;
+                                videoSizeY = vs.VideoSizeY;
+                            }
+
+                            if (vs.BitRateEnabled)
+                                bitRate = vs.BitRate;
+                            if (vs.DisplayIdEnabled)
+                                displayId = vs.DisplayId;
+
+                            m_CaptureVideo.StartRecording(SelectedDevice, videoSizeX, videoSizeY, bitRate, displayId);
                         }
                     }
                     break;
@@ -272,7 +291,7 @@ namespace Unity.Android.Logcat
         private void DoOpenGUI()
         {
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
-            if (GUILayout.Button("Open", AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
                 Application.OpenURL(TemporaryPath);
             EditorGUI.EndDisabledGroup();
         }
@@ -280,7 +299,7 @@ namespace Unity.Android.Logcat
         private void DoSaveAsGUI()
         {
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
-            if (GUILayout.Button("Save As", AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
             {
                 var length = Enum.GetValues(typeof(Mode)).Length;
                 if (m_ImagePath == null || m_ImagePath.Length != length)
@@ -319,12 +338,68 @@ namespace Unity.Android.Logcat
                     }
                     break;
                 case Mode.Video:
-                    m_VideoPlayer.DoGUI();
-                    if (m_VideoPlayer.IsPlaying())
-                        Repaint();
-                    // TODO:
+                    DoVideoSettingsGUI();
+                    GUILayout.Space(5);
+                    if (IsCapturing)
+                    {
+                        EditorGUILayout.HelpBox($"Recording{new String('.', (int)(Time.realtimeSinceStartup * 3) % 4 + 1)}\nClick Stop to stop the recording.", MessageType.Info);
+                        break;
+                    }
+
+                    if (m_CaptureVideo.Errors.Length > 0)
+                    {
+                        DoVideoErrorsGUI();
+                    }
+                    else
+                    {
+                        m_VideoPlayer.DoGUI();
+                        if (m_VideoPlayer.IsPlaying())
+                            Repaint();
+                    }
                     break;
             }
+        }
+
+        void DoVideoSettingsGUI()
+        {
+            var rs = m_Runtime.UserSettings.CaptureVideoSettings;
+            var width = 100;
+            EditorGUILayout.LabelField("Toggle to override recorder settings", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
+            rs.VideoSizeX = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeX));
+            rs.VideoSizeY = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeY));
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
+            // Bit Rate
+            EditorGUILayout.BeginHorizontal();
+            rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            EditorGUI.BeginDisabledGroup(!rs.BitRateEnabled);
+            rs.BitRate = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRate));
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
+            // Display Id
+            EditorGUILayout.BeginHorizontal();
+            rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            EditorGUI.BeginDisabledGroup(!rs.DisplayIdEnabled);
+            rs.DisplayId = EditorGUILayout.TextField(GUIContent.none, rs.DisplayId);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        void DoVideoErrorsGUI()
+        {
+            var boxRect = GUILayoutUtility.GetLastRect();
+            var oldColor = GUI.color;
+            GUI.color = Color.grey;
+            GUI.Box(new Rect(0, boxRect.y + boxRect.height, Screen.width, Screen.height), GUIContent.none);
+            GUI.color = oldColor;
+            EditorGUILayout.Space(20);
+            EditorGUILayout.HelpBox(m_CaptureVideo.Errors, MessageType.Error);
         }
     }
 }

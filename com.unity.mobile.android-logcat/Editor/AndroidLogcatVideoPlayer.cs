@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -93,10 +96,32 @@ namespace Unity.Android.Logcat
             return videoRect;
         }
 
+        private void DoVideoInfoGUI(Rect rc)
+        {
+            var v = m_Player;
+            var info = new List<string>();
+            info.Add($" Dimensions: {v.width} x {v.height}");
+            info.Add($" Length: {v.length:0.00} seconds.");
+            info.Add($" Frame Count: {v.frameCount}");
+            info.Add($" Frame: {v.frame}");
+
+            var infoRC = new Rect(Screen.width - 200, rc.y, 200, info.Count * 19);
+            GUI.Box(infoRC, GUIContent.none, GUI.skin.window);
+            GUI.Label(infoRC, string.Join("\n", info));
+        }
+
         public void DoGUI()
         {
+            var rc = GetVideoRect();
             if (m_Player != null && m_Player.texture != null)
-                GUI.DrawTexture(GetVideoRect(), m_Player.texture);
+            {
+                GUI.DrawTexture(rc, m_Player.texture);
+                DoVideoInfoGUI(rc);
+            }
+            else
+                EditorGUILayout.HelpBox("No video to show.", MessageType.Info);
+
+
         }
     }
 }

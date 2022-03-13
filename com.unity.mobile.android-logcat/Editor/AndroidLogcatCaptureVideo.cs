@@ -52,7 +52,7 @@ namespace Unity.Android.Logcat
                 m_RecordingCheckTime = currentTime;
                 if (m_RecordingProcess.HasExited)
                 {
-                    m_RecordingProcessErrors.AppendLine($"Process 'adb shell screenrecord' has exited with code {m_RecordingProcess.ExitCode}.");
+                    m_RecordingProcessErrors.AppendLine($"Process 'adb {m_RecordingProcess.StartInfo.Arguments}' has exited with code {m_RecordingProcess.ExitCode}.");
                     m_RecordingProcessErrors.AppendLine();
                     m_RecordingProcessErrors.AppendLine(m_RecordingProcessLog.ToString());
                     ClearRecordingData();
