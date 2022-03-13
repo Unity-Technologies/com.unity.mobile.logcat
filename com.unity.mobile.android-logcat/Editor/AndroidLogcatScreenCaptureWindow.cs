@@ -82,8 +82,7 @@ namespace Unity.Android.Logcat
 
         public static void ShowWindow()
         {
-            AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
-            win.QueueScreenCapture();
+            GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
         }
 
         private void OnEnable()
