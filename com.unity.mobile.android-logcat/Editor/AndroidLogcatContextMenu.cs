@@ -20,7 +20,6 @@ namespace Unity.Android.Logcat
     {
         None,
         ScreenCapture,
-        ScreenRecorder,
         OpenTerminal,
         StacktraceUtility,
         MemoryBehaviorAuto,

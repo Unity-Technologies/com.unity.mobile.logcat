@@ -99,6 +99,7 @@ namespace Unity.Android.Logcat
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
             if (File.Exists(m_CaptureVideo.VideoPath))
                 m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
             OnDevicesUpdated();
             ResolveSelectedDeviceIndex();
@@ -191,7 +192,7 @@ namespace Unity.Android.Logcat
             DoToolbarGUI();
 
             GUILayout.Space(10);
-            if (m_Runtime.DeviceQuery.SelectedDevice == null)
+            if (SelectedDevice == null)
                 EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
             else
                 DoPreviewGUI();
@@ -338,6 +339,8 @@ namespace Unity.Android.Logcat
                     }
                     break;
                 case Mode.Video:
+                    if (Unsupported.IsDeveloperMode())
+                        m_CaptureVideo.DoDebuggingGUI();
                     DoVideoSettingsGUI();
                     GUILayout.Space(5);
                     if (IsCapturing)

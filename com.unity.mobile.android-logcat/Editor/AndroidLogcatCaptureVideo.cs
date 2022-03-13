@@ -239,5 +239,31 @@ namespace Unity.Android.Logcat
 
             return true;
         }
+
+        internal void DoDebuggingGUI()
+        {
+            GUILayout.Label("Developer Mode is on, showing debugging buttons:", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+            if (GUILayout.Button("Delete recording on device", AndroidLogcatStyles.toolbarButton))
+            {
+                DeleteVideoOnDevice(m_RecordingOnDevice);
+            }
+            if (GUILayout.Button("Delete recording on host", AndroidLogcatStyles.toolbarButton))
+            {
+                DeleteVideoOnHost();
+            }
+            if (GUILayout.Button("Get screen record pid", AndroidLogcatStyles.toolbarButton))
+            {
+                var pid = AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, m_Runtime.DeviceQuery.SelectedDevice, "screenrecord");
+                UnityEngine.Debug.Log("screen record pid is " + pid);
+            }
+
+            if (GUILayout.Button("Copy Recording from device", AndroidLogcatStyles.toolbarButton))
+                CopyVideoFromDevice(m_RecordingOnDevice);
+
+
+            EditorGUILayout.EndHorizontal();
+        }
+
     }
 }
