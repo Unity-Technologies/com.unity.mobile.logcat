@@ -10,8 +10,8 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatCaptureVideo
     {
-        private readonly string VideoPathOnDevice = "/sdcard/logcat_video.mp4";
-        private readonly string VideoPathOnHost = Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
+        internal static readonly string VideoPathOnDevice = "/sdcard/logcat_video.mp4";
+        internal static readonly string VideoPathOnHost = Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
         private AndroidLogcatRuntimeBase m_Runtime;
         private Process m_RecordingProcess;
         private StringBuilder m_RecordingProcessLog;
@@ -185,6 +185,8 @@ namespace Unity.Android.Logcat
 
                 if (!CopyVideoFromDevice(m_RecordingOnDevice))
                     KillRemoteRecorder(m_RecordingOnDevice);
+
+                DeleteVideoOnDevice(m_RecordingOnDevice);
             }
             finally
             {

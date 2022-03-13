@@ -5,6 +5,8 @@ using UnityEditor;
 using Unity.Android.Logcat;
 using System.Collections;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 internal class AndroidLogcatIntegrationTestBase
 {
@@ -121,5 +123,66 @@ internal class AndroidLogcatIntegrationTestBase
         var path = Path.Combine(root, name);
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    protected IReadOnlyList<string> GetContentsOnDevice(string path)
+    {
+        var result = Runtime.Tools.ADB.Run(new[] { "shell", "ls", path }, $"Couldn't get contents in '{path}'");
+        return result.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+    }
+
+    protected bool FileExistsOnDevice(string path)
+    {
+        try
+        {
+            var result = Runtime.Tools.ADB.Run(new[] { "shell", "ls", path }, $"Couldn't query '{path}'");
+            return path.Equals(result);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    protected void AssertFileExistanceOnDevice(string path, bool shouldExist)
+    {
+        if (shouldExist)
+            Assert.IsTrue(FileExistsOnDevice(path), $"File {path} should exist");
+        else
+            Assert.IsFalse(FileExistsOnDevice(path), $"File {path} shouldn't exist");
+    }
+
+    protected void AssertFileExistanceOnHost(string path, bool shouldExist)
+    {
+        if (shouldExist)
+            Assert.IsTrue(File.Exists(path), $"File {path} should exist");
+        else
+            Assert.IsFalse(File.Exists(path), $"File {path} shouldn't exist");
+    }
+
+
+    protected void SafeDeleteOnDevice(IAndroidLogcatDevice device, string path)
+    {
+        try
+        {
+            m_Runtime.Tools.ADB.Run(new[]
+            {
+                    $"-s {device.Id}",
+                    $"shell rm {path}"
+                }, $"Failed to delete {path}");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    protected void SafeDeleteOnHost(string path)
+    {
+        if (File.Exists(path))
+            File.Delete(path);
+        if (Directory.Exists(path))
+            Directory.Delete(path, true);
     }
 }

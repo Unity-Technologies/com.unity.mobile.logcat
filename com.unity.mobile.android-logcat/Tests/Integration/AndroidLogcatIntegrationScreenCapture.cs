@@ -10,6 +10,13 @@ using System.IO;
 [RequiresAndroidDevice]
 internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatIntegrationTestBase
 {
+    [OneTimeSetUp]
+    protected void Init()
+    {
+        SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
+        SafeDeleteOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost);
+    }
+
     [UnityTest]
     public IEnumerator CanGetScreenshot()
     {
@@ -33,7 +40,13 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     [UnityTest]
     public IEnumerator CanGetVideo()
     {
+        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
+        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, false);
+
         Runtime.CaptureVideo.StartRecording(Device);
+
+        // Starting recording without stoping previous one, should throw
+        Assert.Throws(typeof(Exception), () => Runtime.CaptureVideo.StartRecording(Device));
 
         yield return WaitForCondition("Waiting for Android's screenrecord to become active",
             () => Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
@@ -43,10 +56,16 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         var result = Runtime.CaptureVideo.StopRecording();
         Assert.IsTrue(result, "Failed to stop the recording");
 
+        result = Runtime.CaptureVideo.StopRecording();
+        Assert.IsFalse(result, "StopRecording should return false, since it was already stopped");
+
         yield return WaitForCondition("Waiting for Android's screenrecord to quit",
             () => !Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
 
-        Assert.IsTrue(File.Exists(Runtime.CaptureVideo.VideoPath));
+        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
+        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, true);
+
         File.Copy(Runtime.CaptureVideo.VideoPath, Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
+
     }
 }
