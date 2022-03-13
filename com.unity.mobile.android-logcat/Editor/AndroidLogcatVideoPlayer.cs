@@ -18,10 +18,10 @@ namespace Unity.Android.Logcat
             m_PlayerGO = GameObject.Find(name);
             if (m_PlayerGO == null)
             {
-                m_PlayerGO = new GameObject(name);
-                //TODO
-                //go.hideFlags = HideFlags.HideAndDontSave;
-                m_PlayerGO.hideFlags = HideFlags.DontSave;
+                m_PlayerGO = new GameObject(name)
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
             }
 
             m_Player = m_PlayerGO.GetComponent<VideoPlayer>();
