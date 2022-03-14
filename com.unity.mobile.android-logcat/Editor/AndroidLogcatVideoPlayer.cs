@@ -29,6 +29,14 @@ namespace Unity.Android.Logcat
                 m_Player = m_PlayerGO.AddComponent<VideoPlayer>();
             m_Player.renderMode = VideoRenderMode.APIOnly;
             m_Player.isLooping = true;
+            m_Player.errorReceived += ErrorReceived;
+        }
+
+        private void ErrorReceived(VideoPlayer source, string message)
+        {
+            // Stop video manually, otherwise it will spam Editor console.
+            AndroidLogcatInternalLog.Log($"Error received while playing video, stopping video.\n{message}");
+            source.Stop();
         }
 
         public void Dispose()
