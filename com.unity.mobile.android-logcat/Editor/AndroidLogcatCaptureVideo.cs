@@ -44,7 +44,7 @@ namespace Unity.Android.Logcat
             StopRecording();
             DeleteVideoOnDevice(device);
             DeleteVideoOnHost();
-            KillRemoteRecorder(device);
+            KillRemoteRecorder(m_Runtime, device);
             m_Runtime = null;
         }
 
@@ -94,13 +94,13 @@ namespace Unity.Android.Logcat
             return AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord") != -1;
         }
 
-        private void KillRemoteRecorder(IAndroidLogcatDevice device)
+        internal static void KillRemoteRecorder(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device)
         {
             if (device == null)
                 return;
-            var pid = AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord");
+            var pid = AndroidLogcatUtilities.GetPidFromPackageName(runtime.Tools.ADB, device, "screenrecord");
             if (pid != -1)
-                AndroidLogcatUtilities.KillProcesss(m_Runtime.Tools.ADB, device, pid);
+                AndroidLogcatUtilities.KillProcesss(runtime.Tools.ADB, device, pid);
         }
 
         private void DeleteVideoOnHost()
@@ -155,7 +155,7 @@ namespace Unity.Android.Logcat
             m_RecordingOnDevice = device;
 
             DeleteVideoOnHost();
-            KillRemoteRecorder(m_RecordingOnDevice);
+            KillRemoteRecorder(m_Runtime, m_RecordingOnDevice);
 
             // If for some reason screen recorder is still running, abort.
             if (IsRemoteRecorderActive(m_RecordingOnDevice))
@@ -248,7 +248,7 @@ namespace Unity.Android.Logcat
             if (!CopyVideoFromDevice(m_RecordingOnDevice))
             {
                 result = false;
-                KillRemoteRecorder(m_RecordingOnDevice);
+                KillRemoteRecorder(m_Runtime, m_RecordingOnDevice);
             }
 
             DeleteVideoOnDevice(m_RecordingOnDevice);

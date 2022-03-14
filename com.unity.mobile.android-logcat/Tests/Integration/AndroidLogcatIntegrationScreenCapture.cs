@@ -13,6 +13,19 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     [SetUp]
     protected void Init()
     {
+        Cleanup();
+    }
+
+    [TearDown]
+    protected void Deinit()
+    {
+        Cleanup();
+    }
+
+    private void Cleanup()
+    {
+        // Need to kill screen recorder before attempting to delete files
+        AndroidLogcatCaptureVideo.KillRemoteRecorder(Runtime, Device);
         SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
         SafeDeleteOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost);
     }
@@ -50,7 +63,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         });
 
         // Starting recording without stoping previous one, should throw
-        Assert.Throws(typeof(Exception), () => Runtime.CaptureVideo.StartRecording(Device, null));
+        Assert.Throws(typeof(InvalidOperationException), () => Runtime.CaptureVideo.StartRecording(Device, null));
 
         yield return WaitForCondition("Waiting for Android's screenrecord to become active",
             () => Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
