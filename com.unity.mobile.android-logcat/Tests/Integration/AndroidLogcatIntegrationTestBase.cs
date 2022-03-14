@@ -132,25 +132,13 @@ internal class AndroidLogcatIntegrationTestBase
             .ToList();
     }
 
-    protected bool FileExistsOnDevice(string path)
-    {
-        try
-        {
-            var result = Runtime.Tools.ADB.Run(new[] { "shell", "ls", path }, $"Couldn't query '{path}'");
-            return path.Equals(result);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     protected void AssertFileExistanceOnDevice(string path, bool shouldExist)
     {
+        var exists = AndroidLogcatUtilities.FileExists(m_Runtime, Device, path);
         if (shouldExist)
-            Assert.IsTrue(FileExistsOnDevice(path), $"File {path} should exist");
+            Assert.IsTrue(exists, $"File {path} should exist");
         else
-            Assert.IsFalse(FileExistsOnDevice(path), $"File {path} shouldn't exist");
+            Assert.IsFalse(exists, $"File {path} shouldn't exist");
     }
 
     protected void AssertFileExistanceOnHost(string path, bool shouldExist)
@@ -160,7 +148,6 @@ internal class AndroidLogcatIntegrationTestBase
         else
             Assert.IsFalse(File.Exists(path), $"File {path} shouldn't exist");
     }
-
 
     protected void SafeDeleteOnDevice(IAndroidLogcatDevice device, string path)
     {

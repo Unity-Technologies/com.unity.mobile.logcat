@@ -59,27 +59,32 @@ namespace Unity.Android.Logcat
                 m_RecordingCheckTime = currentTime;
                 if (m_RecordingProcess.HasExited)
                 {
-                    // screendrecord has quit without errors, for ex., hit a time limit
+
+
+                    var result = Result.Failure;
+                    // screenrecord has quit without errors, for ex., hit a time limit
+                    // Note: On Google Pixel with Android 11 if screenrecord fails - our process exits with non zero exit code, but
+                    //       On Cube U83 with Android 6 if screenrecord fails - process exits with 0 exit code, thus we additionally check if we were able to collect the recording
                     if (m_RecordingProcess.ExitCode == 0)
                     {
-                        try
-                        {
-                            CollectRecording();
-                        }
-                        finally
-                        {
-                            m_OnStopRecording?.Invoke(Result.Success);
-                            ClearRecordingData();
-                        }
+                        if (CollectRecording())
+                            result = Result.Success;
+
                     }
-                    else
+
+                    var title = $"Process 'adb {m_RecordingProcess.StartInfo.Arguments}' has exited with code {m_RecordingProcess.ExitCode}.";
+
+                    if (result == Result.Failure)
                     {
-                        m_RecordingProcessErrors.AppendLine($"Process 'adb {m_RecordingProcess.StartInfo.Arguments}' has exited with code {m_RecordingProcess.ExitCode}.");
+                        m_RecordingProcessErrors.AppendLine(title);
                         m_RecordingProcessErrors.AppendLine();
                         m_RecordingProcessErrors.AppendLine(m_RecordingProcessLog.ToString());
-                        m_OnStopRecording?.Invoke(Result.Failure);
-                        ClearRecordingData();
                     }
+                    AndroidLogcatInternalLog.Log(title);
+                    AndroidLogcatInternalLog.Log(m_RecordingProcessLog.ToString());
+
+                    m_OnStopRecording?.Invoke(result);
+                    ClearRecordingData();
                 }
             }
         }
@@ -215,7 +220,11 @@ namespace Unity.Android.Logcat
                 m_RecordingProcess.WaitForExit();
                 m_RecordingProcess.Close();
 
-                CollectRecording();
+                if (!CollectRecording())
+                {
+                    m_RecordingProcessErrors.AppendLine($"Failed to collect the recording '{VideoPathOnDevice}' -> '{VideoPathOnHost}'");
+                    result = Result.Failure;
+                }
             }
             catch (Exception ex)
             {
@@ -232,12 +241,17 @@ namespace Unity.Android.Logcat
             return result == Result.Success;
         }
 
-        private void CollectRecording()
+        private bool CollectRecording()
         {
+            var result = true;
             if (!CopyVideoFromDevice(m_RecordingOnDevice))
+            {
+                result = false;
                 KillRemoteRecorder(m_RecordingOnDevice);
+            }
 
             DeleteVideoOnDevice(m_RecordingOnDevice);
+            return result;
         }
 
         private void ClearRecordingData()
@@ -273,12 +287,20 @@ namespace Unity.Android.Logcat
 
                 EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {VideoPathOnDevice} -> Temp/{Path.GetFileName(VideoPathOnHost)}", 0.6f);
 
-                var msg = m_Runtime.Tools.ADB.Run(new[]
+                try
                 {
-                    $"-s {m_RecordingOnDevice.Id}",
-                    $"pull {VideoPathOnDevice} \"{VideoPathOnHost}\""
-                }, "Failed to copy");
-                AndroidLogcatInternalLog.Log(msg);
+                    var msg = m_Runtime.Tools.ADB.Run(new[]
+                    {
+                        $"-s {m_RecordingOnDevice.Id}",
+                        $"pull {VideoPathOnDevice} \"{VideoPathOnHost}\""
+                    }, "Failed to copy");
+                    AndroidLogcatInternalLog.Log(msg);
+                }
+                catch (Exception ex)
+                {
+                    AndroidLogcatInternalLog.Log(ex.Message);
+                    return false;
+                }
             }
             finally
             {

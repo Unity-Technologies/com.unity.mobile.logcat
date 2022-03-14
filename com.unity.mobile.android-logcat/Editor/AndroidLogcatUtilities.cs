@@ -504,5 +504,18 @@ namespace Unity.Android.Logcat
         {
             return value.Replace("/", " \u2215");
         }
+
+        internal static bool FileExists(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device, string path)
+        {
+            try
+            {
+                var result = runtime.Tools.ADB.Run(new[] { $"-s {device.Id}", "shell", "ls", path }, $"Couldn't query '{path}'");
+                return path.Equals(result);
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }
