@@ -46,5 +46,6 @@ You can override the following settings for the **screenrecord** by toggling the
 * **screenrecord** doesn't capture sound, only image is captured
 * Logcat package uses Unity's video player for the video preview, you might see **WindowsVideoMedia** warnings in Editor console if your host OS is Windows, since displayed video is not processed
 * If you're capturing a static image, the video will contain only one frame and be a zero length video
+* **Chrome OS**: you can only capture the video from the sandboxed app, meaning which you install manually via adb or Unity. You cannot capture video from desktop or builtin apps.
 
 ![Device Screen Capture](images/capture_video.png)
