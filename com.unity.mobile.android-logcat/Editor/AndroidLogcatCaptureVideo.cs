@@ -120,6 +120,7 @@ namespace Unity.Android.Logcat
 
         private void DeleteVideoOnDevice(IAndroidLogcatDevice device)
         {
+            AndroidLogcatInternalLog.Log($"Clean '{VideoPathOnDevice}'");
             try
             {
                 m_Runtime.Tools.ADB.Run(new[]
@@ -130,7 +131,7 @@ namespace Unity.Android.Logcat
             }
             catch
             {
-                // ignored
+                // Ignore cases where file doesn't exist
             }
         }
 
@@ -145,10 +146,10 @@ namespace Unity.Android.Logcat
             string displayId = null)
         {
             if (device == null)
-                throw new Exception("No device selected");
+                throw new InvalidOperationException("No device selected");
 
             if (m_RecordingProcess != null)
-                throw new Exception("Already recording");
+                throw new InvalidOperationException("Already recording");
 
             m_OnStopRecording = onStopRecording;
             m_RecordingOnDevice = device;
@@ -160,7 +161,7 @@ namespace Unity.Android.Logcat
             if (IsRemoteRecorderActive(m_RecordingOnDevice))
             {
                 m_RecordingOnDevice = null;
-                throw new Exception("screenrecord is already recording on the device, aborting...");
+                throw new InvalidOperationException("screenrecord is already recording on the device, aborting...");
             }
 
             DeleteVideoOnDevice(m_RecordingOnDevice);
@@ -279,11 +280,8 @@ namespace Unity.Android.Logcat
                         EditorUtility.ClearProgressBar();
                         return false;
                     }
-                    Thread.Sleep(500);
+                    Thread.Sleep(100);
                 }
-
-                // Give it a second to settle down
-                Thread.Sleep(1000);
 
                 EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {VideoPathOnDevice} -> Temp/{Path.GetFileName(VideoPathOnHost)}", 0.6f);
 
