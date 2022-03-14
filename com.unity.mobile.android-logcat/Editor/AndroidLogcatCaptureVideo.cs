@@ -126,12 +126,12 @@ namespace Unity.Android.Logcat
                 m_Runtime.Tools.ADB.Run(new[]
                 {
                     $"-s {device.Id}",
-                    $"shell rm {VideoPathOnDevice}"
+                    $"shell rm -f {VideoPathOnDevice}"
                 }, "Failed to delete");
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore cases where file doesn't exist
+                AndroidLogcatInternalLog.Log(ex.ToString());
             }
         }
 
