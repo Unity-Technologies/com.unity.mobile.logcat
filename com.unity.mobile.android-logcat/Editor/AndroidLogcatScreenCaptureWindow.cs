@@ -395,7 +395,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal();
             rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.TimeLimitEnabled);
-            rs.TimeLimit = Math.Max(5, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.TimeLimit));
+            rs.TimeLimit = (uint)EditorGUILayout.IntSlider((int)rs.TimeLimit, 1, 180);
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
 
@@ -403,8 +403,8 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal();
             rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
-            rs.VideoSizeX = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeX));
-            rs.VideoSizeY = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeY));
+            rs.VideoSizeX = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeX, 100, 7680);
+            rs.VideoSizeY = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeY, 100, 7680);
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
 
