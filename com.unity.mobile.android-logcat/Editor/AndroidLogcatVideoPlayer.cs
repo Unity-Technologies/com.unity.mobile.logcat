@@ -94,7 +94,7 @@ namespace Unity.Android.Logcat
             r1.width *= s;
             r1.height *= s;
 
-            var correctedWidth = Screen.width - rc.x;
+            var correctedWidth = windowRect.width - rc.x;
             s = correctedWidth / rc.width;
             r2 = rc;
             r2.width *= s;
@@ -107,7 +107,7 @@ namespace Unity.Android.Logcat
             return videoRect;
         }
 
-        private void DoVideoInfoGUI(Rect rc)
+        private void DoVideoInfoGUI(Rect windowRect, Rect videoRect)
         {
             var v = m_Player;
             var info = new List<string>();
@@ -116,7 +116,7 @@ namespace Unity.Android.Logcat
             info.Add($" Frame Count: {v.frameCount}");
             info.Add($" Frame: {v.frame}");
 
-            var infoRC = new Rect(Screen.width - 200, rc.y, 200, info.Count * 19);
+            var infoRC = new Rect(windowRect.width - 205, videoRect.y, 200, info.Count * 19);
             GUI.Box(infoRC, GUIContent.none, GUI.skin.window);
             GUI.Label(infoRC, string.Join("\n", info));
         }
@@ -127,7 +127,7 @@ namespace Unity.Android.Logcat
             if (m_Player != null && m_Player.texture != null)
             {
                 GUI.DrawTexture(rc, m_Player.texture);
-                DoVideoInfoGUI(rc);
+                DoVideoInfoGUI(windowRect, rc);
             }
             else
             {
