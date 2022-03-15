@@ -194,11 +194,13 @@ namespace Unity.Android.Logcat
                 EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_IpString));
                 if (GUILayout.Button("Connect"))
                 {
-                    Close();
                     EditorPrefs.SetString(kAndroidLogcatLastIp, m_IpString);
                     EditorPrefs.SetString(kAndroidLogcatLastPort, m_PortString);
                     ConnectDevice(m_IpString, m_PortString);
+                    // Close must be called after ConnectDevice, since Close calls OnDisable
+                    Close();
                     GUIUtility.ExitGUI();
+                    return;
                 }
                 EditorGUI.EndDisabledGroup();
                 if (GUILayout.Button("Refresh Devices"))
