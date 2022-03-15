@@ -187,6 +187,7 @@ namespace Unity.Android.Logcat
             var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
             if (deviceNames.Length == 0)
                 deviceNames = new[] { new GUIContent("No Device") };
+            m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, deviceNames.Length - 1);
             m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
                 deviceNames,
                 AndroidLogcatStyles.toolbarPopup,
