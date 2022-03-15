@@ -73,7 +73,7 @@ namespace Unity.Android.Logcat
             return m_Player.isPlaying;
         }
 
-        public Rect GetVideoRect()
+        public Rect GetVideoRect(Rect windowRect)
         {
             if (m_Player == null)
             {
@@ -88,7 +88,7 @@ namespace Unity.Android.Logcat
             var rc = GUILayoutUtility.GetAspectRect(aspect);
             Rect r1, r2;
 
-            var correctedHeight = Screen.height - rc.y - 20;
+            var correctedHeight = windowRect.height - rc.y - 20;
             var s = correctedHeight / rc.height;
             r1 = rc;
             r1.width *= s;
@@ -102,7 +102,7 @@ namespace Unity.Android.Logcat
 
             var videoRect = r1.width < r2.width ? r1 : r2;
 
-            videoRect.x += (Screen.width - videoRect.width) * 0.5f;
+            videoRect.x += (windowRect.width - videoRect.width) * 0.5f;
 
             return videoRect;
         }
@@ -121,9 +121,9 @@ namespace Unity.Android.Logcat
             GUI.Label(infoRC, string.Join("\n", info));
         }
 
-        public void DoGUI()
+        public void DoGUI(Rect windowRect)
         {
-            var rc = GetVideoRect();
+            var rc = GetVideoRect(windowRect);
             if (m_Player != null && m_Player.texture != null)
             {
                 GUI.DrawTexture(rc, m_Player.texture);
@@ -131,6 +131,7 @@ namespace Unity.Android.Logcat
             }
             else
             {
+                // TODO: Play pause
                 EditorGUILayout.HelpBox("No video to show.", MessageType.Info);
             }
         }

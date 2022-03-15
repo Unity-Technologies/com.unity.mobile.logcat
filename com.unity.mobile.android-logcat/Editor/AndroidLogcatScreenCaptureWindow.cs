@@ -394,7 +394,7 @@ namespace Unity.Android.Logcat
                     }
                     else
                     {
-                        m_VideoPlayer.DoGUI();
+                        m_VideoPlayer.DoGUI(position);
                         if (m_VideoPlayer.IsPlaying())
                             Repaint();
                     }
