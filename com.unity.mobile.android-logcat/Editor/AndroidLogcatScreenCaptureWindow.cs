@@ -322,7 +322,18 @@ namespace Unity.Android.Logcat
         {
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
             if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
-                Application.OpenURL(TemporaryPath);
+            {
+                switch (Application.platform)
+                {
+                    case RuntimePlatform.OSXEditor:
+                        System.Diagnostics.Process.Start("open", TemporaryPath);
+                        break;
+                    default:
+                        Application.OpenURL(TemporaryPath);
+                        break;
+                }
+            }
+
             EditorGUI.EndDisabledGroup();
         }
 
