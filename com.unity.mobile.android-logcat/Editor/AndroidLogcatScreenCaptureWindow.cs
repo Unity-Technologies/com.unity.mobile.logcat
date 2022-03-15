@@ -184,8 +184,11 @@ namespace Unity.Android.Logcat
 
         private void DoSelectedDeviceGUI()
         {
+            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
+            if (deviceNames.Length == 0)
+                deviceNames = new[] { new GUIContent("No Device") };
             m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
-                m_Devices.Select(m => new GUIContent(m.Id)).ToArray(),
+                deviceNames,
                 AndroidLogcatStyles.toolbarPopup,
                 GUILayout.MaxWidth(300));
         }
@@ -263,6 +266,7 @@ namespace Unity.Android.Logcat
 
         private void DoCaptureGUI()
         {
+            EditorGUI.BeginDisabledGroup(m_Devices.Length == 0);
             switch (m_Mode)
             {
                 case Mode.Screenshot:
@@ -310,6 +314,7 @@ namespace Unity.Android.Logcat
                     }
                     break;
             }
+            EditorGUI.EndDisabledGroup();
         }
 
         private void DoOpenGUI()
