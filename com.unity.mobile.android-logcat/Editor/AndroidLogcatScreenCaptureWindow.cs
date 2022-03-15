@@ -307,7 +307,7 @@ namespace Unity.Android.Logcat
 
                             if (vs.BitRateEnabled)
                                 bitRate = vs.BitRate;
-                            if (vs.DisplayIdEnabled)
+                            if (vs.DisplayIdEnabled && !string.IsNullOrEmpty(vs.DisplayId))
                                 displayId = vs.DisplayId;
 
                             m_CaptureVideo.StartRecording(SelectedDevice, OnVideoCompleted, timeLimit, videoSizeX, videoSizeY, bitRate, displayId);
@@ -426,7 +426,18 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal();
             rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.DisplayIdEnabled);
+            Color? oldColor = null;
+            if (rs.DisplayIdEnabled && string.IsNullOrEmpty(rs.DisplayId))
+            {
+                oldColor = GUI.color;
+                GUI.color = Color.red;
+            }
+
             rs.DisplayId = EditorGUILayout.TextField(GUIContent.none, rs.DisplayId);
+
+            if (oldColor != null)
+                GUI.color = (Color)oldColor;
+
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
         }
