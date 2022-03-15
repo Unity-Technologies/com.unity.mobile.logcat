@@ -93,6 +93,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
+            m_Runtime.Update += OnUpdate;
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
@@ -103,6 +104,11 @@ namespace Unity.Android.Logcat
 
             OnDevicesUpdated();
             ResolveSelectedDeviceIndex();
+        }
+
+        private void OnUpdate()
+        {
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
         }
 
         private void OnDisable()
@@ -117,6 +123,7 @@ namespace Unity.Android.Logcat
 
             if (m_Runtime == null)
                 return;
+            m_Runtime.Update -= OnUpdate;
             m_Runtime.DeviceQuery.DevicesUpdated -= OnDevicesUpdated;
             m_Runtime = null;
         }
@@ -142,6 +149,10 @@ namespace Unity.Android.Logcat
             m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
         }
 
+        /// <summary>
+        /// Return the selected device in Screen Capture Window
+        /// Note: this can be a different device then the one selected in main logcat package window
+        /// </summary>
         protected IAndroidLogcatDevice SelectedDevice
         {
             get
@@ -154,7 +165,7 @@ namespace Unity.Android.Logcat
 
         private void QueueScreenCapture()
         {
-            m_CaptureScreenshot.QueueScreenCapture(m_Runtime.DeviceQuery.SelectedDevice, OnScreenshotCompleted);
+            m_CaptureScreenshot.QueueScreenCapture(SelectedDevice, OnScreenshotCompleted);
         }
 
         void OnScreenshotCompleted()
@@ -382,7 +393,7 @@ namespace Unity.Android.Logcat
 
             // Time Limit
             EditorGUILayout.BeginHorizontal();
-            rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.TimeLimitEnabled);
             rs.TimeLimit = Math.Max(5, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.TimeLimit));
             EditorGUI.EndDisabledGroup();
@@ -390,7 +401,7 @@ namespace Unity.Android.Logcat
 
             // Video Size
             EditorGUILayout.BeginHorizontal();
-            rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
             rs.VideoSizeX = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeX));
             rs.VideoSizeY = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.VideoSizeY));
@@ -399,7 +410,7 @@ namespace Unity.Android.Logcat
 
             // Bit Rate
             EditorGUILayout.BeginHorizontal();
-            rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.BitRateEnabled);
             rs.BitRate = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRate));
             EditorGUI.EndDisabledGroup();
@@ -407,7 +418,7 @@ namespace Unity.Android.Logcat
 
             // Display Id
             EditorGUILayout.BeginHorizontal();
-            rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.MaxWidth(width));
+            rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.DisplayIdEnabled);
             rs.DisplayId = EditorGUILayout.TextField(GUIContent.none, rs.DisplayId);
             EditorGUI.EndDisabledGroup();
