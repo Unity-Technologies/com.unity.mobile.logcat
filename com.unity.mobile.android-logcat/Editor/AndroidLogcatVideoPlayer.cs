@@ -123,15 +123,32 @@ namespace Unity.Android.Logcat
 
         public void DoGUI(Rect windowRect)
         {
+            var show = m_Player != null && m_Player.texture != null;
+            if (show)
+            {
+                var icon = m_Player.isPlaying ? AndroidLogcatStyles.kIconPlay[0] : AndroidLogcatStyles.kIconPlay[1];
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Label("Preview", AndroidLogcatStyles.toolbarLabelLeft);
+                if (GUILayout.Button(icon, AndroidLogcatStyles.toolbarButton, GUILayout.Width(30), GUILayout.Height(30)))
+                {
+                    if (m_Player.isPlaying)
+                        m_Player.Pause();
+                    else
+                        m_Player.Play();
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+
+            // GetVideoRect allocates gui layout thus it must after the above block
             var rc = GetVideoRect(windowRect);
-            if (m_Player != null && m_Player.texture != null)
+            if (show)
             {
                 GUI.DrawTexture(rc, m_Player.texture);
                 DoVideoInfoGUI(windowRect, rc);
             }
             else
             {
-                // TODO: Play pause
+
                 EditorGUILayout.HelpBox("No video to show.", MessageType.Info);
             }
         }
