@@ -17,13 +17,13 @@ namespace Unity.Android.Logcat
         /// Capture the screenshot on the given device.
         /// </summary>
         /// <returns> Return the path to the screenshot on the PC. </returns>
-        public static string CaptureScreen(AndroidBridge.ADB adb, string deviceId, out string error)
+        public static bool CaptureScreen(AndroidBridge.ADB adb, string deviceId, string imagePathOnHost, out string error)
         {
             error = string.Empty;
             if (string.IsNullOrEmpty(deviceId))
             {
                 error = "Invalid device id.";
-                return null;
+                return false;
             }
 
             try
@@ -41,12 +41,10 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
                     error = outputMsg;
-                    return null;
+                    return false;
                 }
 
-                // Pull screenshot from the device to temp folder.
-                var filePath = Path.Combine(Path.GetTempPath(), "screen_" + DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".png");
-                cmd = string.Format("-s {0} pull {1} {2}", deviceId, screenshotPathOnDevice, filePath);
+                cmd = string.Format("-s {0} pull \"{1}\" \"{2}\"", deviceId, screenshotPathOnDevice, imagePathOnHost);
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
 
                 errorMsg = "Unable to pull the screenshot from device ";
@@ -56,17 +54,29 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log(outputMsg);
                     Debug.LogError(outputMsg);
                     error = outputMsg;
-                    return null;
+                    return false;
                 }
 
-                return filePath;
+                return true;
             }
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log("Exception caugth while capturing screen on device {0}. Details\r\n:{1}", deviceId, ex);
                 error = ex.Message;
-                return null;
+                return false;
             }
+        }
+
+        public static string GetTemporaryPath(IAndroidLogcatDevice device, string name, string extension)
+        {
+            string fileName = device != null ? device.Id : "NoDevice";
+            if (device != null)
+            {
+                foreach (var p in Path.GetInvalidFileNameChars())
+                    fileName = fileName.Replace(p, '_');
+            }
+            fileName = $"{name}_{fileName}{extension}";
+            return Path.Combine(Application.dataPath, "..", "Temp", fileName).Replace("\\", "/");
         }
 
         /// <summary>

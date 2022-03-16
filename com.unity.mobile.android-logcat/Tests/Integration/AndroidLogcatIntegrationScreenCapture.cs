@@ -10,6 +10,8 @@ using System.IO;
 [RequiresAndroidDevice]
 internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatIntegrationTestBase
 {
+    private string VideoPathOnHost => Runtime.CaptureVideo.GetVideoPath(Device);
+
     [SetUp]
     protected void Init()
     {
@@ -27,7 +29,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         // Need to kill screen recorder before attempting to delete files
         AndroidLogcatCaptureVideo.KillRemoteRecorder(Runtime, Device);
         SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
-        SafeDeleteOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost);
+        SafeDeleteOnHost(VideoPathOnHost);
     }
 
     [UnityTest]
@@ -47,17 +49,17 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.Greater(texture.width, 10);
         Assert.Greater(texture.height, 10);
 
-        File.Copy(Runtime.CaptureScreenshot.ImagePath, Path.Combine(GetOrCreateArtifactsPath(), "screenshot.png"), true);
+        File.Copy(Runtime.CaptureScreenshot.GetImagePath(Device), Path.Combine(GetOrCreateArtifactsPath(), "screenshot.png"), true);
     }
 
     [UnityTest]
     public IEnumerator CanGetVideo()
     {
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, false);
+        AssertFileExistanceOnHost(VideoPathOnHost, false);
 
         var recordingResult = AndroidLogcatCaptureVideo.Result.Failure;
-        Runtime.CaptureVideo.StartRecording(Device, (r) =>
+        Runtime.CaptureVideo.StartRecording(Device, (r, s) =>
         {
             recordingResult = r;
         });
@@ -81,20 +83,20 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
             () => !Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
 
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, true);
+        AssertFileExistanceOnHost(VideoPathOnHost, true);
 
-        File.Copy(Runtime.CaptureVideo.VideoPath, Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
+        File.Copy(Runtime.CaptureVideo.GetVideoPath(Device), Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
     }
 
     [UnityTest]
     public IEnumerator CanGetVideoWithTimeLimit()
     {
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, false);
+        AssertFileExistanceOnHost(VideoPathOnHost, false);
 
         var recordingTime = 5;
         var recordingResult = AndroidLogcatCaptureVideo.Result.Failure;
-        Runtime.CaptureVideo.StartRecording(Device, (r) =>
+        Runtime.CaptureVideo.StartRecording(Device, (r, s) =>
         {
             recordingResult = r;
         }, TimeSpan.FromSeconds(recordingTime));
@@ -103,19 +105,19 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
             () => recordingResult == AndroidLogcatCaptureVideo.Result.Success, 20);
 
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, true);
+        AssertFileExistanceOnHost(VideoPathOnHost, true);
 
-        File.Copy(Runtime.CaptureVideo.VideoPath, Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
+        File.Copy(Runtime.CaptureVideo.GetVideoPath(Device), Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
     }
 
     [UnityTest]
     public IEnumerator CaptureVideoHandlesErrors()
     {
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, false);
+        AssertFileExistanceOnHost(VideoPathOnHost, false);
 
         var recordingResult = AndroidLogcatCaptureVideo.Result.Success;
-        Runtime.CaptureVideo.StartRecording(Device, (r) =>
+        Runtime.CaptureVideo.StartRecording(Device, (r, p) =>
         {
             recordingResult = r;
         }, TimeSpan.FromSeconds(180), 0, 0);
@@ -125,7 +127,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         var errors = Runtime.CaptureVideo.Errors;
         Assert.Greater(errors.Length, 0);
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(AndroidLogcatCaptureVideo.VideoPathOnHost, false);
+        AssertFileExistanceOnHost(VideoPathOnHost, false);
 
         Debug.Log(errors);
         File.WriteAllText(Path.Combine(GetOrCreateArtifactsPath(), "errors.txt"), errors);

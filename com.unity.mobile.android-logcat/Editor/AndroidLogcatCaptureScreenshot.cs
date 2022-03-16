@@ -10,6 +10,7 @@ namespace Unity.Android.Logcat
         internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
         {
             internal AndroidBridge.ADB adb;
+            internal string imagePath;
             internal string deviceId;
             internal Action onCompleted;
         }
@@ -22,7 +23,6 @@ namespace Unity.Android.Logcat
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private string m_ImagePath;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private string m_Error;
@@ -30,7 +30,10 @@ namespace Unity.Android.Logcat
         public bool IsCapturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
-        public string ImagePath => m_ImagePath;
+        public string GetImagePath(IAndroidLogcatDevice device)
+        {
+            return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", ".png");
+        }
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)
         {
@@ -43,7 +46,13 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = device.Id, onCompleted = onCompleted },
+                new AndroidLogcatCaptureScreenCaptureInput()
+                {
+                    adb = m_Runtime.Tools.ADB,
+                    imagePath = GetImagePath(device),
+                    deviceId = device.Id,
+                    onCompleted = onCompleted
+                },
                 ExecuteScreenCapture,
                 IntegrateCaptureScreenShot,
                 false);
@@ -53,11 +62,11 @@ namespace Unity.Android.Logcat
         private static IAndroidLogcatTaskResult ExecuteScreenCapture(IAndroidLogcatTaskInput input)
         {
             var i = (AndroidLogcatCaptureScreenCaptureInput)input;
-            var path = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId, out var error);
+            var result = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId, i.imagePath, out var error);
 
             return new AndroidLogcatCaptureScreenCaptureResult()
             {
-                imagePath = path,
+                imagePath = result ? i.imagePath : null,
                 error = error,
                 onCompleted = i.onCompleted
             };
@@ -68,20 +77,22 @@ namespace Unity.Android.Logcat
             if (m_CaptureCount > 0)
                 m_CaptureCount--;
             var captureResult = (AndroidLogcatCaptureScreenCaptureResult)result;
-            m_ImagePath = captureResult.imagePath;
             m_Error = captureResult.error;
-            if (!string.IsNullOrEmpty(m_ImagePath))
-                LoadImage();
+            LoadImage(captureResult.imagePath);
 
             captureResult.onCompleted();
         }
 
-        void LoadImage()
+        public void LoadImage(string imagePath)
         {
-            if (!File.Exists(m_ImagePath))
+            m_ImageTexture = null;
+
+            if (string.IsNullOrEmpty(imagePath))
+                return;
+            if (!File.Exists(imagePath))
                 return;
 
-            var imageData = File.ReadAllBytes(m_ImagePath);
+            var imageData = File.ReadAllBytes(imagePath);
 
             m_ImageTexture = new Texture2D(2, 2);
             if (!m_ImageTexture.LoadImage(imageData))

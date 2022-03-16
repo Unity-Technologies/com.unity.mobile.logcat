@@ -43,6 +43,7 @@ namespace Unity.Android.Logcat
 
         private IAndroidLogcatDevice[] m_Devices;
         private int m_SelectedDeviceIdx;
+        private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
 
         private bool IsCapturing
         {
@@ -64,8 +65,8 @@ namespace Unity.Android.Logcat
             {
                 switch (m_Mode)
                 {
-                    case Mode.Screenshot: return m_CaptureScreenshot.ImagePath;
-                    case Mode.Video: return m_CaptureVideo.VideoPath;
+                    case Mode.Screenshot: return m_CaptureScreenshot.GetImagePath(SelectedDevice);
+                    case Mode.Video: return m_CaptureVideo.GetVideoPath(SelectedDevice);
                     default:
                         throw new NotImplementedException(m_Mode.ToString());
                 }
@@ -98,17 +99,24 @@ namespace Unity.Android.Logcat
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
-            if (File.Exists(m_CaptureVideo.VideoPath))
-                m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
-            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
-            OnDevicesUpdated();
-            ResolveSelectedDeviceIndex();
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
 
         private void OnUpdate()
         {
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
+        }
+
+        private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
+        {
+            if (m_LastDeviceUsedForAssets == device)
+                return;
+
+            m_LastDeviceUsedForAssets = device;
+
+            m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
+            m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetImagePath(device));
         }
 
         private void OnDisable()
@@ -128,25 +136,19 @@ namespace Unity.Android.Logcat
             m_Runtime = null;
         }
 
-        private void ResolveSelectedDeviceIndex()
-        {
-            if (m_Runtime.DeviceQuery.SelectedDevice == null)
-                return;
-
-            var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
-            for (int i = 0; i < m_Devices.Length; i++)
-            {
-                if (id == m_Devices[i].Id)
-                {
-                    m_SelectedDeviceIdx = i;
-                    break;
-                }
-            }
-        }
-
         private void OnDevicesUpdated()
         {
             m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
+            if (m_Devices.Length == 0)
+                m_SelectedDeviceIdx = -1;
+            else
+            {
+                m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, m_Devices.Length - 1);
+                if (m_SelectedDeviceIdx < 0)
+                    m_SelectedDeviceIdx = 0;
+            }
+
+            ReloadCaptureAssetsIfNeeded(SelectedDevice);
         }
 
         /// <summary>
@@ -176,22 +178,27 @@ namespace Unity.Android.Logcat
             Repaint();
         }
 
-        void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result)
+        void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result, string videoPath)
         {
             if (result == AndroidLogcatCaptureVideo.Result.Success)
-                m_VideoPlayer.Play(m_CaptureVideo.VideoPath);
+                m_VideoPlayer.Play(videoPath);
         }
 
         private void DoSelectedDeviceGUI()
         {
             var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
             if (deviceNames.Length == 0)
+            {
+                m_SelectedDeviceIdx = 0;
                 deviceNames = new[] { new GUIContent("No Device") };
-            m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, deviceNames.Length - 1);
+            }
+            EditorGUI.BeginChangeCheck();
             m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
                 deviceNames,
                 AndroidLogcatStyles.toolbarPopup,
                 GUILayout.MaxWidth(300));
+            if (EditorGUI.EndChangeCheck())
+                ReloadCaptureAssetsIfNeeded(SelectedDevice);
         }
 
         void DoModeGUI()
@@ -226,24 +233,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
             DoProgressGUI();
-
-            EditorGUI.BeginChangeCheck();
-
             DoSelectedDeviceGUI();
-
-            if (EditorGUI.EndChangeCheck())
-            {
-                switch (m_Mode)
-                {
-                    // We switched the device, do screenshot automatically, since it's nice
-                    case Mode.Screenshot:
-                        QueueScreenCapture();
-                        break;
-                    case Mode.Video:
-                        // Do nothing
-                        break;
-                }
-            }
 
             DoModeGUI();
             DoCaptureGUI();

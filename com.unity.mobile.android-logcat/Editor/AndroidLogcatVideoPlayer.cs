@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -56,6 +57,12 @@ namespace Unity.Android.Logcat
 
         public void Play(string path)
         {
+            m_Player.Stop();
+
+            if (string.IsNullOrEmpty(path))
+                return;
+            if (!File.Exists(path))
+                return;
             if (m_Player == null)
             {
                 AndroidLogcatInternalLog.Log($"Cannot play '{path}', video player was not created ?");

@@ -17,16 +17,18 @@ namespace Unity.Android.Logcat
         }
 
         internal static readonly string VideoPathOnDevice = "/sdcard/logcat_video.mp4";
-        internal static readonly string VideoPathOnHost = Path.Combine(Application.dataPath, "..", "Temp", "logcat_video.mp4").Replace("\\", "/");
         private AndroidLogcatRuntimeBase m_Runtime;
         private Process m_RecordingProcess;
         private StringBuilder m_RecordingProcessLog;
         private StringBuilder m_RecordingProcessErrors;
         private IAndroidLogcatDevice m_RecordingOnDevice;
         private DateTime m_RecordingCheckTime;
-        private Action<Result> m_OnStopRecording;
+        private Action<Result, string> m_OnStopRecording;
         internal string Errors => m_RecordingProcessErrors != null ? m_RecordingProcessErrors.ToString() : string.Empty;
-        internal string VideoPath => VideoPathOnHost;
+        internal string GetVideoPath(IAndroidLogcatDevice device)
+        {
+            return AndroidLogcatUtilities.GetTemporaryPath(device, "video", ".mp4");
+        }
 
         internal AndroidLogcatCaptureVideo(AndroidLogcatRuntimeBase runtime)
         {
@@ -43,7 +45,6 @@ namespace Unity.Android.Logcat
             var device = m_RecordingOnDevice;
             StopRecording();
             DeleteVideoOnDevice(device);
-            DeleteVideoOnHost();
             KillRemoteRecorder(m_Runtime, device);
             m_Runtime = null;
         }
@@ -59,15 +60,14 @@ namespace Unity.Android.Logcat
                 m_RecordingCheckTime = currentTime;
                 if (m_RecordingProcess.HasExited)
                 {
-
-
                     var result = Result.Failure;
+                    var targetPath = GetVideoPath(m_RecordingOnDevice);
                     // screenrecord has quit without errors, for ex., hit a time limit
                     // Note: On Google Pixel with Android 11 if screenrecord fails - our process exits with non zero exit code, but
                     //       On Cube U83 with Android 6 if screenrecord fails - process exits with 0 exit code, thus we additionally check if we were able to collect the recording
                     if (m_RecordingProcess.ExitCode == 0)
                     {
-                        if (CollectRecording())
+                        if (CollectRecording(targetPath))
                             result = Result.Success;
 
                     }
@@ -83,7 +83,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log(title);
                     AndroidLogcatInternalLog.Log(m_RecordingProcessLog.ToString());
 
-                    m_OnStopRecording?.Invoke(result);
+                    m_OnStopRecording?.Invoke(result, targetPath);
                     ClearRecordingData();
                 }
             }
@@ -103,16 +103,16 @@ namespace Unity.Android.Logcat
                 AndroidLogcatUtilities.KillProcesss(runtime.Tools.ADB, device, pid);
         }
 
-        private void DeleteVideoOnHost()
+        private void DeleteVideoOnHost(string path)
         {
             try
             {
-                if (File.Exists(VideoPathOnHost))
-                    File.Delete(VideoPathOnHost);
+                if (File.Exists(path))
+                    File.Delete(path);
             }
             catch (Exception ex)
             {
-                var msg = $"Failed to delete {VideoPathOnHost}\n{ex.Message}";
+                var msg = $"Failed to delete {path}\n{ex.Message}";
                 UnityEngine.Debug.LogWarning(msg);
                 AndroidLogcatInternalLog.Log(msg);
             }
@@ -138,7 +138,7 @@ namespace Unity.Android.Logcat
         internal bool IsRecording => m_RecordingProcess != null;
 
         internal void StartRecording(IAndroidLogcatDevice device,
-            Action<Result> onStopRecording,
+            Action<Result, string> onStopRecording,
             TimeSpan? timeLimit = null,
             uint? videoSizeX = null,
             uint? videoSizeY = null,
@@ -154,7 +154,7 @@ namespace Unity.Android.Logcat
             m_OnStopRecording = onStopRecording;
             m_RecordingOnDevice = device;
 
-            DeleteVideoOnHost();
+            DeleteVideoOnHost(GetVideoPath(device));
             KillRemoteRecorder(m_Runtime, m_RecordingOnDevice);
 
             // If for some reason screen recorder is still running, abort.
@@ -214,6 +214,7 @@ namespace Unity.Android.Logcat
             if (m_RecordingProcess == null)
                 return false;
 
+            var targetPath = GetVideoPath(m_RecordingOnDevice);
             var result = Result.Success;
             try
             {
@@ -221,9 +222,9 @@ namespace Unity.Android.Logcat
                 m_RecordingProcess.WaitForExit();
                 m_RecordingProcess.Close();
 
-                if (!CollectRecording())
+                if (!CollectRecording(targetPath))
                 {
-                    m_RecordingProcessErrors.AppendLine($"Failed to collect the recording '{VideoPathOnDevice}' -> '{VideoPathOnHost}'");
+                    m_RecordingProcessErrors.AppendLine($"Failed to collect the recording '{VideoPathOnDevice}' -> '{targetPath}'");
                     result = Result.Failure;
                 }
             }
@@ -235,17 +236,17 @@ namespace Unity.Android.Logcat
             }
             finally
             {
-                m_OnStopRecording?.Invoke(result);
+                m_OnStopRecording?.Invoke(result, targetPath);
                 ClearRecordingData();
             }
 
             return result == Result.Success;
         }
 
-        private bool CollectRecording()
+        private bool CollectRecording(string targetPath)
         {
             var result = true;
-            if (!CopyVideoFromDevice(m_RecordingOnDevice))
+            if (!CopyVideoFromDevice(m_RecordingOnDevice, targetPath))
             {
                 result = false;
                 KillRemoteRecorder(m_Runtime, m_RecordingOnDevice);
@@ -262,7 +263,7 @@ namespace Unity.Android.Logcat
             m_OnStopRecording = null;
         }
 
-        private bool CopyVideoFromDevice(IAndroidLogcatDevice device)
+        private bool CopyVideoFromDevice(IAndroidLogcatDevice device, string targetPath)
         {
             if (device == null)
                 return false;
@@ -283,14 +284,14 @@ namespace Unity.Android.Logcat
                     Thread.Sleep(100);
                 }
 
-                EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {VideoPathOnDevice} -> Temp/{Path.GetFileName(VideoPathOnHost)}", 0.6f);
+                EditorUtility.DisplayProgressBar("Acquiring recording", $"Copy {VideoPathOnDevice} -> Temp/{Path.GetFileName(targetPath)}", 0.6f);
 
                 try
                 {
                     var msg = m_Runtime.Tools.ADB.Run(new[]
                     {
                         $"-s {m_RecordingOnDevice.Id}",
-                        $"pull {VideoPathOnDevice} \"{VideoPathOnHost}\""
+                        $"pull {VideoPathOnDevice} \"{targetPath}\""
                     }, "Failed to copy");
                     AndroidLogcatInternalLog.Log(msg);
                 }
@@ -316,10 +317,7 @@ namespace Unity.Android.Logcat
             {
                 DeleteVideoOnDevice(m_RecordingOnDevice);
             }
-            if (GUILayout.Button("Delete recording on host", AndroidLogcatStyles.toolbarButton))
-            {
-                DeleteVideoOnHost();
-            }
+
             if (GUILayout.Button("Get screen record pid", AndroidLogcatStyles.toolbarButton))
             {
                 var pid = AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, m_Runtime.DeviceQuery.SelectedDevice, "screenrecord");
@@ -327,7 +325,7 @@ namespace Unity.Android.Logcat
             }
 
             if (GUILayout.Button("Copy Recording from device", AndroidLogcatStyles.toolbarButton))
-                CopyVideoFromDevice(m_RecordingOnDevice);
+                CopyVideoFromDevice(m_RecordingOnDevice, GetVideoPath(m_RecordingOnDevice));
 
 
             EditorGUILayout.EndHorizontal();
