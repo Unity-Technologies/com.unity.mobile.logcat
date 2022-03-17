@@ -275,6 +275,11 @@ namespace Unity.Android.Logcat
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
 
+            ResetCaptureVideoSettings();
+        }
+
+        internal void ResetCaptureVideoSettings()
+        {
             m_CaptureVideoSettings = new VideoSettings
             {
                 TimeLimitEnabled = false,
@@ -283,7 +288,7 @@ namespace Unity.Android.Logcat
                 VideoSizeEnabled = false,
 
                 TimeLimit = 180,
-                BitRate = 4000000,
+                BitRate = 6000,
                 VideoSizeX = 1280,
                 VideoSizeY = 720,
                 DisplayId = string.Empty
