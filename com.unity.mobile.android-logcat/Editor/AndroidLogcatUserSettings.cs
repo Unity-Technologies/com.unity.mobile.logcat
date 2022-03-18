@@ -26,7 +26,7 @@ namespace Unity.Android.Logcat
             [SerializeField]
             internal bool BitRateEnabled;
             [SerializeField]
-            internal ulong BitRate;
+            internal ulong BitRateK;
             [SerializeField]
             internal bool DisplayIdEnabled;
             [SerializeField]
@@ -288,7 +288,7 @@ namespace Unity.Android.Logcat
                 VideoSizeEnabled = false,
 
                 TimeLimit = 180,
-                BitRate = 6000,
+                BitRateK = 20000,
                 VideoSizeX = 1280,
                 VideoSizeY = 720,
                 DisplayId = string.Empty

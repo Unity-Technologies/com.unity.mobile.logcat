@@ -6,14 +6,14 @@ using System.Linq;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatScreenCaptureWindow : EditorWindow, IHasCustomMenu
+    internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
         class Styles
         {
             // Note: Info acquired from adb shell screenrecord --help
             public static GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
             public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
-            public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit reate, the default is 20000000 bits.");
+            public static GUIContent BitRate = new GUIContent("Bit Rate (Kbps)", "Toggle to overide bit rate, the default is 2000K bits.");
             public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
             public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
             public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
@@ -106,17 +106,6 @@ namespace Unity.Android.Logcat
         private void OnUpdate()
         {
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
-        }
-
-        public void AddItemsToMenu(GenericMenu menu)
-        {
-            menu.AddItem(EditorGUIUtility.TrTextContent("Reset"), false, ResetSettings, m_Runtime);
-        }
-
-        public static void ResetSettings(object userData)
-        {
-            var runtime = (AndroidLogcatRuntimeBase)userData;
-            runtime.UserSettings.ResetCaptureVideoSettings();
         }
 
         private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
@@ -307,7 +296,7 @@ namespace Unity.Android.Logcat
                             }
 
                             if (vs.BitRateEnabled)
-                                bitRate = vs.BitRate;
+                                bitRate = vs.BitRateK * 1000;
                             if (vs.DisplayIdEnabled && !string.IsNullOrEmpty(vs.DisplayId))
                                 displayId = vs.DisplayId;
 
@@ -430,7 +419,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginHorizontal();
             rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
             EditorGUI.BeginDisabledGroup(!rs.BitRateEnabled);
-            rs.BitRate = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRate));
+            rs.BitRateK = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRateK));
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
 
