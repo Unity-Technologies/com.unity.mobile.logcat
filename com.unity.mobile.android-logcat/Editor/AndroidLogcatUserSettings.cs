@@ -10,6 +10,29 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatUserSettings
     {
+        [Serializable]
+        internal class VideoSettings
+        {
+            [SerializeField]
+            internal bool TimeLimitEnabled;
+            [SerializeField]
+            internal uint TimeLimit;
+            [SerializeField]
+            internal bool VideoSizeEnabled;
+            [SerializeField]
+            internal uint VideoSizeX;
+            [SerializeField]
+            internal uint VideoSizeY;
+            [SerializeField]
+            internal bool BitRateEnabled;
+            [SerializeField]
+            internal ulong BitRateK;
+            [SerializeField]
+            internal bool DisplayIdEnabled;
+            [SerializeField]
+            internal string DisplayId;
+        }
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -27,6 +50,8 @@ namespace Unity.Android.Logcat
         private FilterOptions m_FilterOptions;
         [SerializeField]
         private List<ReordableListItem> m_SymbolPaths;
+        [SerializeField]
+        private VideoSettings m_CaptureVideoSettings;
 
         public string LastSelectedDeviceId
         {
@@ -81,6 +106,9 @@ namespace Unity.Android.Logcat
                 return m_SelectedPriority;
             }
         }
+
+        public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
+
 
         private void RefreshPackagesForSerialization()
         {
@@ -246,6 +274,25 @@ namespace Unity.Android.Logcat
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
+
+            ResetCaptureVideoSettings();
+        }
+
+        internal void ResetCaptureVideoSettings()
+        {
+            m_CaptureVideoSettings = new VideoSettings
+            {
+                TimeLimitEnabled = false,
+                BitRateEnabled = false,
+                DisplayIdEnabled = false,
+                VideoSizeEnabled = false,
+
+                TimeLimit = 180,
+                BitRateK = 20000,
+                VideoSizeX = 1280,
+                VideoSizeY = 720,
+                DisplayId = string.Empty
+            };
         }
 
         internal static AndroidLogcatUserSettings Load(string path)

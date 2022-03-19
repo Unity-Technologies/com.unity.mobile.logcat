@@ -4,6 +4,9 @@ using UnityEngine;
 using UnityEditor;
 using Unity.Android.Logcat;
 using System.Collections;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 internal class AndroidLogcatIntegrationTestBase
 {
@@ -109,5 +112,64 @@ internal class AndroidLogcatIntegrationTestBase
     protected static void Log(string message)
     {
         Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+    }
+
+    protected static string GetOrCreateArtifactsPath()
+    {
+        var root = Workspace.GetAritfactsPath();
+        Directory.CreateDirectory(root);
+
+        var name = TestContext.CurrentContext.Test.Name;
+        var path = Path.Combine(root, name);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    protected IReadOnlyList<string> GetContentsOnDevice(string path)
+    {
+        var result = Runtime.Tools.ADB.Run(new[] { "shell", "ls", path }, $"Couldn't get contents in '{path}'");
+        return result.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+    }
+
+    protected void AssertFileExistanceOnDevice(string path, bool shouldExist)
+    {
+        var exists = AndroidLogcatUtilities.FileExists(m_Runtime, Device, path);
+        if (shouldExist)
+            Assert.IsTrue(exists, $"File {path} should exist");
+        else
+            Assert.IsFalse(exists, $"File {path} shouldn't exist");
+    }
+
+    protected void AssertFileExistanceOnHost(string path, bool shouldExist)
+    {
+        if (shouldExist)
+            Assert.IsTrue(File.Exists(path), $"File {path} should exist");
+        else
+            Assert.IsFalse(File.Exists(path), $"File {path} shouldn't exist");
+    }
+
+    protected void SafeDeleteOnDevice(IAndroidLogcatDevice device, string path)
+    {
+        try
+        {
+            m_Runtime.Tools.ADB.Run(new[]
+            {
+                    $"-s {device.Id}",
+                    $"shell rm {path}"
+                }, $"Failed to delete {path}");
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    protected void SafeDeleteOnHost(string path)
+    {
+        if (File.Exists(path))
+            File.Delete(path);
+        if (Directory.Exists(path))
+            Directory.Delete(path, true);
     }
 }

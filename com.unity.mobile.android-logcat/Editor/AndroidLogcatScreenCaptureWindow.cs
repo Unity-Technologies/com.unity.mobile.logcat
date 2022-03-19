@@ -8,32 +8,83 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatScreenCaptureWindow : EditorWindow
     {
-        [SerializeField] private string m_ImagePath;
+        class Styles
+        {
+            // Note: Info acquired from adb shell screenrecord --help
+            public static GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
+            public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
+            public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit rate (in Kbps), the default is 2000Kbps.");
+            public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
+            public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
+            public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
+            public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
+            public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
+            public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
+            public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
+        }
+        private enum Mode
+        {
+            Screenshot,
+            Video
+        }
+
+        [SerializeField]
+        private string[] m_ImagePath;
+        [SerializeField]
+        private Mode m_Mode;
+
         private AndroidLogcatRuntimeBase m_Runtime;
-        private GUIContent[] m_Devices;
-        private int m_SelectedDevice;
-        private Texture2D m_ImageTexture = null;
-        private int m_CaptureCount;
+
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
-        private string m_Error;
+        private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
+        private AndroidLogcatCaptureVideo m_CaptureVideo;
+        private AndroidLogcatVideoPlayer m_VideoPlayer;
 
-        internal class AndroidLogcatCaptureScreenCaptureInput : IAndroidLogcatTaskInput
+        private IAndroidLogcatDevice[] m_Devices;
+        private int m_SelectedDeviceIdx;
+        private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
+
+        private bool IsCapturing
         {
-            internal AndroidBridge.ADB adb;
-            internal string deviceId;
+            get
+            {
+                switch (m_Mode)
+                {
+                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
+                    case Mode.Video: return m_CaptureVideo.IsRecording;
+                    default:
+                        throw new NotImplementedException(m_Mode.ToString());
+                }
+            }
         }
 
-        internal class AndroidLogcatCaptureScreenCaptureResult : IAndroidLogcatTaskResult
+        private string TemporaryPath
         {
-            internal string imagePath;
-            internal string error;
+            get
+            {
+                switch (m_Mode)
+                {
+                    case Mode.Screenshot: return m_CaptureScreenshot.GetImagePath(SelectedDevice);
+                    case Mode.Video: return m_CaptureVideo.GetVideoPath(SelectedDevice);
+                    default:
+                        throw new NotImplementedException(m_Mode.ToString());
+                }
+            }
         }
+
+        private string ExtensionForDialog
+        {
+            get
+            {
+                return Path.GetExtension(TemporaryPath).Substring(1);
+            }
+        }
+
 
         public static void ShowWindow()
         {
-            AndroidLogcatScreenCaptureWindow win = EditorWindow.GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
-            win.QueueScreenCapture();
+            GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
         }
 
         private void OnEnable()
@@ -42,83 +93,117 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_Runtime.DeviceQuery.DevicesUpdated += DeviceQuery_DevicesUpdated;
+            m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
+            m_Runtime.Update += OnUpdate;
+            m_Runtime.Closing += OnDisable;
+            m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
+            m_CaptureVideo = m_Runtime.CaptureVideo;
+            m_VideoPlayer = new AndroidLogcatVideoPlayer();
 
-            DeviceQuery_DevicesUpdated();
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
+        }
 
-            if (m_Runtime.DeviceQuery.SelectedDevice != null)
-            {
-                var id = m_Runtime.DeviceQuery.SelectedDevice.Id;
-                for (int i = 0; i < m_Devices.Length; i++)
-                {
-                    if (id == m_Devices[i].text)
-                    {
-                        m_SelectedDevice = i;
-                        break;
-                    }
-                }
-            }
+        private void OnUpdate()
+        {
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
+        }
+
+        private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
+        {
+            if (m_LastDeviceUsedForAssets == device)
+                return;
+
+            m_LastDeviceUsedForAssets = device;
+
+            m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
+            m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetImagePath(device));
         }
 
         private void OnDisable()
         {
+            if (m_VideoPlayer != null)
+            {
+                m_VideoPlayer.Dispose();
+                m_VideoPlayer = null;
+            }
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
 
-            m_Runtime.DeviceQuery.DevicesUpdated -= DeviceQuery_DevicesUpdated;
-            m_SelectedDevice = 0;
+            if (m_Runtime == null)
+                return;
+            m_Runtime.Update -= OnUpdate;
+            m_Runtime.DeviceQuery.DevicesUpdated -= OnDevicesUpdated;
+            m_Runtime = null;
         }
 
-        private void DeviceQuery_DevicesUpdated()
+        private void OnDevicesUpdated()
         {
-            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected)
-                .Select(m => new GUIContent(m.Value.Id)).ToArray();
+            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
+            if (m_Devices.Length == 0)
+                m_SelectedDeviceIdx = -1;
+            else
+            {
+                m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, m_Devices.Length - 1);
+                if (m_SelectedDeviceIdx < 0)
+                    m_SelectedDeviceIdx = 0;
+            }
+
+            ReloadCaptureAssetsIfNeeded(SelectedDevice);
         }
 
-        private string GetDeviceId()
+        /// <summary>
+        /// Return the selected device in Screen Capture Window
+        /// Note: this can be a different device then the one selected in main logcat package window
+        /// </summary>
+        protected IAndroidLogcatDevice SelectedDevice
         {
-            if (m_SelectedDevice < 0 || m_SelectedDevice > m_Devices.Length - 1)
-                return string.Empty;
-            return m_Devices[m_SelectedDevice].text;
+            get
+            {
+                if (m_SelectedDeviceIdx < 0 || m_SelectedDeviceIdx > m_Devices.Length - 1)
+                    return null;
+                return m_Devices[m_SelectedDeviceIdx];
+            }
         }
 
         private void QueueScreenCapture()
         {
-            var id = GetDeviceId();
-            if (string.IsNullOrEmpty(id))
-                return;
-
-            m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureScreenCaptureInput() { adb = m_Runtime.Tools.ADB, deviceId = id },
-                ExecuteScreenCapture,
-                IntegrateCaptureScreenShot,
-                false);
-            m_CaptureCount++;
+            m_CaptureScreenshot.QueueScreenCapture(SelectedDevice, OnScreenshotCompleted);
         }
 
-        private static IAndroidLogcatTaskResult ExecuteScreenCapture(IAndroidLogcatTaskInput input)
+        void OnScreenshotCompleted()
         {
-            var i = (AndroidLogcatCaptureScreenCaptureInput)input;
-            string error;
-            var path = AndroidLogcatUtilities.CaptureScreen(i.adb, i.deviceId, out error);
-
-            return new AndroidLogcatCaptureScreenCaptureResult()
-            {
-                imagePath = path,
-                error = error
-            };
-        }
-
-        private void IntegrateCaptureScreenShot(IAndroidLogcatTaskResult result)
-        {
-            if (m_CaptureCount > 0)
-                m_CaptureCount--;
-            var captureResult = (AndroidLogcatCaptureScreenCaptureResult)result;
-            m_ImagePath = captureResult.imagePath;
-            m_Error = captureResult.error;
-            if (!string.IsNullOrEmpty(m_ImagePath))
-                LoadImage();
+            var texture = m_CaptureScreenshot.ImageTexture;
+            if (texture != null)
+                maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
             Repaint();
+        }
+
+        void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result, string videoPath)
+        {
+            if (result == AndroidLogcatCaptureVideo.Result.Success)
+                m_VideoPlayer.Play(videoPath);
+        }
+
+        private void DoSelectedDeviceGUI()
+        {
+            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
+            if (deviceNames.Length == 0)
+            {
+                m_SelectedDeviceIdx = 0;
+                deviceNames = new[] { new GUIContent("No Device") };
+            }
+            EditorGUI.BeginChangeCheck();
+            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
+                deviceNames,
+                AndroidLogcatStyles.toolbarPopup,
+                GUILayout.MaxWidth(300));
+            if (EditorGUI.EndChangeCheck())
+                ReloadCaptureAssetsIfNeeded(SelectedDevice);
+        }
+
+        void DoModeGUI()
+        {
+            m_Mode = (Mode)EditorGUILayout.EnumPopup(m_Mode, AndroidLogcatStyles.toolbarPopup);
         }
 
         void OnGUI()
@@ -132,79 +217,241 @@ namespace Unity.Android.Logcat
             EditorGUILayout.BeginVertical();
             GUILayout.Space(5);
 
+            DoToolbarGUI();
+
+            GUILayout.Space(10);
+            if (SelectedDevice == null)
+                EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
+            else
+                DoPreviewGUI();
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DoToolbarGUI()
+        {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
+            DoProgressGUI();
+            DoSelectedDeviceGUI();
+
+            DoModeGUI();
+            DoCaptureGUI();
+            DoOpenGUI();
+            DoSaveAsGUI();
+
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void DoProgressGUI()
+        {
             GUIContent statusIcon = GUIContent.none;
-            if (m_CaptureCount > 0)
+            if (IsCapturing)
             {
                 int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
                 Repaint();
             }
             GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+        }
 
-            EditorGUI.BeginChangeCheck();
-            m_SelectedDevice = EditorGUILayout.Popup(m_SelectedDevice, m_Devices, AndroidLogcatStyles.toolbarPopup);
-            if (EditorGUI.EndChangeCheck())
-                QueueScreenCapture();
-
-            EditorGUI.BeginDisabledGroup(m_CaptureCount > 0);
-            if (GUILayout.Button("Capture", AndroidLogcatStyles.toolbarButton))
-                QueueScreenCapture();
-            EditorGUI.EndDisabledGroup();
-
-            if (GUILayout.Button("Save...", AndroidLogcatStyles.toolbarButton))
+        private void DoCaptureGUI()
+        {
+            EditorGUI.BeginDisabledGroup(m_Devices.Length == 0);
+            switch (m_Mode)
             {
-                var path = EditorUtility.SaveFilePanel("Save Screen Capture", "", Path.GetFileName(m_ImagePath), "png");
+                case Mode.Screenshot:
+                    EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.IsCapturing);
+                    if (GUILayout.Button(Styles.CaptureScreenshot, AndroidLogcatStyles.toolbarButton))
+                        QueueScreenCapture();
+                    EditorGUI.EndDisabledGroup();
+                    break;
+                case Mode.Video:
+                    if (m_CaptureVideo.IsRecording)
+                    {
+                        if (GUILayout.Button(Styles.StopVideo, AndroidLogcatStyles.toolbarButton))
+                        {
+                            m_CaptureVideo.StopRecording();
+                        }
+                    }
+                    else
+                    {
+                        if (GUILayout.Button(Styles.CaptureVideo, AndroidLogcatStyles.toolbarButton))
+                        {
+                            TimeSpan? timeLimit = null;
+                            uint? videoSizeX = null;
+                            uint? videoSizeY = null;
+                            ulong? bitRate = null;
+                            string displayId = null;
+                            var vs = m_Runtime.UserSettings.CaptureVideoSettings;
+
+                            if (vs.TimeLimitEnabled)
+                            {
+                                timeLimit = TimeSpan.FromSeconds(vs.TimeLimit);
+                            }
+                            if (vs.VideoSizeEnabled)
+                            {
+                                videoSizeX = vs.VideoSizeX;
+                                videoSizeY = vs.VideoSizeY;
+                            }
+
+                            if (vs.BitRateEnabled)
+                                bitRate = vs.BitRateK * 1000;
+                            if (vs.DisplayIdEnabled && !string.IsNullOrEmpty(vs.DisplayId))
+                                displayId = vs.DisplayId;
+
+                            m_CaptureVideo.StartRecording(SelectedDevice, OnVideoCompleted, timeLimit, videoSizeX, videoSizeY, bitRate, displayId);
+                        }
+                    }
+                    break;
+            }
+            EditorGUI.EndDisabledGroup();
+        }
+
+        private void DoOpenGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
+            {
+                switch (Application.platform)
+                {
+                    case RuntimePlatform.OSXEditor:
+                        System.Diagnostics.Process.Start("open", TemporaryPath);
+                        break;
+                    default:
+                        Application.OpenURL(TemporaryPath);
+                        break;
+                }
+            }
+
+            EditorGUI.EndDisabledGroup();
+        }
+
+        private void DoSaveAsGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
+            {
+                var length = Enum.GetValues(typeof(Mode)).Length;
+                if (m_ImagePath == null || m_ImagePath.Length != length)
+                {
+                    var defaultDirectory = Path.Combine(Application.dataPath, "..");
+                    m_ImagePath = new string[length];
+                    for (int i = 0; i < length; i++)
+                        m_ImagePath[i] = defaultDirectory;
+                }
+
+                var path = EditorUtility.SaveFilePanel("Save Screen Capture", m_ImagePath[(int)m_Mode], Path.GetFileName(TemporaryPath), ExtensionForDialog);
                 if (!string.IsNullOrEmpty(path))
                 {
                     try
                     {
-                        File.Copy(m_ImagePath, path, true);
+                        m_ImagePath[(int)m_Mode] = path;
+                        File.Copy(TemporaryPath, path, true);
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
+                        UnityEngine.Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
                     }
                 }
             }
-            EditorGUILayout.EndHorizontal();
-
-            GUILayout.Space(10);
-            var id = GetDeviceId();
-            if (string.IsNullOrEmpty(id))
-                EditorGUILayout.HelpBox("No valid device detected, please reopen this window after selecting proper device.", MessageType.Info);
-            else
-            {
-                if (!string.IsNullOrEmpty(m_Error))
-                {
-                    EditorGUILayout.HelpBox(m_Error, MessageType.Error);
-                }
-                else
-                {
-                    if (m_ImageTexture != null)
-                    {
-                        Rect rect = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        GUI.DrawTexture(rect, m_ImageTexture, ScaleMode.ScaleToFit);
-                    }
-                }
-            }
-            EditorGUILayout.EndVertical();
+            EditorGUI.EndDisabledGroup();
         }
 
-        void LoadImage()
+        private void DoPreviewGUI()
         {
-            if (!File.Exists(m_ImagePath))
-                return;
+            switch (m_Mode)
+            {
+                case Mode.Screenshot:
+                    {
+                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        m_CaptureScreenshot.DoGUI(rc);
+                    }
+                    break;
+                case Mode.Video:
+                    if (Unsupported.IsDeveloperMode())
+                        m_CaptureVideo.DoDebuggingGUI();
+                    DoVideoSettingsGUI();
+                    GUILayout.Space(5);
+                    if (IsCapturing)
+                    {
+                        EditorGUILayout.HelpBox($"Recording{new String('.', (int)(Time.realtimeSinceStartup * 3) % 4 + 1)}\nClick Stop to stop the recording.", MessageType.Info);
+                        break;
+                    }
+                    if (m_CaptureVideo.Errors.Length > 0)
+                    {
+                        DoVideoErrorsGUI();
+                    }
+                    else
+                    {
+                        m_VideoPlayer.DoGUI(position);
+                        if (m_VideoPlayer.IsPlaying())
+                            Repaint();
+                    }
+                    break;
+            }
+        }
 
-            byte[] imageData;
-            imageData = File.ReadAllBytes(m_ImagePath);
+        void DoVideoSettingsGUI()
+        {
+            var rs = m_Runtime.UserSettings.CaptureVideoSettings;
+            var width = 100;
+            EditorGUILayout.LabelField("Toggle to override recorder settings", EditorStyles.boldLabel);
 
-            m_ImageTexture = new Texture2D(2, 2); // The size will be replaced by LoadImage().
-            if (!m_ImageTexture.LoadImage(imageData))
-                return;
+            // Time Limit
+            EditorGUILayout.BeginHorizontal();
+            rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
+            EditorGUI.BeginDisabledGroup(!rs.TimeLimitEnabled);
+            rs.TimeLimit = (uint)EditorGUILayout.IntSlider((int)rs.TimeLimit, 1, 180);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
 
-            maxSize = new Vector2(Math.Max(m_ImageTexture.width, position.width), m_ImageTexture.height + kButtonAreaHeight);
+            // Video Size
+            EditorGUILayout.BeginHorizontal();
+            rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
+            EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
+            rs.VideoSizeX = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeX, 100, 7680);
+            rs.VideoSizeY = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeY, 100, 7680);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
+            // Bit Rate
+            EditorGUILayout.BeginHorizontal();
+            rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
+            EditorGUI.BeginDisabledGroup(!rs.BitRateEnabled);
+            rs.BitRateK = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRateK));
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+
+            // Display Id
+            EditorGUILayout.BeginHorizontal();
+            rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
+            EditorGUI.BeginDisabledGroup(!rs.DisplayIdEnabled);
+            Color? oldColor = null;
+            if (rs.DisplayIdEnabled && string.IsNullOrEmpty(rs.DisplayId))
+            {
+                oldColor = GUI.color;
+                GUI.color = Color.red;
+            }
+
+            rs.DisplayId = EditorGUILayout.TextField(GUIContent.none, rs.DisplayId);
+
+            if (oldColor != null)
+                GUI.color = (Color)oldColor;
+
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        void DoVideoErrorsGUI()
+        {
+            var boxRect = GUILayoutUtility.GetLastRect();
+            var oldColor = GUI.color;
+            GUI.color = Color.grey;
+            GUI.Box(new Rect(0, boxRect.y + boxRect.height, Screen.width, Screen.height), GUIContent.none);
+            GUI.color = oldColor;
+            EditorGUILayout.Space(20);
+            EditorGUILayout.HelpBox(m_CaptureVideo.Errors, MessageType.Error);
         }
     }
 }

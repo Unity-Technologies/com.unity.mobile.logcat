@@ -117,6 +117,8 @@ namespace Unity.Android.Logcat
 
             private ADB(System.Object adbObject)
             {
+                if (adbObject == null)
+                    throw new ArgumentNullException("ADB instance cannot be null. Is Android SDK set?");
                 m_ADBObject = adbObject;
             }
 

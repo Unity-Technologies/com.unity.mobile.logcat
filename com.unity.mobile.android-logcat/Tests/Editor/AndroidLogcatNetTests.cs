@@ -39,6 +39,7 @@ public class AndroidLogcatNetTests
             "System",
             "UnityEngine.IMGUIModule",
             "UnityEngine.CoreModule",
+            "UnityEngine.VideoModule",
             "UnityEngine.TextRenderingModule",
             "System.Core",
             "UnityEngine.ImageConversionModule",
