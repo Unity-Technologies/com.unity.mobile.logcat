@@ -17,7 +17,7 @@ namespace Unity.Android.Logcat
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
             public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
-            public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of pacakges in pacakge selection which have exited.");
+            public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;

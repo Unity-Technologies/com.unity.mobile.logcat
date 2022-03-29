@@ -522,7 +522,7 @@ namespace Unity.Android.Logcat
             return devices.Values.ToArray()[index].State == IAndroidLogcatDevice.DeviceState.Connected;
         }
 
-        private void SetPacakge(PackageInformation newPackage)
+        private void SetPackage(PackageInformation newPackage)
         {
             SelectedPackage = newPackage;
             m_MemoryViewer.ClearEntries();
@@ -537,9 +537,9 @@ namespace Unity.Android.Logcat
 
             m_AutoSelectPackage = false;
 
-            AndroidLogcatInternalLog.Log("Selecting pacakge {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
+            AndroidLogcatInternalLog.Log("Selecting package {0}", newPackage == null ? "<null>" : newPackage.DisplayName);
 
-            SetPacakge(newPackage);
+            SetPackage(newPackage);
             RestartLogCat();
         }
 
@@ -552,7 +552,7 @@ namespace Unity.Android.Logcat
         private void ResetPackages(IAndroidLogcatDevice device)
         {
             AndroidLogcatInternalLog.Log("Reset packages");
-            SetPacakge(null);
+            SetPackage(null);
         }
 
         private void HandleSelectedPackage()
