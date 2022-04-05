@@ -1,7 +1,0 @@
-apiRules:
-  - exclude:
-      uidRegex: ^Global
-      type: Namespace
-  - exclude:
-      uidRegex: ^Unity\.Android\.Logcat
-      type: Namespace
