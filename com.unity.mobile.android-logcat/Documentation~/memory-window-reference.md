@@ -33,6 +33,19 @@ The Memory window can display different memory groups allocated for your applica
 | **Heap Alloc**                  | The total amount of memory the application allocates using Dalvik (Java allocators) and native heap allocators. This includes both memory which is in RAM or is paged in storage. This is the best metric when checking if the application is leaking Native or Java memory. |
 | **Heap Size**                   | The total memory that the application reserves. This memory size will be always bigger than **Heap Alloc**. |
 
+### Memory types
+
+Depending on how you allocate memory in your application, Android creates memory of different types.
+
+* If you allocate memory using the native functions **malloc** and **new**, or use C# **Marshal.AllocHGlobal**, this memory appears in the **Heap Alloc** and **Heap Size** groups under the **Native Heap** memory type.
+* If you allocate memory using java functions like **new**, this memory appears in the **Heap Alloc** and **Heap Size** groups under the **Java Heap** memory type.
+* In both cases above, both native and java memory won't appear in the **PSS** memory group until you try to write to or read from the allocated native or java memory.
+* If you allocate memory using the C# **new** function, this memory appears in the **PSS** group under the **Private Other** memory type.
+
+For more information, see [meminfo](https://developer.android.com/studio/command-line/dumpsys#meminfo).
+
+To toggle which memory types appear in the [memory chart](#memory-chart), click the memory type in the [memory details panel](#memory-details-panel). 
+
 ### Memory requests
 
 To make memory requests, the Memory window uses `adb shell dumpsys meminfo package_name`. For more information, see [dumpsys](https://developer.android.com/studio/command-line/dumpsys#meminfo).
@@ -46,5 +59,3 @@ The memory chart displays the memory allocated for the connected application ove
 > The memory chart.
 
 To view a snapshot in the [memory details panel](#memory-details-panel), click on the chart at the part you want to view.
-
-To toggle which memory types appear in the memory chart, click the memory type in the [memory details panel](#memory-details-panel).

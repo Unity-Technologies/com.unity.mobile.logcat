@@ -7,7 +7,7 @@ To open the Device Screen Capture window:
 1. Open the [Android Logcat window](android-logcat-window.md).
 2. From the [toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Screen Capture**.
 
-![](images/capture_screenshot.png)
+![](images/capture_video.png)
 > The Device Screen Capture window.
 
 | **Label**               | **Description**                                              |
