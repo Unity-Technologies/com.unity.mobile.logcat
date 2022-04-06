@@ -59,8 +59,7 @@ The following screenshot shows the memory dump that `dumpsys` produces:
 
 The memory chart displays the memory allocated for the connected application over time.
 
- 
-
+ ![](images/MemoryWindowChart.png)
 > The memory chart.
 
 To view a snapshot in the [memory details panel](#memory-details-panel), click on the chart at the part you want to view.
