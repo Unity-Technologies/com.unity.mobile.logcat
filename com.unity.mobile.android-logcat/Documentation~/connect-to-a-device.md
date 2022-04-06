@@ -36,4 +36,4 @@ You can only connect to one device at a time. To select which device to connect 
 ## Additional resources
 
 * [Android Logcat window](android-logcat-window.md)
-* [View messages](view-messages.md)
+* [Messages](messages.md)

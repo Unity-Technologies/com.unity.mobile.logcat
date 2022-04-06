@@ -3,7 +3,7 @@
 * [Getting started](getting-started.md)
   * [Install the Android Logcat package](install-android-logcat.md)
   * [Connect to a device](connect-to-a-device.md)
-  * [View messages](view-messages.md)
+  * [Messages](messages.md)
 * [Android Logcat window](android-logcat-window.md)
   * [Android Logcat window reference](android-logcat-window-reference.md)
   * [Customize message log columns](android-logcat-window-message-log-customize.md)

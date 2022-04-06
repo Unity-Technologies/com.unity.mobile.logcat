@@ -1,4 +1,4 @@
-# View messages
+# Messages
 
 There can be multiple Unity applications on a connected Android device. The [Android Logcat window](android-logcat-window.md) can display messages from:
 
@@ -20,8 +20,11 @@ To select an application to view messages for:
 2. Open the Android Logcat window.
 3. From the [toolbar](android-logcat-window.md#toolbar), select the **Package Selector**. The **Package Selector** contains:
     * The application for the top [activity](https://developer.android.com/guide/components/activities/intro-activities) currently running on the selected device.
-    * The built-application for your open Unity Project, if its running on the selected device. It doesn't need to be the top running activity.
-5. In the drop-down menu, select the application to connect to. After you do this, the Android Logcat window displays messages for the selected application.
+    * The application built from your Unity Project, if its running on the selected device. It doesn't need to be the top running activity.
+4. In the drop-down menu, select the application to connect to. After you do this, the Android Logcat window displays messages for the selected application.
+
+> [!IMPORTANT]
+> Android Logcat uses the [applicationIdentifier](https://docs.unity3d.com/ScriptReference/PlayerSettings-applicationIdentifier.html) Player Setting to identify Unity applications. If you build a Unity application with one `applicationIdentifier` and change it in your Unity Project, Android Logcat can't identify the application on the Android Device if the application is running in the background.
 
 ## Use auto run
 

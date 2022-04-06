@@ -4,23 +4,23 @@ This page contains system requirements and compatibility information for the And
 
 ## Unity Editor
 
-The Android Logcat package requires Unity 2019.2 or above and the Android support module. For information on how to install the Android support module, see [Android environment setup](https://docs.unity3d.com/Manual/android-sdksetup.html).
+The Android Logcat package requires Unity 2019.4 or above and the Android support module. For information on how to install the Android support module, see [Android environment setup](https://docs.unity3d.com/Manual/android-sdksetup.html).
 
 ## Supported features
 
 The Android Logcat package supports the following features:
 
-* Wireless and USB device connnection
+* Wireless and USB device connection
 * Package selection
-* Log
+* Message log
   * Copy
   * Save
   * Clear
   * Filter by
     * Priority
     * Tag
-    * Process Id
-    * Text
+    * Process ID
+    * Text (including regular expressions)
 * Auto run
 * Screen capture
 * Memory Window
