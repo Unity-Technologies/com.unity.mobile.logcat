@@ -10,7 +10,7 @@ To open the Memory window in the Unity Editor:
 If you select **Auto Capture**, Unity periodically captures memory snapshots for the selected application. If you select **Manual Capture**, the memory window provides a **Capture** button which you can use to manually capture a memory snapshot. This is useful if the automatic memory requests affect the application's performance.
 
 > [!NOTE]
-> When the Memory window requests a memory capture, the following message might appear in the Android Logcat window: `Explicit concurrent copying GC freed 5515(208KB) AllocSpace objects, 1(20KB) LOS objects, 49% free, 1926KB/3852KB, paused 46us total 11.791ms`. This is normal and it stops appearing when you disable the Memory window stops this message from appearing.
+> When the Memory window requests a memory capture, the following message might appear in the Android Logcat window: `Explicit concurrent copying GC freed 5515(208KB) AllocSpace objects, 1(20KB) LOS objects, 49% free, 1926KB/3852KB, paused 46us total 11.791ms`. This is normal and it stops appearing when you disable the Memory window.
 
 This section of the documentation describes the areas and features of the Memory window.
 
