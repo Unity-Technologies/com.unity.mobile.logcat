@@ -50,6 +50,11 @@ To toggle which memory types appear in the [memory chart](#memory-chart), click 
 
 To make memory requests, the Memory window uses `adb shell dumpsys meminfo package_name`. For more information, see [dumpsys](https://developer.android.com/studio/command-line/dumpsys#meminfo).
 
+The following screenshot shows the memory dump that `dumpsys` produces:
+
+![](images/MemoryDump.png)
+> A raw `dumpsys` memory dump.
+
 ## Memory chart
 
 The memory chart displays the memory allocated for the connected application over time.
