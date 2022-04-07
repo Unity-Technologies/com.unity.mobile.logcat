@@ -1,6 +1,6 @@
 # Messages
 
-There can be multiple Unity applications on a connected Android device. The [Android Logcat window](android-logcat-window.md) can display messages from:
+There can be multiple applications on a connected Android device. The [Android Logcat window](android-logcat-window.md) can display messages from:
 
 * Every application running on the device.
 * A specific application running on the device.
