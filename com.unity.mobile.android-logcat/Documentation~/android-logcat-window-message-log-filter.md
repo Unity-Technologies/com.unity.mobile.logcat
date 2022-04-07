@@ -25,7 +25,7 @@ The Tag Control window is an interface that helps you to set which tags to filte
 
 ## Filter by process ID
 
-To filter the message log by process ID, right-click the **PID** column header in the message log and select **Filter by process id**.
+To filter the message log by process ID, right-click on a message and select **Filter by process id**. When you filter by process ID, the result is similar to [selecting a specific application to view messages from](messages.md#select-an-application).
 
 ## Additional resources
 
