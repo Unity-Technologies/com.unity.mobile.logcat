@@ -27,7 +27,7 @@ The toolbar contains options that customize the message log section and also add
 | **Reconnect**        | Reconnects the Android Logcat window to the                  |
 | **Disconnect**       | Disconnects the Android Logcat window from the               |
 | **Clear**            | Clears the list of messages in the [message log](#message-log). |
-| **Tools**            | A drop-down list of tools that can help you to debug your Android application. The options are:<br/>&#8226; **Screen Capture**: Captures screenshots and videos of the connected Android device. For more information, see [Screen capture tool](screen-capture.md).<br/>&#8226; **Open Terminal**: Opens the terminal on macOS and Linux, and opens the Windows Console on Windows.<br/>&#8226; **Stacktrace Utility**: Resolves custom stack traces. For more information, see [Stacktrace Utility](stacktrace-utility.md).<br/>&#8226; **Memory Window**: Tracks the memory allocated for your application. For more information, see [Memory window](memory-window.md). |
+| **Tools**            | A drop-down list of tools that can help you to debug your Android application. The options are:<br/>&#8226; **Screen Capture**: Captures screenshots and videos from the connected Android device. For more information, see [Screen capture tool](screen-capture.md).<br/>&#8226; **Open Terminal**: Opens the terminal on macOS and Linux, and opens the Windows Console on Windows.<br/>&#8226; **Stacktrace Utility**: Resolves custom stack traces. For more information, see [Stacktrace Utility](stacktrace-utility.md).<br/>&#8226; **Memory Window**: Tracks the memory allocated for your application. For more information, see [Memory window](memory-window.md). |
 
 ## Message log
 
