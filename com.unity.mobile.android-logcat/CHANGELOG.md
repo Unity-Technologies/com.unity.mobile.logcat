@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Text filtering has an option to ignore character casing.
  - Whenever entering new text filter selection of messages will persist, the selection will reset if **adb logcat** command is reexecuted, for ex., picking new tag, picking new priority, etc.
  - There are new settings in Preferences->Android Logcat Settings:
-    - Max Unfiltered Messages - controls how many unfiltered messages to keep in cache, you can remove the limit, and have as many messages as your memory let's you.
-    - Max Filtered Messages - controls how many filtered messages display on the list, you can remove the limit, but it might cause UI issues.
+    - Max Cached Messages - controls how many unfiltered messages to keep in cache, you can remove the limit, and have as many messages as your memory let's you.
+    - Max Displayed Messages - controls how many messages display on the list, you can remove the limit, but it might cause UI issues.
  - Fixed tiny issue, when right clicking on the log message, the tag and process id for context menu was being taken from the first selected item, now it will be taken from item which you're hovering on
  - Fixed issue, when right clicking on the log message with tag containing forward slash, the menu would be incorrectly displayed.
  - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device. 

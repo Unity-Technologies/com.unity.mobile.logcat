@@ -284,14 +284,14 @@ namespace Unity.Android.Logcat
 
         public void StripRawEntriesIfNeeded()
         {
-            var rawMaxCount = m_Runtime.Settings.MaxUnfilteredMessageCount;
+            var rawMaxCount = m_Runtime.Settings.MaxCachedMessageCount;
             if (rawMaxCount > 0 && m_RawLogEntries.Count > rawMaxCount)
                 m_RawLogEntries.RemoveRange(0, m_RawLogEntries.Count - rawMaxCount);
         }
 
         public void StripFilteredEntriesIfNeeded()
         {
-            var filteredMaxCount = m_Runtime.Settings.MaxFilteredMessageCount;
+            var filteredMaxCount = m_Runtime.Settings.MaxDisplayedMessageCount;
             if (filteredMaxCount > 0 && m_FilteredLogEntries.Count > filteredMaxCount)
                 m_FilteredLogEntries.RemoveRange(0, m_FilteredLogEntries.Count - filteredMaxCount);
         }

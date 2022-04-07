@@ -10,8 +10,8 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxUnfilteredMessageCount = new GUIContent("Max Unfiltered Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of unfiltered messages affects the performing of filtering. 0 - no limit.");
-            public static GUIContent maxFilteredMessageCount = new GUIContent("Max Filtered Messages", "The maximum number of filtered messages which are shown in the list, cannot be bigger than unfiltered message count. 0 - no limit.");
+            public static GUIContent maxCachedMessageCount = new GUIContent("Max Cached Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of cached messages affects the performing of filtering. 0 - no limit.");
+            public static GUIContent maxDisplayedMessageCount = new GUIContent("Max Displayed Messages", "The maximum number of messages which are shown in the list, cannot be bigger than cached message count. 0 - no limit.");
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
@@ -37,8 +37,8 @@ namespace Unity.Android.Logcat
         {
             var settings = Settings;
             EditorGUILayout.LabelField("Messages", EditorStyles.boldLabel);
-            settings.MaxUnfilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxUnfilteredMessageCount, settings.MaxUnfilteredMessageCount, 0, 100000);
-            settings.MaxFilteredMessageCount = EditorGUILayout.IntSlider(Styles.maxFilteredMessageCount, settings.MaxFilteredMessageCount, 0, 100000);
+            settings.MaxCachedMessageCount = EditorGUILayout.IntSlider(Styles.maxCachedMessageCount, settings.MaxCachedMessageCount, 0, 100000);
+            settings.MaxDisplayedMessageCount = EditorGUILayout.IntSlider(Styles.maxDisplayedMessageCount, settings.MaxDisplayedMessageCount, 0, 100000);
 
             settings.MessageFont = (Font)EditorGUILayout.ObjectField(Styles.font, settings.MessageFont, typeof(Font), true);
             settings.MessageFontSize = EditorGUILayout.IntSlider(Styles.fontSize, settings.MessageFontSize, 5, 25);
