@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
             Console.WriteLine($"Running On Build Server: {runningOnBuildServer}");
             Console.WriteLine($"Android Device Info: {androidDeviceInfo}");
 
-            // Ignore test only if running on Yamato and device info is not available
+            // Ignore test only if running on Yamato or Katana and device info is not available
             // We always want our test to run when running locally
             ConditionalIgnoreAttribute.AddConditionalIgnoreMapping(nameof(RequiresAndroidDeviceAttribute), runningOnBuildServer && string.IsNullOrEmpty(androidDeviceInfo));
         }
