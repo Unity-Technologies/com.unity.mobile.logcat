@@ -5,7 +5,7 @@ This page introduces the [Memory window's](memory-window-reference.md) interface
 To open the Memory window in the Unity Editor:
 
 1. Open the [Android Logcat window](android-logcat-window.md).
-2. In the [Toolbar](android-logcat-window.md#toolbar), select **Tools** > **Memory Window** then either **Auto Capture** or **Manual Capture**.
+2. In the [Toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Memory Window** then either **Auto Capture** or **Manual Capture**.
 
 If you select **Auto Capture**, Unity periodically captures memory snapshots for the selected application. If you select **Manual Capture**, the memory window provides a **Capture** button which you can use to manually capture a memory snapshot. This is useful if the automatic memory requests affect the application's performance.
 

@@ -19,11 +19,11 @@ The toolbar contains options that customize the message log section and also add
 
 | **Toolbar option**   | **Description**                                              |
 | -------------------- | ------------------------------------------------------------ |
-| **Auto Run**         | Toggles auto-run. When enabled, the Android Logcat window launches automatically when you [Build And Run](https://docs.unity3d.com/2022.2/Documentation/Manual/android-BuildProcess.html) your application. For more information, see [Use auto run](view-messages.md#use-auto-run). |
+| **Auto Run**         | Toggles auto-run. When enabled, the Android Logcat window launches automatically when you [Build And Run](https://docs.unity3d.com/2022.2/Documentation/Manual/android-BuildProcess.html) your application. For more information, see [Use auto run](messages.md#use-auto-run). |
 | **Device Selector**  | Specifies the Android device to connect the Android Logcat window to. For more information, see [Connect to a device](connect-to-a-device.md). |
-| **Package Selector** | Specifies the application on the Android device to display messages for. For more information, see [Select an application](view-messages.md#select-an-application). |
-| **Filter Input**     | A search field that you can use to filter the [message log](#message-log) by text. For more information, see [Filter the message logs](android-logcat-window-message-log-filter). |
-| **Filter Options**   | Options that determine how to use **Filter Input** to filter messages in the message log. The options are:<br/>&#8226; **Use Regular Expressions**: Indicates whether to treat the **Filter Input** as a regular expression. <br/>&#8226; **Match Case**: Indicates whether to make the filter case-senstive or not. <br/><br/>For more information, see [Filter the message logs](android-logcat-window-message-log-filter). |
+| **Package Selector** | Specifies the application on the Android device to display messages for. For more information, see [Select an application](messages.md#select-an-application). |
+| **Filter Input**     | A search field that you can use to filter the [message log](#message-log) by text. For more information, see [Filter the message logs](android-logcat-window-message-log-filter.md). |
+| **Filter Options**   | Options that determine how to use **Filter Input** to filter messages in the message log. The options are:<br/>&#8226; **Use Regular Expressions**: Indicates whether to treat the **Filter Input** as a regular expression. <br/>&#8226; **Match Case**: Indicates whether to make the filter case-senstive or not. <br/><br/>For more information, see [Filter the message logs](android-logcat-window-message-log-filter.md). |
 | **Reconnect**        | Reconnects the Android Logcat window to the                  |
 | **Disconnect**       | Disconnects the Android Logcat window from the               |
 | **Clear**            | Clears the list of messages in the [message log](#message-log). |

@@ -10,5 +10,5 @@ To change which columns are visible, right-click anywhere in the message log hea
 
 ### Additional resources
 
-* [Message log](android-logcat-window-reference.md#message-log.md)
+* [Message log](android-logcat-window-reference.md#message-log)
 * [Filter the message log](android-logcat-window-message-log-filter.md)

@@ -52,5 +52,5 @@ After you capture a screenshot or video, this section of the window displays the
 
 ## Additional resources
 
-* [Capture a screenshot](screen-capture-screenshot)
-* [Capture a video](screen-capture-video)
+* [Capture a screenshot](screen-capture-screenshot.md)
+* [Capture a video](screen-capture-video.md)

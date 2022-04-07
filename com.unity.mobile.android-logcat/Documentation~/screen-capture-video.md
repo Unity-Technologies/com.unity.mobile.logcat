@@ -19,4 +19,4 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to ca
 ## Additional resources
 
 * [Device Screen Capture window reference](screen-capture-window-reference.md)
-* [Capture a screenshot](screen-capture-screenshot)
+* [Capture a screenshot](screen-capture-screenshot.md)

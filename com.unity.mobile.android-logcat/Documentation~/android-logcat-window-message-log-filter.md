@@ -30,4 +30,4 @@ To filter the message log by process ID, right-click the **PID** column header i
 ## Additional resources
 
 * [Message log](android-logcat-window-reference.md#message-log)
-* [Customize message log columns](android-logcat-window-message-log-customize)
+* [Customize message log columns](android-logcat-window-message-log-customize.md)

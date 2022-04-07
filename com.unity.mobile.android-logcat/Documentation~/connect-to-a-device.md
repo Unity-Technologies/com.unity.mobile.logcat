@@ -1,6 +1,6 @@
 # Connect to a device
 
-The Android Logcat package supports USB and wireless connection. This page explains how to connect an Android device to the [Android Logcat window](android-logcat-window).
+The Android Logcat package supports USB and wireless connection. This page explains how to connect an Android device to the [Android Logcat window](android-logcat-window.md).
 
 ## Connect a device
 
@@ -16,7 +16,7 @@ To connect an Android device to the Android Logcat window:
 
 1. Switch your Android device to TCP mode. For information on how to do this, see [Connect to a device over Wi-Fi](https://developer.android.com/studio/command-line/adb#wireless).
 2. Open the [Android Logcat window](android-logcat-window.md).
-3. From the [toolbar](android-logcat-window.md#toolbar), select the **Device Selector**.
+3. From the [toolbar](android-logcat-window-reference.md#toolbar), select the **Device Selector**.
 4. Select **Other connection options**.
 5. In window that opens, enter the device's IP address and select **Connect**.
 
