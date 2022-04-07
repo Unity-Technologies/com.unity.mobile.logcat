@@ -27,10 +27,10 @@ namespace Unity.Android.Logcat
         private int m_MemoryRequestInterval;
 
         [SerializeField]
-        private int m_MaxUnfilteredMessageCount;
+        private int m_MaxCachedMessageCount;
 
         [SerializeField]
-        private int m_MaxFilteredMessageCount;
+        private int m_MaxDisplayedMessageCount;
 
         [SerializeField]
         private Font m_MessageFont;
@@ -70,43 +70,43 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal int MaxUnfilteredMessageCount
+        internal int MaxCachedMessageCount
         {
             set
             {
-                if (m_MaxUnfilteredMessageCount == value)
+                if (m_MaxCachedMessageCount == value)
                     return;
-                m_MaxUnfilteredMessageCount = value;
-                m_MaxFilteredMessageCount = ValidateFilteredMessageCount(m_MaxFilteredMessageCount);
+                m_MaxCachedMessageCount = value;
+                m_MaxDisplayedMessageCount = ValidateDisplayedMessageCount(m_MaxDisplayedMessageCount);
                 InvokeOnSettingsChanged();
             }
             get
             {
-                return m_MaxUnfilteredMessageCount;
+                return m_MaxCachedMessageCount;
             }
         }
 
-        internal int MaxFilteredMessageCount
+        internal int MaxDisplayedMessageCount
         {
             set
             {
-                value = ValidateFilteredMessageCount(value);
-                if (m_MaxFilteredMessageCount == value)
+                value = ValidateDisplayedMessageCount(value);
+                if (m_MaxDisplayedMessageCount == value)
                     return;
-                m_MaxFilteredMessageCount = value;
+                m_MaxDisplayedMessageCount = value;
                 InvokeOnSettingsChanged();
             }
             get
             {
-                return m_MaxFilteredMessageCount;
+                return m_MaxDisplayedMessageCount;
             }
         }
 
-        private int ValidateFilteredMessageCount(int newFilteredMessageCount)
+        private int ValidateDisplayedMessageCount(int newDisplayedMessageCount)
         {
-            if (MaxUnfilteredMessageCount > 0)
-                newFilteredMessageCount = Math.Min(newFilteredMessageCount, MaxUnfilteredMessageCount);
-            return newFilteredMessageCount;
+            if (MaxCachedMessageCount > 0)
+                newDisplayedMessageCount = Math.Min(newDisplayedMessageCount, MaxCachedMessageCount);
+            return newDisplayedMessageCount;
         }
 
         internal int MaxExitedPackagesToShow
@@ -196,8 +196,8 @@ namespace Unity.Android.Logcat
         internal void Reset()
         {
             m_MemoryRequestInterval = 500;
-            m_MaxUnfilteredMessageCount = 60000;
-            m_MaxFilteredMessageCount = 60000;
+            m_MaxCachedMessageCount = 60000;
+            m_MaxDisplayedMessageCount = 60000;
             m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;

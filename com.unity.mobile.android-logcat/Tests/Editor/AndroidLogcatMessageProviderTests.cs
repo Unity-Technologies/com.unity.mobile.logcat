@@ -436,8 +436,8 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     {
         InitRuntime();
 
-        m_Runtime.Settings.MaxUnfilteredMessageCount = 20;
-        m_Runtime.Settings.MaxFilteredMessageCount = 20;
+        m_Runtime.Settings.MaxCachedMessageCount = 20;
+        m_Runtime.Settings.MaxDisplayedMessageCount = 20;
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
         logcat.Start();
 
@@ -454,15 +454,15 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         Assert.AreEqual(10.ToString(), logcat.FilteredEntries[0].message);
         Assert.AreEqual(10.ToString(), logcat.RawEntries[0].message);
 
-        m_Runtime.Settings.MaxFilteredMessageCount = 10;
+        m_Runtime.Settings.MaxDisplayedMessageCount = 10;
         AndroidLogcatUtilities.ApplySettings(m_Runtime, logcat);
         Assert.AreEqual(10, logcat.FilteredEntries.Count);
         Assert.AreEqual(20, logcat.RawEntries.Count);
         Assert.AreEqual(20.ToString(), logcat.FilteredEntries[0].message);
 
         // Remove limiters and see that no messages are dropped
-        m_Runtime.Settings.MaxUnfilteredMessageCount = 0;
-        m_Runtime.Settings.MaxFilteredMessageCount = 0;
+        m_Runtime.Settings.MaxCachedMessageCount = 0;
+        m_Runtime.Settings.MaxDisplayedMessageCount = 0;
         for (int i = 0; i < 30; i++)
             SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, kDefaultDevice,
                 new[] { $"10-25 14:27:56.862  1  2255 I chromium: {i + 30}" });
@@ -491,7 +491,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         const int kMaxFilteredMessages = 20;
 
-        m_Runtime.Settings.MaxFilteredMessageCount = kMaxFilteredMessages;
+        m_Runtime.Settings.MaxDisplayedMessageCount = kMaxFilteredMessages;
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
         logcat.Start();
 
@@ -515,7 +515,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         Assert.AreEqual(18, maxIdx);
 
         // Entry at index 2 will be stripped
-        m_Runtime.Settings.MaxFilteredMessageCount = 10;
+        m_Runtime.Settings.MaxDisplayedMessageCount = 10;
         AndroidLogcatUtilities.ApplySettings(m_Runtime, logcat);
 
         entries = logcat.GetSelectedFilteredEntries(out minIdx, out maxIdx);
