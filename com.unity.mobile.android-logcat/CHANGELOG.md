@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2022-04-07
+### Fixes & Improvements
+ - Fix integration tests not able to run on a specific build server configuration like Katana.
+ 
 ## [1.3.0] - 2022-03-23
 ### Fixes & Improvements.
  - You can now perform text filtering when disconnected from the device, the filtering will be performed by the logcat package, previously it was performed by **adb logcat** command.
