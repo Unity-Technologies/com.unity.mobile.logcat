@@ -25,3 +25,8 @@ The Android Logcat package supports the following features:
 * Screen capture
 * Memory Window
 * Stacktrace resolving
+
+## Additional resources
+
+* [Getting started](getting-started.md)
+
