@@ -654,10 +654,12 @@ namespace Unity.Android.Logcat
                     case KeyCode.DownArrow:
                         DoNavigation(1, hasShift);
                         requestRepaint = true;
+                        e.Use();
                         break;
                     case KeyCode.UpArrow:
                         DoNavigation(-1, hasShift);
                         requestRepaint = true;
+                        e.Use();
                         break;
                     default:
                         break;
