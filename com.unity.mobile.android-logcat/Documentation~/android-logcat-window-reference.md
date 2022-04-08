@@ -24,8 +24,8 @@ The toolbar contains options that customize the message log section and also add
 | **Package Selector** | Specifies the application on the Android device to display messages for. For more information, see [Select an application](messages.md#select-an-application). |
 | **Filter Input**     | A search field that you can use to filter the [message log](#message-log) by text. For more information, see [Filter the message logs](android-logcat-window-message-log-filter.md). |
 | **Filter Options**   | Options that determine how to use **Filter Input** to filter messages in the message log. The options are:<br/>&#8226; **Use Regular Expressions**: Indicates whether to treat the **Filter Input** as a regular expression. <br/>&#8226; **Match Case**: Indicates whether to make the filter case-senstive or not. <br/><br/>For more information, see [Filter the message logs](android-logcat-window-message-log-filter.md). |
-| **Reconnect**        | Reconnects the Android Logcat window to the                  |
-| **Disconnect**       | Disconnects the Android Logcat window from the               |
+| **Reconnect**        | Reconnects the Android Logcat window to the application and the device. If the application is no longer running, this reconnects to the device with no application selected. |
+| **Disconnect**       | Disconnects the Android Logcat window from the device.       |
 | **Clear**            | Clears the list of messages in the [message log](#message-log). |
 | **Tools**            | A drop-down list of tools that can help you to debug your Android application. The options are:<br/>&#8226; **Screen Capture**: Captures screenshots and videos from the connected Android device. For more information, see [Screen capture tool](screen-capture.md).<br/>&#8226; **Open Terminal**: Opens the terminal on macOS and Linux, and opens the Windows Console on Windows.<br/>&#8226; **Stacktrace Utility**: Resolves custom stack traces. For more information, see [Stacktrace Utility](stacktrace-utility.md).<br/>&#8226; **Memory Window**: Tracks the memory allocated for your application. For more information, see [Memory window](memory-window.md). |
 
