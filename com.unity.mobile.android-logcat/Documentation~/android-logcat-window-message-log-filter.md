@@ -17,13 +17,17 @@ To filter the message log by priority, right-click the **Priority** column heade
 
 ## Filter by tag
 
-Tags indicate the origin of the log message. To filter messages by tag, right-click the **Tag** column header in the message log and select the tags you want to appear in the message log. 
+Tags indicate the origin of the log message. To filter messages by tag, right-click the **Tag** column header in the message log and select the tags you want to appear in the message log. If you aren't currently filtering messages by tag, you can also right-click a message and select **Add Tag** to filter by that message's tag.
+
+### Tag Control
+
+The Tag Control window is an interface that helps you to set which tags to filter messages by. To open it, right-click the **Tag** column header in the message log and select **Tag Control**. In the window, you can manage a list of tags and enable/disable them to change which tags to filter messages by.
 
 ## Filter by process ID
 
-To filter the message log by process ID, right-click the **PID** column header in the message log and select **Filter by process id**.
+To filter the message log by process ID, right-click on a message and select **Filter by process id**. When you filter by process ID, the result is similar to [selecting a specific application to view messages from](messages.md#select-an-application).
 
 ## Additional resources
 
-* [Message log](android-logcat-window-reference.md#message-log).
-* [Customize message log columns](android-logcat-window-message-log-customize).
+* [Message log](android-logcat-window-reference.md#message-log)
+* [Customize message log columns](android-logcat-window-message-log-customize.md)

@@ -6,4 +6,5 @@ This section of the documentation explains how to install and set up the Android
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | [Install the Android Logcat package](install-android-logcat.md) | Add the Android Logcat package to your Unity Project.        |
 | [Connect to a device](connect-to-a-device.md)                | Connect to an Android device to receive messages from and about your Unity application. |
-| [View messages](view-messages.md)                            | Attach the Android Logcat window to an application on the Android device and see the message log for the application. |
+| [Messages](messages.md)                            | Attach the Android Logcat window to an application on the Android device and see the message log for the application. |
+

@@ -1,8 +1,16 @@
 # Memory window reference
 
-The interface for the [Memory window](memory-window-reference.md) is part of the [Android Logcat window](android-logcat-window.md).
+This page introduces the [Memory window's](memory-window-reference.md) interface. The interface for the Memory window is part of the [Android Logcat window](android-logcat-window.md).
 
-![](images/MemoryWindow.png)> The memory window.
+To open the Memory window in the Unity Editor:
+
+1. Open the [Android Logcat window](android-logcat-window.md).
+2. In the [Toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Memory Window** then either **Auto Capture** or **Manual Capture**.
+
+If you select **Auto Capture**, Unity periodically captures memory snapshots for the selected application. If you select **Manual Capture**, the memory window provides a **Capture** button which you can use to manually capture a memory snapshot. This is useful if the automatic memory requests affect the application's performance.
+
+![](images/MemoryWindow.png)
+> The memory window.
 
 | **Label**               | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
@@ -33,18 +41,33 @@ The Memory window can display different memory groups allocated for your applica
 | **Heap Alloc**                  | The total amount of memory the application allocates using Dalvik (Java allocators) and native heap allocators. This includes both memory which is in RAM or is paged in storage. This is the best metric when checking if the application is leaking Native or Java memory. |
 | **Heap Size**                   | The total memory that the application reserves. This memory size will be always bigger than **Heap Alloc**. |
 
+### Memory types
+
+Depending on how you allocate memory in your application, Android creates memory of different types.
+
+* If you allocate memory using the native functions **malloc** and **new**, or use C# **Marshal.AllocHGlobal**, this memory appears in the **Heap Alloc** and **Heap Size** groups under the **Native Heap** memory type.
+* If you allocate memory using java functions like **new**, this memory appears in the **Heap Alloc** and **Heap Size** groups under the **Java Heap** memory type.
+* In both cases above, both native and java memory won't appear in the **PSS** memory group until you try to write to or read from the allocated native or java memory.
+* If you allocate memory using the C# **new** function, this memory appears in the **PSS** group under the **Private Other** memory type.
+
+For more information, see [meminfo](https://developer.android.com/studio/command-line/dumpsys#meminfo).
+
+To toggle which memory types appear in the [memory chart](#memory-chart), click the memory type in the [memory details panel](#memory-details-panel). 
+
 ### Memory requests
 
 To make memory requests, the Memory window uses `adb shell dumpsys meminfo package_name`. For more information, see [dumpsys](https://developer.android.com/studio/command-line/dumpsys#meminfo).
+
+The following screenshot shows the memory dump that `dumpsys` produces:
+
+![](images/MemoryDump.png)
+> A raw `dumpsys` memory dump.
 
 ## Memory chart
 
 The memory chart displays the memory allocated for the connected application over time.
 
- 
-
+ ![](images/MemoryWindowChart.png)
 > The memory chart.
 
 To view a snapshot in the [memory details panel](#memory-details-panel), click on the chart at the part you want to view.
-
-To toggle which memory types appear in the memory chart, click the memory type in the [memory details panel](#memory-details-panel).
