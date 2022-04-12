@@ -75,7 +75,7 @@ namespace Unity.Android.Logcat
 
             if (m_NDKVersion >= new Version(23, 1))
             {
-                
+
                 m_Addr2LinePath = Path.Combine(binPath, "llvm-addr2line");
                 m_ReadElfPath = Path.Combine(binPath, "llvm-readelf");
             }
