@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.3.2] - 2022-04-12
 ### Fixes & Improvements
  - Fix integration tests not able to run on a specific build server configuration like Katana.
+ - Fix stacktrace resolving, when Unity uses NDK 23.
 
 ## [1.3.1] - 2022-04-11
 ### Fixes & Improvements.
