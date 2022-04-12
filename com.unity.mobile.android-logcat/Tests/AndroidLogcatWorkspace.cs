@@ -13,6 +13,16 @@ namespace Unity.Android.Logcat
             return Environment.GetEnvironmentVariable("YAMATO_PROJECT_ID") != null;
         }
 
+        public static bool IsRunningOnKatana()
+        {
+            return Environment.GetEnvironmentVariable("UNITY_THISISABUILDMACHINE") == "1";
+        }
+
+        public static bool IsRunningOnBuildServer()
+        {
+            return IsRunningOnYamato() || IsRunningOnKatana();
+        }
+
         public static string GetAndroidDeviceInfo()
         {
             var result = Environment.GetEnvironmentVariable("ANDROID_DEVICE_CONNECTION");
@@ -23,7 +33,7 @@ namespace Unity.Android.Logcat
 
         public static string GetAritfactsPath()
         {
-            if (!Workspace.IsRunningOnYamato())
+            if (!Workspace.IsRunningOnBuildServer())
                 return Path.Combine(Application.dataPath, "../LocalTestResults");
 
             var result = Environment.GetEnvironmentVariable("ARTIFACTS_PATH");

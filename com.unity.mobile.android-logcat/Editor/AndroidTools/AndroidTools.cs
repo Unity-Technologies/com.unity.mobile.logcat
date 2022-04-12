@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -8,13 +9,45 @@ namespace Unity.Android.Logcat
     internal class AndroidTools
     {
         private string m_NDKDirectory;
+        private Version m_NDKVersion;
         private string m_Addr2LinePath;
         private string m_NMPath;
         private string m_ReadElfPath;
         private AndroidBridge.ADB m_ADB;
 
+        internal Version NDKVersion
+        {
+            get
+            {
+                ResolvePathsIfNeeded();
+                return m_NDKVersion;
+            }
+        }
+
         internal AndroidTools()
         {
+        }
+
+        private static Version GetNDKVersion(string ndkPath)
+        {
+            var sourceProperties = Path.Combine(ndkPath, "source.properties");
+            if (!File.Exists(sourceProperties))
+                throw new Exception($"Couldn't acquire NDK version, '{sourceProperties}' was not found");
+
+            var contents = File.ReadAllText(sourceProperties);
+            var regex = new Regex(@"Pkg\.Revision\s*=\s*(?<version>\S+)");
+            var match = regex.Match(contents);
+            if (match.Success)
+            {
+                var versionText = match.Groups["version"].Value;
+                if (!Version.TryParse(versionText, out var version))
+                    throw new Exception($"Couldn't resolve version from '{sourceProperties}', the value was '{versionText}'");
+                return version;
+            }
+            else
+            {
+                throw new Exception($"Couldn't not find NDK version inside '{sourceProperties}', file contents\n:{contents}");
+            }
         }
 
         private void ResolvePathsIfNeeded()
@@ -22,27 +55,7 @@ namespace Unity.Android.Logcat
             string platformTag = "windows-x86_64";
             if (Application.platform != RuntimePlatform.WindowsEditor)
                 platformTag = "darwin-x86_64";
-#if UNITY_2019_3_OR_NEWER
             var ndkDirectory = AndroidBridge.AndroidExternalToolsSettings.ndkRootPath;
-#else
-            var directoriesToChecks = new[]
-            {
-                Path.GetFullPath(Path.Combine(Path.GetDirectoryName(AndroidBridge.ADB.GetInstance().GetADBPath()), @"..\..\NDK")),
-                UnityEditor.EditorPrefs.GetString("AndroidNdkRootR16b"),
-                System.Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT")
-            };
-
-            var ndkDirectory = string.Empty;
-            foreach (var d in directoriesToChecks)
-            {
-                if (string.IsNullOrEmpty(d))
-                    continue;
-                if (!Directory.Exists(d))
-                    continue;
-                ndkDirectory = d;
-                break;
-            }
-#endif
             if (string.IsNullOrEmpty(ndkDirectory))
                 throw new Exception("Failed to locate NDK directory");
 
@@ -55,16 +68,24 @@ namespace Unity.Android.Logcat
 
             m_NDKDirectory = ndkDirectory;
 
-#if UNITY_2019_3_OR_NEWER
+            m_NDKVersion = GetNDKVersion(m_NDKDirectory);
+
             var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "llvm", "prebuilt", platformTag, "bin");
             m_NMPath = Path.Combine(binPath, "llvm-nm");
-#else
-            var binPath = Paths.Combine(m_NDKDirectory, "toolchains", "aarch64-linux-android-4.9", "prebuilt", platformTag, "bin");
-            m_NMPath = Path.Combine(binPath, "aarch64-linux-android-nm");
-#endif
 
-            m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
-            m_ReadElfPath = Path.Combine(binPath, "aarch64-linux-android-readelf");
+            if (m_NDKVersion >= new Version(23, 1))
+            {
+
+                m_Addr2LinePath = Path.Combine(binPath, "llvm-addr2line");
+                m_ReadElfPath = Path.Combine(binPath, "llvm-readelf");
+            }
+            else
+            {
+
+                m_Addr2LinePath = Path.Combine(binPath, "aarch64-linux-android-addr2line");
+                m_ReadElfPath = Path.Combine(binPath, "aarch64-linux-android-readelf");
+            }
+
             if (Application.platform == RuntimePlatform.WindowsEditor)
             {
                 m_Addr2LinePath += ".exe";

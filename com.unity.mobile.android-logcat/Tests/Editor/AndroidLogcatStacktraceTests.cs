@@ -52,11 +52,7 @@ public class AndroidLogcatStacktraceTests
 
     private static string GetSymbolAddress(AndroidTools tools, string symbolPath, string symbolName)
     {
-#if UNITY_2019_3_OR_NEWER
         var targetAddress = GetSymbolAddressUsingNM(tools, symbolPath, symbolName);
-#else
-        var targetAddress = GetSymbolAddressUsingReadElf(tools, symbolPath, symbolName);
-#endif
         return targetAddress;
     }
 
@@ -76,15 +72,26 @@ public class AndroidLogcatStacktraceTests
         var tools = new AndroidTools();
         const string symbolName = "JNI_OnLoad";
 
-        var expectedOutput = symbolName + " at ??:?";
         var symbolPath = GetSymbolPath(abi, "libmain.so");
         var targetAddress = GetSymbolAddress(tools, symbolPath, symbolName);
 
         Assert.IsNotEmpty(targetAddress, "Failed to find address for " + symbolName);
         var resolvedSymbols = tools.RunAddr2Line(symbolPath, new[] { targetAddress });
         Assert.IsTrue(resolvedSymbols.Length == 1, "Expected to resolve one symbol");
-        Assert.AreEqual(expectedOutput, resolvedSymbols[0],
-            string.Format("Failed to resolve symbol '{0}' for address '{1}'", symbolName, targetAddress));
+
+
+        if (tools.NDKVersion >= new System.Version(23, 1))
+        {
+            // With NDK 23, we get path and line number!
+            var regex = new Regex(symbolName + @"\s+at\s+\S+\:\d+");
+            Assert.IsTrue(regex.Match(resolvedSymbols[0]).Success,
+                $"Failed to properly resolve symbol '{symbolName}' for address '{targetAddress}', the resolved value was: '{resolvedSymbols[0]}'");
+        }
+        else
+        {
+            var expectedOutput = symbolName + " at ??:?";
+            Assert.AreEqual(expectedOutput, resolvedSymbols[0], $"Failed to resolve symbol '{symbolName}' for address '{targetAddress}'");
+        }
     }
 
     [Test]
