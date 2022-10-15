@@ -14,8 +14,9 @@ namespace Unity.Android.Logcat
         internal enum Columns
         {
             PackageName,
+            Installer,
             UniqueIdentifier,
-            Installer
+            Operations
         }
 
         [SerializeField]
@@ -57,6 +58,16 @@ namespace Unity.Android.Logcat
                     headerContent = new GUIContent("Package Name"),
                     headerTextAlignment = TextAlignment.Left,
                     canSort = false,
+                    width = 250,
+                    minWidth = 200,
+                    autoResize = true,
+                    allowToggleVisibility = false
+                },
+                new MultiColumnHeaderState.Column
+                {
+                    headerContent = new GUIContent("Installer", "The installer application"),
+                    headerTextAlignment = TextAlignment.Left,
+                    canSort = false,
                     width = 200,
                     minWidth = 200,
                     autoResize = true,
@@ -67,19 +78,19 @@ namespace Unity.Android.Logcat
                     headerContent = new GUIContent("UID", "Unique Identifier"),
                     headerTextAlignment = TextAlignment.Left,
                     canSort = false,
-                    width = 200,
-                    minWidth = 200,
-                    autoResize = false,
+                    width = 50,
+                    minWidth = 50,
+                    autoResize = true,
                     allowToggleVisibility = false
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    headerContent = new GUIContent("Installer", "The installer application"),
+                    headerContent = new GUIContent("Operations"),
                     headerTextAlignment = TextAlignment.Left,
                     canSort = false,
-                    width = 100,
+                    width = 200,
                     minWidth = 100,
-                    autoResize = false,
+                    autoResize = true,
                     allowToggleVisibility = false
                 }
             };

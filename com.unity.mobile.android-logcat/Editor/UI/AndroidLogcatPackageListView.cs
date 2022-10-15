@@ -15,7 +15,8 @@ namespace Unity.Android.Logcat
         }
 
         private Dictionary<int, AndroidLogcatPackageListItem> m_CachedRowMap = new Dictionary<int, AndroidLogcatPackageListItem>();
-        private IReadOnlyList<PackageEntry> m_Entries;
+        public IReadOnlyList<PackageEntry> m_Entries;
+        public bool RequiresUpdating { set; get; }
 
         public AndroidLogcatPackageListView(AndroidLogcatPackageListViewState state, IReadOnlyList<PackageEntry> entries)
             : base(state.treeViewState, state.columnHeader)
@@ -27,8 +28,6 @@ namespace Unity.Android.Logcat
             showBorder = true;
             customFoldoutYOffset = (rowHeight - EditorGUIUtility.singleLineHeight) * 0.5f;
             extraSpaceBeforeIconAndLabel = 18f;
-
-
             Reload();
         }
 
@@ -39,66 +38,15 @@ namespace Unity.Android.Logcat
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
+            Debug.Log("Build Rows");
             var items = new List<TreeViewItem>();
             foreach (var e in m_Entries)
             {
                 items.Add(new AndroidLogcatPackageListItem(0, e));
             }
             return items;
-            /*
-            var tempRoot = new AndroidLogcatPackageListItem(-1, null);
 
-            foreach (var e in m_Entries)
-            {
-                tempRoot.AddChild(new AndroidLogcatPackageListItem(0, e));
-            }
-
-            var items = new List<TreeViewItem>();
-            AddChildrenRecursive(tempRoot, -1, items);
-
-            SetupParentsAndChildrenFromDepths(root, items);
-            return items;
-            */
         }
-
-        /*
-        void AddChildrenRecursive(TreeViewItem parent, int depth, IList<TreeViewItem> newRows)
-        {
-            if (parent == null || !parent.hasChildren)
-                return;
-
-            if (parent.children == null)
-            {
-                var fileTreeView = (AndroidLogcatPackageListItem)parent;
-                var childs = m_QueryChilds(fileTreeView.DeviceExplorerEntry, parent.depth + 1);
-                foreach (var c in childs)
-                {
-                    parent.AddChild(c);
-                }
-            }
-
-            if (parent.children == null)
-                return;
-
-            foreach (AndroidLogcatPackageListItem child in parent.children)
-            {
-                var item = new AndroidLogcatPackageListItem(child.depth, child.DeviceExplorerEntry);
-                newRows.Add(child);
-
-                if (child.hasChildren)
-                {
-                    if (IsExpanded(child.id))
-                    {
-                        AddChildrenRecursive(child, depth + 1, newRows);
-                    }
-                    else
-                    {
-                        item.children = CreateChildListForCollapsedParent();
-                    }
-                }
-            }
-        }
-        */
 
         protected override void RowGUI(RowGUIArgs args)
         {
@@ -126,14 +74,30 @@ namespace Unity.Android.Logcat
             {
                 case AndroidLogcatPackageListViewState.Columns.PackageName:
                     GUI.Label(rc, new GUIContent(props.Name, props.Name));
-
                     break;
                 case AndroidLogcatPackageListViewState.Columns.UniqueIdentifier:
                     GUI.Label(rc, new GUIContent(props.UID));
-
                     break;
                 case AndroidLogcatPackageListViewState.Columns.Installer:
                     GUI.Label(rc, new GUIContent(props.Installer));
+                    break;
+                case AndroidLogcatPackageListViewState.Columns.Operations:
+                    var rcSplit = new Rect(rc.x, rc.y, rc.width * 0.25f, rc.height);
+                    if (GUI.Button(rcSplit, new GUIContent("Launch")))
+                        props.Launch();
+                    rcSplit.x += rcSplit.width;
+                    if (GUI.Button(rcSplit, new GUIContent("Pause")))
+                        props.Pause();
+                    rcSplit.x += rcSplit.width;
+                    if (GUI.Button(rcSplit, new GUIContent("Stop")))
+                        props.Stop();
+                    rcSplit.x += rcSplit.width;
+                    if (GUI.Button(rcSplit, new GUIContent("Uninstall")))
+                    {
+                        // TODO: Dialog asking are you sure
+                        props.Uninstall();
+                        RequiresUpdating = true;
+                    }
 
                     break;
 
@@ -153,6 +117,13 @@ namespace Unity.Android.Logcat
 
             if (EditorGUI.EndChangeCheck())
                 this.SetSelection(new List<int>(new[] { props.GetId() }), TreeViewSelectionOptions.None);
+        }
+
+        public void Reload(IReadOnlyList<PackageEntry> entries)
+        {
+            m_Entries = entries;
+            Reload();
+            RequiresUpdating = false;
         }
     }
 }

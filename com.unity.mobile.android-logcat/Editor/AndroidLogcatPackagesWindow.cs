@@ -22,17 +22,28 @@ namespace Unity.Android.Logcat
         private void OnEnable()
         {
             m_State = AndroidLogcatPackageListViewState.CreateOrInitializeTreeState(m_State);
-            var packages = AndroidLogcatUtilities.RetrievePackages(AndroidLogcatManager.instance.Runtime.Tools.ADB, AndroidLogcatManager.instance.Runtime.DeviceQuery.SelectedDevice);
-            m_View = new AndroidLogcatPackageListView(m_State, packages);
+            m_View = new AndroidLogcatPackageListView(m_State, GetPackageEntries());
+        }
+
+        PackageEntry[] GetPackageEntries()
+        {
+            return AndroidLogcatUtilities.RetrievePackages(
+                AndroidLogcatManager.instance.Runtime.Tools.ADB,
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.SelectedDevice);
         }
 
         void OnGUI()
         {
-            var rc = new Rect(0, 0, Screen.width, Screen.height);
+            if (GUILayout.Button("Reload"))
+                m_View.Reload(GetPackageEntries());
+            var rc = GUILayoutUtility.GetRect(new GUIContent(""), GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             if (m_View != null)
                 m_View.OnGUI(rc);
             else
                 GUILayout.Label("Package View failed to create");
+
+            if (m_View.RequiresUpdating)
+                m_View.Reload(GetPackageEntries());
         }
     }
 }
