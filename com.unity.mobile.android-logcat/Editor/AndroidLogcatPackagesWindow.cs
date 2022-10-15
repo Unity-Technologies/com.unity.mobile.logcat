@@ -22,10 +22,8 @@ namespace Unity.Android.Logcat
         private void OnEnable()
         {
             m_State = AndroidLogcatPackageListViewState.CreateOrInitializeTreeState(m_State);
-            var items = new List<PackageEntry>();
-            items.Add(new PackageEntry() { Name = "Hello" });
-            items.Add(new PackageEntry() { Name = "Hello2" });
-            m_View = new AndroidLogcatPackageListView(m_State, items);
+            var packages = AndroidLogcatUtilities.RetrievePackages(AndroidLogcatManager.instance.Runtime.Tools.ADB, AndroidLogcatManager.instance.Runtime.DeviceQuery.SelectedDevice);
+            m_View = new AndroidLogcatPackageListView(m_State, packages);
         }
 
         void OnGUI()

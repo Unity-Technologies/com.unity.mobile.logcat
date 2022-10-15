@@ -14,12 +14,8 @@ namespace Unity.Android.Logcat
         internal enum Columns
         {
             PackageName,
-            Type,
-            /*
-            Permissions,
-            Date,
-            Size
-            */
+            UniqueIdentifier,
+            Installer
         }
 
         [SerializeField]
@@ -68,44 +64,24 @@ namespace Unity.Android.Logcat
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    headerContent = new GUIContent("Type"),
+                    headerContent = new GUIContent("UID", "Unique Identifier"),
                     headerTextAlignment = TextAlignment.Left,
                     canSort = false,
                     width = 200,
                     minWidth = 200,
                     autoResize = false,
                     allowToggleVisibility = false
-                }/*,
-                new MultiColumnHeaderState.Column
-                {
-                    headerContent = new GUIContent("Permissions"),
-                    headerTextAlignment = TextAlignment.Left,
-                    canSort = false,
-                    width = 100,
-                    minWidth = 100,
-                    autoResize = false,
-                    allowToggleVisibility = false
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    headerContent = new GUIContent("Date"),
+                    headerContent = new GUIContent("Installer", "The installer application"),
                     headerTextAlignment = TextAlignment.Left,
                     canSort = false,
                     width = 100,
                     minWidth = 100,
                     autoResize = false,
                     allowToggleVisibility = false
-                },
-                new MultiColumnHeaderState.Column
-                {
-                    headerContent = new GUIContent("Size"),
-                    headerTextAlignment = TextAlignment.Left,
-                    canSort = false,
-                    width = 100,
-                    minWidth = 100,
-                    autoResize = false,
-                    allowToggleVisibility = false
-                }*/
+                }
             };
 
             Assert.AreEqual(columns.Length, Enum.GetValues(typeof(Columns)).Length, "Number of columns should match number of enum values: You probably forgot to update one of them.");

@@ -124,14 +124,19 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginChangeCheck();
             switch (column)
             {
-                case AndroidLogcatPackageListViewState.Columns.Type:
-                    GUI.Label(rc, "Bla");
-
-                    break;
                 case AndroidLogcatPackageListViewState.Columns.PackageName:
                     GUI.Label(rc, new GUIContent(props.Name, props.Name));
 
                     break;
+                case AndroidLogcatPackageListViewState.Columns.UniqueIdentifier:
+                    GUI.Label(rc, new GUIContent(props.UID));
+
+                    break;
+                case AndroidLogcatPackageListViewState.Columns.Installer:
+                    GUI.Label(rc, new GUIContent(props.Installer));
+
+                    break;
+
                     /*
                 case AndroidLogcatPackageListViewState.Columns.Permissions:
                     GUI.Label(rc, props.Permissions);

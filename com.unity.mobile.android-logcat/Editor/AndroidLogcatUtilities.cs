@@ -199,6 +199,50 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static PackageEntry[] RetrievePackages(AndroidBridge.ADB adb, IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return Array.Empty<PackageEntry>();
+
+            try
+            {
+                var cmd = $"-s {device.Id} shell cmd package list packages -3 -U -i";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to retrieve packages");
+
+                if (string.IsNullOrEmpty(output))
+                    return Array.Empty<PackageEntry>();
+
+                var entries = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var packages = new List<PackageEntry>();
+                var regex = new Regex(@"package:(?<name>\S+)\s+installer=(?<installer>\S+)\s+uid:(?<uid>\S+)");
+                foreach (var e in entries)
+                {
+                    var result = regex.Match(e);
+                    if (result.Success)
+                    {
+                        packages.Add(new PackageEntry()
+                        {
+                            Name = result.Groups["name"].Value,
+                            Installer = result.Groups["installer"].Value,
+                            UID = result.Groups["uid"].Value
+                        });
+                    }
+                    else
+                    {
+                        AndroidLogcatInternalLog.Log($"Failed to parse package info:\n{e}");
+                    }
+                }
+
+                return packages.ToArray();
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return Array.Empty<PackageEntry>();
+            }
+        }
+
         /// <summary>
         /// Return the detail info of the given device.
         /// </summary>
