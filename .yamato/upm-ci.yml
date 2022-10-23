@@ -12,7 +12,7 @@ test_platforms:
     flavor: b1.large
     move_alias: move
     utr_chmod: echo nothing to see
-    utr_cmd: utr.bat
+    utr_cmd: utr/utr.bat
   - name: mac
     type: Unity::VM::osx
     image: package-ci/mac:stable
