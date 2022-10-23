@@ -11,7 +11,7 @@ test_platforms:
     image: package-ci/win10:stable
     flavor: b1.large
     move_alias: move
-    chmod_utr:
+    chmod_utr: echo nothing to see
   - name: mac
     type: Unity::VM::osx
     image: package-ci/mac:stable
