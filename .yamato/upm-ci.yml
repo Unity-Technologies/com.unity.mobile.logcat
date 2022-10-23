@@ -11,16 +11,19 @@ test_platforms:
     image: package-ci/win10:stable
     flavor: b1.large
     move_alias: move
+    chmod_utr:
   - name: mac
     type: Unity::VM::osx
     image: package-ci/mac:stable
     flavor: m1.mac
     move_alias: mv
+    chmod_utr: chmod +x ./utr
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu:stable
     flavor: b1.large
     move_alias: mv
+    chmod_utr: chmod +x ./utr
 test_module_support:
   - name: no_support
     install_command:
@@ -58,8 +61,10 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
     - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Integration/csc.rsp
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
-    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
-    - upm-ci~/tools/utr/utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
+    - curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr --output utr
+    - {{ platform.chmod_utr }} 
+    - ./utr --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+    - ./utr --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:
     {{ platform.name }}_{{ editor.version }}_{{ module_support.name }}_logs:
       paths:
