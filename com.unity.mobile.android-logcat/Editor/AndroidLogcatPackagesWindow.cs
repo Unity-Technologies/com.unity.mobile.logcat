@@ -21,7 +21,7 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
-            m_State = AndroidLogcatPackageListViewState.CreateOrInitializeTreeState(m_State);
+            m_State = AndroidLogcatPackageListViewState.CreateOrInitializeViewState(m_State);
             m_View = new AndroidLogcatPackageListView(m_State, GetPackageEntries());
         }
 

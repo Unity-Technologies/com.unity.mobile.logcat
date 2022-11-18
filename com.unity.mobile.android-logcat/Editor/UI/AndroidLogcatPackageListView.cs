@@ -9,13 +9,8 @@ namespace Unity.Android.Logcat
     // Note: UI Toolkit MulticolumnListView is not available in 2020
     internal class AndroidLogcatPackageListView : TreeView
     {
-        internal static class Styles
-        {
-            internal static GUIStyle buildSettingsButton = new GUIStyle(EditorStyles.miniButton) { alignment = TextAnchor.MiddleLeft };
-        }
-
-        private Dictionary<int, AndroidLogcatPackageListItem> m_CachedRowMap = new Dictionary<int, AndroidLogcatPackageListItem>();
         public IReadOnlyList<PackageEntry> m_Entries;
+
         public bool RequiresUpdating { set; get; }
 
         public AndroidLogcatPackageListView(AndroidLogcatPackageListViewState state, IReadOnlyList<PackageEntry> entries)
@@ -38,11 +33,10 @@ namespace Unity.Android.Logcat
 
         protected override IList<TreeViewItem> BuildRows(TreeViewItem root)
         {
-            Debug.Log("Build Rows");
             var items = new List<TreeViewItem>();
             foreach (var e in m_Entries)
             {
-                items.Add(new AndroidLogcatPackageListItem(0, e));
+                items.Add(new AndroidLogcatPackageListItem(e));
             }
             return items;
 
