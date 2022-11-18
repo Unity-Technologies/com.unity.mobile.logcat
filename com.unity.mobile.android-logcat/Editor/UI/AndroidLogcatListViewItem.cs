@@ -6,8 +6,8 @@ namespace Unity.Android.Logcat
     {
         internal PackageEntry PackageEntry { get; }
 
-        internal AndroidLogcatPackageListItem(int depth, PackageEntry entry)
-            : base(entry.GetId(), depth)
+        internal AndroidLogcatPackageListItem(PackageEntry entry)
+            : base(entry.GetId(), 0)
         {
             PackageEntry = entry;
         }
