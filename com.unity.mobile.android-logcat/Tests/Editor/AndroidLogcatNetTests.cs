@@ -67,7 +67,7 @@ public class AndroidLogcatNetTests
                 "UnityEditor.CoreModule",
             });
         }
-        
+
 #else
         var expectedReferences = new List<string>(new[]
         {
