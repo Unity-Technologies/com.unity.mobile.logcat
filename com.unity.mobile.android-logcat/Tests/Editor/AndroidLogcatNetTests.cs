@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.Compilation;
 using Assembly = System.Reflection.Assembly;
 
@@ -33,6 +34,41 @@ public class AndroidLogcatNetTests
     {
         var logcatAssembly = GetLogcatAssembly();
 
+#if UNITY_2023_1_OR_NEWER
+        var expectedReferences = new List<string>();
+
+        if (PlayerSettings.GetEditorAssembliesCompatibilityLevel() == EditorAssembliesCompatibilityLevel.NET_Standard)
+        {
+            expectedReferences.AddRange(new[]
+            {
+                "netstandard",
+                "UnityEditor.CoreModule",
+                "UnityEngine.CoreModule",
+                "UnityEngine.IMGUIModule",
+                "UnityEngine.VideoModule",
+                "UnityEngine.TextRenderingModule",
+                "UnityEngine.ImageConversionModule",
+                "UnityEngine.JSONSerializeModule",
+            });
+        }
+        else
+        {
+            expectedReferences.AddRange(new[]
+            {
+                "mscorlib",
+                "System",
+                "UnityEngine.IMGUIModule",
+                "UnityEngine.CoreModule",
+                "UnityEngine.VideoModule",
+                "UnityEngine.TextRenderingModule",
+                "System.Core",
+                "UnityEngine.ImageConversionModule",
+                "UnityEngine.JSONSerializeModule",
+                "UnityEditor.CoreModule",
+            });
+        }
+
+#else
         var expectedReferences = new List<string>(new[]
         {
             "mscorlib",
@@ -50,6 +86,7 @@ public class AndroidLogcatNetTests
             "UnityEditor",
 #endif
         });
+#endif
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
 

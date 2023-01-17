@@ -111,7 +111,7 @@ internal class AndroidLogcatIntegrationTestBase
 
     protected static void Log(string message)
     {
-        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", message);
     }
 
     protected static string GetOrCreateArtifactsPath()
