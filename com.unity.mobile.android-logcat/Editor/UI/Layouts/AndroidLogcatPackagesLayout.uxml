@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" style="flex-grow: 1;">
+        <ui:Columns>
+            <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
+            <ui:Column name="installer" title="Installer" width="150" />
+            <ui:Column name="uid" title="UID" width="120" />
+        </ui:Columns>
+    </ui:MultiColumnListView>
+</ui:UXML>
