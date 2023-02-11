@@ -7,32 +7,34 @@ using System.Text;
 
 class AndroidLogcatPacakgeInfoTests
 {
+    // adb shell dumpsys package <package information>
     [Test]
     public void CanParsePackageInfo()
     {
-        var contents = @"  Package [com.DefaultCompany.AndroidEmptyGameActivity] (ffc5f27):
+        var packageName = "com.DefaultCompany.AndroidEmptyGameActivity";
+        var contents = @$"  Package [{packageName}] (ffc5f27):
     userId=10198
-    pkg=Package{d78b8ca com.DefaultCompany.AndroidEmptyGameActivity}
-    codePath=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/com.DefaultCompany.AndroidEmptyGameActivity-bzIOds7vr6jRoCaEw1TacQ==
-    resourcePath=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/com.DefaultCompany.AndroidEmptyGameActivity-bzIOds7vr6jRoCaEw1TacQ==
-    legacyNativeLibraryDir=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/com.DefaultCompany.AndroidEmptyGameActivity-bzIOds7vr6jRoCaEw1TacQ==/lib
+    pkg=Package{{d78b8ca {packageName}}}
+    codePath=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/{packageName}-bzIOds7vr6jRoCaEw1TacQ==
+    resourcePath=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/{packageName}-bzIOds7vr6jRoCaEw1TacQ==
+    legacyNativeLibraryDir=/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/{packageName}-bzIOds7vr6jRoCaEw1TacQ==/lib
     primaryCpuAbi=armeabi-v7a
     secondaryCpuAbi=null
     versionCode=1 minSdk=22 targetSdk=32
     versionName=0.1
     splits=[base]
     apkSigningVersion=2
-    applicationInfo=ApplicationInfo{d78b8ca com.DefaultCompany.AndroidEmptyGameActivity}
+    applicationInfo=ApplicationInfo{{d78b8ca {packageName}}}
     flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA TEST_ONLY ALLOW_BACKUP ]
     privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
     forceQueryable=false
     queriesPackages=[]
-    dataDir=/data/user/0/com.DefaultCompany.AndroidEmptyGameActivity
+    dataDir=/data/user/0/{packageName}
     supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
     timeStamp=2022-09-19 15:52:25
     firstInstallTime=2022-09-13 16:14:57
     lastUpdateTime=2022-09-19 15:52:26
-    signatures=PackageSignatures{af06a3b version:2, signatures:[ca97cd1f], past signatures:[]}
+    signatures=PackageSignatures{{af06a3b version:2, signatures:[ca97cd1f], past signatures:[]}}
     installPermissionsFixed=true
     pkgFlags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA TEST_ONLY ALLOW_BACKUP ]
     requested permissions:
@@ -51,8 +53,8 @@ class AndroidLogcatPacakgeInfoTests
 
         if (lines.Length == 0)
             throw new System.Exception("No package info found");
-        var packageName = Regex.Escape("com.DefaultCompany.AndroidEmptyGameActivity");
-        var title = new Regex($"Package.*{packageName}.*\\:");
+        var regexPackageName = Regex.Escape(packageName);
+        var title = new Regex($"Package.*{regexPackageName}.*\\:");
 
         if (!title.Match(lines[0]).Success)
             throw new System.Exception($"Expected 'Package [<package_name>] (<id>) :', but got '{lines[0]}'");
@@ -61,6 +63,7 @@ class AndroidLogcatPacakgeInfoTests
         for (int i = 1; i < lines.Length; i++)
         {
             var l = lines[i];
+
             // Check if next lines are list
             while (l.EndsWith("permissions:"))
             {

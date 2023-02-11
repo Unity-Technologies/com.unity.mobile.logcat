@@ -67,6 +67,8 @@ namespace Unity.Android.Logcat
             var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/AndroidLogcatPackagesLayout.uxml");
             tree.CloneTree(rootVisualElement);
 
+            rootVisualElement.Q<TwoPaneSplitView>().RegisterCallback<GeometryChangedEvent>(InitializeLayout);
+
             m_ListView = rootVisualElement.Q<MultiColumnListView>();
             m_Filter = rootVisualElement.Q<TextField>("filter");
             // TODO: take filter from settings
@@ -83,6 +85,13 @@ namespace Unity.Android.Logcat
             CreateLabel(nameof(PackageEntry.UID), (e) => e.UID);
 
             rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+        }
+
+        internal void InitializeLayout(GeometryChangedEvent e)
+        {
+            var split = rootVisualElement.Q<TwoPaneSplitView>();
+            split.fixedPaneInitialDimension = split.layout.width / 2;
+            split.UnregisterCallback<GeometryChangedEvent>(InitializeLayout);
         }
 
         private void ColumnSortingChanged()
