@@ -1,4 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:TextField name="filter" picking-mode="Ignore" label="Filter" value="" />
     <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" style="flex-grow: 1;">
         <ui:Columns>
             <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
