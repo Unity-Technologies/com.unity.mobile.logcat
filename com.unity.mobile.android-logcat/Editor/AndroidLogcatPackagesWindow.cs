@@ -76,11 +76,41 @@ namespace Unity.Android.Logcat
             });
 
             m_ListView.itemsSource = m_UnfilteredEntries;
+            m_ListView.sortingEnabled = true;
+            m_ListView.columnSortingChanged += ColumnSortingChanged;
             CreateLabel(nameof(PackageEntry.Name), (e) => e.Name);
             CreateLabel(nameof(PackageEntry.Installer), (e) => e.Installer);
             CreateLabel(nameof(PackageEntry.UID), (e) => e.UID);
 
             rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+        }
+
+        private void ColumnSortingChanged()
+        {
+            var column = m_ListView.sortedColumns.FirstOrDefault();
+            m_FilteredEntries.Sort((x, y) =>
+            {
+                var result = 0;
+                if (column.columnName.Equals(nameof(PackageEntry.Name), StringComparison.InvariantCultureIgnoreCase))
+                {
+                    result = x.Name.CompareTo(y.Name);
+                }
+                else if (column.columnName.Equals(nameof(PackageEntry.Installer), StringComparison.InvariantCultureIgnoreCase))
+                {
+                    result = x.Installer.CompareTo(y.Installer);
+                }
+                else if (column.columnName.Equals(nameof(PackageEntry.UID), StringComparison.InvariantCultureIgnoreCase))
+                {
+                    result = x.UID.CompareTo(y.UID);
+                }
+
+                if (column.direction == SortDirection.Descending)
+                    return result;
+                return -result;
+            });
+
+            m_ListView.itemsSource = m_FilteredEntries;
+            m_ListView.RefreshItems();
         }
 
         private void FilterBy(string filter)
