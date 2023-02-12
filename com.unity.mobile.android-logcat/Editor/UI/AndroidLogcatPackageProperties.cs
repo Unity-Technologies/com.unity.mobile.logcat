@@ -75,7 +75,7 @@ namespace Unity.Android.Logcat
                 var label = (Label)element;
                 var entry = (string)m_ListView.itemsSource[index];
                 label.text = entry;
-                label.tooltip = entry;
+                label.tooltip = entry.Trim();
             };
         }
 
