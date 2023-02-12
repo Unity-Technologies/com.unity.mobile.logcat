@@ -63,7 +63,13 @@ namespace Unity.Android.Logcat
         void CreateLabel(string name)
         {
             var id = name.ToLower();
-            m_ListView.columns[id].makeCell = () => new Label();
+            m_ListView.columns[id].makeCell = () => new Label()
+            {
+                style =
+                {
+                    marginLeft = 5.0f
+                }
+            };
             m_ListView.columns[id].bindCell = (element, index) =>
             {
                 var label = (Label)element;

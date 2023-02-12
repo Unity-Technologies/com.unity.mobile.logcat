@@ -98,6 +98,7 @@ namespace Unity.Android.Logcat
             m_ListView.columns[id].makeCell = () =>
             {
                 var label = new PackageEntryLabel();
+                label.style.marginLeft = 5.0f;
                 label.RegisterCallback<MouseDownEvent, PackageEntryLabel>((e, l) =>
                 {
                     PackageSelected?.Invoke(l.Entry);
