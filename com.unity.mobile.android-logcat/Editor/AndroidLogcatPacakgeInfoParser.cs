@@ -9,52 +9,51 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatPackageInfoParser
     {
         internal static readonly string FailedKey = "Failed";
-        // Note: Using List instead of Dictionary in case of duplicate keys
-        List<KeyValuePair<string, string>> m_Entries;
+        private string m_Contents;
 
-        internal List<KeyValuePair<string, string>> Entries => m_Entries;
 
-        internal AndroidLogcatPackageInfoParser(string contents, string packageName)
+        internal AndroidLogcatPackageInfoParser(string contents)
         {
-            m_Entries = new List<KeyValuePair<string, string>>();
-
-            contents = contents.Replace("\r\n", "\n");
-
-            // Note: Keep empty entries, helps us to determine block end
-            var lines = contents.Split(new[] { '\n' }).ToArray();
-            for (int i = 0; i < lines.Length; i++)
-            {
-                // Find block start
-                if (!lines[i].Trim().StartsWith($"Package [{packageName}]"))
-                    continue;
-
-                var blockStart = i;
-                var blockEnd = -1;
-                for (var l = blockStart + 1; l < lines.Length; l++)
-                {
-                    blockEnd = l;
-                    // Find block end
-                    if (string.IsNullOrEmpty(lines[blockEnd].Trim()))
-                    {
-                        blockEnd--;
-                        break;
-                    }
-                }
-
-                var length = blockEnd - blockStart + 1;
-                if (length <= 0)
-                    return;
-
-                var blockLines = lines.Skip(i).Take(length).ToArray();
-                ParsePackageInformation(blockLines, packageName);
-                return;
-            }
+            m_Contents = contents.Replace("\r\n", "\n");
         }
 
-        private void ParsePackageInformation(string[] lines, string packageName)
+        public List<string> ParsePackageInformationAsSingleEntries(string packageName)
         {
+            var lines = GetPackageBlock(packageName);
+            if (lines == null || lines.Length <= 1)
+                return new List<string>();
+            var strip = lines[1].TakeWhile(c => char.IsWhiteSpace(c)).Count();
+
+            var entries = lines.Select(c => c.Substring(strip)).ToList();
+            entries.RemoveAt(0);
+            return entries;
+        }
+
+        /// <summary>
+        /// Parses information as [key]=[value]
+        /// In some cases like permissions or User, it's difficult to present such data
+        /// For ex.,
+        ///     requested permissions:
+        ///        android.permission.INTERNET
+        ///        android.permission.ACCESS_NETWORK_STATE
+        ///     User 0: ceDataInode=311793 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false
+        ///        gids=[3003]
+        ///        runtime permissions:
+        /// </summary>
+        public List<KeyValuePair<string, string>> ParsePackageInformationAsPairs(string packageName)
+        {
+            var lines = GetPackageBlock(packageName);
+            if (lines == null)
+                return new List<KeyValuePair<string, string>>();
+
+            return ParsePackageInformationAsPairs(lines, packageName);
+        }
+
+        private List<KeyValuePair<string, string>> ParsePackageInformationAsPairs(string[] lines, string packageName)
+        {
+            var entries = new List<KeyValuePair<string, string>>();
             if (lines.Length == 0)
-                throw new System.Exception("No package info found");
+                return entries;
 
             var regexPackageName = Regex.Escape(packageName);
             var title = new Regex($"Package.*{regexPackageName}.*\\:");
@@ -72,7 +71,7 @@ namespace Unity.Android.Logcat
                 {
                     var key = l.Trim();
                     var values = ParsePermissionBlock(lines, i, out var blockLength);
-                    m_Entries.Add(new KeyValuePair<string, string>(key, values));
+                    entries.Add(new KeyValuePair<string, string>(key, values));
                     i += blockLength;
                     continue;
                 }
@@ -85,16 +84,17 @@ namespace Unity.Android.Logcat
                     var key = result.Groups["key"].Value;
                     var value = result.Groups["value"] == null ? string.Empty : result.Groups["value"].Value;
 
-                    m_Entries.Add(new KeyValuePair<string, string>(key, value));
+                    entries.Add(new KeyValuePair<string, string>(key, value));
                 }
                 else
                 {
                     // Failed to parse value, add it as well for easier debugging
-                    m_Entries.Add(new KeyValuePair<string, string>(FailedKey, l));
+                    entries.Add(new KeyValuePair<string, string>(FailedKey, l));
                 }
 
                 i++;
             }
+            return entries;
         }
 
         private int GetBlockEnd(string[] lines, int blockStart)
@@ -136,21 +136,43 @@ namespace Unity.Android.Logcat
             for (int p = permissionsStart + 1; p <= permissionsEnd; p++)
             {
                 if (value.Length > 0)
-                    value += "\n";
+                    value += ", ";
                 value += lines[p].Trim();
             }
             blockLength = permissionsEnd - permissionsStart + 1;
             return value;
         }
 
-        internal string GetEntriesString()
+        private string[] GetPackageBlock(string packageName)
         {
-            var values = new StringBuilder();
-            foreach (var e in Entries)
+            var lines = m_Contents.Split(new[] { '\n' }).ToArray();
+            for (int i = 0; i < lines.Length; i++)
             {
-                values.AppendLine($"{e.Key} = {e.Value}");
+                // Find block start
+                if (!lines[i].Trim().StartsWith($"Package [{packageName}]"))
+                    continue;
+
+                var blockStart = i;
+                var blockEnd = -1;
+                for (var l = blockStart + 1; l < lines.Length; l++)
+                {
+                    blockEnd = l;
+                    // Find block end
+                    if (string.IsNullOrEmpty(lines[blockEnd].Trim()))
+                    {
+                        blockEnd--;
+                        break;
+                    }
+                }
+
+                var length = blockEnd - blockStart + 1;
+                if (length <= 0)
+                    return Array.Empty<string>();
+
+                return lines.Skip(i).Take(length).ToArray();
             }
-            return values.ToString();
+
+            return Array.Empty<string>();
         }
     }
 }

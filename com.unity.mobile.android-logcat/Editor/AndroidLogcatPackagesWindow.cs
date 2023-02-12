@@ -106,10 +106,10 @@ namespace Unity.Android.Logcat
         void PackageSelected(PackageEntry entry)
         {
             // TODO: device selection
-            var entries = AndroidLogcatUtilities.RetrievePackageProperties(
-                m_Runtime.Tools.ADB,
-                m_Runtime.DeviceQuery.FirstConnectedDevice,
-                entry);
+
+            var parser = new AndroidLogcatPackageInfoParser(AndroidLogcatUtilities.RetrievePackageProperties(
+                m_Runtime.Tools.ADB, m_Runtime.DeviceQuery.FirstConnectedDevice, entry));
+            var entries = parser.ParsePackageInformationAsSingleEntries(entry.Name);
             m_PackageProperties.RefreshProperties(entries);
         }
 

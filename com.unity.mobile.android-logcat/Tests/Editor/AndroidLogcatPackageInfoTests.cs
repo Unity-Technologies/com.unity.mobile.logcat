@@ -15,12 +15,12 @@ class AndroidLogcatPacakgeInfoTests
         Assert.IsTrue(dictionary[key].Equals(value), $"Key = {key}, expected value '{value}', but got '{dictionary[key]}'");
     }
 
-    private Dictionary<string, string> EntriesToDictionary(AndroidLogcatPackageInfoParser parser)
+    private Dictionary<string, string> EntriesToDictionary(List<KeyValuePair<string, string>> entries)
     {
-        Assert.That(parser.Entries.Count, Is.GreaterThan(0));
+        Assert.That(entries.Count, Is.GreaterThan(0));
 
         var failedParsings = new StringBuilder();
-        foreach (var e in parser.Entries)
+        foreach (var e in entries)
         {
             if (e.Key.Equals(AndroidLogcatPackageInfoParser.FailedKey))
                 failedParsings.AppendLine(e.Value);
@@ -28,16 +28,22 @@ class AndroidLogcatPacakgeInfoTests
 
         Assert.IsTrue(failedParsings.Length == 0, $"Failed to parse some values:\n{failedParsings}");
 
-        Dictionary<string, string> entries;
+        Dictionary<string, string> dictionaryEntries;
         try
         {
-            entries = parser.Entries.ToDictionary(x => x.Key, x => x.Value);
+            dictionaryEntries = entries.ToDictionary(x => x.Key, x => x.Value);
         }
         catch (Exception ex)
         {
-            throw new Exception($"Failed to form dictionary from:\n{parser.GetEntriesString()}", ex);
+            var values = new StringBuilder();
+            foreach (var e in entries)
+            {
+                values.AppendLine($"{e.Key} = {e.Value}");
+            }
+
+            throw new Exception($"Failed to form dictionary from:\n{values}", ex);
         }
-        return entries;
+        return dictionaryEntries;
     }
 
     // adb shell dumpsys package <package information>
@@ -83,8 +89,9 @@ class AndroidLogcatPacakgeInfoTests
       gids=[3003]
       runtime permissions:
 ";
-        var parser = new AndroidLogcatPackageInfoParser(contents, packageName);
-        var entries = EntriesToDictionary(parser);
+        // Note: User 0 parsing looks ugly and incorrect
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = EntriesToDictionary(parser.ParsePackageInformationAsPairs(packageName));
 
         AssertDictionary(entries, "pkg", $"Package{{d78b8ca {packageName}}}");
         AssertDictionary(entries, "codePath", $"/data/app/~~ur3u-ye7dI8GpfIRkeYy7Q==/{packageName}-bzIOds7vr6jRoCaEw1TacQ==");
@@ -98,24 +105,25 @@ class AndroidLogcatPacakgeInfoTests
     public void CanParseEmpty()
     {
         var packageName = "com.dummy.dummy";
-        var permissionsEndWithEndLine = @$"
+        var contents = @$"
   Package [{packageName}] (ffc5f27):";
-        var parser = new AndroidLogcatPackageInfoParser(permissionsEndWithEndLine, packageName);
-        Assert.AreEqual(0, parser.Entries.Count);
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = parser.ParsePackageInformationAsPairs(packageName);
+        Assert.AreEqual(0, entries.Count);
     }
 
     [Test]
     public void CanParsePermissionsWithEndLine()
     {
         var packageName = "com.dummy.dummy";
-        var permissionsEndWithEndLine = @$"
+        var contents = @$"
   Package [{packageName}] (ffc5f27):
     requested permissions:
       android.permission.INTERNET
       android.permission.ACCESS_NETWORK_STATE";
 
-        var parser = new AndroidLogcatPackageInfoParser(permissionsEndWithEndLine, packageName);
-        var entries = EntriesToDictionary(parser);
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = EntriesToDictionary(parser.ParsePackageInformationAsPairs(packageName));
 
         AssertDictionary(entries, "requested permissions:", $"android.permission.INTERNET, android.permission.ACCESS_NETWORK_STATE");
     }
@@ -124,14 +132,14 @@ class AndroidLogcatPacakgeInfoTests
     public void CanParsePermissionsWithExtraLine()
     {
         var packageName = "com.dummy.dummy";
-        var permissionsEndWithExtraLine = @$"
+        var contents = @$"
   Package [{packageName}] (ffc5f27):
     requested permissions:
       android.permission.INTERNET
       android.permission.ACCESS_NETWORK_STATE
 ";
-        var parser = new AndroidLogcatPackageInfoParser(permissionsEndWithExtraLine, packageName);
-        var entries = EntriesToDictionary(parser);
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = EntriesToDictionary(parser.ParsePackageInformationAsPairs(packageName));
 
         AssertDictionary(entries, "requested permissions:", $"android.permission.INTERNET, android.permission.ACCESS_NETWORK_STATE");
     }
@@ -140,12 +148,12 @@ class AndroidLogcatPacakgeInfoTests
     public void CanParsePermissionsEmpty()
     {
         var packageName = "com.dummy.dummy";
-        var permissionsEndWithExtraLine = @$"
+        var contents = @$"
   Package [{packageName}] (ffc5f27):
     requested permissions:";
 
-        var parser = new AndroidLogcatPackageInfoParser(permissionsEndWithExtraLine, packageName);
-        var entries = EntriesToDictionary(parser);
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = EntriesToDictionary(parser.ParsePackageInformationAsPairs(packageName));
 
         AssertDictionary(entries, "requested permissions:", string.Empty);
     }
@@ -154,13 +162,30 @@ class AndroidLogcatPacakgeInfoTests
     public void CanParsePermissionsEmptyWithExtraLine()
     {
         var packageName = "com.dummy.dummy";
-        var permissionsEndWithExtraLine = @$"
+        var contents = @$"
   Package [{packageName}] (ffc5f27):
     requested permissions:
 ";
-        var parser = new AndroidLogcatPackageInfoParser(permissionsEndWithExtraLine, packageName);
-        var entries = EntriesToDictionary(parser);
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = EntriesToDictionary(parser.ParsePackageInformationAsPairs(packageName));
 
         AssertDictionary(entries, "requested permissions:", string.Empty);
+    }
+
+    [Test]
+    public void CanParsePackageInfoAsSingleEntries()
+    {
+        var packageName = "com.DefaultCompany.AndroidEmptyGameActivity";
+        var contents = @$"  Some other data
+
+  Package [{packageName}] (ffc5f27):
+    userId=10198
+    sdsd";
+
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = parser.ParsePackageInformationAsSingleEntries(packageName);
+        Assert.That(entries.Count, Is.EqualTo(2));
+        StringAssert.AreEqualIgnoringCase("userId=10198", entries[0]);
+        StringAssert.AreEqualIgnoringCase("sdsd", entries[1]);
     }
 }

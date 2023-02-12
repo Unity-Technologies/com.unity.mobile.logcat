@@ -10,15 +10,15 @@ namespace Unity.Android.Logcat
         MultiColumnListView m_ListView;
         TextField m_Filter;
 
-        List<KeyValuePair<string, string>> m_UnfilteredEntries;
-        List<KeyValuePair<string, string>> m_FilteredEntries;
+        List<string> m_UnfilteredEntries;
+        List<string> m_FilteredEntries;
 
-        internal AndroidLogcatPackageProperties(VisualElement root, List<KeyValuePair<string, string>> properties = null)
+        internal AndroidLogcatPackageProperties(VisualElement root, List<string> properties = null)
         {
             m_UnfilteredEntries = properties;
             if (m_UnfilteredEntries == null)
-                m_UnfilteredEntries = new List<KeyValuePair<string, string>>();
-            m_FilteredEntries = new List<KeyValuePair<string, string>>();
+                m_UnfilteredEntries = new List<string>();
+            m_FilteredEntries = new List<string>();
 
             m_ListView = root.Q<MultiColumnListView>("package_properties");
             m_Filter = root.Q<TextField>("package_properties_filter");
@@ -30,11 +30,11 @@ namespace Unity.Android.Logcat
             });
 
             m_ListView.itemsSource = m_UnfilteredEntries;
-            CreateLabel("name", (e) => e.Key, (e) => $"{e.Key} = {e.Value}");
-            CreateLabel("value", (e) => e.Value, (e) => $"{e.Key} = {e.Value}");
+            CreateLabel("value");
+            // CreateLabel("value", (e) => e.Value, (e) => $"{e.Key} = {e.Value}");
         }
 
-        internal void RefreshProperties(List<KeyValuePair<string, string>> packageEntries)
+        internal void RefreshProperties(List<string> packageEntries)
         {
             m_UnfilteredEntries = packageEntries;
             FilterBy(m_Filter.value);
@@ -51,8 +51,7 @@ namespace Unity.Android.Logcat
             {
                 foreach (var e in m_UnfilteredEntries)
                 {
-                    if (e.Key.Contains(filter) ||
-                        e.Value.Contains(filter))
+                    if (e.Contains(filter))
                         m_FilteredEntries.Add(e);
                 }
             }
@@ -61,19 +60,16 @@ namespace Unity.Android.Logcat
             m_ListView.RefreshItems();
         }
 
-        void CreateLabel(string name,
-            Func<KeyValuePair<string, string>, string> getText,
-            Func<KeyValuePair<string, string>, string> getTooltip = null)
+        void CreateLabel(string name)
         {
             var id = name.ToLower();
             m_ListView.columns[id].makeCell = () => new Label();
             m_ListView.columns[id].bindCell = (element, index) =>
             {
                 var label = (Label)element;
-                var entry = (KeyValuePair<string, string>)m_ListView.itemsSource[index];
-                label.text = getText(entry);
-                if (getTooltip != null)
-                    label.tooltip = getTooltip(entry);
+                var entry = (string)m_ListView.itemsSource[index];
+                label.text = entry;
+                label.tooltip = entry;
             };
         }
 
