@@ -243,6 +243,30 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public static List<KeyValuePair<string, string>> RetrievePackageProperties(AndroidBridge.ADB adb, IAndroidLogcatDevice device, PackageEntry entry)
+        {
+            if (device == null)
+                return new List<KeyValuePair<string, string>>();
+
+            try
+            {
+                var cmd = $"-s {device.Id} shell dumpsys package {entry.Name}";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to retrieve package properties");
+
+                if (string.IsNullOrEmpty(output))
+                    return new List<KeyValuePair<string, string>>();
+
+                var parser = new AndroidLogcatPackageInfoParser(output, entry.Name);
+                return parser.Entries;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return new List<KeyValuePair<string, string>>();
+            }
+        }
+
         /// <summary>
         /// Return the detail info of the given device.
         /// </summary>

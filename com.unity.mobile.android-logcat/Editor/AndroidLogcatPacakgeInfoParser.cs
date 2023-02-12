@@ -12,7 +12,7 @@ namespace Unity.Android.Logcat
         // Note: Using List instead of Dictionary in case of duplicate keys
         List<KeyValuePair<string, string>> m_Entries;
 
-        internal IReadOnlyList<KeyValuePair<string, string>> Entries => m_Entries;
+        internal List<KeyValuePair<string, string>> Entries => m_Entries;
 
         internal AndroidLogcatPackageInfoParser(string contents, string packageName)
         {
@@ -136,7 +136,7 @@ namespace Unity.Android.Logcat
             for (int p = permissionsStart + 1; p <= permissionsEnd; p++)
             {
                 if (value.Length > 0)
-                    value += ", ";
+                    value += "\n";
                 value += lines[p].Trim();
             }
             blockLength = permissionsEnd - permissionsStart + 1;

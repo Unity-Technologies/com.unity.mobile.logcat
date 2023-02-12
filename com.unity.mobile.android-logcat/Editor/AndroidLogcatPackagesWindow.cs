@@ -41,11 +41,7 @@ namespace Unity.Android.Logcat
     {
         AndroidLogcatRuntimeBase m_Runtime;
         AndroidLogcatPackages m_Packages;
-        MultiColumnListView m_ListView;
-        TextField m_Filter;
-
-        List<PackageEntry> m_UnfilteredEntries;
-        List<PackageEntry> m_FilteredEntries;
+        AndroidLogcatPackageProperties m_PackageProperties;
 
         [MenuItem("Test/Test")]
         static void Init()
@@ -60,22 +56,26 @@ namespace Unity.Android.Logcat
         {
             if (rootVisualElement == null)
                 throw new NullReferenceException("rooVisualElement is null");
+            var label = new Label();
+            label.text = "sdsd\nsdsd\n";
+            rootVisualElement.Insert(0, label);
+            rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+
+
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.DeviceQuery.DevicesUpdated += UpdateEntries;
 
-            // No device selected yet
-            m_FilteredEntries = new List<PackageEntry>();
-            m_UnfilteredEntries = new List<PackageEntry>();
 
+            // TODO: Add query for uxml + clone
             var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/AndroidLogcatPackagesLayout.uxml");
             tree.CloneTree(rootVisualElement);
 
             rootVisualElement.Q<TwoPaneSplitView>().RegisterCallback<GeometryChangedEvent>(InitializeLayout);
 
             m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries().ToList());
-
-            rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+            m_Packages.PackageSelected = PackageSelected;
+            m_PackageProperties = new AndroidLogcatPackageProperties(rootVisualElement);
         }
 
         private void UpdateEntries()
@@ -103,6 +103,15 @@ namespace Unity.Android.Logcat
         }
         */
 
+        void PackageSelected(PackageEntry entry)
+        {
+            // TODO: device selection
+            var entries = AndroidLogcatUtilities.RetrievePackageProperties(
+                m_Runtime.Tools.ADB,
+                m_Runtime.DeviceQuery.FirstConnectedDevice,
+                entry);
+            m_PackageProperties.RefreshProperties(entries);
+        }
 
         PackageEntry[] GetPackageEntries()
         {

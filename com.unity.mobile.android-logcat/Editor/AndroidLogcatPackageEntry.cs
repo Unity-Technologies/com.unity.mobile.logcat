@@ -46,5 +46,10 @@ namespace Unity.Android.Logcat
             var output = adb.Run(new[] { cmd }, "Unable to uninstall the package");
             UnityEngine.Debug.Log(output);
         }
+
+        public override string ToString()
+        {
+            return $"{Name} Installer={Installer} UID={UID}";
+        }
     }
 }

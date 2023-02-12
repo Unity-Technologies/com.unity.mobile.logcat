@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 using System.Linq;
 using System.Text;
-using static Unity.IO.LowLevel.Unsafe.AsyncReadManagerMetrics;
 
 class AndroidLogcatPacakgeInfoTests
 {

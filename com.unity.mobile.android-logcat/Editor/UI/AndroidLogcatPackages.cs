@@ -13,12 +13,14 @@ namespace Unity.Android.Logcat
         List<PackageEntry> m_UnfilteredEntries;
         List<PackageEntry> m_FilteredEntries;
 
+        internal Action<PackageEntry> PackageSelected { set; get; }
+
         internal AndroidLogcatPackages(VisualElement root, List<PackageEntry> packageEntries)
         {
             m_UnfilteredEntries = packageEntries;
             m_FilteredEntries = new List<PackageEntry>();
 
-            m_ListView = root.Q<MultiColumnListView>();
+            m_ListView = root.Q<MultiColumnListView>("packages");
             m_Filter = root.Q<TextField>("filter");
             // TODO: take filter from settings
             m_Filter.RegisterValueChangedCallback((s) =>
@@ -90,7 +92,6 @@ namespace Unity.Android.Logcat
             m_ListView.RefreshItems();
         }
 
-
         void CreateLabel(string name, Func<PackageEntry, string> getText, Func<PackageEntry, string> getTooltip = null)
         {
             var id = name.ToLower();
@@ -99,15 +100,7 @@ namespace Unity.Android.Logcat
                 var label = new PackageEntryLabel();
                 label.RegisterCallback<MouseDownEvent, PackageEntryLabel>((e, l) =>
                 {
-                    switch (e.button)
-                    {
-                        case 0:
-                            if (e.clickCount == 2)
-                            {
-                                //OnSelectEntryInListView(l.Entry);
-                            }
-                            break;
-                    }
+                    PackageSelected?.Invoke(l.Entry);
                 }, label);
                 return label;
             };
