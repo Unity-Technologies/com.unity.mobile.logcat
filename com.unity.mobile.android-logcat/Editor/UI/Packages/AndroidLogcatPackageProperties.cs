@@ -2,11 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.UIElements;
+using UnityEditor;
+using System.Text;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatPackageProperties
     {
+        enum PackagePropertiesContextMenu
+        {
+            CopyProperty,
+            CopyAll
+        }
+
         MultiColumnListView m_ListView;
         TextField m_Filter;
 
@@ -63,21 +71,64 @@ namespace Unity.Android.Logcat
         void CreateLabel(string name)
         {
             var id = name.ToLower();
-            m_ListView.columns[id].makeCell = () => new Label()
+            m_ListView.columns[id].makeCell = () =>
             {
-                style =
+                var label = new PackagePropertyLabel();
+                label.style.marginLeft = 5.0f;
+
+                label.RegisterCallback<MouseDownEvent, PackagePropertyLabel>((e, l) =>
                 {
-                    marginLeft = 5.0f
-                }
+                    if (e.button == 1)
+                        m_ListView.SetSelectionWithoutNotify(new[] { l.Index });
+
+                }, label);
+
+                label.RegisterCallback<MouseUpEvent, PackagePropertyLabel>((e, l) =>
+                {
+                    if (e.button != 1)
+                        return;
+
+                    m_ListView.SetSelection(l.Index);
+
+                    var contextMenu = new AndroidContextMenu<PackagePropertiesContextMenu>();
+                    contextMenu.Add(PackagePropertiesContextMenu.CopyProperty, "Copy Property");
+                    contextMenu.Add(PackagePropertiesContextMenu.CopyAll, "Copy All");
+
+                    contextMenu.Show(e.mousePosition, (userData, options, selected) =>
+                    {
+                        var sender = (AndroidContextMenu<PackagePropertiesContextMenu>)userData;
+                        var item = sender.GetItemAt(selected);
+                        if (item == null)
+                            return;
+
+                        switch (item.Item)
+                        {
+                            case PackagePropertiesContextMenu.CopyProperty:
+                                EditorGUIUtility.systemCopyBuffer = l.text;
+                                break;
+                            case PackagePropertiesContextMenu.CopyAll:
+                                var data = new StringBuilder();
+                                foreach (var p in m_FilteredEntries)
+                                {
+                                    data.AppendLine(p.ToString());
+                                }
+                                EditorGUIUtility.systemCopyBuffer = data.ToString();
+                                break;
+                        }
+                    });
+
+                }, label);
+
+                return label;
             };
             m_ListView.columns[id].bindCell = (element, index) =>
             {
-                var label = (Label)element;
+                var label = (PackagePropertyLabel)element;
                 var entry = (string)m_ListView.itemsSource[index];
                 label.text = entry;
                 label.tooltip = entry.Trim();
+                label.Index = index;
             };
         }
-
     }
 }

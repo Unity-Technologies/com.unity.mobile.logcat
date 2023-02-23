@@ -20,4 +20,10 @@ namespace Unity.Android.Logcat
 
         public int Index { set; get; }
     }
+
+    class PackagePropertyLabel : Label
+    {
+        public int Index { set; get; }
+    }
+
 }
