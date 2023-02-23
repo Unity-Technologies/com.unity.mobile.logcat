@@ -42,6 +42,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatRuntimeBase m_Runtime;
         AndroidLogcatPackages m_Packages;
         AndroidLogcatPackageProperties m_PackageProperties;
+        AndroidLogcatPackageUtilities m_PackageUtilities;
 
         [MenuItem("Test/Test")]
         static void Init()
@@ -76,6 +77,7 @@ namespace Unity.Android.Logcat
             m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries().ToList());
             m_Packages.PackageSelected = PackageSelected;
             m_PackageProperties = new AndroidLogcatPackageProperties(rootVisualElement);
+            m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
         }
 
         private void UpdateEntries()

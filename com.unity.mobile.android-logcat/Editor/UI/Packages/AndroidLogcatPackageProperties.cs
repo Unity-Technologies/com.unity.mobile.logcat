@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine.UIElements;
 using UnityEditor;
 using System.Text;
+using UnityEditor.UIElements;
 
 namespace Unity.Android.Logcat
 {
