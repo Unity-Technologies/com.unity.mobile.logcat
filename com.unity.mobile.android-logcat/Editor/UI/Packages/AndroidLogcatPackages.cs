@@ -1,12 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatPackages
     {
+        enum PackagesContextMenu
+        {
+            CopyPackageName,
+            CopyPackageInfo,
+            CopyAll
+        }
+
+
         MultiColumnListView m_ListView;
         TextField m_Filter;
 
@@ -101,7 +112,51 @@ namespace Unity.Android.Logcat
                 label.style.marginLeft = 5.0f;
                 label.RegisterCallback<MouseDownEvent, PackageEntryLabel>((e, l) =>
                 {
+                    // By default only left click applies the selection, select with right click too
+                    if (e.button == 1)
+                        m_ListView.SetSelectionWithoutNotify(new[] { l.Index });
+
                     PackageSelected?.Invoke(l.Entry);
+                }, label);
+
+                label.RegisterCallback<MouseUpEvent, PackageEntryLabel>((e, l) =>
+                {
+                    if (e.button != 1)
+                        return;
+
+                    m_ListView.SetSelection(l.Index);
+
+                    var contextMenu = new AndroidContextMenu<PackagesContextMenu>();
+                    contextMenu.Add(PackagesContextMenu.CopyPackageName, "Copy Package Name");
+                    contextMenu.Add(PackagesContextMenu.CopyPackageInfo, "Copy Package Information");
+                    contextMenu.Add(PackagesContextMenu.CopyAll, "Copy All");
+
+                    contextMenu.Show(e.mousePosition, (userData, options, selected) =>
+                    {
+                        var sender = (AndroidContextMenu<PackagesContextMenu>)userData;
+                        var item = sender.GetItemAt(selected);
+                        if (item == null)
+                            return;
+
+                        switch (item.Item)
+                        {
+                            case PackagesContextMenu.CopyPackageName:
+                                EditorGUIUtility.systemCopyBuffer = l.Entry.Name;
+                                break;
+                            case PackagesContextMenu.CopyPackageInfo:
+                                EditorGUIUtility.systemCopyBuffer = l.Entry.ToString();
+                                break;
+                            case PackagesContextMenu.CopyAll:
+                                var data = new StringBuilder();
+                                foreach (var p in m_FilteredEntries)
+                                {
+                                    data.AppendLine(p.ToString());
+                                }
+                                EditorGUIUtility.systemCopyBuffer = data.ToString();
+                                break;
+                        }
+                    });
+
                 }, label);
                 return label;
             };
@@ -119,6 +174,7 @@ namespace Unity.Android.Logcat
         {
             var packageEntryElement = (PackageEntryVisualElement)element;
             packageEntryElement.Entry = (PackageEntry)m_ListView.itemsSource[index];
+            packageEntryElement.Index = index;
             return (T)packageEntryElement;
         }
 
