@@ -35,6 +35,22 @@ namespace Unity.Android.Logcat
             m_TabLaunchOptions = root.Q("package-tab-launch-options");
             m_TabOthers = root.Q("package-tab-others");
 
+            root.Q<Button>("android-back-button").clicked += () =>
+            {
+                // TODO: 
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.BACK);
+            };
+
+            root.Q<Button>("android-home-button").clicked += () =>
+            {
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.HOME);
+            };
+
+            root.Q<Button>("android-overview-button").clicked += () =>
+            {
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.MENU);
+            };
+
             // TODO: take from settings
             SelectTab(PackageUtilitiesTab.LaunchOptions);
         }
@@ -52,8 +68,6 @@ namespace Unity.Android.Logcat
                 m_TabContents.Add(m_TabLaunchOptions);
             if (tab == PackageUtilitiesTab.Others)
                 m_TabContents.Add(m_TabOthers);
-            // m_TabLaunchOptions.SetEnabled();
-            //m_TabOthers.SetEnabled(tab == PackageUtilitiesTab.Others);
         }
     }
 }
