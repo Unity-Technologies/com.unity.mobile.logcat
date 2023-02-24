@@ -18,7 +18,7 @@
                         <uie:ToolbarToggle focusable="false" name="package-others" text="Others" />
                     </uie:Toolbar>
                 </ui:VisualElement>
-                <ui:VisualElement name="package-tabs-contents" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);">
+                <ui:Box name="package-tabs-contents">
                     <ui:VisualElement name="package-tab-launch-options" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); height: 100px;">
                         <ui:Button text="Launch" display-tooltip-when-elided="true" name="launch" />
                         <ui:Button text="Stop" display-tooltip-when-elided="true" name="stop" />
@@ -29,7 +29,7 @@
                         <ui:Button text="●" display-tooltip-when-elided="true" name="android-home-button" tooltip="Home Button" style="width: 30px; height: 30px;" />
                         <ui:Button text="■" display-tooltip-when-elided="true" name="android-overview-button" tooltip="Overview Button" style="width: 30px; height: 30px;" />
                     </ui:VisualElement>
-                </ui:VisualElement>
+                </ui:Box>
             </ui:VisualElement>
             <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="Filter" />
             <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="package_properties" style="flex-grow: 1;">
