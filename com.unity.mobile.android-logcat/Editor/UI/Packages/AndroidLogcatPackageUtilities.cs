@@ -19,11 +19,13 @@ namespace Unity.Android.Logcat
 
         ToolbarToggle m_LaunchOptions;
         ToolbarToggle m_Others;
+        VisualElement m_TabContents;
         VisualElement m_TabLaunchOptions;
         VisualElement m_TabOthers;
 
         internal AndroidLogcatPackageUtilities(VisualElement root)
         {
+            m_TabContents = root.Q("package-tabs-contents");
             m_LaunchOptions = root.Q<ToolbarToggle>("package-launch-options");
             m_Others = root.Q<ToolbarToggle>("package-others");
 
@@ -41,8 +43,17 @@ namespace Unity.Android.Logcat
         {
             m_LaunchOptions.SetValueWithoutNotify(tab == PackageUtilitiesTab.LaunchOptions);
             m_Others.SetValueWithoutNotify(tab == PackageUtilitiesTab.Others);
-            m_TabLaunchOptions.visible = tab == PackageUtilitiesTab.LaunchOptions;
-            m_TabOthers.visible = tab == PackageUtilitiesTab.Others;
+
+            var toRemove = m_TabContents.Children().ToArray();
+            foreach (var c in toRemove)
+                m_TabContents.Remove(c);
+
+            if (tab == PackageUtilitiesTab.LaunchOptions)
+                m_TabContents.Add(m_TabLaunchOptions);
+            if (tab == PackageUtilitiesTab.Others)
+                m_TabContents.Add(m_TabOthers);
+            // m_TabLaunchOptions.SetEnabled();
+            //m_TabOthers.SetEnabled(tab == PackageUtilitiesTab.Others);
         }
     }
 }

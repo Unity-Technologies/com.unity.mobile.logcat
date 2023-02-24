@@ -23,7 +23,12 @@
                         <ui:Button text="Launch" display-tooltip-when-elided="true" name="launch" />
                         <ui:Button text="Stop" display-tooltip-when-elided="true" name="stop" />
                     </ui:VisualElement>
-                    <ui:VisualElement name="package-tab-others" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);" />
+                    <ui:VisualElement name="package-tab-others" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; transform-origin: center; height: 100px;">
+                        <ui:Label tabindex="-1" text="Simulate Buttons:" display-tooltip-when-elided="true" />
+                        <ui:Button text="◄" display-tooltip-when-elided="true" name="android-back-button" tooltip="Back Button" style="width: 30px; height: 30px;" />
+                        <ui:Button text="●" display-tooltip-when-elided="true" name="android-home-button" tooltip="Home Button" style="width: 30px; height: 30px;" />
+                        <ui:Button text="■" display-tooltip-when-elided="true" name="android-overview-button" tooltip="Overview Button" style="width: 30px; height: 30px;" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="Filter" />
