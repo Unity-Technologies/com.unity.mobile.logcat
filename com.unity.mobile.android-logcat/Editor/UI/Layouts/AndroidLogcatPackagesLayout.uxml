@@ -19,7 +19,7 @@
                     </uie:Toolbar>
                 </ui:VisualElement>
                 <ui:VisualElement name="package-tabs-contents" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);">
-                    <ui:VisualElement name="package-tab-launch-options" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0);">
+                    <ui:VisualElement name="package-tab-launch-options" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); height: 100px;">
                         <ui:Button text="Launch" display-tooltip-when-elided="true" name="launch" />
                         <ui:Button text="Stop" display-tooltip-when-elided="true" name="stop" />
                     </ui:VisualElement>
