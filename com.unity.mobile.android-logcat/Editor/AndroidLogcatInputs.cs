@@ -416,13 +416,16 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.Label($"Package:", EditorStyles.boldLabel);
             GUILayout.EndHorizontal();
-            m_TargetPackage.name = EditorGUILayout.TextField("Name:", m_TargetPackage.name);
-            m_TargetPackage.processId = EditorGUILayout.IntField("ProcessId:", m_TargetPackage.processId);
+            GUILayout.Label("Name:", EditorStyles.boldLabel);
+            m_TargetPackage.name = GUILayout.TextField(m_TargetPackage.name);
+            GUILayout.Label("Process Id:", EditorStyles.boldLabel);
+            m_TargetPackage.processId = EditorGUILayout.IntField(m_TargetPackage.processId);
 
             GUILayout.BeginVertical();
+
             var options = new[] { GUILayout.Width(150) };
 
-            if (GUILayout.Button(new GUIContent("Copy from selected"), options))
+            if (GUILayout.Button(new GUIContent("Copy from the selected", "Copy information from selected package"), options))
             {
                 if (package != null)
                 {
@@ -432,7 +435,15 @@ namespace Unity.Android.Logcat
                     GUIUtility.keyboardControl = 0;
                 }
             }
+            GUILayout.FlexibleSpace();
 
+
+            if (GUILayout.Button(new GUIContent("Start",
+                "Start package using 'adb shell monkey -p <packlage> -c android.intent.category.LAUNCHER 1'"), options))
+            {
+                device.StartPackage(m_TargetPackage.name);
+                return true;
+            }
             if (GUILayout.Button(new GUIContent("Force Stop", "Stop package using 'adb shell am force-stop <package>'"), options))
             {
                 device.StopPackage(m_TargetPackage.name);
@@ -445,7 +456,7 @@ namespace Unity.Android.Logcat
             }
 
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(new GUIContent("Kill With Signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'"), options))
+            if (GUILayout.Button(new GUIContent("Kill with signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'"), options))
             {
                 device.KillProcess(m_TargetPackage.name, m_TargetPackage.processId, m_KillSignal);
                 return true;

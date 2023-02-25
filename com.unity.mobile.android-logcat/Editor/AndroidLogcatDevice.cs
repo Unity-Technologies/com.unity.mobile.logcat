@@ -50,6 +50,8 @@ namespace Unity.Android.Logcat
 
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
+        internal virtual void StartPackage(string packageName, string activityName = null) { }
+
         internal virtual void StopPackage(string packageName) { }
 
         internal virtual void CrashPackage(string packageName) { }
@@ -307,6 +309,40 @@ namespace Unity.Android.Logcat
                     return null;
                 },
             false);
+        }
+
+        internal override void StartPackage(string packageName, string activityName = null)
+        {
+            var args = new List<string>();
+            args.AddRange(new[]
+            {
+                "-s",
+                Id,
+                "shell",
+             });
+
+            if (activityName == null)
+            {
+                args.AddRange(new[]
+                {
+                    "monkey",
+                    $"-p {packageName}",
+                    "-c android.intent.category.LAUNCHER 1"
+                 });
+            }
+            else
+            {
+                args.AddRange(new[]
+{
+                    "am",
+                    "start",
+                    $"-n \"{packageName}/{activityName}\""
+                 });
+            }
+
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args.ToArray(), $"Failed to start package '{packageName}'");
         }
 
         internal override void StopPackage(string packageName)
