@@ -6,13 +6,6 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    internal enum MemoryViewerBehavior
-    {
-        Hidden,
-        Auto,
-        Manual
-    }
-
     [Serializable]
     internal class AndroidLogcatMemoryViewerState
     {
@@ -20,7 +13,7 @@ namespace Unity.Android.Logcat
         public float MemoryWindowWidth;
         public bool[] MemoryTypeEnabled;
         public MemoryGroup MemoryGroup = MemoryGroup.HeapAlloc;
-        public MemoryViewerBehavior Behavior = MemoryViewerBehavior.Hidden;
+        public bool AutoCapture = true;
     }
 
     internal class AndroidLogcatMemoryViewer
@@ -90,7 +83,6 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_ExpectedDevice;
         private PackageInformation m_ExpectedPackageFromRequest;
         private AndroidLogcatMemoryViewerState m_State;
-
 
         private MemoryType[] GetOrderMemoryTypes()
         {
@@ -433,9 +425,6 @@ namespace Unity.Android.Logcat
 
         internal void DoGUI()
         {
-            if (m_State.Behavior == MemoryViewerBehavior.Hidden)
-                return;
-
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
             var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, m_State.MemoryWindowHeight);
             DoSplitter(splitterRectVertical, splitterRectHorizontal);
@@ -459,12 +448,16 @@ namespace Unity.Android.Logcat
 
             DoMemoryToggle(MemoryType.Total);
 
-            if (m_State.Behavior == MemoryViewerBehavior.Manual)
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            m_State.AutoCapture = GUILayout.Toggle(m_State.AutoCapture, "Auto Capture");
+            if (!m_State.AutoCapture)
             {
-                GUILayout.Space(10);
                 if (GUILayout.Button("Capture", EditorStyles.miniButton))
                     QueueMemoryRequest(m_ExpectedDevice, m_ExpectedPackageFromRequest);
+
             }
+            GUILayout.EndHorizontal();
 
             if (Unsupported.IsDeveloperMode())
                 DoDebuggingGUI();
