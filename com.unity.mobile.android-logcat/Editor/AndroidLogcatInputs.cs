@@ -382,11 +382,18 @@ namespace Unity.Android.Logcat
         {
             GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
             GUILayout.Label("Send Text:", EditorStyles.boldLabel);
-            m_SendText = GUILayout.TextField(m_SendText);
+            m_SendText = GUILayout.TextArea(m_SendText, GUILayout.ExpandHeight(true));
             if (GUILayout.Button("Send"))
             {
-                device.SendTextAsync(dispatcher, m_SendText);
+                var lines = m_SendText.Replace("\r\n", "\n").Split(new[] { '\n' });
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    device.SendTextAsync(dispatcher, lines[i]);
+                    if (i + 1 < lines.Length)
+                        device.SendKeyAsync(dispatcher, AndroidKeyCode.ENTER);
+                }
             }
+            GUILayout.Space(4);
             GUILayout.EndVertical();
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
