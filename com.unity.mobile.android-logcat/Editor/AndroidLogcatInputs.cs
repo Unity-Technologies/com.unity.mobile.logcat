@@ -167,9 +167,9 @@ namespace Unity.Android.Logcat
             return (AndroidKeyCode)0;
         }
 
-        private AndroidKeyCode DoMiddleKeys()
+        private AndroidKeyCode DoCursorKeys()
         {
-            GUILayout.Label("", EditorStyles.boldLabel);
+            GUILayout.Label("Cursor Keys", EditorStyles.boldLabel);
             GUILayout.Space(kButtonHeight);
 
             GUILayout.BeginHorizontal();
@@ -368,6 +368,8 @@ namespace Unity.Android.Logcat
             if (keyCode == 0)
                 return;
 
+            if (device == null)
+                return;
             device.SendKeyAsync(dispatcher, keyCode);
         }
 
@@ -403,7 +405,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoKeyboard, 500, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoMiddleKeys, 100, extraWindowState.Height);
+            DoSection(dispatcher, device, DoCursorKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoNumpad, 100, extraWindowState.Height);
             GUILayout.Space(4);
