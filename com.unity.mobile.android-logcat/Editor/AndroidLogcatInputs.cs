@@ -11,18 +11,20 @@ namespace Unity.Android.Logcat
     {
         const float kMargin = 10;
         const float kButtonHeight = 20;
-        const float kMinWindowHeight = 230.0f;
+        const float kMinWindowHeight = 220.0f;
         const float kMaxWindowHeight = 300.0f;
 
         Splitter m_VerticalSplitter;
         // TODO: from setting
         string m_SendText;
         PosixSignal m_KillSignal;
+        PackageInformation m_TargetPackage;
 
         internal AndroidLogcatInputs()
         {
             m_VerticalSplitter = new Splitter(Splitter.SplitterType.Vertical, kMinWindowHeight, kMaxWindowHeight);
             m_SendText = string.Empty;
+            m_TargetPackage = new PackageInformation();
         }
 
         private bool Key(string name)
@@ -307,7 +309,7 @@ namespace Unity.Android.Logcat
 
         private AndroidKeyCode DoSystemKeys()
         {
-            GUILayout.Label("Volume", EditorStyles.boldLabel);
+            GUILayout.Label("Volume Keys", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Up"))
@@ -386,17 +388,9 @@ namespace Unity.Android.Logcat
             device.SendKeyAsync(dispatcher, keyCode);
         }
 
-        void DoSection(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, Func<AndroidKeyCode> doSection, float width, float height)
+        void DoSendText(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, float width, float height)
         {
             GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
-            SendKeyEventIfNeeded(dispatcher, device, doSection());
-            GUILayout.EndVertical();
-            GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
-        }
-
-        void DoSendText(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, float height)
-        {
-            GUILayout.BeginVertical(GUILayout.Height(height));
             GUILayout.Label("Send Text:", EditorStyles.boldLabel);
             m_SendText = GUILayout.TextArea(m_SendText, GUILayout.ExpandHeight(true));
             if (GUILayout.Button("Send"))
@@ -408,46 +402,58 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
+        void DoSection(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, Func<AndroidKeyCode> doSection, float width, float height)
+        {
+            GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
+            SendKeyEventIfNeeded(dispatcher, device, doSection());
+            GUILayout.EndVertical();
+            GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
+        }
+
         bool DoPackageOperations(IAndroidLogcatDevice device, PackageInformation package, float height)
         {
             GUILayout.BeginVertical(GUILayout.Height(height));
-            GUILayout.Label("Package Operations", EditorStyles.boldLabel);
-            GUILayout.Space(4);
-            if (package == null)
-            {
-                EditorGUILayout.HelpBox("No package selected", MessageType.Warning);
-            }
-            else
-            {
-                if (package.exited)
-                {
-                    EditorGUILayout.HelpBox($"'{package.name}' already exited", MessageType.Warning);
-                }
-                else
-                {
-                    GUILayout.Label($"Name: {package.DisplayName}", EditorStyles.boldLabel);
-                    if (GUILayout.Button(new GUIContent("Force Stop Package", "Stop package using 'adb shell am force-stop <package>'")))
-                    {
-                        device.StopPackage(package.name);
-                        return true;
-                    }
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Package:", EditorStyles.boldLabel);
+            GUILayout.EndHorizontal();
+            m_TargetPackage.name = EditorGUILayout.TextField("Name:", m_TargetPackage.name);
+            m_TargetPackage.processId = EditorGUILayout.IntField("ProcessId:", m_TargetPackage.processId);
 
-                    if (GUILayout.Button(new GUIContent("Crash Package", "Crash package using 'adb shell am crash <package>'")))
-                    {
-                        device.CrashPackage(package.name);
-                        return true;
-                    }
+            GUILayout.BeginVertical();
+            var options = new[] { GUILayout.Width(150) };
 
-                    GUILayout.BeginHorizontal();
-                    if (GUILayout.Button(new GUIContent("Kill With Signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'")))
-                    {
-                        device.KillProcess(package.name, package.processId, m_KillSignal);
-                        return true;
-                    }
-                    m_KillSignal = (PosixSignal)EditorGUILayout.EnumPopup(m_KillSignal);
-                    GUILayout.EndHorizontal();
+            if (GUILayout.Button(new GUIContent("Copy from selected"), options))
+            {
+                if (package != null)
+                {
+                    m_TargetPackage.name = package.name;
+                    m_TargetPackage.processId = package.processId;
+                    m_TargetPackage.exited = package.exited;
+                    GUIUtility.keyboardControl = 0;
                 }
             }
+
+            if (GUILayout.Button(new GUIContent("Force Stop", "Stop package using 'adb shell am force-stop <package>'"), options))
+            {
+                device.StopPackage(m_TargetPackage.name);
+                return true;
+            }
+            if (GUILayout.Button(new GUIContent("Crash", "Crash package using 'adb shell am crash <package>'"), options))
+            {
+                device.CrashPackage(m_TargetPackage.name);
+                return true;
+            }
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(new GUIContent("Kill With Signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'"), options))
+            {
+                device.KillProcess(m_TargetPackage.name, m_TargetPackage.processId, m_KillSignal);
+                return true;
+            }
+            m_KillSignal = (PosixSignal)EditorGUILayout.EnumPopup(m_KillSignal);
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
+
             GUILayout.Space(4);
             GUILayout.EndVertical();
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
@@ -473,12 +479,9 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoSystemKeys, 200, extraWindowState.Height);
             GUILayout.Space(4);
-
-            GUILayout.BeginVertical();
-            DoSendText(dispatcher, device, extraWindowState.Height * 0.5f - 4);
+            DoSendText(dispatcher, device, 200, extraWindowState.Height);
             GUILayout.Space(4);
-            var refreshPackages = DoPackageOperations(device, package, extraWindowState.Height * 0.5f - 4);
-            GUILayout.EndVertical();
+            var refreshPackages = DoPackageOperations(device, package, extraWindowState.Height);
             GUILayout.Space(4);
             GUILayout.EndHorizontal();
             return refreshPackages;
