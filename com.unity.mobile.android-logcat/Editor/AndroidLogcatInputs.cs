@@ -15,6 +15,7 @@ namespace Unity.Android.Logcat
         const float kMaxWindowHeight = 200.0f;
 
         Splitter m_VerticalSplitter;
+        // TODO: from setting
         string m_SendText;
 
         internal AndroidLogcatInputs()
@@ -388,7 +389,10 @@ namespace Unity.Android.Logcat
                 var lines = m_SendText.Replace("\r\n", "\n").Split(new[] { '\n' });
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    device.SendTextAsync(dispatcher, lines[i]);
+                    var formattedLine = lines[i];
+                    formattedLine = formattedLine.Replace("\"", "\\\"");
+                    formattedLine = $"'{formattedLine}'";
+                    device.SendTextAsync(dispatcher, formattedLine);
                     if (i + 1 < lines.Length)
                         device.SendKeyAsync(dispatcher, AndroidKeyCode.ENTER);
                 }
