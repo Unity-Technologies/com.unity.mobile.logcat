@@ -11,8 +11,8 @@ namespace Unity.Android.Logcat
     {
         const float kMargin = 10;
         const float kButtonHeight = 20;
-        const float kMinWindowHeight = 200.0f;
-        const float kMaxWindowHeight = 250.0f;
+        const float kMinWindowHeight = 230.0f;
+        const float kMaxWindowHeight = 300.0f;
 
         Splitter m_VerticalSplitter;
         // TODO: from setting
@@ -240,8 +240,6 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.NUMPAD_DIVIDE;
             if (Key("*"))
                 return AndroidKeyCode.NUMPAD_MULTIPLY;
-            if (Key("-"))
-                return AndroidKeyCode.NUMPAD_SUBTRACT;
             Margin();
             GUILayout.EndHorizontal();
 
@@ -253,8 +251,7 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.NUMPAD_8;
             if (Key("9"))
                 return AndroidKeyCode.NUMPAD_9;
-            if (Key("+"))
-                return AndroidKeyCode.NUMPAD_ADD;
+
             Margin();
             GUILayout.EndHorizontal();
 
@@ -266,8 +263,6 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.NUMPAD_5;
             if (Key("6"))
                 return AndroidKeyCode.NUMPAD_6;
-            if (Key("Enter"))
-                return AndroidKeyCode.NUMPAD_ENTER;
             Margin();
             GUILayout.EndHorizontal();
 
@@ -290,8 +285,19 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.NUMPAD_COMMA;
             if (Key("."))
                 return AndroidKeyCode.NUMPAD_DOT;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
             if (Key("="))
                 return AndroidKeyCode.NUMPAD_EQUALS;
+            if (Key("-"))
+                return AndroidKeyCode.NUMPAD_SUBTRACT;
+            if (Key("+"))
+                return AndroidKeyCode.NUMPAD_ADD;
+            if (Key("Enter"))
+                return AndroidKeyCode.NUMPAD_ENTER;
             Margin();
             GUILayout.EndHorizontal();
 
@@ -327,6 +333,12 @@ namespace Unity.Android.Logcat
             Margin();
             if (Key("Power"))
                 return AndroidKeyCode.POWER;
+            if (Key("Wake Up"))
+                return AndroidKeyCode.WAKEUP;
+            Margin();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            Margin();
             if (Key("Camera"))
                 return AndroidKeyCode.CAMERA;
             if (Key("Call"))
