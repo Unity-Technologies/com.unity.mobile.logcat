@@ -50,6 +50,11 @@ namespace Unity.Android.Logcat
 
         }
 
+        internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text)
+        {
+
+        }
+
         internal bool SupportsFilteringByPid
         {
             get { return OSVersion >= kAndroidVersion70; }
@@ -235,6 +240,40 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
                     inputData.data1.Run(args, $"Failed to send key event '{inputData.data3}'");
+                    return null;
+                },
+            false);
+        }
+
+        /// <summary>
+        /// Sends key to device, since it's a slow operation for some reason, we do it asynchronusly
+        /// </summary>
+        internal override void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text)
+        {
+            dispatcher.Schedule(
+                new AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>()
+                {
+                    data1 = m_ADB,
+                    data2 = Id,
+                    data3 = text
+                },
+                (input) =>
+                {
+                    var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>)input;
+
+                    var args = new[]
+                    {
+                        "-s",
+                        inputData.data2,
+                        "shell",
+                        "input",
+                        "text",
+                        inputData.data3
+                     };
+
+                    AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+                    inputData.data1.Run(args, $"Failed to send text '{inputData.data3}'");
                     return null;
                 },
             false);

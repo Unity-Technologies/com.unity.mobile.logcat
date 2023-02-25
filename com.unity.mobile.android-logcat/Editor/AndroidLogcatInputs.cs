@@ -15,10 +15,12 @@ namespace Unity.Android.Logcat
         const float kMaxWindowHeight = 200.0f;
 
         Splitter m_VerticalSplitter;
+        string m_SendText;
 
         internal AndroidLogcatInputs()
         {
             m_VerticalSplitter = new Splitter(Splitter.SplitterType.Vertical, kMinWindowHeight, kMaxWindowHeight);
+            m_SendText = string.Empty;
         }
 
         private bool Key(string name)
@@ -129,6 +131,16 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.SHIFT_LEFT;
             if (DoLetters("ZXCVBNM", out result))
                 return result;
+
+            if (Key(","))
+                return AndroidKeyCode.COMMA;
+            if (Key("."))
+                return AndroidKeyCode.PERIOD;
+            if (Key("/"))
+                return AndroidKeyCode.SLASH;
+
+            if (Key("Shift"))
+                return AndroidKeyCode.SHIFT_RIGHT;
             Margin();
             GUILayout.EndHorizontal();
 
@@ -144,6 +156,10 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.ALT_RIGHT;
             if (Key("Ctrl"))
                 return AndroidKeyCode.CTRL_RIGHT;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
             Margin();
             GUILayout.EndHorizontal();
 
@@ -204,6 +220,77 @@ namespace Unity.Android.Logcat
                 return AndroidKeyCode.DPAD_DOWN;
             if (Key("►"))
                 return AndroidKeyCode.DPAD_RIGHT;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            return (AndroidKeyCode)0;
+        }
+
+        private AndroidKeyCode DoNumpad()
+        {
+            GUILayout.Label("Numpad", EditorStyles.boldLabel);
+            GUILayout.Space(kButtonHeight);
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("Lock"))
+                return AndroidKeyCode.NUM_LOCK;
+            if (Key("/"))
+                return AndroidKeyCode.NUMPAD_DIVIDE;
+            if (Key("*"))
+                return AndroidKeyCode.NUMPAD_MULTIPLY;
+            if (Key("-"))
+                return AndroidKeyCode.NUMPAD_SUBTRACT;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("7"))
+                return AndroidKeyCode.NUMPAD_7;
+            if (Key("8"))
+                return AndroidKeyCode.NUMPAD_8;
+            if (Key("9"))
+                return AndroidKeyCode.NUMPAD_9;
+            if (Key("+"))
+                return AndroidKeyCode.NUMPAD_ADD;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("4"))
+                return AndroidKeyCode.NUMPAD_4;
+            if (Key("5"))
+                return AndroidKeyCode.NUMPAD_5;
+            if (Key("6"))
+                return AndroidKeyCode.NUMPAD_6;
+            if (Key("Enter"))
+                return AndroidKeyCode.NUMPAD_ENTER;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("1"))
+                return AndroidKeyCode.NUMPAD_1;
+            if (Key("2"))
+                return AndroidKeyCode.NUMPAD_2;
+            if (Key("3"))
+                return AndroidKeyCode.NUMPAD_3;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("0"))
+                return AndroidKeyCode.NUMPAD_0;
+            if (Key(","))
+                return AndroidKeyCode.NUMPAD_COMMA;
+            if (Key("."))
+                return AndroidKeyCode.NUMPAD_DOT;
+            if (Key("="))
+                return AndroidKeyCode.NUMPAD_EQUALS;
             Margin();
             GUILayout.EndHorizontal();
 
@@ -291,6 +378,19 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
+        void DoSendText(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, float width, float height)
+        {
+            GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
+            GUILayout.Label("Send Text:", EditorStyles.boldLabel);
+            m_SendText = GUILayout.TextField(m_SendText);
+            if (GUILayout.Button("Send"))
+            {
+                device.SendTextAsync(dispatcher, m_SendText);
+            }
+            GUILayout.EndVertical();
+            GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
+        }
+
         internal void DoGUI(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, ExtraWindowState extraWindowState)
         {
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
@@ -303,8 +403,11 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoMiddleKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
+            DoSection(dispatcher, device, DoNumpad, 100, extraWindowState.Height);
+            GUILayout.Space(4);
             DoSection(dispatcher, device, DoSystemKeys, 200, extraWindowState.Height);
             GUILayout.Space(4);
+            DoSendText(dispatcher, device, 200, extraWindowState.Height);
             GUILayout.EndHorizontal();
 
         }
