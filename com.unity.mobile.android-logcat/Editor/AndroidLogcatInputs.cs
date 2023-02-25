@@ -426,14 +426,20 @@ namespace Unity.Android.Logcat
                 else
                 {
                     GUILayout.Label($"Name: {package.DisplayName}", EditorStyles.boldLabel);
-                    if (GUILayout.Button(new GUIContent("Force Stop", "Stop application using 'adb shell am force-stop <package>'")))
+                    if (GUILayout.Button(new GUIContent("Force Stop Package", "Stop package using 'adb shell am force-stop <package>'")))
                     {
                         device.StopPackage(package.name);
                         return true;
                     }
 
+                    if (GUILayout.Button(new GUIContent("Crash Package", "Crash package using 'adb shell am crash <package>'")))
+                    {
+                        device.CrashPackage(package.name);
+                        return true;
+                    }
+
                     GUILayout.BeginHorizontal();
-                    if (GUILayout.Button(new GUIContent("Kill With Signal", "Stop application using 'adb shell run-as <package> kill -s <signal> <pid>'")))
+                    if (GUILayout.Button(new GUIContent("Kill With Signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'")))
                     {
                         device.KillProcess(package.name, package.processId, m_KillSignal);
                         return true;

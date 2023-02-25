@@ -52,6 +52,8 @@ namespace Unity.Android.Logcat
 
         internal virtual void StopPackage(string packageName) { }
 
+        internal virtual void CrashPackage(string packageName) { }
+
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
         internal bool SupportsFilteringByPid
@@ -321,6 +323,22 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args, $"Failed to stop package '{packageName}'");
+        }
+
+        internal override void CrashPackage(string packageName)
+        {
+            var args = new[]
+            {
+                "-s",
+                Id,
+                "shell",
+                "am",
+                "crash",
+                packageName
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to crash package '{packageName}'");
         }
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
