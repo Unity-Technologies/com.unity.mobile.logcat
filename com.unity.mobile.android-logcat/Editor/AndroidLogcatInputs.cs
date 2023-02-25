@@ -11,8 +11,8 @@ namespace Unity.Android.Logcat
     {
         const float kMargin = 10;
         const float kButtonHeight = 20;
-        const float kMinWindowHeight = 155.0f;
-        const float kMaxWindowHeight = 200.0f;
+        const float kMinWindowHeight = 200.0f;
+        const float kMaxWindowHeight = 250.0f;
 
         Splitter m_VerticalSplitter;
         // TODO: from setting
