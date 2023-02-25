@@ -45,6 +45,11 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
+        internal virtual void SendKey(AndroidKeyCode keyCode)
+        {
+
+        }
+
         internal bool SupportsFilteringByPid
         {
             get { return OSVersion >= kAndroidVersion70; }
@@ -83,12 +88,14 @@ namespace Unity.Android.Logcat
     {
         private string m_Id;
         private AndroidBridge.AndroidDevice m_Device;
+        private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
 
 
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
         {
+            m_ADB = adb;
             m_Id = deviceId;
 
             if (adb == null)
@@ -197,6 +204,19 @@ namespace Unity.Android.Logcat
                 else
                     return Id;
             }
+        }
+
+        internal override void SendKey(AndroidKeyCode keyCode)
+        {
+            m_ADB.Run(new[]
+            {
+                "-s",
+                Id,
+                "shell",
+                "input",
+                "keyevent",
+                ((int)keyCode).ToString()
+            }, $"Failed to send key event '{keyCode}'");
         }
     }
 }
