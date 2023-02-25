@@ -208,7 +208,8 @@ namespace Unity.Android.Logcat
 
         internal override void SendKey(AndroidKeyCode keyCode)
         {
-            m_ADB.Run(new[]
+            // TODO:SLOW do async
+            var args = new[]
             {
                 "-s",
                 Id,
@@ -216,7 +217,9 @@ namespace Unity.Android.Logcat
                 "input",
                 "keyevent",
                 ((int)keyCode).ToString()
-            }, $"Failed to send key event '{keyCode}'");
+            };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+            m_ADB.Run(args, $"Failed to send key event '{keyCode}'");
         }
     }
 }
