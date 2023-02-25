@@ -431,7 +431,7 @@ namespace Unity.Android.Logcat
                     m_MemoryViewer.DoGUI(extraWindow);
                     break;
                 case ExtraWindow.Inputs:
-                    m_Inputs.DoGUI(m_Runtime.DeviceQuery.SelectedDevice, extraWindow);
+                    m_Inputs.DoGUI(m_Runtime.Dispatcher, m_Runtime.DeviceQuery.SelectedDevice, extraWindow);
                     break;
             }
 

@@ -225,23 +225,23 @@ namespace Unity.Android.Logcat
             return (AndroidKeyCode)0;
         }
 
-        private void SendKeyEventIfNeeded(IAndroidLogcatDevice device, AndroidKeyCode keyCode)
+        private void SendKeyEventIfNeeded(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, AndroidKeyCode keyCode)
         {
             if (keyCode == 0)
                 return;
 
-            device.SendKey(keyCode);
+            device.SendKeyAsync(dispatcher, keyCode);
         }
 
-        void DoSection(IAndroidLogcatDevice device, Func<AndroidKeyCode> doSection, float width, float height)
+        void DoSection(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, Func<AndroidKeyCode> doSection, float width, float height)
         {
             GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
-            SendKeyEventIfNeeded(device, doSection());
+            SendKeyEventIfNeeded(dispatcher, device, doSection());
             GUILayout.EndVertical();
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
-        internal void DoGUI(IAndroidLogcatDevice device, ExtraWindowState extraWindowState)
+        internal void DoGUI(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, ExtraWindowState extraWindowState)
         {
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
 
@@ -249,11 +249,11 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginHorizontal();
             GUILayout.Space(4);
-            DoSection(device, DoKeyboard, 500, extraWindowState.Height);
+            DoSection(dispatcher, device, DoKeyboard, 500, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(device, DoMiddleKeys, 100, extraWindowState.Height);
+            DoSection(dispatcher, device, DoMiddleKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(device, DoSystemKeys, 100, extraWindowState.Height);
+            DoSection(dispatcher, device, DoSystemKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
             GUILayout.EndHorizontal();
 

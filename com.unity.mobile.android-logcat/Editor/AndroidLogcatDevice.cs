@@ -1,6 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
-
+using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
-        internal virtual void SendKey(AndroidKeyCode keyCode)
+        internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode)
         {
 
         }
@@ -206,20 +206,37 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal override void SendKey(AndroidKeyCode keyCode)
+        /// <summary>
+        /// Sends key to device, since it's a slow operation for some reason, we do it asynchronusly
+        /// </summary>
+        internal override void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode)
         {
-            // TODO:SLOW do async
-            var args = new[]
-            {
-                "-s",
-                Id,
-                "shell",
-                "input",
-                "keyevent",
-                ((int)keyCode).ToString()
-            };
-            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
-            m_ADB.Run(args, $"Failed to send key event '{keyCode}'");
+            dispatcher.Schedule(
+                new AndroidLogcatTaskInput<AndroidBridge.ADB, AndroidKeyCode>()
+                {
+                    data1 = m_ADB,
+                    data2 = keyCode
+                },
+                (input) =>
+                {
+                    var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, AndroidKeyCode>)input;
+
+                    var args = new[]
+                    {
+                        "-s",
+                        Id,
+                        "shell",
+                        "input",
+                        "keyevent",
+                        ((int)inputData.data2).ToString()
+                     };
+
+                    AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+                    inputData.data1.Run(args, $"Failed to send key event '{inputData.data2}'");
+                    return null;
+                },
+            false);
         }
     }
 }
