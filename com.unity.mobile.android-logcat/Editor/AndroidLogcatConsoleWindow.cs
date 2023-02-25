@@ -337,10 +337,10 @@ namespace Unity.Android.Logcat
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                     break;
                 case ToolsContextMenu.WindowMemory:
-                    m_Runtime.UserSettings.ExtraWindow = ExtraWindow.Memory;
+                    m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Memory;
                     break;
                 case ToolsContextMenu.WindowHidden:
-                    m_Runtime.UserSettings.ExtraWindow = ExtraWindow.Hidden;
+                    m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Hidden;
                     break;
             }
         }
@@ -356,7 +356,7 @@ namespace Unity.Android.Logcat
                 contextMenu.Add(ToolsContextMenu.ScreenCapture, "Screen Capture");
                 contextMenu.Add(ToolsContextMenu.OpenTerminal, "Open Terminal");
                 contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
-                var b = m_Runtime.UserSettings.ExtraWindow;
+                var b = m_Runtime.UserSettings.ExtraWindowState.Type;
                 contextMenu.Add(ToolsContextMenu.WindowMemory, "Window/Memory", b == ExtraWindow.Memory);
                 contextMenu.Add(ToolsContextMenu.WindowHidden, "Window/Disabled", b == ExtraWindow.Hidden);
                 contextMenu.Show(new Vector2(rect.x, rect.yMax), MenuToolsSelection);
@@ -418,10 +418,11 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            switch (m_Runtime.UserSettings.ExtraWindow)
+            var extraWindow = m_Runtime.UserSettings.ExtraWindowState;
+            switch (extraWindow.Type)
             {
                 case ExtraWindow.Memory:
-                    m_MemoryViewer.DoGUI();
+                    m_MemoryViewer.DoGUI(extraWindow);
                     break;
             }
 

@@ -9,7 +9,6 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatMemoryViewerState
     {
-        public float MemoryWindowHeight;
         public float MemoryWindowWidth;
         public bool[] MemoryTypeEnabled;
         public MemoryGroup MemoryGroup = MemoryGroup.HeapAlloc;
@@ -141,8 +140,6 @@ namespace Unity.Android.Logcat
                     m_State.MemoryTypeEnabled[i] = true;
             }
 
-            if (m_State.MemoryWindowHeight < kMinMemoryWindowHeight)
-                m_State.MemoryWindowHeight = 300.0f;
             m_State.MemoryWindowWidth = Mathf.Clamp(m_State.MemoryWindowWidth, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
         }
 
@@ -368,18 +365,19 @@ namespace Unity.Android.Logcat
             GUILayout.EndHorizontal();
         }
 
-        internal void DoGUI()
+        internal void DoGUI(ExtraWindowState extraWindowState)
         {
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
-            var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, m_State.MemoryWindowHeight);
+            var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, extraWindowState.Height);
 
-            m_HorizontalSplitter.DoGUI(splitterRectHorizontal, ref m_State.MemoryWindowWidth);
+            if (!m_VerticalSplitter.Dragging)
+                m_HorizontalSplitter.DoGUI(splitterRectHorizontal, ref m_State.MemoryWindowWidth);
             if (!m_HorizontalSplitter.Dragging)
-                m_VerticalSplitter.DoGUI(splitterRectVertical, ref m_State.MemoryWindowHeight);
+                m_VerticalSplitter.DoGUI(splitterRectVertical, ref extraWindowState.Height);
 
             GUILayout.BeginHorizontal();
 
-            GUILayout.BeginVertical(GUILayout.Width(m_State.MemoryWindowWidth), GUILayout.Height(m_State.MemoryWindowHeight));
+            GUILayout.BeginVertical(GUILayout.Width(m_State.MemoryWindowWidth), GUILayout.Height(extraWindowState.Height));
 
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();
@@ -417,7 +415,7 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginVertical();
             // Note: GUILayoutUtility.GetRect must be called for Layout event always
-            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(m_State.MemoryWindowHeight));
+            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(extraWindowState.Height));
 
             size.height -= 4;
 

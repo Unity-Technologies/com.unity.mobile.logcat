@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatTags m_Tags;
         [SerializeField]
-        private ExtraWindow m_ExtraWindow;
+        private ExtraWindowState m_ExtraWindowState;
         [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
         [SerializeField]
@@ -234,15 +234,15 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public ExtraWindow ExtraWindow
+        public ExtraWindowState ExtraWindowState
         {
             set
             {
-                m_ExtraWindow = value;
+                m_ExtraWindowState = value;
             }
             get
             {
-                return m_ExtraWindow;
+                return m_ExtraWindowState;
             }
         }
 
@@ -285,7 +285,7 @@ namespace Unity.Android.Logcat
             m_SelectedPriority = Priority.Verbose;
             m_Tags = new AndroidLogcatTags();
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
-            m_ExtraWindow = ExtraWindow.Hidden;
+            m_ExtraWindowState = new ExtraWindowState();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();

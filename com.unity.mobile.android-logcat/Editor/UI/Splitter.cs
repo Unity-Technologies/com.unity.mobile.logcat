@@ -30,6 +30,7 @@ namespace Unity.Android.Logcat
 
         internal bool DoGUI(Rect splitterBorders, ref float valueToChange)
         {
+            valueToChange = Mathf.Clamp(valueToChange, m_MinValue, m_MaxValue);
             switch (m_SplitterType)
             {
                 case SplitterType.Horizontal:
