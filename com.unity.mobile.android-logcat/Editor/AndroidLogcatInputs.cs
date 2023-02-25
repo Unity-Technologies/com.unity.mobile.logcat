@@ -212,16 +212,61 @@ namespace Unity.Android.Logcat
 
         private AndroidKeyCode DoSystemKeys()
         {
-            GUILayout.Label("System Keys", EditorStyles.boldLabel);
-            GUILayout.Space(10);
+            GUILayout.Label("Volume", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("Up"))
+                return AndroidKeyCode.VOLUME_UP;
+            if (Key("Down"))
+                return AndroidKeyCode.VOLUME_DOWN;
+            if (Key("Mute"))
+                return AndroidKeyCode.VOLUME_MUTE;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("System Keys", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("Call"))
+                return AndroidKeyCode.CALL;
+            if (Key("End Call"))
+                return AndroidKeyCode.ENDCALL;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("Power"))
+                return AndroidKeyCode.POWER;
+            if (Key("Camera"))
+                return AndroidKeyCode.CAMERA;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("Text Keys", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key("Cut"))
+                return AndroidKeyCode.CUT;
+            if (Key("Copy"))
+                return AndroidKeyCode.COPY;
+            if (Key("Paste"))
+                return AndroidKeyCode.PASTE;
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("Navigation Keys", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            Margin();
             if (Key("◄"))
                 return AndroidKeyCode.BACK;
             if (Key("●"))
                 return AndroidKeyCode.HOME;
             if (Key("■"))
                 return AndroidKeyCode.MENU;
+            Margin();
             GUILayout.EndHorizontal();
+
             return (AndroidKeyCode)0;
         }
 
@@ -253,7 +298,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoMiddleKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoSystemKeys, 100, extraWindowState.Height);
+            DoSection(dispatcher, device, DoSystemKeys, 200, extraWindowState.Height);
             GUILayout.Space(4);
             GUILayout.EndHorizontal();
 
