@@ -224,22 +224,27 @@ namespace Unity.Android.Logcat
             Margin();
             GUILayout.EndHorizontal();
 
-            GUILayout.Label("System Keys", EditorStyles.boldLabel);
+            GUILayout.Label("Brigthness", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
             Margin();
-            if (Key("Call"))
-                return AndroidKeyCode.CALL;
-            if (Key("End Call"))
-                return AndroidKeyCode.ENDCALL;
+            if (Key("Up"))
+                return AndroidKeyCode.BRIGHTNESS_UP;
+            if (Key("Down"))
+                return AndroidKeyCode.BRIGHTNESS_DOWN;
             Margin();
             GUILayout.EndHorizontal();
 
+            GUILayout.Label("System Keys", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Power"))
                 return AndroidKeyCode.POWER;
             if (Key("Camera"))
                 return AndroidKeyCode.CAMERA;
+            if (Key("Call"))
+                return AndroidKeyCode.CALL;
+            if (Key("End Call"))
+                return AndroidKeyCode.ENDCALL;
             Margin();
             GUILayout.EndHorizontal();
 
