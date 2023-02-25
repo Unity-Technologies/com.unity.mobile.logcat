@@ -386,16 +386,7 @@ namespace Unity.Android.Logcat
             m_SendText = GUILayout.TextArea(m_SendText, GUILayout.ExpandHeight(true));
             if (GUILayout.Button("Send"))
             {
-                var lines = m_SendText.Replace("\r\n", "\n").Split(new[] { '\n' });
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    var formattedLine = lines[i];
-                    formattedLine = formattedLine.Replace("\"", "\\\"");
-                    formattedLine = $"'{formattedLine}'";
-                    device.SendTextAsync(dispatcher, formattedLine);
-                    if (i + 1 < lines.Length)
-                        device.SendKeyAsync(dispatcher, AndroidKeyCode.ENTER);
-                }
+                device.SendTextAsync(dispatcher, m_SendText);
             }
             GUILayout.Space(4);
             GUILayout.EndVertical();

@@ -261,19 +261,48 @@ namespace Unity.Android.Logcat
                 {
                     var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>)input;
 
-                    var args = new[]
+                    // It's tricyk to send multiline string, thus we split into separate lines
+                    // And simulate enter key after each line
+
+                    var lines = inputData.data3.Replace("\r\n", "\n").Split(new[] { '\n' });
+                    for (int i = 0; i < lines.Length; i++)
                     {
-                        "-s",
-                        inputData.data2,
-                        "shell",
-                        "input",
-                        "text",
-                        inputData.data3
-                     };
+                        var formattedLine = lines[i];
+                        formattedLine = formattedLine.Replace("\"", "\\\"");
+                        formattedLine = $"'{formattedLine}'";
 
-                    AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+                        var args = new[]
+                        {
+                            "-s",
+                            inputData.data2,
+                            "shell",
+                            "input",
+                            "text",
+                            formattedLine
+                        };
 
-                    inputData.data1.Run(args, $"Failed to send text '{inputData.data3}'");
+                        AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+                        inputData.data1.Run(args, $"Failed to send text '{formattedLine}'");
+
+                        if (i + 1 < lines.Length)
+                        {
+                            args = new[]
+                            {
+                                "-s",
+                                inputData.data2,
+                                "shell",
+                                "input",
+                                "keyevent",
+                                ((int)AndroidKeyCode.ENTER).ToString()
+                            };
+
+                            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+                            inputData.data1.Run(args, $"Failed to send key event 'Enter'");
+                        }
+                    }
+
                     return null;
                 },
             false);
