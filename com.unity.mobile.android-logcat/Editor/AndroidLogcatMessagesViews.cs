@@ -386,7 +386,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            requestRepaint |= DoKeyEvents();
+            requestRepaint |= DoKeyEvents(controlId);
 
             GUI.EndScrollView();
 
@@ -619,8 +619,11 @@ namespace Unity.Android.Logcat
             m_Autoscroll = new AutoScrollInfo(AutoScrollInfo.AutoScroll.ScrollToSelectedItem, selectedItem);
         }
 
-        private bool DoKeyEvents()
+        private bool DoKeyEvents(int controlId)
         {
+            if (GUIUtility.keyboardControl != controlId)
+                return false;
+
             var requestRepaint = false;
             var e = Event.current;
             if (e.type == EventType.KeyDown)
