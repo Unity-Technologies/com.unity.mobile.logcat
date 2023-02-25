@@ -212,28 +212,29 @@ namespace Unity.Android.Logcat
         internal override void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode)
         {
             dispatcher.Schedule(
-                new AndroidLogcatTaskInput<AndroidBridge.ADB, AndroidKeyCode>()
+                new AndroidLogcatTaskInput<AndroidBridge.ADB, string, AndroidKeyCode>()
                 {
                     data1 = m_ADB,
-                    data2 = keyCode
+                    data2 = Id,
+                    data3 = keyCode
                 },
                 (input) =>
                 {
-                    var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, AndroidKeyCode>)input;
+                    var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, AndroidKeyCode>)input;
 
                     var args = new[]
                     {
                         "-s",
-                        Id,
+                        inputData.data2,
                         "shell",
                         "input",
                         "keyevent",
-                        ((int)inputData.data2).ToString()
+                        ((int)inputData.data3).ToString()
                      };
 
                     AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
-                    inputData.data1.Run(args, $"Failed to send key event '{inputData.data2}'");
+                    inputData.data1.Run(args, $"Failed to send key event '{inputData.data3}'");
                     return null;
                 },
             false);
