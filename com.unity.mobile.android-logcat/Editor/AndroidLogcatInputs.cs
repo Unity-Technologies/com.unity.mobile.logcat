@@ -27,9 +27,14 @@ namespace Unity.Android.Logcat
             m_TargetPackage = new PackageInformation();
         }
 
-        private bool Key(string name)
+        private bool Key(GUIContent name)
         {
             return GUILayout.Button(name, EditorStyles.miniButtonMid, GUILayout.Height(kButtonHeight));
+        }
+
+        private bool Key(string name)
+        {
+            return Key(new GUIContent(name));
         }
 
         private bool DoLetters(string letters, out AndroidKeyCode code)
@@ -366,11 +371,11 @@ namespace Unity.Android.Logcat
             GUILayout.Label("Navigation Keys", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
             Margin();
-            if (Key("◄"))
+            if (Key(new GUIContent("◄", "Send Back key event")))
                 return AndroidKeyCode.BACK;
-            if (Key("●"))
+            if (Key(new GUIContent("●", "Send Home key event")))
                 return AndroidKeyCode.HOME;
-            if (Key("■"))
+            if (Key(new GUIContent("■", "Send Overview key event")))
                 return AndroidKeyCode.MENU;
             Margin();
             GUILayout.EndHorizontal();
@@ -393,7 +398,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
             GUILayout.Label("Send Text:", EditorStyles.boldLabel);
             m_SendText = GUILayout.TextArea(m_SendText, GUILayout.ExpandHeight(true));
-            if (GUILayout.Button("Send"))
+            if (GUILayout.Button(new GUIContent("Send", "Send text to android device")))
             {
                 device.SendTextAsync(dispatcher, m_SendText);
             }
