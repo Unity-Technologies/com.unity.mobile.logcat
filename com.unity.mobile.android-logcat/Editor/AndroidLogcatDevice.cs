@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor.Android;
 
@@ -45,15 +46,13 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
-        internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode)
-        {
+        internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { }
 
-        }
+        internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
-        internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text)
-        {
+        internal virtual void StopPackage(string packageName) { }
 
-        }
+        internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
         internal bool SupportsFilteringByPid
         {
@@ -306,6 +305,46 @@ namespace Unity.Android.Logcat
                     return null;
                 },
             false);
+        }
+
+        internal override void StopPackage(string packageName)
+        {
+            var args = new[]
+            {
+                "-s",
+                Id,
+                "shell",
+                "am",
+                "force-stop",
+                packageName
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to stop package '{packageName}'");
+        }
+
+        internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
+        {
+            // Note: without run-as, you'll get Operation Not Permitted
+            var args = new List<string>(
+                new[]
+                {
+                    "-s",
+                    Id,
+                    "shell",
+                    "run-as",
+                    packageName,
+                    "kill",
+                 });
+
+            if (signal > PosixSignal.SIGNONE)
+                args.Add($"-s {(int)signal}");
+
+            args.Add(processId.ToString());
+
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args.ToArray(), $"Failed to kill process '{processId}'");
         }
     }
 }

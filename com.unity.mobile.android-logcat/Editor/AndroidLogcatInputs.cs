@@ -17,6 +17,7 @@ namespace Unity.Android.Logcat
         Splitter m_VerticalSplitter;
         // TODO: from setting
         string m_SendText;
+        PosixSignal m_KillSignal;
 
         internal AndroidLogcatInputs()
         {
@@ -393,9 +394,9 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
-        void DoSendText(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, float width, float height)
+        void DoSendText(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, float height)
         {
-            GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
+            GUILayout.BeginVertical(GUILayout.Height(height));
             GUILayout.Label("Send Text:", EditorStyles.boldLabel);
             m_SendText = GUILayout.TextArea(m_SendText, GUILayout.ExpandHeight(true));
             if (GUILayout.Button("Send"))
@@ -407,8 +408,51 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
-        internal void DoGUI(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, ExtraWindowState extraWindowState)
+        bool DoPackageOperations(IAndroidLogcatDevice device, PackageInformation package, float height)
         {
+            GUILayout.BeginVertical(GUILayout.Height(height));
+            GUILayout.Label("Package Operations", EditorStyles.boldLabel);
+            GUILayout.Space(4);
+            if (package == null)
+            {
+                EditorGUILayout.HelpBox("No package selected", MessageType.Warning);
+            }
+            else
+            {
+                if (package.exited)
+                {
+                    EditorGUILayout.HelpBox($"'{package.name}' already exited", MessageType.Warning);
+                }
+                else
+                {
+                    GUILayout.Label($"Name: {package.DisplayName}", EditorStyles.boldLabel);
+                    if (GUILayout.Button(new GUIContent("Force Stop", "Stop application using 'adb shell am force-stop <package>'")))
+                    {
+                        device.StopPackage(package.name);
+                        return true;
+                    }
+
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button(new GUIContent("Kill With Signal", "Stop application using 'adb shell run-as <package> kill -s <signal> <pid>'")))
+                    {
+                        device.KillProcess(package.name, package.processId, m_KillSignal);
+                        return true;
+                    }
+                    m_KillSignal = (PosixSignal)EditorGUILayout.EnumPopup(m_KillSignal);
+                    GUILayout.EndHorizontal();
+                }
+            }
+            GUILayout.Space(4);
+            GUILayout.EndVertical();
+            GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
+            return false;
+        }
+
+        internal bool DoGUI(AndroidLogcatRuntimeBase runtime, ExtraWindowState extraWindowState)
+        {
+            var dispatcher = runtime.Dispatcher;
+            var device = runtime.DeviceQuery.SelectedDevice;
+            var package = runtime.UserSettings.LastSelectedPackage;
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
 
             m_VerticalSplitter.DoGUI(splitterRectVertical, ref extraWindowState.Height);
@@ -423,9 +467,15 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(dispatcher, device, DoSystemKeys, 200, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSendText(dispatcher, device, 200, extraWindowState.Height);
-            GUILayout.EndHorizontal();
 
+            GUILayout.BeginVertical();
+            DoSendText(dispatcher, device, extraWindowState.Height * 0.5f - 4);
+            GUILayout.Space(4);
+            var refreshPackages = DoPackageOperations(device, package, extraWindowState.Height * 0.5f - 4);
+            GUILayout.EndVertical();
+            GUILayout.Space(4);
+            GUILayout.EndHorizontal();
+            return refreshPackages;
         }
     }
 }
