@@ -23,6 +23,7 @@ namespace Unity.Android.Logcat
         OpenTerminal,
         StacktraceUtility,
         WindowMemory,
+        WindowInputs,
         WindowHidden
     }
 

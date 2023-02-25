@@ -41,6 +41,7 @@ namespace Unity.Android.Logcat
         private bool m_ApplySettings;
 
         private AndroidLogcatMemoryViewer m_MemoryViewer;
+        private AndroidLogcatInputs m_Inputs;
         private DateTime m_TimeOfLastMemoryRequest;
 
         private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
@@ -105,6 +106,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Settings.OnSettingsChanged += OnSettingsChanged;
 
             m_MemoryViewer = new AndroidLogcatMemoryViewer(this, m_Runtime);
+            m_Inputs = new AndroidLogcatInputs();
 
             // Can't apply settings here, apparently EditorStyles aren't initialized yet.
             m_ApplySettings = true;
@@ -339,6 +341,9 @@ namespace Unity.Android.Logcat
                 case ToolsContextMenu.WindowMemory:
                     m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Memory;
                     break;
+                case ToolsContextMenu.WindowInputs:
+                    m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Inputs;
+                    break;
                 case ToolsContextMenu.WindowHidden:
                     m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Hidden;
                     break;
@@ -358,6 +363,7 @@ namespace Unity.Android.Logcat
                 contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
                 var b = m_Runtime.UserSettings.ExtraWindowState.Type;
                 contextMenu.Add(ToolsContextMenu.WindowMemory, "Window/Memory", b == ExtraWindow.Memory);
+                contextMenu.Add(ToolsContextMenu.WindowInputs, "Window/Inputs", b == ExtraWindow.Inputs);
                 contextMenu.Add(ToolsContextMenu.WindowHidden, "Window/Disabled", b == ExtraWindow.Hidden);
                 contextMenu.Show(new Vector2(rect.x, rect.yMax), MenuToolsSelection);
             }
@@ -423,6 +429,9 @@ namespace Unity.Android.Logcat
             {
                 case ExtraWindow.Memory:
                     m_MemoryViewer.DoGUI(extraWindow);
+                    break;
+                case ExtraWindow.Inputs:
+                    m_Inputs.DoGUI(extraWindow);
                     break;
             }
 
