@@ -9,6 +9,31 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatInputs
     {
+        class KeyResult
+        {
+            internal AndroidKeyCode Key { get; }
+            internal char Character { get; }
+
+            internal KeyResult()
+            {
+                Key = (AndroidKeyCode)0;
+                Character = (char)0;
+            }
+
+            internal KeyResult(char character)
+            {
+                Key = (AndroidKeyCode)0;
+                Character = character;
+            }
+
+            internal KeyResult(AndroidKeyCode keyCode)
+            {
+                Key = keyCode;
+                Character = (char)0;
+            }
+        }
+
+
         const float kMargin = 10;
         const float kButtonHeight = 20;
         const float kMinWindowHeight = 220.0f;
@@ -47,13 +72,31 @@ namespace Unity.Android.Logcat
             return false;
         }
 
+        private bool DoLetters(string letters, out char code)
+        {
+            code = (char)0;
+
+            foreach (var c in letters.ToCharArray())
+            {
+                if (Key(c.ToString()))
+                {
+                    code = c;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void Margin()
         {
             GUILayout.Space(kMargin);
         }
 
-        internal AndroidKeyCode DoKeyboard()
+        KeyResult DoKeyboard(AndroidLogcatUserSettings.InputSettings settings)
         {
+            char result;
+
             GUILayout.BeginHorizontal();
             Margin();
             GUILayout.Label("Keyboard Keys", EditorStyles.boldLabel);
@@ -63,113 +106,126 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Esc"))
-                return AndroidKeyCode.ESCAPE;
+                return new KeyResult(AndroidKeyCode.ESCAPE);
             // F* keys
             for (int i = 1; i < 13; i++)
             {
                 if (Key($"F{i}"))
-                    return AndroidKeyCode.F1 + i - 1;
+                    return new KeyResult(AndroidKeyCode.F1 + i - 1);
             }
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
-            if (Key("`"))
-                return AndroidKeyCode.GRAVE;
-            // Numbers
-            for (int i = 1; i < 11; i++)
+
+            if (settings.ShiftModifier)
             {
-                // Display 0 at the end
-                if (Key($"{i % 10}"))
-                {
-                    if (i == 10)
-                        return AndroidKeyCode._0;
-                    return AndroidKeyCode._0 + i;
-                }
+                if (DoLetters("~!@#$%^&*()_+", out result))
+                    return new KeyResult(result);
             }
-            if (Key("-"))
-                return AndroidKeyCode.MINUS;
-            if (Key("="))
-                return AndroidKeyCode.EQUALS;
+            else
+            {
+                if (DoLetters("`1234567890-=", out result))
+                    return new KeyResult(result);
+            }
             if (Key("Backspace"))
-                return AndroidKeyCode.DEL;
+                return new KeyResult(AndroidKeyCode.DEL);
             Margin();
             GUILayout.EndHorizontal();
 
-            AndroidKeyCode result;
+
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Tab"))
-                return AndroidKeyCode.TAB;
-            if (DoLetters("QWERTYUIOP", out result))
-                return result;
-            if (Key("["))
-                return AndroidKeyCode.LEFT_BRACKET;
-            if (Key("]"))
-                return AndroidKeyCode.RIGHT_BRACKET;
-            if (Key("Enter"))
-                return AndroidKeyCode.ENTER;
+                return new KeyResult(AndroidKeyCode.TAB);
+
+            if (settings.ShiftModifier)
+            {
+                if (DoLetters("QWERTYUIOP{}", out result))
+                    return new KeyResult(result);
+            }
+            else
+            {
+                if (DoLetters("qwertyuiop[]", out result))
+                    return new KeyResult(result);
+            }
+
+
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Caps"))
-                return AndroidKeyCode.CAPS_LOCK;
-            if (DoLetters("ASDFGHJIKL", out result))
-                return result;
-            if (Key(";"))
-                return AndroidKeyCode.SEMICOLON;
-            if (Key("'"))
-                return AndroidKeyCode.APOSTROPHE;
-            if (Key("\\"))
-                return AndroidKeyCode.BACKSLASH;
+                return new KeyResult(AndroidKeyCode.CAPS_LOCK);
+            if (settings.ShiftModifier)
+            {
+                if (DoLetters("ASDFGHJKL:\"|", out result))
+                    return new KeyResult(result);
+            }
+            else
+            {
+                if (DoLetters("asdfghjkl;'\\", out result))
+                {
+                    // adb shell send text ' is not handled correctly
+                    if (result == '\'')
+                        return new KeyResult(AndroidKeyCode.APOSTROPHE);
+                    return new KeyResult(result);
+                }
+            }
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Shift"))
-                return AndroidKeyCode.SHIFT_LEFT;
-            if (DoLetters("ZXCVBNM", out result))
-                return result;
-
-            if (Key(","))
-                return AndroidKeyCode.COMMA;
-            if (Key("."))
-                return AndroidKeyCode.PERIOD;
-            if (Key("/"))
-                return AndroidKeyCode.SLASH;
+                return new KeyResult(AndroidKeyCode.SHIFT_LEFT);
+            if (settings.ShiftModifier)
+            {
+                if (DoLetters("ZXCVBNM<>?", out result))
+                    return new KeyResult(result);
+            }
+            else
+            {
+                if (DoLetters("zxcvbnm,./", out result))
+                    return new KeyResult(result);
+            }
 
             if (Key("Shift"))
-                return AndroidKeyCode.SHIFT_RIGHT;
+                return new KeyResult(AndroidKeyCode.SHIFT_RIGHT);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Ctrl"))
-                return AndroidKeyCode.CTRL_LEFT;
+                return new KeyResult(AndroidKeyCode.CTRL_LEFT);
             if (Key("Alt"))
-                return AndroidKeyCode.ALT_LEFT;
+                return new KeyResult(AndroidKeyCode.ALT_LEFT);
             if (GUILayout.Button("Space", EditorStyles.miniButtonMid, GUILayout.Width(300)))
-                return AndroidKeyCode.SPACE;
+                return new KeyResult(AndroidKeyCode.SPACE);
             if (Key("Alt"))
-                return AndroidKeyCode.ALT_RIGHT;
+                return new KeyResult(AndroidKeyCode.ALT_RIGHT);
             if (Key("Ctrl"))
-                return AndroidKeyCode.CTRL_RIGHT;
+                return new KeyResult(AndroidKeyCode.CTRL_RIGHT);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
+            GUILayout.Label("Modifier Keys", EditorStyles.boldLabel);
             GUILayout.EndHorizontal();
 
-            return (AndroidKeyCode)0;
+            GUILayout.BeginHorizontal();
+            Margin();
+            settings.ShiftModifier = GUILayout.Toggle(settings.ShiftModifier, " Shift");
+            GUILayout.EndHorizontal();
+
+            return new KeyResult();
         }
 
-        private AndroidKeyCode DoCursorKeys()
+        private KeyResult DoCursorKeys(AndroidLogcatUserSettings.InputSettings settings)
         {
             GUILayout.Label("Cursor Keys", EditorStyles.boldLabel);
             GUILayout.Space(kButtonHeight);
@@ -177,33 +233,33 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("SysRq"))
-                return AndroidKeyCode.SYSRQ;
+                return new KeyResult(AndroidKeyCode.SYSRQ);
             if (Key("ScrollLock"))
-                return AndroidKeyCode.SCROLL_LOCK;
+                return new KeyResult(AndroidKeyCode.SCROLL_LOCK);
             if (Key("Break"))
-                return AndroidKeyCode.BREAK;
+                return new KeyResult(AndroidKeyCode.BREAK);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Insert"))
-                return AndroidKeyCode.INSERT;
+                return new KeyResult(AndroidKeyCode.INSERT);
             if (Key("Home"))
-                return AndroidKeyCode.MOVE_HOME;
+                return new KeyResult(AndroidKeyCode.MOVE_HOME);
             if (Key("PageUp"))
-                return AndroidKeyCode.PAGE_UP;
+                return new KeyResult(AndroidKeyCode.PAGE_UP);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Delete"))
-                return AndroidKeyCode.FORWARD_DEL;
+                return new KeyResult(AndroidKeyCode.FORWARD_DEL);
             if (Key("End"))
-                return AndroidKeyCode.MOVE_END;
+                return new KeyResult(AndroidKeyCode.MOVE_END);
             if (Key("PageDown"))
-                return AndroidKeyCode.PAGE_DOWN;
+                return new KeyResult(AndroidKeyCode.PAGE_DOWN);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -211,25 +267,25 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("▲"))
-                return AndroidKeyCode.DPAD_UP;
+                return new KeyResult(AndroidKeyCode.DPAD_UP);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("◄"))
-                return AndroidKeyCode.DPAD_LEFT;
+                return new KeyResult(AndroidKeyCode.DPAD_LEFT);
             if (Key("▼"))
-                return AndroidKeyCode.DPAD_DOWN;
+                return new KeyResult(AndroidKeyCode.DPAD_DOWN);
             if (Key("►"))
-                return AndroidKeyCode.DPAD_RIGHT;
+                return new KeyResult(AndroidKeyCode.DPAD_RIGHT);
             Margin();
             GUILayout.EndHorizontal();
 
-            return (AndroidKeyCode)0;
+            return new KeyResult();
         }
 
-        private AndroidKeyCode DoNumpad()
+        private KeyResult DoNumpad(AndroidLogcatUserSettings.InputSettings settings)
         {
             GUILayout.Label("Numpad", EditorStyles.boldLabel);
             GUILayout.Space(kButtonHeight);
@@ -237,22 +293,22 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Lock"))
-                return AndroidKeyCode.NUM_LOCK;
+                return new KeyResult(AndroidKeyCode.NUM_LOCK);
             if (Key("/"))
-                return AndroidKeyCode.NUMPAD_DIVIDE;
+                return new KeyResult(AndroidKeyCode.NUMPAD_DIVIDE);
             if (Key("*"))
-                return AndroidKeyCode.NUMPAD_MULTIPLY;
+                return new KeyResult(AndroidKeyCode.NUMPAD_MULTIPLY);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("7"))
-                return AndroidKeyCode.NUMPAD_7;
+                return new KeyResult(AndroidKeyCode.NUMPAD_7);
             if (Key("8"))
-                return AndroidKeyCode.NUMPAD_8;
+                return new KeyResult(AndroidKeyCode.NUMPAD_8);
             if (Key("9"))
-                return AndroidKeyCode.NUMPAD_9;
+                return new KeyResult(AndroidKeyCode.NUMPAD_9);
 
             Margin();
             GUILayout.EndHorizontal();
@@ -260,63 +316,63 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("4"))
-                return AndroidKeyCode.NUMPAD_4;
+                return new KeyResult(AndroidKeyCode.NUMPAD_4);
             if (Key("5"))
-                return AndroidKeyCode.NUMPAD_5;
+                return new KeyResult(AndroidKeyCode.NUMPAD_5);
             if (Key("6"))
-                return AndroidKeyCode.NUMPAD_6;
+                return new KeyResult(AndroidKeyCode.NUMPAD_6);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("1"))
-                return AndroidKeyCode.NUMPAD_1;
+                return new KeyResult(AndroidKeyCode.NUMPAD_1);
             if (Key("2"))
-                return AndroidKeyCode.NUMPAD_2;
+                return new KeyResult(AndroidKeyCode.NUMPAD_2);
             if (Key("3"))
-                return AndroidKeyCode.NUMPAD_3;
+                return new KeyResult(AndroidKeyCode.NUMPAD_3);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("0"))
-                return AndroidKeyCode.NUMPAD_0;
+                return new KeyResult(AndroidKeyCode.NUMPAD_0);
             if (Key(","))
-                return AndroidKeyCode.NUMPAD_COMMA;
+                return new KeyResult(AndroidKeyCode.NUMPAD_COMMA);
             if (Key("."))
-                return AndroidKeyCode.NUMPAD_DOT;
+                return new KeyResult(AndroidKeyCode.NUMPAD_DOT);
             Margin();
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("="))
-                return AndroidKeyCode.NUMPAD_EQUALS;
+                return new KeyResult(AndroidKeyCode.NUMPAD_EQUALS);
             if (Key("-"))
-                return AndroidKeyCode.NUMPAD_SUBTRACT;
+                return new KeyResult(AndroidKeyCode.NUMPAD_SUBTRACT);
             if (Key("+"))
-                return AndroidKeyCode.NUMPAD_ADD;
+                return new KeyResult(AndroidKeyCode.NUMPAD_ADD);
             if (Key("Enter"))
-                return AndroidKeyCode.NUMPAD_ENTER;
+                return new KeyResult(AndroidKeyCode.NUMPAD_ENTER);
             Margin();
             GUILayout.EndHorizontal();
 
-            return (AndroidKeyCode)0;
+            return new KeyResult();
         }
 
-        private AndroidKeyCode DoSystemKeys()
+        private KeyResult DoSystemKeys(AndroidLogcatUserSettings.InputSettings settings)
         {
             GUILayout.Label("Volume Keys", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Up"))
-                return AndroidKeyCode.VOLUME_UP;
+                return new KeyResult(AndroidKeyCode.VOLUME_UP);
             if (Key("Down"))
-                return AndroidKeyCode.VOLUME_DOWN;
+                return new KeyResult(AndroidKeyCode.VOLUME_DOWN);
             if (Key("Mute"))
-                return AndroidKeyCode.VOLUME_MUTE;
+                return new KeyResult(AndroidKeyCode.VOLUME_MUTE);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -324,9 +380,9 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Up"))
-                return AndroidKeyCode.BRIGHTNESS_UP;
+                return new KeyResult(AndroidKeyCode.BRIGHTNESS_UP);
             if (Key("Down"))
-                return AndroidKeyCode.BRIGHTNESS_DOWN;
+                return new KeyResult(AndroidKeyCode.BRIGHTNESS_DOWN);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -334,19 +390,19 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Power"))
-                return AndroidKeyCode.POWER;
+                return new KeyResult(AndroidKeyCode.POWER);
             if (Key("Wake Up"))
-                return AndroidKeyCode.WAKEUP;
+                return new KeyResult(AndroidKeyCode.WAKEUP);
             Margin();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Camera"))
-                return AndroidKeyCode.CAMERA;
+                return new KeyResult(AndroidKeyCode.CAMERA);
             if (Key("Call"))
-                return AndroidKeyCode.CALL;
+                return new KeyResult(AndroidKeyCode.CALL);
             if (Key("End Call"))
-                return AndroidKeyCode.ENDCALL;
+                return new KeyResult(AndroidKeyCode.ENDCALL);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -354,11 +410,11 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key("Cut"))
-                return AndroidKeyCode.CUT;
+                return new KeyResult(AndroidKeyCode.CUT);
             if (Key("Copy"))
-                return AndroidKeyCode.COPY;
+                return new KeyResult(AndroidKeyCode.COPY);
             if (Key("Paste"))
-                return AndroidKeyCode.PASTE;
+                return new KeyResult(AndroidKeyCode.PASTE);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -366,25 +422,26 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             if (Key(new GUIContent("◄", "Send Back key event")))
-                return AndroidKeyCode.BACK;
+                return new KeyResult(AndroidKeyCode.BACK);
             if (Key(new GUIContent("●", "Send Home key event")))
-                return AndroidKeyCode.HOME;
+                return new KeyResult(AndroidKeyCode.HOME);
             if (Key(new GUIContent("■", "Send Overview key event")))
-                return AndroidKeyCode.MENU;
+                return new KeyResult(AndroidKeyCode.MENU);
             Margin();
             GUILayout.EndHorizontal();
 
-            return (AndroidKeyCode)0;
+            return new KeyResult();
         }
 
-        private void SendKeyEventIfNeeded(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, AndroidKeyCode keyCode)
+        private void SendKeyEventIfNeeded(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, KeyResult keyResult)
         {
-            if (keyCode == 0)
-                return;
-
             if (device == null)
                 return;
-            device.SendKeyAsync(dispatcher, keyCode);
+
+            if (keyResult.Key != 0)
+                device.SendKeyAsync(dispatcher, keyResult.Key);
+            else if (keyResult.Character != 0)
+                device.SendTextAsync(dispatcher, keyResult.Character.ToString());
         }
 
         void DoSendText(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device, float width, float height)
@@ -402,10 +459,10 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
-        void DoSection(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, Func<AndroidKeyCode> doSection, float width, float height)
+        void DoSection(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device, Func<AndroidLogcatUserSettings.InputSettings, KeyResult> doSection, float width, float height)
         {
             GUILayout.BeginVertical(GUILayout.Width(width), GUILayout.Height(height));
-            SendKeyEventIfNeeded(dispatcher, device, doSection());
+            SendKeyEventIfNeeded(runtime.Dispatcher, device, doSection(runtime.UserSettings.DeviceInputSettings));
             GUILayout.EndVertical();
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
@@ -483,13 +540,13 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginHorizontal();
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoKeyboard, 500, extraWindowState.Height);
+            DoSection(runtime, device, DoKeyboard, 500, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoCursorKeys, 100, extraWindowState.Height);
+            DoSection(runtime, device, DoCursorKeys, 100, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoNumpad, 100, extraWindowState.Height);
+            DoSection(runtime, device, DoNumpad, 100, extraWindowState.Height);
             GUILayout.Space(4);
-            DoSection(dispatcher, device, DoSystemKeys, 200, extraWindowState.Height);
+            DoSection(runtime, device, DoSystemKeys, 200, extraWindowState.Height);
             GUILayout.Space(4);
             DoSendText(runtime, device, 200, extraWindowState.Height);
             GUILayout.Space(4);
