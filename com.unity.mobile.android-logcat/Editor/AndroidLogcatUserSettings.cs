@@ -11,6 +11,19 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatUserSettings
     {
         [Serializable]
+        internal class InputSettings
+        {
+            [SerializeField]
+            internal bool ShiftModifier;
+            [SerializeField]
+            internal string SendText;
+            [SerializeField]
+            internal PosixSignal PosixKillSignal;
+            [SerializeField]
+            internal PackageInformation TargetPackage;
+        }
+
+        [Serializable]
         internal class VideoSettings
         {
             [SerializeField]
@@ -54,6 +67,8 @@ namespace Unity.Android.Logcat
         private List<ReordableListItem> m_SymbolPaths;
         [SerializeField]
         private VideoSettings m_CaptureVideoSettings;
+        [SerializeField]
+        private InputSettings m_InputSettings;
 
         public string LastSelectedDeviceId
         {
@@ -110,6 +125,7 @@ namespace Unity.Android.Logcat
         }
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
+        public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
 
 
         private void RefreshPackagesForSerialization()
@@ -291,6 +307,12 @@ namespace Unity.Android.Logcat
             m_FilterOptions = new FilterOptions();
 
             ResetCaptureVideoSettings();
+
+            m_InputSettings = new InputSettings()
+            {
+                SendText = string.Empty,
+                TargetPackage = new PackageInformation()
+            };
         }
 
         internal void ResetCaptureVideoSettings()
