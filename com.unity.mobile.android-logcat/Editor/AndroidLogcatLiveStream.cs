@@ -297,11 +297,41 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
+        public Rect GetVideoRect(Rect windowRect)
+        {
+
+            float aspect = (float)Width / (float)Height;
+            var rc = GUILayoutUtility.GetAspectRect(aspect);
+            Rect r1, r2;
+
+            var correctedHeight = windowRect.height - rc.y - 20;
+            var s = correctedHeight / rc.height;
+            r1 = rc;
+            r1.width *= s;
+            r1.height *= s;
+
+            var correctedWidth = windowRect.width - rc.x;
+            s = correctedWidth / rc.width;
+            r2 = rc;
+            r2.width *= s;
+            r2.height *= s;
+
+            var videoRect = r1.width < r2.width ? r1 : r2;
+
+            videoRect.x += (windowRect.width - videoRect.width) * 0.5f;
+
+            return videoRect;
+        }
+
+
         public void DoGUI(Rect rc)
         {
             if (m_Texture != null)
             {
-                GUI.DrawTexture(rc, m_Texture, ScaleMode.ScaleToFit);
+                rc = GetVideoRect(rc);
+                rc.y += rc.height;
+                rc.height = -rc.height;
+                GUI.DrawTexture(rc, m_Texture);
             }
             else
             {
