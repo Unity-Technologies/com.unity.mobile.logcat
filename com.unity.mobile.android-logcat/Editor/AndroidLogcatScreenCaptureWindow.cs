@@ -26,7 +26,8 @@ namespace Unity.Android.Logcat
         internal enum Mode
         {
             Screenshot,
-            Video
+            Video,
+            LiveStream
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -35,6 +36,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
         private AndroidLogcatVideoPlayer m_VideoPlayer;
+        private AndroidLogcatLiveStream m_LiveStream;
 
         private AndroidLogcatDeviceSelection m_DeviceSelection;
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
@@ -48,6 +50,7 @@ namespace Unity.Android.Logcat
                 {
                     case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
                     case Mode.Video: return m_CaptureVideo.IsRecording;
+                    case Mode.LiveStream: return m_LiveStream.IsRecording;
                     default:
                         throw new NotImplementedException(mode.ToString());
                 }
@@ -63,6 +66,7 @@ namespace Unity.Android.Logcat
                 {
                     case Mode.Screenshot: return m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
                     case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
+                    case Mode.LiveStream: return string.Empty;
                     default:
                         throw new NotImplementedException(mode.ToString());
                 }
@@ -92,6 +96,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
+            m_LiveStream = m_Runtime.LiveStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
@@ -141,6 +146,29 @@ namespace Unity.Android.Logcat
         {
             if (result == AndroidLogcatCaptureVideo.Result.Success)
                 m_VideoPlayer.Play(videoPath);
+        }
+
+        void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
+        {
+            //if (result == AndroidLogcatLiveStream.Result.Success)
+            //    m_VideoPlayer.Play(videoPath);
+        }
+
+        private void DoSelectedDeviceGUI()
+        {
+            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
+            if (deviceNames.Length == 0)
+            {
+                m_SelectedDeviceIdx = 0;
+                deviceNames = new[] { new GUIContent("No Device") };
+            }
+            EditorGUI.BeginChangeCheck();
+            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
+                deviceNames,
+                AndroidLogcatStyles.toolbarPopup,
+                GUILayout.MaxWidth(300));
+            if (EditorGUI.EndChangeCheck())
+                ReloadCaptureAssetsIfNeeded(SelectedDevice);
         }
 
         void DoModeGUI()
@@ -241,6 +269,23 @@ namespace Unity.Android.Logcat
                         }
                     }
                     break;
+                case Mode.LiveStream:
+                    if (m_LiveStream.IsRecording)
+                    {
+                        if (GUILayout.Button("Stop", AndroidLogcatStyles.toolbarButton))
+                        {
+                            m_LiveStream.StopRecording();
+                        }
+                    }
+                    else
+                    {
+                        if (GUILayout.Button("Start", AndroidLogcatStyles.toolbarButton))
+                        {
+
+                            m_LiveStream.StartRecording(SelectedDevice, OnLiveStreamCompleted);
+                        }
+                    }
+                    break;
             }
             EditorGUI.EndDisabledGroup();
         }
@@ -322,6 +367,14 @@ namespace Unity.Android.Logcat
                         if (m_VideoPlayer.IsPlaying())
                             Repaint();
                     }
+                    break;
+                case Mode.LiveStream:
+                    {
+                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        m_LiveStream.DoGUI(rc);
+                    }
+                    break;
+                default:
                     break;
             }
         }

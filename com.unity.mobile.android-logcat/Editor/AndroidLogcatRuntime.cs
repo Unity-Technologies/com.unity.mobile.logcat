@@ -15,6 +15,7 @@ namespace Unity.Android.Logcat
         protected AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         protected AndroidLogcatCaptureVideo m_CaptureVideo;
         protected AndroidLogcatQueryLayout m_QueryLayout;
+        protected AndroidLogcatLiveStream m_LiveSream;
         protected bool m_Initialized;
 
         protected abstract string UserSettingsPath { get; }
@@ -59,6 +60,10 @@ namespace Unity.Android.Logcat
         {
             get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
+        public AndroidLogcatLiveStream LiveStream
+        {
+            get { ValidateIsInitialized(); return m_LiveSream; }
+        }
 
         public AndroidLogcatQueryLayout QueryLayout
         {
@@ -72,6 +77,7 @@ namespace Unity.Android.Logcat
         protected abstract AndroidLogcatCaptureVideo CreateScreenRecorder();
         protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture();
         protected abstract AndroidLogcatQueryLayout CreateQueryLayout();
+        protected abstract AndroidLogcatLiveStream CreateLiveStream();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -94,6 +100,7 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = CreateScreenRecorder();
             m_CaptureScreenshot = CreateScreenCapture();
             m_QueryLayout = CreateQueryLayout();
+            m_LiveSream = CreateLiveStream();
 
             m_Initialized = true;
         }
@@ -178,6 +185,11 @@ namespace Unity.Android.Logcat
         protected override AndroidLogcatQueryLayout CreateQueryLayout()
         {
             return new AndroidLogcatQueryLayout(this);
+        }
+
+        protected override AndroidLogcatLiveStream CreateLiveStream()
+        {
+            return new AndroidLogcatLiveStream(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()
