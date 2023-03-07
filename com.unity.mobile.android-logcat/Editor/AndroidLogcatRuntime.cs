@@ -14,6 +14,7 @@ namespace Unity.Android.Logcat
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
         protected AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         protected AndroidLogcatCaptureVideo m_CaptureVideo;
+        protected AndroidLogcatLiveStream m_LiveSream;
         protected bool m_Initialized;
 
         protected abstract string UserSettingsPath { get; }
@@ -58,6 +59,10 @@ namespace Unity.Android.Logcat
         {
             get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
+        public AndroidLogcatLiveStream LiveStream
+        {
+            get { ValidateIsInitialized(); return m_LiveSream; }
+        }
 
         public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
@@ -65,6 +70,7 @@ namespace Unity.Android.Logcat
         protected abstract AndroidTools CreateAndroidTools();
         protected abstract AndroidLogcatCaptureVideo CreateScreenRecorder();
         protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture();
+        protected abstract AndroidLogcatLiveStream CreateLiveStream();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -86,6 +92,7 @@ namespace Unity.Android.Logcat
             m_DeviceQuery = CreateDeviceQuery();
             m_CaptureVideo = CreateScreenRecorder();
             m_CaptureScreenshot = CreateScreenCapture();
+            m_LiveSream = CreateLiveStream();
 
             m_Initialized = true;
         }
@@ -165,6 +172,11 @@ namespace Unity.Android.Logcat
         protected override AndroidLogcatCaptureScreenshot CreateScreenCapture()
         {
             return new AndroidLogcatCaptureScreenshot(this);
+        }
+
+        protected override AndroidLogcatLiveStream CreateLiveStream()
+        {
+            return new AndroidLogcatLiveStream(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()
