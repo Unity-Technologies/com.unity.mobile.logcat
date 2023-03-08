@@ -15,24 +15,85 @@ namespace Unity.Android.Logcat
             Success,
             Failure
         }
+
+        internal class StreamingData
+        {
+            byte[] m_BackBuffer;
+            byte[] m_FontBuffer;
+            int m_LeftToRead;
+            int m_SwapIdx;
+            int m_TextureApplyIdx;
+            Texture2D m_Texture;
+
+            internal Texture2D Texture => m_Texture;
+
+            internal StreamingData(int width, int height)
+            {
+                m_Texture = new Texture2D(Width, Height, TextureFormat.RGB24, false);
+                var dataSize = width * height * 3;
+                m_BackBuffer = new byte[dataSize];
+                m_FontBuffer = new byte[dataSize];
+                m_LeftToRead = dataSize;
+                m_SwapIdx = 0;
+                m_TextureApplyIdx = 0;
+            }
+
+            /// <summary>
+            /// Writes data into back buffer, called from worker thread
+            /// </summary>
+            /// <returns>Returns true if back buffer is full and we need to swap.</returns>
+            internal int WriteDataToBackBuffer(FileStream baseStream)
+            {
+                if (m_LeftToRead <= 0)
+                    throw new Exception("No more room in buffer to write, did you forget to swap buffers?");
+
+                int bytesRead = 0;
+                lock (m_BackBuffer)
+                    bytesRead = baseStream.Read(m_BackBuffer, m_BackBuffer.Length - m_LeftToRead, m_LeftToRead);
+
+                m_LeftToRead -= bytesRead;
+                if (m_LeftToRead <= 0)
+                {
+                    lock (m_BackBuffer)
+                    {
+                        var tmp = m_BackBuffer;
+                        m_BackBuffer = m_FontBuffer;
+                        m_FontBuffer = tmp;
+                        m_LeftToRead = tmp.Length;
+                    }
+                    m_SwapIdx++;
+                }
+
+                return bytesRead;
+            }
+
+            internal void ApplyDataToTextureIfNeeded()
+            {
+                if (m_TextureApplyIdx < m_SwapIdx)
+                {
+                    lock (m_FontBuffer)
+                        m_Texture.LoadRawTextureData(m_FontBuffer);
+                    m_Texture.Apply();
+                    m_TextureApplyIdx = m_SwapIdx;
+                }
+            }
+        }
+
         private AndroidLogcatRuntimeBase m_Runtime;
-        private Process m_RecordingProcess;
-        private StringBuilder m_RecordingProcessLog;
-        private StringBuilder m_RecordingProcessErrors;
-        private IAndroidLogcatDevice m_RecordingOnDevice;
-        private DateTime m_RecordingCheckTime;
+        private Process m_StreamingProcess;
+        private StringBuilder m_StreamingProcessErrors;
+        private IAndroidLogcatDevice m_StreamingFromDevice;
+        private DateTime m_StreamingCheckTime;
         private Action<Result> m_OnStopLiveStream;
-        internal string Errors => m_RecordingProcessErrors != null ? m_RecordingProcessErrors.ToString() : string.Empty;
-        private Texture2D m_Texture;
-        private byte[] m_Buffer;
-        private int m_ToRead;
+        internal string Errors => m_StreamingProcessErrors != null ? m_StreamingProcessErrors.ToString() : string.Empty;
+        StreamingData m_Data;
 
         Thread m_Thread;
 
-        const int Width = 1440 / 4;
-        const int Height = 2880 / 4;
+        const int Width = 1600 / 6;
+        const int Height = 2560 / 6;
 
-        internal Texture2D Texture { get; }
+        internal Texture2D Texture => m_Data != null ? m_Data.Texture : null;
 
         internal AndroidLogcatLiveStream(AndroidLogcatRuntimeBase runtime)
         {
@@ -43,50 +104,44 @@ namespace Unity.Android.Logcat
 
         private void Cleanup()
         {
-            if (m_RecordingOnDevice == null || m_Runtime == null)
+            if (m_StreamingFromDevice == null || m_Runtime == null)
                 return;
             // Cache, since StopRecording will clear m_RecordingOnDevice
-            var device = m_RecordingOnDevice;
-            StopRecording();
-            KillRemoteRecorder(m_Runtime, device);
+            var device = m_StreamingFromDevice;
+            StopStreaming();
+            AndroidLogcatUtilities.KillScreenRecordProcess(m_Runtime, device);
             m_Runtime = null;
         }
 
         private void Update()
         {
-            if (!IsRecording)
+            if (!IsStreaming)
                 return;
 
             var currentTime = DateTime.Now;
-            if ((currentTime - m_RecordingCheckTime).TotalSeconds > 1.0f)
+            if ((currentTime - m_StreamingCheckTime).TotalSeconds > 1.0f)
             {
-                m_RecordingCheckTime = currentTime;
-                if (m_RecordingProcess.HasExited)
+                m_StreamingCheckTime = currentTime;
+                if (m_StreamingProcess.HasExited)
                 {
                     var result = Result.Success;
 
-                    var title = $"Process 'adb {m_RecordingProcess.StartInfo.Arguments}' has exited with code {m_RecordingProcess.ExitCode}.";
+                    var title = $"Process 'adb {m_StreamingProcess.StartInfo.Arguments}' has exited with code {m_StreamingProcess.ExitCode}.";
 
                     if (result == Result.Failure)
                     {
-                        m_RecordingProcessErrors.AppendLine(title);
-                        m_RecordingProcessErrors.AppendLine();
-                        m_RecordingProcessErrors.AppendLine(m_RecordingProcessLog.ToString());
+                        m_StreamingProcessErrors.AppendLine(title);
+                        m_StreamingProcessErrors.AppendLine();
                     }
                     AndroidLogcatInternalLog.Log(title);
-                    AndroidLogcatInternalLog.Log(m_RecordingProcessLog.ToString());
 
                     m_OnStopLiveStream?.Invoke(result);
-                    ClearRecordingData();
+                    ClearStreamingData();
                 }
             }
 
-            lock (m_Buffer)
-            {
-                m_Texture.LoadRawTextureData(m_Buffer);
-            }
-
-            m_Texture.Apply();
+            if (m_Data != null)
+                m_Data.ApplyDataToTextureIfNeeded();
         }
 
         internal bool IsRemoteRecorderActive(IAndroidLogcatDevice device)
@@ -94,33 +149,9 @@ namespace Unity.Android.Logcat
             return AndroidLogcatUtilities.GetPidFromPackageName(m_Runtime.Tools.ADB, device, "screenrecord") != -1;
         }
 
-        internal static void KillRemoteRecorder(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device)
-        {
-            if (device == null)
-                return;
-            var pid = AndroidLogcatUtilities.GetPidFromPackageName(runtime.Tools.ADB, device, "screenrecord");
-            if (pid != -1)
-                AndroidLogcatUtilities.KillProcesss(runtime.Tools.ADB, device, pid);
-        }
+        internal bool IsStreaming => m_StreamingProcess != null;
 
-        private void DeleteVideoOnHost(string path)
-        {
-            try
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
-            }
-            catch (Exception ex)
-            {
-                var msg = $"Failed to delete {path}\n{ex.Message}";
-                UnityEngine.Debug.LogWarning(msg);
-                AndroidLogcatInternalLog.Log(msg);
-            }
-        }
-
-        internal bool IsRecording => m_RecordingProcess != null;
-
-        internal void StartRecording(IAndroidLogcatDevice device,
+        internal void StartStreaming(IAndroidLogcatDevice device,
             Action<Result> onStopLiveStream,
             TimeSpan? timeLimit = null,
             uint? videoSizeX = null,
@@ -131,24 +162,24 @@ namespace Unity.Android.Logcat
             if (device == null)
                 throw new InvalidOperationException("No device selected");
 
-            if (m_RecordingProcess != null)
+            if (m_StreamingProcess != null)
                 throw new InvalidOperationException("Already recording");
 
             m_OnStopLiveStream = onStopLiveStream;
-            m_RecordingOnDevice = device;
+            m_StreamingFromDevice = device;
 
-            KillRemoteRecorder(m_Runtime, m_RecordingOnDevice);
+            AndroidLogcatUtilities.KillScreenRecordProcess(m_Runtime, m_StreamingFromDevice);
 
             // If for some reason screen recorder is still running, abort.
-            if (IsRemoteRecorderActive(m_RecordingOnDevice))
+            if (IsRemoteRecorderActive(m_StreamingFromDevice))
             {
-                m_RecordingOnDevice = null;
+                m_StreamingFromDevice = null;
                 throw new InvalidOperationException("screenrecord is already recording on the device, aborting...");
             }
 
 
             //var args = $"-s {m_RecordingOnDevice.Id} shell screenrecord";
-            var args = $"-s {m_RecordingOnDevice.Id} exec-out screenrecord";
+            var args = $"-s {m_StreamingFromDevice.Id} exec-out screenrecord";
             // TODO: remove timelimit?
             //if (timeLimit != null)
             //    args += $" --time-limit {((TimeSpan)timeLimit).TotalSeconds}";
@@ -166,11 +197,10 @@ namespace Unity.Android.Logcat
 
             AndroidLogcatInternalLog.Log($"{m_Runtime.Tools.ADB.GetADBPath()} {args}");
 
-            m_RecordingProcessLog = new StringBuilder();
-            m_RecordingProcessErrors = new StringBuilder();
+            m_StreamingProcessErrors = new StringBuilder();
 
-            m_RecordingProcess = new Process();
-            var si = m_RecordingProcess.StartInfo;
+            m_StreamingProcess = new Process();
+            var si = m_StreamingProcess.StartInfo;
             si.FileName = m_Runtime.Tools.ADB.GetADBPath();
             si.Arguments = args;
             si.RedirectStandardError = true;
@@ -180,23 +210,20 @@ namespace Unity.Android.Logcat
             si.CreateNoWindow = true;
             //m_RecordingProcess.OutputDataReceived += OutputDataReceived;
             // m_RecordingProcess.ErrorDataReceived += OutputDataReceived;
-            m_RecordingProcess.Start();
+            m_StreamingProcess.Start();
 
             //m_RecordingProcess.BeginOutputReadLine();
             //m_RecordingProcess.BeginErrorReadLine();
 
-            m_RecordingCheckTime = DateTime.Now;
+            m_StreamingCheckTime = DateTime.Now;
 
-            m_Texture = new Texture2D(Width, Height, TextureFormat.RGB24, false);
-
-            m_Buffer = new byte[Width * Height * 3];
-            m_ToRead = m_Buffer.Length;
-
-            m_Thread = new Thread(Test);
-            m_Thread.Start(m_RecordingProcess);
+            // We get data in RGB24 format
+            m_Data = new StreamingData(Width, Height);
+            m_Thread = new Thread(ConsumeStreamingData);
+            m_Thread.Start(m_StreamingProcess);
         }
 
-        private void Test(object p)
+        private void ConsumeStreamingData(object p)
         {
             var process = (Process)p;
             FileStream baseStream = process.StandardOutput.BaseStream as FileStream;
@@ -205,80 +232,45 @@ namespace Unity.Android.Logcat
 
             do
             {
-                lock (m_Buffer)
-                {
-                    lastRead = baseStream.Read(m_Buffer, m_Buffer.Length - m_ToRead, m_ToRead);
-                }
-
-                m_ToRead -= lastRead;
-                if (m_ToRead <= 0)
-                    m_ToRead = m_Buffer.Length;
-
-                UnityEngine.Debug.Log($"Incoming {lastRead}, m_ToRead {m_ToRead}");
+                lastRead = m_Data.WriteDataToBackBuffer(baseStream);
             } while (lastRead > 0);
 
-            /*
-                byte[] imageBytes = null;
-
-
-            using (MemoryStream ms = new MemoryStream())
-            {
-
-                byte[] buffer = new byte[4096];
-                do
-                {
-                    lastRead = baseStream.Read(buffer, 0, buffer.Length);
-                    ms.Write(buffer, 0, lastRead);
-
-                    UnityEngine.Debug.Log($"Incoming {buffer.Length}");
-                } while (lastRead > 0);
-
-                imageBytes = ms.ToArray();
-            }
-            */
+            // TODO
             UnityEngine.Debug.Log("Exited");
         }
 
-        private void OutputDataReceived(object sender, DataReceivedEventArgs e)
+        internal bool StopStreaming()
         {
-            if (e.Data == null)
-                return;
-            //m_RecordingProcessLog.AppendLine(e.Data);
-            UnityEngine.Debug.Log($"Received {e.Data.Length}");
-        }
-
-        internal bool StopRecording()
-        {
-            if (m_RecordingProcess == null)
+            if (m_StreamingProcess == null)
                 return false;
 
             var result = Result.Success;
             try
             {
-                m_RecordingProcess.Kill();
-                m_RecordingProcess.WaitForExit();
-                m_RecordingProcess.Close();
+                m_StreamingProcess.Kill();
+                m_StreamingProcess.WaitForExit();
+                m_StreamingProcess.Close();
 
             }
             catch (Exception ex)
             {
                 result = Result.Failure;
-                m_RecordingProcessErrors.AppendLine("Failed to stop the recording");
-                m_RecordingProcessErrors.AppendLine(ex.Message);
+                m_StreamingProcessErrors.AppendLine("Failed to stop the recording");
+                m_StreamingProcessErrors.AppendLine(ex.Message);
             }
             finally
             {
                 m_OnStopLiveStream?.Invoke(result);
-                ClearRecordingData();
+                ClearStreamingData();
             }
 
             return result == Result.Success;
         }
 
-        private void ClearRecordingData()
+        private void ClearStreamingData()
         {
-            m_RecordingProcess = null;
-            m_RecordingOnDevice = null;
+            m_StreamingProcess = null;
+            m_StreamingFromDevice = null;
             m_OnStopLiveStream = null;
         }
 
@@ -326,12 +318,12 @@ namespace Unity.Android.Logcat
 
         public void DoGUI(Rect rc)
         {
-            if (m_Texture != null)
+            if (Texture != null)
             {
                 rc = GetVideoRect(rc);
                 rc.y += rc.height;
                 rc.height = -rc.height;
-                GUI.DrawTexture(rc, m_Texture);
+                GUI.DrawTexture(rc, Texture);
             }
             else
             {
