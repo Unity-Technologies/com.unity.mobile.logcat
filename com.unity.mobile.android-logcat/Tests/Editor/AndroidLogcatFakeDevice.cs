@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Android.Logcat;
+using UnityEngine;
 
 internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
@@ -40,8 +41,10 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     }
 
     internal override string DisplayName => throw new NotImplementedException();
+    internal override string DisplayName => throw new NotImplementedException(nameof(DisplayName));
+    internal override Vector2 DisplaySize => throw new NotImplementedException(nameof(DisplaySize));
 
-    internal override string ShortDisplayName => throw new NotImplementedException();
+    internal override string ShortDisplayName => throw new NotImplementedException(nameof(ShortDisplayName));
 
     protected override string GetTagPriorityAsString(string tag)
     {
