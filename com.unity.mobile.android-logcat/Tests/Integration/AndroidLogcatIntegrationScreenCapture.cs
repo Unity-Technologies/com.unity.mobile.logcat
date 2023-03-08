@@ -27,7 +27,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     private void Cleanup()
     {
         // Need to kill screen recorder before attempting to delete files
-        AndroidLogcatCaptureVideo.KillRemoteRecorder(Runtime, Device);
+        AndroidLogcatUtilities.KillScreenRecordProcess(Runtime, Device);
         SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
         SafeDeleteOnHost(VideoPathOnHost);
     }

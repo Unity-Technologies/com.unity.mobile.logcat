@@ -55,7 +55,7 @@ namespace Unity.Android.Logcat
                 {
                     case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
                     case Mode.Video: return m_CaptureVideo.IsRecording;
-                    case Mode.LiveStream: return m_LiveStream.IsRecording;
+                    case Mode.LiveStream: return m_LiveStream.IsStreaming;
                     default:
                         throw new NotImplementedException(m_Mode.ToString());
                 }
@@ -316,11 +316,11 @@ namespace Unity.Android.Logcat
                     }
                     break;
                 case Mode.LiveStream:
-                    if (m_LiveStream.IsRecording)
+                    if (m_LiveStream.IsStreaming)
                     {
                         if (GUILayout.Button("Stop", AndroidLogcatStyles.toolbarButton))
                         {
-                            m_LiveStream.StopRecording();
+                            m_LiveStream.StopStreaming();
                         }
                     }
                     else
@@ -328,7 +328,7 @@ namespace Unity.Android.Logcat
                         if (GUILayout.Button("Start", AndroidLogcatStyles.toolbarButton))
                         {
 
-                            m_LiveStream.StartRecording(SelectedDevice, OnLiveStreamCompleted);
+                            m_LiveStream.StartStreaming(SelectedDevice, OnLiveStreamCompleted);
                         }
                     }
                     break;

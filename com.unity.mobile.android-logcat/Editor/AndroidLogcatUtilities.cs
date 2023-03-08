@@ -473,6 +473,15 @@ namespace Unity.Android.Logcat
             return false;
         }
 
+        internal static void KillScreenRecordProcess(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return;
+            var pid = GetPidFromPackageName(runtime.Tools.ADB, device, "screenrecord");
+            if (pid != -1)
+                KillProcesss(runtime.Tools.ADB, device, pid);
+        }
+
         internal static void ShowAndroidIsNotInstalledMessage()
         {
             UnityEditor.EditorGUILayout.HelpBox("Android Logcat requires Android support to be installed.", UnityEditor.MessageType.Info);
