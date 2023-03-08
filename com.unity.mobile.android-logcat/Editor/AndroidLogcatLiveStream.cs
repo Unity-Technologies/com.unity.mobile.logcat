@@ -24,18 +24,34 @@ namespace Unity.Android.Logcat
             int m_SwapIdx;
             int m_TextureApplyIdx;
             Texture2D m_Texture;
+            // Statistics
+            uint m_AverageBytesReadPerSecond;
+            DateTime m_StartTime;
+            uint m_BytesRead;
 
             internal Texture2D Texture => m_Texture;
+            internal uint AverageBytesReadPerSecond => m_AverageBytesReadPerSecond;
+            internal double AverageMbps => AverageBytesReadPerSecond * 8 / 1000000.0;
+            internal uint Width { get; }
+            internal uint Height { get; }
 
-            internal StreamingData(int width, int height)
+            internal StreamingData(uint width, uint height)
             {
-                m_Texture = new Texture2D(Width, Height, TextureFormat.RGB24, false);
+                Width = width;
+                Height = height;
+                m_Texture = new Texture2D((int)Width, (int)Height, TextureFormat.RGB24, false);
                 var dataSize = width * height * 3;
                 m_BackBuffer = new byte[dataSize];
                 m_FontBuffer = new byte[dataSize];
-                m_LeftToRead = dataSize;
+                m_LeftToRead = (int)dataSize;
                 m_SwapIdx = 0;
                 m_TextureApplyIdx = 0;
+            }
+
+            internal void StartWritingData()
+            {
+                m_StartTime = DateTime.Now;
+                m_BytesRead = 0;
             }
 
             /// <summary>
@@ -64,6 +80,19 @@ namespace Unity.Android.Logcat
                     m_SwapIdx++;
                 }
 
+                if (bytesRead > 0)
+                {
+                    m_BytesRead += (uint)bytesRead;
+                    var timePassed = (double)(DateTime.Now - m_StartTime).TotalSeconds;
+                    if (timePassed > 1.0)
+                    {
+                        var newAverage = (uint)(m_BytesRead / timePassed);
+                        m_AverageBytesReadPerSecond = (m_AverageBytesReadPerSecond + newAverage) / 2;
+                        m_StartTime = DateTime.Now;
+                        m_BytesRead = 0;
+                    }
+                }
+
                 return bytesRead;
             }
 
@@ -89,9 +118,6 @@ namespace Unity.Android.Logcat
         StreamingData m_Data;
 
         Thread m_Thread;
-
-        const int Width = 1600 / 6;
-        const int Height = 2560 / 6;
 
         internal Texture2D Texture => m_Data != null ? m_Data.Texture : null;
 
@@ -190,7 +216,11 @@ namespace Unity.Android.Logcat
             if (displayId != null)
                 args += $" --display-id {displayId}";
 
-            args += $" --size {Width}x{Height}";
+
+            var downScale = 6;
+            var dw = (uint)(device.DisplaySize.x / downScale);
+            var dh = (uint)(device.DisplaySize.y / downScale);
+            args += $" --size {dw}x{dh}";
             args += " --output-format=raw-frames -";
 
 
@@ -217,8 +247,9 @@ namespace Unity.Android.Logcat
 
             m_StreamingCheckTime = DateTime.Now;
 
+
             // We get data in RGB24 format
-            m_Data = new StreamingData(Width, Height);
+            m_Data = new StreamingData(dw, dh);
             m_Thread = new Thread(ConsumeStreamingData);
             m_Thread.Start(m_StreamingProcess);
         }
@@ -284,15 +315,12 @@ namespace Unity.Android.Logcat
                 UnityEngine.Debug.Log("screen record pid is " + pid);
             }
 
-
-
             EditorGUILayout.EndHorizontal();
         }
 
         public Rect GetVideoRect(Rect windowRect)
         {
-
-            float aspect = (float)Width / (float)Height;
+            float aspect = (float)m_Data.Width / (float)m_Data.Height;
             var rc = GUILayoutUtility.GetAspectRect(aspect);
             Rect r1, r2;
 
@@ -320,6 +348,9 @@ namespace Unity.Android.Logcat
         {
             if (Texture != null)
             {
+                GUI.Label(rc, $"{m_Data.AverageMbps:0.00} Mbps");
+                GUI.Label(new Rect(rc.x, rc.y + 20, rc.width, rc.height), $"{m_Data.Width} x {m_Data.Height}");
+
                 rc = GetVideoRect(rc);
                 rc.y += rc.height;
                 rc.height = -rc.height;
