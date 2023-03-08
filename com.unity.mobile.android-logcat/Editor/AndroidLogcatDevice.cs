@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using UnityEngine;
 
 
 namespace Unity.Android.Logcat
@@ -43,6 +44,8 @@ namespace Unity.Android.Logcat
 
         internal abstract string DisplayName { get; }
 
+        internal abstract Vector2 DisplaySize { get; }
+
         internal abstract string ShortDisplayName { get; }
 
         internal bool SupportsFilteringByPid
@@ -82,13 +85,16 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
         private string m_Id;
+        private AndroidBridge.ADB m_ADB;
         private AndroidBridge.AndroidDevice m_Device;
         private Version m_Version;
         private string m_DisplayName;
+        private Vector2? m_DisplaySize;
 
 
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
         {
+            m_ADB = adb;
             m_Id = deviceId;
 
             if (adb == null)
@@ -185,6 +191,45 @@ namespace Unity.Android.Logcat
                     m_DisplayName = string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", Manufacturer, Model, OSVersion, ABI, APILevel, Id);
                     return m_DisplayName;
                 }
+            }
+        }
+
+        internal override Vector2 DisplaySize
+        {
+            get
+            {
+                if (m_DisplaySize != null)
+                    return (Vector2)m_DisplaySize;
+                if (m_ADB == null)
+                {
+                    m_DisplaySize = Vector2.zero;
+                    return (Vector2)m_DisplaySize;
+                }
+
+                var args = new[]
+                {
+                    $"-s {Id}",
+                    "shell",
+                    "wm",
+                    "size"
+                };
+
+                var combinedCommand = $"'adb {string.Join(" ", args)}'";
+
+                var output = m_ADB.Run(args, $"Failed to execute {combinedCommand}");
+                var result = Regex.Match(output, "Physical size:\\s+(?<x>\\d+)x(?<y>\\d+)");
+                if (result.Success)
+                {
+                    m_DisplaySize = new Vector2(
+                        int.Parse(result.Groups["x"].Value),
+                        int.Parse(result.Groups["y"].Value));
+                }
+                else
+                {
+                    m_DisplaySize = Vector2.zero;
+                    AndroidLogcatInternalLog.Log($"Couldn't parse output from '{combinedCommand}'\n{output}");
+                }
+                return (Vector2)m_DisplaySize;
             }
         }
 
