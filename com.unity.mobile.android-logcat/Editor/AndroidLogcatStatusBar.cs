@@ -22,6 +22,7 @@ namespace Unity.Android.Logcat
                 AndroidLogcatStyles.statusBarBackground.Draw(rc, false, true, false, false);
             }
             rc.x += 10.0f;
+            rc.width -= 10.0f;
             var msg = Connected ? "<color=#00FF00FF><b>Connected</b></color>" : "<color=#FF0000FF><b>Disconnected</b></color>";
 
             if (!string.IsNullOrEmpty(Message))

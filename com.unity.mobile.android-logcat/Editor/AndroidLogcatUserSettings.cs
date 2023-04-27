@@ -52,6 +52,8 @@ namespace Unity.Android.Logcat
         private List<ReordableListItem> m_SymbolPaths;
         [SerializeField]
         private VideoSettings m_CaptureVideoSettings;
+        [SerializeField]
+        private AutoScroll m_AutoScroll;
 
         public string LastSelectedDeviceId
         {
@@ -108,6 +110,7 @@ namespace Unity.Android.Logcat
         }
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
+        public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
 
         private void RefreshPackagesForSerialization()
