@@ -424,8 +424,11 @@ namespace Unity.Android.Logcat
 
             m_MemoryViewer.DoGUI();
 
+            EditorGUILayout.BeginHorizontal();
             if (m_StatusBar != null)
                 m_StatusBar.DoGUI();
+            DoScrollOptionsGUI();
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
         }
