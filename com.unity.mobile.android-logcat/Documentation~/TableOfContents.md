@@ -17,5 +17,7 @@
     * [Stacktrace Utility window reference](stacktrace-utility-window-reference.md)
     * [Set up Stacktrace Utility](stacktrace-utility-set-up.md)
     * [Resolve a stacktrace](stacktrace-utility-resolve.md) 
-  * [Memory window](memory-window.md)
-    * [Memory window reference](memory-window-reference.md)
+  * Window  
+    * [Memory window](memory-window.md)
+      * [Memory window reference](memory-window-reference.md)
+    * [Input window](inputs-window.md)
