@@ -250,17 +250,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public ExtraWindowState ExtraWindowState
-        {
-            set
-            {
-                m_ExtraWindowState = value;
-            }
-            get
-            {
-                return m_ExtraWindowState;
-            }
-        }
+        public ExtraWindowState ExtraWindowState { set => m_ExtraWindowState = value; get => m_ExtraWindowState; }
 
         public AndroidLogcatMemoryViewerState MemoryViewerState
         {
