@@ -263,7 +263,9 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            if (IsLogcatConnected && m_Runtime.UserSettings.MemoryViewerState.AutoCapture)
+            if (IsLogcatConnected &&
+                m_Runtime.UserSettings.MemoryViewerState.AutoCapture &&
+                m_Runtime.UserSettings.ExtraWindowState.Type == ExtraWindow.Memory)
             {
                 if ((DateTime.Now - m_TimeOfLastMemoryRequest).TotalMilliseconds > m_Runtime.Settings.MemoryRequestIntervalMS)
                 {
