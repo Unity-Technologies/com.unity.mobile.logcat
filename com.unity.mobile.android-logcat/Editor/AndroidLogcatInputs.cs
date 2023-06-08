@@ -53,9 +53,11 @@ namespace Unity.Android.Logcat
             return GUILayout.Button(name, EditorStyles.miniButtonMid, GUILayout.Height(kButtonHeight));
         }
 
-        private bool Key(string name)
+        private bool Key(string name, string tooltip = null)
         {
-            return Key(new GUIContent(name));
+            if (tooltip == null)
+                tooltip = name;
+            return Key(new GUIContent(name, tooltip));
         }
 
         private bool DoLetters(string letters, out char code)
@@ -64,7 +66,7 @@ namespace Unity.Android.Logcat
 
             foreach (var c in letters.ToCharArray())
             {
-                if (Key(c.ToString()))
+                if (Key(c.ToString(), c.ToString()))
                 {
                     code = c;
                     return true;
@@ -92,7 +94,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(kButtonHeight);
             GUILayout.BeginHorizontal();
             Margin();
-            if (Key("Esc"))
+            if (Key("Esc", "Escape"))
                 result = new KeyResult(AndroidKeyCode.ESCAPE);
             // F* keys
             for (int i = 1; i < 13; i++)
@@ -221,34 +223,32 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginHorizontal();
             Margin();
+            GUILayout.BeginVertical();
             if (Key("SysRq"))
                 result = new KeyResult(AndroidKeyCode.SYSRQ);
-            if (Key("ScrollLock"))
-                result = new KeyResult(AndroidKeyCode.SCROLL_LOCK);
-            if (Key("Break"))
-                result = new KeyResult(AndroidKeyCode.BREAK);
-            Margin();
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            Margin();
             if (Key("Insert"))
                 result = new KeyResult(AndroidKeyCode.INSERT);
-            if (Key("Home"))
-                result = new KeyResult(AndroidKeyCode.MOVE_HOME);
-            if (Key("PageUp"))
-                result = new KeyResult(AndroidKeyCode.PAGE_UP);
-            Margin();
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            Margin();
             if (Key("Delete"))
                 result = new KeyResult(AndroidKeyCode.FORWARD_DEL);
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            if (Key("ScrollLock"))
+                result = new KeyResult(AndroidKeyCode.SCROLL_LOCK);
+            if (Key("Home"))
+                result = new KeyResult(AndroidKeyCode.MOVE_HOME);
             if (Key("End"))
                 result = new KeyResult(AndroidKeyCode.MOVE_END);
-            if (Key("PageDown"))
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            if (Key("Break"))
+                result = new KeyResult(AndroidKeyCode.BREAK);
+            if (Key("PgUp"))
+                result = new KeyResult(AndroidKeyCode.PAGE_UP);
+            if (Key("PgDn"))
                 result = new KeyResult(AndroidKeyCode.PAGE_DOWN);
+            GUILayout.EndVertical();
             Margin();
             GUILayout.EndHorizontal();
 
