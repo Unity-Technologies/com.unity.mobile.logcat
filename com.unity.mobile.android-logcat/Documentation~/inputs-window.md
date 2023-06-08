@@ -1,13 +1,64 @@
-# Memory window
+# Inputs window
 
-The Memory window tracks the memory allocated for your application. It can automatically capture memory snapshots for the selected application periodically, but if this affects the application's performance, you can disable automatic capture and instead press a button to capture a memory snapshot manually.
 
-> [!NOTE]
-> When the Memory window requests a memory capture, the following message might appear in the Android Logcat window: `Explicit concurrent copying GC freed 5515(208KB) AllocSpace objects, 1(20KB) LOS objects, 49% free, 1926KB/3852KB, paused 46us total 11.791ms`. This is normal and it stops appearing when you disable the Memory window.
+To open the Inputs window in the Unity Editor:
 
-This section of the documentation describes the areas and features of the Memory window.
+1. Open the [Android Logcat window](android-logcat-window.md).
+2. In the [Toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Window** > **Inputs**.
 
-| **Topic**                                             | **Description**                         |
-| ----------------------------------------------------- | --------------------------------------- |
-| [Memory window reference](memory-window-reference.md) | Understand the Memory window interface. |
+![](images/inputswindow.png)
 
+The inputs window is divided into five sections:
+* Keyboard keys
+* Cursor keys
+* Numpad keys
+* Miscellaneous keys
+* Send text window
+
+**Note:** The key events which are affected by shift modifier are sent using - adb shell input keyevent <key_code> command.
+
+**Note:** The key events which are not affected by shift modifier are sent using - adb shell input text <text> command.
+
+## Keyboard keys
+
+![](images/InputsWindow_Keyboard.png)
+
+Includes letter, number, punctuation, symbol, function, and control keys.
+
+#### Modifiers
+
+You can select **Shift** modifier to send keys as if while holding shift.
+
+## Cursor keys
+
+![](images/InputsWindow_Cursor.png)
+
+Includes navigation keys.
+
+## Numpad keys
+
+![](images/InputsWindow_Numpad.png)
+
+Includes numerical keys.
+
+## Miscellaneous keys
+
+![](images/InputsWindow_Misc.png)
+
+Includes various helper keys for Android:
+* Volume keys
+* Brightness keys
+* System keys:
+   * Power
+   * Wake Up
+   * Camera
+   * Call
+   * End Call
+   * Cut/Copy/Paste
+   * Back/Home/Menu
+
+ ## Send text
+
+ ![](images/InputsWindow_SendText.png)
+
+ Provides functionality for send block of text to Android device.
