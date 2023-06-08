@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor.Android;
-using UnityEditor.PackageManager.Requests;
 
 namespace Unity.Android.Logcat
 {
