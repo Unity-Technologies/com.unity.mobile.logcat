@@ -204,12 +204,12 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginHorizontal();
             Margin();
-            GUILayout.Label("Modifier Keys", EditorStyles.boldLabel);
+            GUILayout.Label("Modifiers", EditorStyles.boldLabel);
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             Margin();
-            settings.ShiftModifier = GUILayout.Toggle(settings.ShiftModifier, " Shift");
+            settings.ShiftModifier = EditorGUILayout.ToggleLeft(" Shift", settings.ShiftModifier);
             GUILayout.EndHorizontal();
 
             return result;
@@ -430,7 +430,7 @@ namespace Unity.Android.Logcat
                 return;
 
             if (keyResult.Key != 0)
-                device.SendKeyAsync(dispatcher, keyResult.Key);
+                device.SendKeyAsync(dispatcher, keyResult.Key, false);
             else if (keyResult.Character != 0)
                 device.SendTextAsync(dispatcher, keyResult.Character.ToString());
         }

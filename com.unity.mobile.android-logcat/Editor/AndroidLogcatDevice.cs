@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor.Android;
+using UnityEditor.PackageManager.Requests;
 
 namespace Unity.Android.Logcat
 {
@@ -46,7 +47,7 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
-        internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { }
+        internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress) { }
 
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
@@ -217,7 +218,7 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Sends key to device, since it's a slow operation for some reason, we do it asynchronusly
         /// </summary>
-        internal override void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode)
+        internal override void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress)
         {
             dispatcher.Schedule(
                 new AndroidLogcatTaskInput<AndroidBridge.ADB, string, AndroidKeyCode>()
@@ -230,19 +231,23 @@ namespace Unity.Android.Logcat
                 {
                     var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, AndroidKeyCode>)input;
 
-                    var args = new[]
+                    var args = new List<string>(new[]
                     {
                         "-s",
                         inputData.data2,
                         "shell",
                         "input",
-                        "keyevent",
-                        ((int)inputData.data3).ToString()
-                     };
+                        "keyevent"
+                     });
+
+                    if (longPress)
+                        args.Add("--longpress");
+
+                    args.Add(((int)inputData.data3).ToString());
 
                     AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
-                    inputData.data1.Run(args, $"Failed to send key event '{inputData.data3}'");
+                    inputData.data1.Run(args.ToArray(), $"Failed to send key event '{inputData.data3}'");
                     return null;
                 },
             false);
