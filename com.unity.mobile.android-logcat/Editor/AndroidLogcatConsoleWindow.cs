@@ -438,8 +438,11 @@ namespace Unity.Android.Logcat
                     break;
             }
 
+            EditorGUILayout.BeginHorizontal();
             if (m_StatusBar != null)
                 m_StatusBar.DoGUI();
+            DoScrollOptionsGUI();
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
         }

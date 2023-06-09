@@ -70,6 +70,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private InputSettings m_InputSettings;
 
+        [SerializeField]
+        private AutoScroll m_AutoScroll;
+
         public string LastSelectedDeviceId
         {
             set
@@ -126,6 +129,8 @@ namespace Unity.Android.Logcat
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
+
+        public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
 
         private void RefreshPackagesForSerialization()
