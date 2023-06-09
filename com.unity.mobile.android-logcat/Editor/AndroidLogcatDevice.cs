@@ -337,11 +337,11 @@ namespace Unity.Android.Logcat
             else
             {
                 args.AddRange(new[]
-{
+                {
                     "am",
                     "start",
                     $"-n \"{packageName}/{activityName}\""
-                 });
+                });
             }
 
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
