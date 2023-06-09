@@ -13,6 +13,7 @@ The inputs window is divided into five sections:
 * Cursor keys
 * Numpad keys
 * Miscellaneous keys
+* TV keys
 * Send text window
 
 **Note:** The key events which are affected by shift modifier are sent using - adb shell input keyevent <key_code> command.
@@ -57,7 +58,13 @@ Includes various helper keys for Android:
    * Cut/Copy/Paste
    * Back/Home/Menu
 
- ## Send text
+## TV keys
+![](images/InputsWindow_TV.png)
+
+Incluse basic TV keys.
+
+
+## Send text
 
  ![](images/InputsWindow_SendText.png)
 

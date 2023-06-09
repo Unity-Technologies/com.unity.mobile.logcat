@@ -1,5 +1,6 @@
 using System;
 using UnityEditor;
+using UnityEditor.PackageManager.UI;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -379,21 +380,29 @@ namespace Unity.Android.Logcat
 
             GUILayout.Label("System Keys", EditorStyles.boldLabel);
             GUILayout.BeginHorizontal();
+
             Margin();
+            GUILayout.BeginVertical();
             if (Key("Power"))
                 result = new KeyResult(AndroidKeyCode.POWER);
-            if (Key("Wake Up"))
-                result = new KeyResult(AndroidKeyCode.WAKEUP);
-            Margin();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            Margin();
             if (Key("Camera"))
                 result = new KeyResult(AndroidKeyCode.CAMERA);
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            if (Key("Wake Up"))
+                result = new KeyResult(AndroidKeyCode.WAKEUP);
+
             if (Key("Call"))
                 result = new KeyResult(AndroidKeyCode.CALL);
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            if (Key("Sleep"))
+                result = new KeyResult(AndroidKeyCode.SLEEP);
             if (Key("End Call"))
                 result = new KeyResult(AndroidKeyCode.ENDCALL);
+            GUILayout.EndVertical();
             Margin();
             GUILayout.EndHorizontal();
 
@@ -406,6 +415,8 @@ namespace Unity.Android.Logcat
                 result = new KeyResult(AndroidKeyCode.COPY);
             if (Key("Paste"))
                 result = new KeyResult(AndroidKeyCode.PASTE);
+            if (Key("Clear"))
+                result = new KeyResult(AndroidKeyCode.CLEAR);
             Margin();
             GUILayout.EndHorizontal();
 
@@ -417,10 +428,78 @@ namespace Unity.Android.Logcat
             if (Key(new GUIContent("●", "Send Home key event")))
                 result = new KeyResult(AndroidKeyCode.HOME);
             if (Key(new GUIContent("■", "Send Overview key event")))
-                result = new KeyResult(AndroidKeyCode.MENU);
+                result = new KeyResult(AndroidKeyCode.APP_SWITCH);
             Margin();
             GUILayout.EndHorizontal();
 
+            return result;
+        }
+
+        private KeyResult DoTVKeys(AndroidLogcatUserSettings.InputSettings settings)
+        {
+            var result = KeyResult.Empty;
+            GUILayout.Label("TV Keys", EditorStyles.boldLabel);
+
+            GUILayout.BeginHorizontal();
+            Margin();
+
+            GUILayout.BeginVertical();
+            if (Key(new GUIContent("Channel Up")))
+                result = new KeyResult(AndroidKeyCode.CHANNEL_UP);
+            if (Key(new GUIContent("Channel Down")))
+                result = new KeyResult(AndroidKeyCode.CHANNEL_DOWN);
+
+            GUILayout.EndVertical();
+
+            GUILayout.BeginVertical();
+            if (Key(new GUIContent("Zoom In")))
+                result = new KeyResult(AndroidKeyCode.ZOOM_IN);
+            if (Key(new GUIContent("Zoom Out")))
+                result = new KeyResult(AndroidKeyCode.ZOOM_OUT);
+            GUILayout.EndVertical();
+
+            Margin();
+            GUILayout.EndHorizontal();
+
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            GUILayout.BeginVertical();
+            if (Key(new GUIContent("Live TV")))
+                result = new KeyResult(AndroidKeyCode.TV);
+            if (Key(new GUIContent("PnP", "Picture In Picture")))
+                result = new KeyResult(AndroidKeyCode.WINDOW);
+            if (Key(new GUIContent("Captions")))
+                result = new KeyResult(AndroidKeyCode.CAPTIONS);
+            if (Key(new GUIContent("TV Power")))
+                result = new KeyResult(AndroidKeyCode.TV_POWER);
+            GUILayout.EndVertical();
+            GUILayout.BeginVertical();
+            if (Key(new GUIContent("Guide")))
+                result = new KeyResult(AndroidKeyCode.GUIDE);
+            if (Key(new GUIContent("Bookmark")))
+                result = new KeyResult(AndroidKeyCode.BOOKMARK);
+            if (Key(new GUIContent("Settings")))
+                result = new KeyResult(AndroidKeyCode.SETTINGS);
+            if (Key(new GUIContent("TV Input")))
+                result = new KeyResult(AndroidKeyCode.TV_INPUT);
+            GUILayout.EndVertical();
+            Margin();
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("Program Keys", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Red", "Program Red Key")))
+                result = new KeyResult(AndroidKeyCode.PROG_RED);
+            if (Key(new GUIContent("Green", "Program Green Key")))
+                result = new KeyResult(AndroidKeyCode.PROG_GREEN);
+            if (Key(new GUIContent("Yellow", "Program Yellow Key")))
+                result = new KeyResult(AndroidKeyCode.PROG_YELLOW);
+            if (Key(new GUIContent("Blue", "Program Blue Key")))
+                result = new KeyResult(AndroidKeyCode.PROG_BLUE);
+            Margin();
+            GUILayout.EndHorizontal();
             return result;
         }
 
@@ -549,9 +628,12 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSection(runtime, device, DoSystemKeys, GetOptions(200, extraWindowState.Height));
             GUILayout.Space(4);
+            DoSection(runtime, device, DoTVKeys, GetOptions(200, extraWindowState.Height));
+            GUILayout.Space(4);
             DoSendText(runtime, device, GetOptions(extraWindowState.Height));
             GUILayout.Space(4);
-            
+
+
 
             // Something for the future
             var refreshPackages = false;
