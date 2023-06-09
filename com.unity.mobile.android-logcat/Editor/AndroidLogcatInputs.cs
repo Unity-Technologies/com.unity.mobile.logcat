@@ -1,6 +1,5 @@
 using System;
 using UnityEditor;
-using UnityEditor.PackageManager.UI;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -632,8 +631,7 @@ namespace Unity.Android.Logcat
             GUILayout.Space(4);
             DoSendText(runtime, device, GetOptions(extraWindowState.Height));
             GUILayout.Space(4);
-
-
+            
 
             // Something for the future
             var refreshPackages = false;
