@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class InputTests : MonoBehaviour
 {
-    static KeyCode[] AllKeys = (KeyCode[]) Enum.GetValues(typeof(KeyCode));
+    static KeyCode[] AllKeys = (KeyCode[])Enum.GetValues(typeof(KeyCode));
     List<string> m_Information = new List<string>();
     Dictionary<KeyCode, int> m_Clicks = new Dictionary<KeyCode, int>();
     string m_Text = "";
