@@ -39,12 +39,13 @@ namespace Unity.Android.Logcat
                 FilterBy(s.newValue);
             });
 
-            m_ListView.itemsSource = m_UnfilteredEntries;
             m_ListView.sortingEnabled = true;
             m_ListView.columnSortingChanged += ColumnSortingChanged;
             CreateLabel(nameof(PackageEntry.Name), (e) => e.Name);
             CreateLabel(nameof(PackageEntry.Installer), (e) => e.Installer);
             CreateLabel(nameof(PackageEntry.UID), (e) => e.UID);
+
+            FilterBy(m_Filter.value);
         }
 
         internal void RefreshEntries(List<PackageEntry> packageEntries)
