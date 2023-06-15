@@ -43,6 +43,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatPackages m_Packages;
         AndroidLogcatPackageProperties m_PackageProperties;
         AndroidLogcatPackageUtilities m_PackageUtilities;
+        AndroidLogcatDeviceSelection m_DeviceSelection;
 
         [MenuItem("Test/Test")]
         static void Init()
@@ -55,18 +56,17 @@ namespace Unity.Android.Logcat
 
         private void OnEnable()
         {
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
             if (rootVisualElement == null)
                 throw new NullReferenceException("rooVisualElement is null");
-            var label = new Label();
-            label.text = "sdsd\nsdsd\n";
-            rootVisualElement.Insert(0, label);
+            rootVisualElement.Insert(0, new IMGUIContainer(DoDeviceSelectionGUI));
             rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
 
-
-
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_Runtime.DeviceQuery.DevicesUpdated += UpdateEntries;
-
+            m_Runtime.Closing += OnDisable;
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, OnDeviceSelected);
 
             // TODO: Add query for uxml + clone
             var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/AndroidLogcatPackagesLayout.uxml");
@@ -74,15 +74,42 @@ namespace Unity.Android.Logcat
 
             rootVisualElement.Q<TwoPaneSplitView>().RegisterCallback<GeometryChangedEvent>(InitializeLayout);
 
-            m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries().ToList());
+            m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
             m_Packages.PackageSelected = PackageSelected;
             m_PackageProperties = new AndroidLogcatPackageProperties(rootVisualElement);
             m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
+
+            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
 
-        private void UpdateEntries()
+        private void OnDisable()
         {
-            m_Packages.RefreshEntries(GetPackageEntries().ToList());
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                return;
+
+            if (m_Runtime == null)
+                return;
+            if (m_DeviceSelection != null)
+            {
+                m_DeviceSelection.Dispose();
+                m_DeviceSelection = null;
+            }
+            m_Runtime = null;
+        }
+
+        private void OnDeviceSelected(IAndroidLogcatDevice selectedDevice)
+        {
+            m_Packages.RefreshEntries(GetPackageEntries(selectedDevice).ToList());
+        }
+
+        PackageEntry[] GetPackageEntries(IAndroidLogcatDevice selectedDevice)
+        {
+            if (selectedDevice == null)
+                return Array.Empty<PackageEntry>();
+
+            return AndroidLogcatUtilities.RetrievePackages(
+                m_Runtime.Tools.ADB,
+                selectedDevice);
         }
 
         internal void InitializeLayout(GeometryChangedEvent e)
@@ -115,11 +142,9 @@ namespace Unity.Android.Logcat
             m_PackageProperties.RefreshProperties(entries);
         }
 
-        PackageEntry[] GetPackageEntries()
+        void DoDeviceSelectionGUI()
         {
-            return AndroidLogcatUtilities.RetrievePackages(
-                m_Runtime.Tools.ADB,
-                m_Runtime.DeviceQuery.FirstConnectedDevice);
+            m_DeviceSelection.DoGUI();
         }
 
         void DoDebuggingGUI()
