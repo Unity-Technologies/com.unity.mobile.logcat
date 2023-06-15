@@ -30,6 +30,7 @@ namespace Unity.Android.Logcat
             m_Runtime = runtime;
             m_OnDeviceSelected = onDeviceSelected;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
+            QueryDevices();
         }
 
         public void Dispose()
@@ -37,7 +38,7 @@ namespace Unity.Android.Logcat
             m_Runtime.DeviceQuery.DevicesUpdated -= OnDevicesUpdated;
         }
 
-        private void OnDevicesUpdated()
+        private void QueryDevices()
         {
             m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
             if (m_Devices.Length == 0)
@@ -48,7 +49,11 @@ namespace Unity.Android.Logcat
                 if (m_SelectedDeviceIdx < 0)
                     m_SelectedDeviceIdx = 0;
             }
+        }
 
+        private void OnDevicesUpdated()
+        {
+            QueryDevices();
             m_OnDeviceSelected.Invoke(SelectedDevice);
         }
 
