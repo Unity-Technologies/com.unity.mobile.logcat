@@ -1,0 +1,72 @@
+using System;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+namespace Unity.Android.Logcat
+{
+    /// <summary>
+    /// Independent device selection from device query
+    /// </summary>
+    class AndroidLogcatDeviceSelection : IDisposable
+    {
+        AndroidLogcatRuntimeBase m_Runtime;
+        IAndroidLogcatDevice[] m_Devices;
+        int m_SelectedDeviceIdx;
+        Action<IAndroidLogcatDevice> m_OnDeviceSelected;
+
+        public IAndroidLogcatDevice SelectedDevice
+        {
+            get
+            {
+                if (m_SelectedDeviceIdx < 0 || m_SelectedDeviceIdx > m_Devices.Length - 1)
+                    return null;
+                return m_Devices[m_SelectedDeviceIdx];
+            }
+        }
+
+        public AndroidLogcatDeviceSelection(AndroidLogcatRuntimeBase runtime, Action<IAndroidLogcatDevice> onDeviceSelected)
+        {
+            m_Runtime = runtime;
+            m_OnDeviceSelected = onDeviceSelected;
+            m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
+        }
+
+        public void Dispose()
+        {
+            m_Runtime.DeviceQuery.DevicesUpdated -= OnDevicesUpdated;
+        }
+
+        private void OnDevicesUpdated()
+        {
+            m_Devices = m_Runtime.DeviceQuery.Devices.Where(m => m.Value.State == IAndroidLogcatDevice.DeviceState.Connected).Select(m => m.Value).ToArray();
+            if (m_Devices.Length == 0)
+                m_SelectedDeviceIdx = -1;
+            else
+            {
+                m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, m_Devices.Length - 1);
+                if (m_SelectedDeviceIdx < 0)
+                    m_SelectedDeviceIdx = 0;
+            }
+
+            m_OnDeviceSelected.Invoke(SelectedDevice);
+        }
+
+        public void DoGUI()
+        {
+            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
+            if (deviceNames.Length == 0)
+            {
+                m_SelectedDeviceIdx = 0;
+                deviceNames = new[] { new GUIContent("No Device") };
+            }
+            EditorGUI.BeginChangeCheck();
+            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
+                deviceNames,
+                AndroidLogcatStyles.toolbarPopup,
+                GUILayout.MaxWidth(300));
+            if (EditorGUI.EndChangeCheck())
+                m_OnDeviceSelected.Invoke(SelectedDevice);
+        }
+    }
+}
