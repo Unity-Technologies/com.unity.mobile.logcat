@@ -13,7 +13,8 @@ namespace Unity.Android.Logcat
         AndroidLogcatRuntimeBase m_Runtime;
         IAndroidLogcatDevice[] m_Devices;
         int m_SelectedDeviceIdx;
-        Action<IAndroidLogcatDevice> m_OnDeviceSelected;
+        IAndroidLogcatDevice m_PreviousDeviceSelected;
+        Action<IAndroidLogcatDevice> m_OnNewDeviceSelected;
 
         public IAndroidLogcatDevice SelectedDevice
         {
@@ -25,10 +26,10 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcatDeviceSelection(AndroidLogcatRuntimeBase runtime, Action<IAndroidLogcatDevice> onDeviceSelected)
+        public AndroidLogcatDeviceSelection(AndroidLogcatRuntimeBase runtime, Action<IAndroidLogcatDevice> onNewDeviceSelected)
         {
             m_Runtime = runtime;
-            m_OnDeviceSelected = onDeviceSelected;
+            m_OnNewDeviceSelected = onNewDeviceSelected;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
             QueryDevices();
         }
@@ -54,7 +55,11 @@ namespace Unity.Android.Logcat
         private void OnDevicesUpdated()
         {
             QueryDevices();
-            m_OnDeviceSelected.Invoke(SelectedDevice);
+            if (SelectedDevice != m_PreviousDeviceSelected)
+            {
+                m_OnNewDeviceSelected.Invoke(SelectedDevice);
+                m_PreviousDeviceSelected = SelectedDevice;
+            }
         }
 
         public void DoGUI()
@@ -71,7 +76,10 @@ namespace Unity.Android.Logcat
                 AndroidLogcatStyles.toolbarPopup,
                 GUILayout.MaxWidth(300));
             if (EditorGUI.EndChangeCheck())
-                m_OnDeviceSelected.Invoke(SelectedDevice);
+            {
+                m_OnNewDeviceSelected.Invoke(SelectedDevice);
+                m_PreviousDeviceSelected = SelectedDevice;
+            }
         }
     }
 }
