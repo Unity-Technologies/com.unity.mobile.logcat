@@ -42,6 +42,7 @@ namespace Unity.Android.Logcat
         const float kMaxWindowHeight = 300.0f;
 
         Splitter m_VerticalSplitter;
+        Vector2 m_SendTextScrollView;
 
         internal AndroidLogcatInputs()
         {
@@ -517,8 +518,12 @@ namespace Unity.Android.Logcat
         {
             var settings = runtime.UserSettings.DeviceInputSettings;
             GUILayout.BeginVertical(options);
-            GUILayout.Label("Send Text:", EditorStyles.boldLabel);
-            settings.SendText = GUILayout.TextArea(settings.SendText, GUILayout.ExpandHeight(true));
+            // Note: It seems there's a hard limit in adb of 300 characters
+            const int kLimit = 300;
+            GUILayout.Label($"Send Text (Left {kLimit - settings.SendText.Length}):", EditorStyles.boldLabel);
+            m_SendTextScrollView = GUILayout.BeginScrollView(m_SendTextScrollView, GUILayout.ExpandHeight(false));
+            settings.SendText = GUILayout.TextArea(settings.SendText, kLimit, GUILayout.ExpandHeight(true));
+            GUILayout.EndScrollView();
             if (GUILayout.Button(new GUIContent("Send", "Send text to android device")))
             {
                 device.SendTextAsync(runtime.Dispatcher, settings.SendText);
