@@ -225,7 +225,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             Margin();
             GUILayout.BeginVertical();
-            if (Key("SysRq"))
+            if (Key("PrintSc"))
                 result = new KeyResult(AndroidKeyCode.SYSRQ);
             if (Key("Insert"))
                 result = new KeyResult(AndroidKeyCode.INSERT);

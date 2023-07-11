@@ -275,7 +275,20 @@ namespace Unity.Android.Logcat
                     for (int i = 0; i < lines.Length; i++)
                     {
                         var formattedLine = lines[i];
-                        formattedLine = formattedLine.Replace("\"", "\\\"");
+
+                        // Note: Correctly escaping text for adb shell is tricky, we need to escape quotes
+                        // Example which need to work:
+                        // 'path:"C:\program files\Test"'
+                        var toReplace = new KeyValuePair<string, string>[]
+                        {
+                            new KeyValuePair<string, string>("'", "'\\''"),
+                            new KeyValuePair<string, string>("\"", "\\\"")
+                        };
+
+                        foreach (var rep in toReplace)
+                        {
+                            formattedLine = formattedLine.Replace(rep.Key, rep.Value);
+                        }
                         formattedLine = $"'{formattedLine}'";
 
                         var args = new[]
