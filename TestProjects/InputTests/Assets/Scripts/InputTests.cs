@@ -7,7 +7,7 @@ using UnityEngine.InputSystem.Controls;
 
 public class InputTests : MonoBehaviour
 {
-    
+
     List<string> m_Information = new List<string>();
 #if ENABLE_INPUT_SYSTEM
     static Key[] AllKeys = (Key[])Enum.GetValues(typeof(Key));

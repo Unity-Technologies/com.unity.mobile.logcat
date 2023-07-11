@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor.Android;
 
@@ -252,6 +253,19 @@ namespace Unity.Android.Logcat
             false);
         }
 
+
+        internal static string[] SplitStringForSendText(string contents, string[] splits)
+        {
+            var pattern = string.Empty;
+            foreach (var split in splits)
+            {
+                if (pattern.Length > 0)
+                    pattern += "|";
+                pattern += $"({Regex.Escape(split)})";
+            }
+            return Regex.Split(contents, pattern).Where(s => !string.IsNullOrEmpty(s)).ToArray();
+        }
+
         /// <summary>
         /// Sends key to device, since it's a slow operation for some reason, we do it asynchronusly
         /// </summary>
@@ -268,47 +282,23 @@ namespace Unity.Android.Logcat
                 {
                     var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>)input;
 
-                    // It's tricyk to send multiline string, thus we split into separate lines
-                    // And simulate enter key after each line
+                    // It's tricky to send multiline string or lines containing %s (which translates into whitespace for adb), thus we split into separate lines
+                    // And simulate enter key after each line or %s as separate events
+                    // The following example must work correctly (send it as single multiline string):
+                    // 'path:"C:\program files\Test"'
+                    // %s
+                    // ABC
 
-                    var lines = inputData.data3.Replace("\r\n", "\n").Split(new[] { '\n' });
+                    var lines = SplitStringForSendText(inputData.data3.Replace("\r\n", "\n"), new[] { "%s", "\n" });
+
                     for (int i = 0; i < lines.Length; i++)
                     {
+
                         var formattedLine = lines[i];
-
-                        // Note: Correctly escaping text for adb shell is tricky, we need to escape quotes
-                        // Example which need to work:
-                        // 'path:"C:\program files\Test"'
-                        var toReplace = new KeyValuePair<string, string>[]
+                        if (formattedLine == "\n")
                         {
-                            new KeyValuePair<string, string>("'", "'\\''"),
-                            new KeyValuePair<string, string>("\"", "\\\"")
-                        };
-
-                        foreach (var rep in toReplace)
-                        {
-                            formattedLine = formattedLine.Replace(rep.Key, rep.Value);
-                        }
-                        formattedLine = $"'{formattedLine}'";
-
-                        var args = new[]
-                        {
-                            "-s",
-                            inputData.data2,
-                            "shell",
-                            "input",
-                            "text",
-                            formattedLine
-                        };
-
-                        AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
-
-                        inputData.data1.Run(args, $"Failed to send text '{formattedLine}'");
-
-                        if (i + 1 < lines.Length)
-                        {
-                            args = new[]
-                            {
+                            var args = new[]
+{
                                 "-s",
                                 inputData.data2,
                                 "shell",
@@ -320,6 +310,56 @@ namespace Unity.Android.Logcat
                             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
                             inputData.data1.Run(args, $"Failed to send key event 'Enter'");
+                        }
+                        else if (formattedLine == "%s")
+                        {
+                            var splits = new[] { "%", "s" };
+                            foreach (var s in splits)
+                            {
+                                var args = new[]
+                                {
+                                    "-s",
+                                    inputData.data2,
+                                    "shell",
+                                    "input",
+                                    "text",
+                                s
+                                };
+
+                                AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+                                inputData.data1.Run(args, $"Failed to send key event 'Enter'");
+                            }
+                        }
+                        else
+                        {
+                            // Note: Correctly escaping text for adb shell is tricky, we need to escape quotes
+                            // Example which need to work:
+                            // 'path:"C:\program files\Test"'
+                            var toReplace = new KeyValuePair<string, string>[]
+                            {
+                                new KeyValuePair<string, string>("'", "'\\''"),
+                                new KeyValuePair<string, string>("\"", "\\\"")
+                            };
+
+                            foreach (var rep in toReplace)
+                            {
+                                formattedLine = formattedLine.Replace(rep.Key, rep.Value);
+                            }
+                            formattedLine = $"'{formattedLine}'";
+
+                            var args = new[]
+                            {
+                                "-s",
+                                inputData.data2,
+                                "shell",
+                                "input",
+                                "text",
+                                formattedLine
+                            };
+
+                            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+                            inputData.data1.Run(args, $"Failed to send text '{formattedLine}'");
                         }
                     }
 
