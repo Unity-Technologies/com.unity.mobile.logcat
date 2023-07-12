@@ -338,7 +338,8 @@ namespace Unity.Android.Logcat
                             var toReplace = new KeyValuePair<string, string>[]
                             {
                                 new KeyValuePair<string, string>("'", "'\\''"),
-                                new KeyValuePair<string, string>("\"", "\\\"")
+                                new KeyValuePair<string, string>("\"", "\\\""),
+                                new KeyValuePair<string, string>(" ", "%s")
                             };
 
                             foreach (var rep in toReplace)
