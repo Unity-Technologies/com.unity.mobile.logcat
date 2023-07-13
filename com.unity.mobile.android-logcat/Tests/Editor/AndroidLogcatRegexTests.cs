@@ -365,4 +365,38 @@ default via 192.168.50.1 dev wlan0  metric 205
         Assert.AreEqual("192.168.50.91:5555", id);
         Assert.AreEqual(IAndroidLogcatDevice.DeviceState.Unknown, state);
     }
+
+    [Test]
+    public void SplitStringForSendTextTests()
+    {
+        var contents = "Hello%s\nABC\n";
+        var items = AndroidLogcatDevice.SplitStringForSendText(contents, new[] { "%s", "\n" });
+        Assert.AreEqual(5, items.Length);
+        StringAssert.AreEqualIgnoringCase("Hello", items[0]);
+        StringAssert.AreEqualIgnoringCase("%s", items[1]);
+        StringAssert.AreEqualIgnoringCase("\n", items[2]);
+        StringAssert.AreEqualIgnoringCase("ABC", items[3]);
+        StringAssert.AreEqualIgnoringCase("\n", items[4]);
+
+
+        items = AndroidLogcatDevice.SplitStringForSendText(contents, new[] { "Hello", "%s", "\n" });
+        Assert.AreEqual(5, items.Length);
+        StringAssert.AreEqualIgnoringCase("Hello", items[0]);
+        StringAssert.AreEqualIgnoringCase("%s", items[1]);
+        StringAssert.AreEqualIgnoringCase("\n", items[2]);
+        StringAssert.AreEqualIgnoringCase("ABC", items[3]);
+        StringAssert.AreEqualIgnoringCase("\n", items[4]);
+
+        items = AndroidLogcatDevice.SplitStringForSendText(contents, new[] { "\n" });
+        Assert.AreEqual(4, items.Length);
+        StringAssert.AreEqualIgnoringCase("Hello%s", items[0]);
+        StringAssert.AreEqualIgnoringCase("\n", items[1]);
+        StringAssert.AreEqualIgnoringCase("ABC", items[2]);
+        StringAssert.AreEqualIgnoringCase("\n", items[3]);
+
+        items = AndroidLogcatDevice.SplitStringForSendText(contents, new[] { "IDontExist" });
+        Assert.AreEqual(1, items.Length);
+        StringAssert.AreEqualIgnoringCase("Hello%s\nABC\n", items[0]);
+
+    }
 }

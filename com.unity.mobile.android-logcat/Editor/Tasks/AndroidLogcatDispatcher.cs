@@ -119,10 +119,12 @@ namespace Unity.Android.Logcat
                             var result = task.asyncAction.Invoke(task.taskData);
                             m_Sampler.End();
 
-
-                            lock (m_IntegrateTaskQueue)
+                            if (task.integrateAction != null)
                             {
-                                m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                                lock (m_IntegrateTaskQueue)
+                                {
+                                    m_IntegrateTaskQueue.Enqueue(new IntegrationTask() { integrateAction = task.integrateAction, result = result });
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -184,6 +186,11 @@ namespace Unity.Android.Logcat
                 if (!m_AutoResetEvent.Set())
                     throw new Exception("Failed to signal auto reset event in dispatcher.");
             }
+        }
+
+        internal void Schedule(IAndroidLogcatTaskInput taskData, Func<IAndroidLogcatTaskInput, IAndroidLogcatTaskResult> asyncAction, bool synchronous)
+        {
+            Schedule(taskData, asyncAction, null, synchronous);
         }
 
         internal int AsyncOperationsInQueue

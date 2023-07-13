@@ -1,7 +1,6 @@
 {% metadata_file .yamato/config.metadata %}
 
 test_editors:
-  - version: 2020.3
   - version: 2021.2
   - version: 2022.2
   - version: trunk

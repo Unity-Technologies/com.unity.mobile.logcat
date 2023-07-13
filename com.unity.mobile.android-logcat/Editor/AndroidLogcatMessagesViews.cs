@@ -408,7 +408,7 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            requestRepaint |= DoKeyEvents();
+            requestRepaint |= DoKeyEvents(controlId);
 
             GUI.EndScrollView();
 
@@ -654,8 +654,11 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private bool DoKeyEvents()
+        private bool DoKeyEvents(int controlId)
         {
+            if (GUIUtility.keyboardControl != controlId)
+                return false;
+
             var requestRepaint = false;
             var e = Event.current;
             if (e.type == EventType.KeyDown)
