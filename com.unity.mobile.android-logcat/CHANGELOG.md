@@ -4,6 +4,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2023-01-01
+### Fixes & Improvements
+ - Fix stacktrace resolve regex for entry like '  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so'. Reset regex to apply the fix
+ - Added inputs window - Tools->Window->Inputs, where you can easily inject keyboard/text input on to android device.
+ - Add Scroll option for messages which allows you to explicitly to always scroll to end without automatic logic.
+ 
 ## [1.3.2] - 2022-04-12
 ### Fixes & Improvements
  - Fix integration tests not able to run on a specific build server configuration like Katana.

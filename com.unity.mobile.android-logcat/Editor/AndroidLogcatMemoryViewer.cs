@@ -6,21 +6,13 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    internal enum MemoryViewerBehavior
-    {
-        Hidden,
-        Auto,
-        Manual
-    }
-
     [Serializable]
     internal class AndroidLogcatMemoryViewerState
     {
-        public float MemoryWindowHeight;
         public float MemoryWindowWidth;
         public bool[] MemoryTypeEnabled;
         public MemoryGroup MemoryGroup = MemoryGroup.HeapAlloc;
-        public MemoryViewerBehavior Behavior = MemoryViewerBehavior.Hidden;
+        public bool AutoCapture = true;
     }
 
     internal class AndroidLogcatMemoryViewer
@@ -55,6 +47,7 @@ namespace Unity.Android.Logcat
         const int kMaxEntries = 300;
         const UInt64 k16MB = 16 * 1000 * 1000;
         const float kMinMemoryWindowHeight = 255.0f;
+        const float kMaxMemoryWindowHeight = 400.0f;
         const float kMinMemoryWindowWidth = 170.0f;
         const float kMaxMemoryWindowWidth = 500.0f;
         private AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
@@ -65,9 +58,9 @@ namespace Unity.Android.Logcat
         private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
-        private SplitterDragging m_SplitterDragging;
-        private float m_SplitterStart;
-        private float m_SplitterOldValue;
+
+        Splitter m_HorizontalSplitter;
+        Splitter m_VerticalSplitter;
 
         private MemoryType[] m_OrderMemoryTypesPSS = new[]
         {
@@ -90,7 +83,6 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_ExpectedDevice;
         private PackageInformation m_ExpectedPackageFromRequest;
         private AndroidLogcatMemoryViewerState m_State;
-
 
         private MemoryType[] GetOrderMemoryTypes()
         {
@@ -119,8 +111,8 @@ namespace Unity.Android.Logcat
             }
             //**/
 
-            m_SplitterStart = 0;
-            m_SplitterDragging = SplitterDragging.None;
+            m_HorizontalSplitter = new Splitter(Splitter.SplitterType.Horizontal, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
+            m_VerticalSplitter = new Splitter(Splitter.SplitterType.Vertical, kMinMemoryWindowHeight, kMaxMemoryWindowHeight);
 
             m_MemoryTypeColors[MemoryType.NativeHeap] = Color.red;
             m_MemoryTypeColors[MemoryType.JavaHeap] = Color.yellow;
@@ -148,8 +140,6 @@ namespace Unity.Android.Logcat
                     m_State.MemoryTypeEnabled[i] = true;
             }
 
-            if (m_State.MemoryWindowHeight < kMinMemoryWindowHeight)
-                m_State.MemoryWindowHeight = 300.0f;
             m_State.MemoryWindowWidth = Mathf.Clamp(m_State.MemoryWindowWidth, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
         }
 
@@ -375,73 +365,19 @@ namespace Unity.Android.Logcat
             GUILayout.EndHorizontal();
         }
 
-        private void ClearSplitterOperation()
+        internal void DoGUI(ExtraWindowState extraWindowState)
         {
-            m_SplitterDragging = SplitterDragging.None;
-            m_SplitterStart = 0.0f;
-            m_SplitterOldValue = 0.0f;
-        }
-
-        private bool DoSplitter(Rect verticalSplitter, Rect horizontalSplitter)
-        {
-            EditorGUIUtility.AddCursorRect(verticalSplitter, MouseCursor.ResizeVertical);
-            EditorGUIUtility.AddCursorRect(horizontalSplitter, MouseCursor.ResizeHorizontal);
-            var e = Event.current;
-            switch (e.type)
-            {
-                case EventType.MouseDown:
-                    if (verticalSplitter.Contains(e.mousePosition))
-                    {
-                        m_SplitterDragging = SplitterDragging.Vertical;
-                        m_SplitterOldValue = m_State.MemoryWindowHeight;
-                        m_SplitterStart = e.mousePosition.y;
-                        e.Use();
-                        return true;
-                    }
-
-                    if (horizontalSplitter.Contains(e.mousePosition))
-                    {
-                        m_SplitterDragging = SplitterDragging.Horizontal;
-                        m_SplitterOldValue = m_State.MemoryWindowWidth;
-                        m_SplitterStart = e.mousePosition.x;
-                        e.Use();
-                        return true;
-                    }
-                    break;
-                case EventType.MouseDrag:
-                case EventType.MouseUp:
-                    switch (m_SplitterDragging)
-                    {
-                        case SplitterDragging.Vertical:
-                            m_State.MemoryWindowHeight = Math.Max(m_SplitterOldValue + m_SplitterStart - e.mousePosition.y, kMinMemoryWindowHeight);
-                            if (e.type == EventType.MouseUp)
-                                ClearSplitterOperation();
-                            e.Use();
-                            return true;
-                        case SplitterDragging.Horizontal:
-                            m_State.MemoryWindowWidth = Mathf.Clamp(m_SplitterOldValue + e.mousePosition.x - m_SplitterStart, kMinMemoryWindowWidth, kMaxMemoryWindowWidth);
-                            if (e.type == EventType.MouseUp)
-                                ClearSplitterOperation();
-                            e.Use();
-                            return true;
-                    }
-                    break;
-            }
-
-            return false;
-        }
-
-        internal void DoGUI()
-        {
-            if (m_State.Behavior == MemoryViewerBehavior.Hidden)
-                return;
-
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
-            var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, m_State.MemoryWindowHeight);
-            DoSplitter(splitterRectVertical, splitterRectHorizontal);
+            var splitterRectHorizontal = new Rect(m_State.MemoryWindowWidth, splitterRectVertical.y, 5, extraWindowState.Height);
+
+            if (!m_VerticalSplitter.Dragging)
+                m_HorizontalSplitter.DoGUI(splitterRectHorizontal, ref m_State.MemoryWindowWidth);
+            if (!m_HorizontalSplitter.Dragging)
+                m_VerticalSplitter.DoGUI(splitterRectVertical, ref extraWindowState.Height);
+
             GUILayout.BeginHorizontal();
 
-            GUILayout.BeginVertical(GUILayout.Width(m_State.MemoryWindowWidth), GUILayout.Height(m_State.MemoryWindowHeight));
+            GUILayout.BeginVertical(GUILayout.Width(m_State.MemoryWindowWidth), GUILayout.Height(extraWindowState.Height));
 
             GUILayout.Space(10);
             GUILayout.BeginHorizontal();
@@ -459,12 +395,16 @@ namespace Unity.Android.Logcat
 
             DoMemoryToggle(MemoryType.Total);
 
-            if (m_State.Behavior == MemoryViewerBehavior.Manual)
+            GUILayout.Space(10);
+            GUILayout.BeginHorizontal();
+            m_State.AutoCapture = GUILayout.Toggle(m_State.AutoCapture, "Auto Capture");
+            if (!m_State.AutoCapture)
             {
-                GUILayout.Space(10);
                 if (GUILayout.Button("Capture", EditorStyles.miniButton))
                     QueueMemoryRequest(m_ExpectedDevice, m_ExpectedPackageFromRequest);
+
             }
+            GUILayout.EndHorizontal();
 
             if (Unsupported.IsDeveloperMode())
                 DoDebuggingGUI();
@@ -475,7 +415,7 @@ namespace Unity.Android.Logcat
 
             GUILayout.BeginVertical();
             // Note: GUILayoutUtility.GetRect must be called for Layout event always
-            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(m_State.MemoryWindowHeight));
+            var size = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.internalLogStyle, GUILayout.Height(extraWindowState.Height));
 
             size.height -= 4;
 

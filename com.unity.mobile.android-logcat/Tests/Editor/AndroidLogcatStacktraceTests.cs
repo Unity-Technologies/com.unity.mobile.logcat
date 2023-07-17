@@ -47,7 +47,13 @@ public class AndroidLogcatStacktraceTests
     private static string GetSymbolPath(string abi, string libraryFile)
     {
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
-        return AndroidLogcatUtilities.GetSymbolFile(Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}"), libraryFile);
+
+        var path = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}");
+        var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile);
+
+        if (string.IsNullOrEmpty(result))
+            throw new System.Exception($"Failed to locate symbol file for {libraryFile} in '{path}'");
+        return result;
     }
 
     private static string GetSymbolAddress(AndroidTools tools, string symbolPath, string symbolName)
@@ -117,6 +123,7 @@ public class AndroidLogcatStacktraceTests
             "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x1234567890123456(Native Method)",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/arm64/libunity.so",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/x86_64/libunity.so",
+            "  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so"
         };
 
         var regexs = new List<ReordableListItem>();
@@ -133,6 +140,7 @@ public class AndroidLogcatStacktraceTests
             {
                 case 1: expectedABI = AndroidLogcatUtilities.kAbiArmV7; break;
                 case 2: expectedABI = AndroidLogcatUtilities.kAbiX86; break;
+                case 6:
                 case 4: expectedABI = AndroidLogcatUtilities.kAbiArm64; break;
                 case 5: expectedABI = AndroidLogcatUtilities.kAbiX86_64; break;
             }
@@ -143,9 +151,9 @@ public class AndroidLogcatStacktraceTests
             string abi;
             var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out abi, out address, out libName);
             Assert.IsTrue(result, "Failed to parse " + line);
-            Assert.IsTrue(address.Equals("0041e340") || address.Equals("1234567890123456"));
-            Assert.AreEqual("libunity.so", libName);
-            Assert.AreEqual(expectedABI, abi);
+            Assert.IsTrue(address.Equals("0041e340") || address.Equals("1234567890123456") || address.Equals("0x0000000000a0de84"), $"Invalid resolved address: {address}");
+            StringAssert.AreEqualIgnoringCase("libunity.so", libName);
+            StringAssert.AreEqualIgnoringCase(expectedABI, abi);
         }
     }
 

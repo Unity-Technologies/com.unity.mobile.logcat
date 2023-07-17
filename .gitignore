@@ -5,6 +5,7 @@
 [Tt]emp/
 [Ss]treaming[Aa]ssets/
 [Ll]ogs/
+**/UserSettings/**
 .vs
 .vscode
 .idea
@@ -26,3 +27,5 @@
 *.suo
 *.userprefs
 .npmrc
+.vsconfig
+packages-lock.json

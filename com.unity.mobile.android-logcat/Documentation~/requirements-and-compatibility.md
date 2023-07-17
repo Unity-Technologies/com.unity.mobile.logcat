@@ -24,6 +24,7 @@ The Android Logcat package supports the following features:
 * Auto run
 * Screen capture
 * Memory Window
+* Input injection
 * Stacktrace resolving
 
 ## Additional resources

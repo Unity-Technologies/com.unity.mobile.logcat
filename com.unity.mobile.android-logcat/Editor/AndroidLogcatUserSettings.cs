@@ -11,6 +11,19 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatUserSettings
     {
         [Serializable]
+        internal class InputSettings
+        {
+            [SerializeField]
+            internal bool ShiftModifier;
+            [SerializeField]
+            internal string SendText;
+            [SerializeField]
+            internal PosixSignal PosixKillSignal;
+            [SerializeField]
+            internal PackageInformation TargetPackage;
+        }
+
+        [Serializable]
         internal class VideoSettings
         {
             [SerializeField]
@@ -45,6 +58,8 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private AndroidLogcatTags m_Tags;
         [SerializeField]
+        private ExtraWindowState m_ExtraWindowState;
+        [SerializeField]
         private AndroidLogcatMemoryViewerState m_MemoryViewerState;
         [SerializeField]
         private FilterOptions m_FilterOptions;
@@ -52,6 +67,11 @@ namespace Unity.Android.Logcat
         private List<ReordableListItem> m_SymbolPaths;
         [SerializeField]
         private VideoSettings m_CaptureVideoSettings;
+        [SerializeField]
+        private InputSettings m_InputSettings;
+
+        [SerializeField]
+        private AutoScroll m_AutoScroll;
 
         public string LastSelectedDeviceId
         {
@@ -108,6 +128,9 @@ namespace Unity.Android.Logcat
         }
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
+        public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
+
+        public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
 
         private void RefreshPackagesForSerialization()
@@ -232,6 +255,8 @@ namespace Unity.Android.Logcat
             }
         }
 
+        public ExtraWindowState ExtraWindowState { set => m_ExtraWindowState = value; get => m_ExtraWindowState; }
+
         public AndroidLogcatMemoryViewerState MemoryViewerState
         {
             set
@@ -271,11 +296,18 @@ namespace Unity.Android.Logcat
             m_SelectedPriority = Priority.Verbose;
             m_Tags = new AndroidLogcatTags();
             m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
+            m_ExtraWindowState = new ExtraWindowState();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
 
             ResetCaptureVideoSettings();
+
+            m_InputSettings = new InputSettings()
+            {
+                SendText = string.Empty,
+                TargetPackage = new PackageInformation()
+            };
         }
 
         internal void ResetCaptureVideoSettings()

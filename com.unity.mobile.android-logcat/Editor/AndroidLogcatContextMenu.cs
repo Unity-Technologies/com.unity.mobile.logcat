@@ -22,9 +22,9 @@ namespace Unity.Android.Logcat
         ScreenCapture,
         OpenTerminal,
         StacktraceUtility,
-        MemoryBehaviorAuto,
-        MemoryBehaviorManual,
-        MemoryBehaviorHidden
+        WindowMemory,
+        WindowInputs,
+        WindowHidden
     }
 
     internal enum FilterContextMenu
