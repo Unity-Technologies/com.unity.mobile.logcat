@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Unity.Android.Logcat
 {
@@ -10,7 +9,6 @@ namespace Unity.Android.Logcat
     {
         internal static readonly string FailedKey = "Failed";
         private string m_Contents;
-
 
         internal AndroidLogcatPackageInfoParser(string contents)
         {
@@ -27,6 +25,24 @@ namespace Unity.Android.Logcat
             var entries = lines.Select(c => c.Substring(strip)).ToList();
             entries.RemoveAt(0);
             return entries;
+        }
+
+        public List<string> ParseLaunchableActivities(string packageName)
+        {
+            var lines = GetActivitiesBlock();
+            var activityResolveRegex = new Regex(Regex.Escape($"{packageName}/") + "(?<activityName>\\S+) filter");
+            if (lines == null || lines.Length <= 1)
+                return new List<string>();
+
+            var activities = new List<string>();
+            foreach (var line in lines)
+            {
+                var result = activityResolveRegex.Match(line);
+                if (!result.Success)
+                    continue;
+                activities.Add(result.Groups["activityName"].Value);
+            }
+            return activities;
         }
 
         /// <summary>
@@ -143,13 +159,23 @@ namespace Unity.Android.Logcat
             return value;
         }
 
+        private string[] GetActivitiesBlock()
+        {
+            return GetBlock($"Activity Resolver Table:");
+        }
+
         private string[] GetPackageBlock(string packageName)
+        {
+            return GetBlock($"Package [{packageName}]");
+        }
+
+        private string[] GetBlock(string blockStartName)
         {
             var lines = m_Contents.Split(new[] { '\n' }).ToArray();
             for (int i = 0; i < lines.Length; i++)
             {
                 // Find block start
-                if (!lines[i].Trim().StartsWith($"Package [{packageName}]"))
+                if (!lines[i].Trim().StartsWith(blockStartName))
                     continue;
 
                 var blockStart = i;

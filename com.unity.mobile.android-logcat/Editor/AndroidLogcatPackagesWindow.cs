@@ -140,6 +140,10 @@ namespace Unity.Android.Logcat
                 m_Runtime.Tools.ADB, m_Runtime.DeviceQuery.FirstConnectedDevice, entry));
             var entries = parser.ParsePackageInformationAsSingleEntries(entry.Name);
             m_PackageProperties.RefreshProperties(entries);
+
+            var activities = parser.ParseLaunchableActivities(entry.Name);
+            m_PackageUtilities.RefreshActivities(activities);
+
         }
 
         void DoDeviceSelectionGUI()

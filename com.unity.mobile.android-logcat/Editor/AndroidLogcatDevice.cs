@@ -49,6 +49,8 @@ namespace Unity.Android.Logcat
 
         internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress) { }
 
+        internal void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { SendKeyAsync(dispatcher, keyCode, false); }
+
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
         internal virtual void StartPackage(string packageName, string activityName = null) { }

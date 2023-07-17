@@ -188,4 +188,42 @@ class AndroidLogcatPacakgeInfoTests
         StringAssert.AreEqualIgnoringCase("userId=10198", entries[0]);
         StringAssert.AreEqualIgnoringCase("sdsd", entries[1]);
     }
+
+    [Test]
+    public void CanParseActivities()
+    {
+        var contents = @"Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        586d983 com.Unity.AndroidLogcatSample/com.unity3d.player.UnityPlayerActivity filter f02b700
+          Action: ""android.intent.action.MAIN""
+          Category: ""android.intent.category.LAUNCHER""
+          Category: ""android.intent.category.LEANBACK_LAUNCHER""
+        1ea1b39 com.Unity.AndroidLogcatSample/com.unity3d.player.UnityPlayerGameActivity filter c0f257e
+          Action: ""android.intent.action.MAIN""
+          Category: ""android.intent.category.LAUNCHER""
+          Category: ""android.intent.category.LEANBACK_LAUNCHER""
+
+Permissions:
+  Permission [com.Unity.AndroidLogcatSample.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (af5ff96):
+    sourcePackage=com.Unity.AndroidLogcatSample
+    uid=10990 gids=null type=0 prot=signature
+    perm=Permission{{7824806 com.Unity.AndroidLogcatSample.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}}";
+        var packageName = "com.Unity.AndroidLogcatSample";
+        var parser = new AndroidLogcatPackageInfoParser(contents);
+        var entries = parser.ParseLaunchableActivities(packageName);
+
+        Assert.That(entries.Count, Is.EqualTo(2));
+        StringAssert.AreEqualIgnoringCase("com.unity3d.player.UnityPlayerActivity", entries[0]);
+        StringAssert.AreEqualIgnoringCase("com.unity3d.player.UnityPlayerGameActivity", entries[1]);
+
+        // Add new line and see if can still prase
+        contents += "\n";
+        parser = new AndroidLogcatPackageInfoParser(contents);
+        entries = parser.ParseLaunchableActivities(packageName);
+
+        Assert.That(entries.Count, Is.EqualTo(2));
+        StringAssert.AreEqualIgnoringCase("com.unity3d.player.UnityPlayerActivity", entries[0]);
+        StringAssert.AreEqualIgnoringCase("com.unity3d.player.UnityPlayerGameActivity", entries[1]);
+    }
 }

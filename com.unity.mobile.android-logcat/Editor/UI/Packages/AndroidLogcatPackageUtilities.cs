@@ -6,6 +6,7 @@ using UnityEditor;
 using System.Text;
 using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEditor.PackageManager.Requests;
 
 namespace Unity.Android.Logcat
 {
@@ -22,6 +23,7 @@ namespace Unity.Android.Logcat
         VisualElement m_TabContents;
         VisualElement m_TabLaunchOptions;
         VisualElement m_TabOthers;
+        ListView m_LaunchableActivities;
 
         internal AndroidLogcatPackageUtilities(VisualElement root)
         {
@@ -34,21 +36,23 @@ namespace Unity.Android.Logcat
 
             m_TabLaunchOptions = root.Q("package-tab-launch-options");
             m_TabOthers = root.Q("package-tab-others");
+            m_LaunchableActivities = root.Q<ListView>("launchable-activities");
 
+            var dispatcher = AndroidLogcatManager.instance.Runtime.Dispatcher;
             root.Q<Button>("android-back-button").clicked += () =>
             {
                 // TODO: 
-                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.BACK);
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKeyAsync(dispatcher, AndroidKeyCode.BACK);
             };
 
             root.Q<Button>("android-home-button").clicked += () =>
             {
-                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.HOME);
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKeyAsync(dispatcher, AndroidKeyCode.HOME);
             };
 
             root.Q<Button>("android-overview-button").clicked += () =>
             {
-                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKey(AndroidKeyCode.MENU);
+                AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKeyAsync(dispatcher, AndroidKeyCode.MENU);
             };
 
             // TODO: take from settings
@@ -68,6 +72,14 @@ namespace Unity.Android.Logcat
                 m_TabContents.Add(m_TabLaunchOptions);
             if (tab == PackageUtilitiesTab.Others)
                 m_TabContents.Add(m_TabOthers);
+        }
+
+        internal void RefreshActivities(List<string> activities)
+        {
+            m_LaunchableActivities.itemsSource = activities;
+            if (activities.Count > 0) 
+                m_LaunchableActivities.selectedIndex = 0;
+            m_LaunchableActivities.RefreshItems();
         }
     }
 }
