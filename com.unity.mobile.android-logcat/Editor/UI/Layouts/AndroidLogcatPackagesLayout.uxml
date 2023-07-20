@@ -1,14 +1,26 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <ui:TwoPaneSplitView>
+    <ui:TwoPaneSplitView orientation="Vertical" fixed-pane-initial-dimension="100" fixed-pane-index="0" name="VerticalSplit">
         <ui:VisualElement>
-            <ui:TextField name="filter" picking-mode="Ignore" label="Filter" />
-            <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="packages" style="flex-grow: 1;">
-                <ui:Columns>
-                    <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
-                    <ui:Column name="installer" title="Installer" width="150" />
-                    <ui:Column name="uid" title="UID" width="120" />
-                </ui:Columns>
-            </ui:MultiColumnListView>
+            <ui:TwoPaneSplitView name="HorizontalSplit">
+                <ui:VisualElement>
+                    <ui:TextField name="filter" picking-mode="Ignore" label="Filter" />
+                    <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="packages" style="flex-grow: 1;">
+                        <ui:Columns>
+                            <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
+                            <ui:Column name="installer" title="Installer" width="150" />
+                            <ui:Column name="uid" title="UID" width="120" />
+                        </ui:Columns>
+                    </ui:MultiColumnListView>
+                </ui:VisualElement>
+                <ui:VisualElement>
+                    <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="Filter" />
+                    <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="package_properties" style="flex-grow: 1;">
+                        <ui:Columns>
+                            <ui:Column name="value" title="Package Properties" stretchable="true" />
+                        </ui:Columns>
+                    </ui:MultiColumnListView>
+                </ui:VisualElement>
+            </ui:TwoPaneSplitView>
         </ui:VisualElement>
         <ui:VisualElement>
             <ui:VisualElement name="package-tabs" style="flex-grow: 0; background-color: rgba(0, 0, 0, 0);">
@@ -33,12 +45,6 @@
                     </ui:VisualElement>
                 </ui:Box>
             </ui:VisualElement>
-            <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="Filter" />
-            <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="package_properties" style="flex-grow: 1;">
-                <ui:Columns>
-                    <ui:Column name="value" title="Package Properties" stretchable="true" />
-                </ui:Columns>
-            </ui:MultiColumnListView>
         </ui:VisualElement>
     </ui:TwoPaneSplitView>
 </ui:UXML>

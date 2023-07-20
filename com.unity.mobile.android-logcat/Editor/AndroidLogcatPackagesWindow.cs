@@ -72,7 +72,8 @@ namespace Unity.Android.Logcat
             var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/AndroidLogcatPackagesLayout.uxml");
             tree.CloneTree(rootVisualElement);
 
-            rootVisualElement.Q<TwoPaneSplitView>().RegisterCallback<GeometryChangedEvent>(InitializeLayout);
+            rootVisualElement.Q<TwoPaneSplitView>("HorizontalSplit").RegisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
+            rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit").RegisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
 
             m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
             m_Packages.PackageSelected = PackageSelected;
@@ -112,11 +113,18 @@ namespace Unity.Android.Logcat
                 selectedDevice);
         }
 
-        internal void InitializeLayout(GeometryChangedEvent e)
+        internal void InitializeHorizontalLayout(GeometryChangedEvent e)
         {
-            var split = rootVisualElement.Q<TwoPaneSplitView>();
+            var split = rootVisualElement.Q<TwoPaneSplitView>("HorizontalSplit");
             split.fixedPaneInitialDimension = split.layout.width / 2;
-            split.UnregisterCallback<GeometryChangedEvent>(InitializeLayout);
+            split.UnregisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
+        }
+
+        internal void InitializeVerticalLayout(GeometryChangedEvent e)
+        {
+            var split = rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit");
+            split.fixedPaneInitialDimension = split.layout.height * 0.8f;
+            split.UnregisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
         }
 
         /*
