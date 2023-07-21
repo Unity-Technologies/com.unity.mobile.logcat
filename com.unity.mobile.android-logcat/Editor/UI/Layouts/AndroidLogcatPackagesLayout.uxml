@@ -1,9 +1,9 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:TwoPaneSplitView orientation="Vertical" fixed-pane-initial-dimension="100" fixed-pane-index="0" name="VerticalSplit">
-        <ui:VisualElement>
+        <ui:VisualElement style="min-height: 500px;">
             <ui:TwoPaneSplitView name="HorizontalSplit">
-                <ui:VisualElement>
-                    <ui:TextField name="filter" picking-mode="Ignore" label="Filter" />
+                <ui:VisualElement style="min-width: 200px;">
+                    <ui:TextField name="filter" picking-mode="Ignore" label="&lt;b&gt;Package Filter&lt;/b&gt;" />
                     <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="packages" style="flex-grow: 1;">
                         <ui:Columns>
                             <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
@@ -12,8 +12,8 @@
                         </ui:Columns>
                     </ui:MultiColumnListView>
                 </ui:VisualElement>
-                <ui:VisualElement>
-                    <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="Filter" />
+                <ui:VisualElement style="min-width: 200px;">
+                    <ui:TextField name="package_properties_filter" picking-mode="Ignore" label="&lt;b&gt;Property Filter&lt;/b&gt;" />
                     <ui:MultiColumnListView fixed-item-height="20" show-alternating-row-backgrounds="All" name="package_properties" style="flex-grow: 1;">
                         <ui:Columns>
                             <ui:Column name="value" title="Package Properties" stretchable="true" />
@@ -22,7 +22,7 @@
                 </ui:VisualElement>
             </ui:TwoPaneSplitView>
         </ui:VisualElement>
-        <ui:VisualElement>
+        <ui:VisualElement style="min-height: 200px;">
             <ui:VisualElement name="package-tabs" style="flex-grow: 0; background-color: rgba(0, 0, 0, 0);">
                 <ui:VisualElement name="package-toolbar" style="flex-grow: 0; background-color: rgba(0, 0, 0, 0);">
                     <uie:Toolbar name="package-toolbar">

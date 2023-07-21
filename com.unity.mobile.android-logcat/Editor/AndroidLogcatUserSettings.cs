@@ -11,6 +11,15 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatUserSettings
     {
         [Serializable]
+        internal class PackagePropertiesSettings
+        {
+            [SerializeField]
+            internal string PacakgeFilter;
+            [SerializeField]
+            internal string PropertyFilter;
+        }
+
+        [Serializable]
         internal class InputSettings
         {
             [SerializeField]
@@ -69,6 +78,8 @@ namespace Unity.Android.Logcat
         private VideoSettings m_CaptureVideoSettings;
         [SerializeField]
         private InputSettings m_InputSettings;
+        [SerializeField]
+        private PackagePropertiesSettings m_PackagePropertiesSettings;
 
         [SerializeField]
         private AutoScroll m_AutoScroll;
@@ -129,9 +140,8 @@ namespace Unity.Android.Logcat
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
-
+        public PackagePropertiesSettings PackageWindowSettings { set => m_PackagePropertiesSettings = value; get => m_PackagePropertiesSettings; }
         public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
-
 
         private void RefreshPackagesForSerialization()
         {

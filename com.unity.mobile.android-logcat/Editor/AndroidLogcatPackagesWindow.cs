@@ -44,6 +44,8 @@ namespace Unity.Android.Logcat
         AndroidLogcatPackageProperties m_PackageProperties;
         AndroidLogcatPackageUtilities m_PackageUtilities;
         AndroidLogcatDeviceSelection m_DeviceSelection;
+        TwoPaneSplitView m_HorizontalSplit;
+        TwoPaneSplitView m_VerticalSplit;
 
         [MenuItem("Test/Test")]
         static void Init()
@@ -72,10 +74,13 @@ namespace Unity.Android.Logcat
             var tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/AndroidLogcatPackagesLayout.uxml");
             tree.CloneTree(rootVisualElement);
 
-            rootVisualElement.Q<TwoPaneSplitView>("HorizontalSplit").RegisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
-            rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit").RegisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
+            m_HorizontalSplit = rootVisualElement.Q<TwoPaneSplitView>("HorizontalSplit");
+            m_HorizontalSplit.RegisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
 
-            m_Packages = new AndroidLogcatPackages(rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
+            m_VerticalSplit = rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit");
+            m_VerticalSplit.RegisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
+
+            m_Packages = new AndroidLogcatPackages(m_Runtime, rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
             m_Packages.PackageSelected = PackageSelected;
             m_PackageProperties = new AndroidLogcatPackageProperties(rootVisualElement);
             m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
@@ -113,18 +118,16 @@ namespace Unity.Android.Logcat
                 selectedDevice);
         }
 
-        internal void InitializeHorizontalLayout(GeometryChangedEvent e)
+        private void InitializeHorizontalLayout(GeometryChangedEvent e)
         {
-            var split = rootVisualElement.Q<TwoPaneSplitView>("HorizontalSplit");
-            split.fixedPaneInitialDimension = split.layout.width / 2;
-            split.UnregisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
+            m_HorizontalSplit.fixedPaneInitialDimension = m_HorizontalSplit.layout.width / 2;
+            m_HorizontalSplit.UnregisterCallback<GeometryChangedEvent>(InitializeHorizontalLayout);
         }
 
-        internal void InitializeVerticalLayout(GeometryChangedEvent e)
+        private void InitializeVerticalLayout(GeometryChangedEvent e)
         {
-            var split = rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit");
-            split.fixedPaneInitialDimension = split.layout.height * 0.8f;
-            split.UnregisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
+            m_VerticalSplit.fixedPaneInitialDimension = m_VerticalSplit.layout.height * 0.8f;
+            m_VerticalSplit.UnregisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
         }
 
         /*

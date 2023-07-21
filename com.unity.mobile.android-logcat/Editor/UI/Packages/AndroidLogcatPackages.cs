@@ -26,16 +26,17 @@ namespace Unity.Android.Logcat
 
         internal Action<PackageEntry> PackageSelected { set; get; }
 
-        internal AndroidLogcatPackages(VisualElement root, List<PackageEntry> packageEntries)
+        internal AndroidLogcatPackages(AndroidLogcatRuntimeBase runtime, VisualElement root, List<PackageEntry> packageEntries)
         {
             m_UnfilteredEntries = packageEntries;
             m_FilteredEntries = new List<PackageEntry>();
 
             m_ListView = root.Q<MultiColumnListView>("packages");
             m_Filter = root.Q<TextField>("filter");
-            // TODO: take filter from settings
+            m_Filter.SetValueWithoutNotify(runtime.UserSettings.PackageWindowSettings.PacakgeFilter);
             m_Filter.RegisterValueChangedCallback((s) =>
             {
+                runtime.UserSettings.PackageWindowSettings.PacakgeFilter = s.newValue;
                 FilterBy(s.newValue);
             });
 
