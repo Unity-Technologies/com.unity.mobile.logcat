@@ -617,7 +617,7 @@ namespace Unity.Android.Logcat
         {
             var dispatcher = runtime.Dispatcher;
             var device = runtime.DeviceQuery.SelectedDevice;
-            var package = runtime.UserSettings.LastSelectedProcess;
+            var process = runtime.UserSettings.LastSelectedProcess;
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
 
             m_VerticalSplitter.DoGUI(splitterRectVertical, ref extraWindowState.Height);
@@ -639,15 +639,15 @@ namespace Unity.Android.Logcat
 
 
             // Something for the future
-            var refreshPackages = false;
+            var refreshProcesses = false;
             if (Unsupported.IsDeveloperMode())
             {
-                refreshPackages = DoDbgProcessOperations(runtime, device, package, extraWindowState.Height);
+                refreshProcesses = DoDbgProcessOperations(runtime, device, process, extraWindowState.Height);
                 GUILayout.Space(4);
             }
 
             GUILayout.EndHorizontal();
-            return refreshPackages;
+            return refreshProcesses;
         }
     }
 }
