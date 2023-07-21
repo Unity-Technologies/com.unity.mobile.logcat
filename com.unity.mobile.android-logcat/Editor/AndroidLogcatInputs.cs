@@ -541,7 +541,7 @@ namespace Unity.Android.Logcat
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
         }
 
-        bool DoDbgPackageOperations(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device, PackageInformation package, float height)
+        bool DoDbgProcessOperations(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device, ProcessInformation process, float height)
         {
             var settings = runtime.UserSettings.DeviceInputSettings;
             GUILayout.BeginVertical(GUILayout.Height(height));
@@ -549,9 +549,9 @@ namespace Unity.Android.Logcat
             GUILayout.Label($"Package:", EditorStyles.boldLabel);
             GUILayout.EndHorizontal();
             GUILayout.Label("Name:", EditorStyles.boldLabel);
-            settings.TargetPackage.name = GUILayout.TextField(settings.TargetPackage.name);
+            settings.TargetProcess.name = GUILayout.TextField(settings.TargetProcess.name);
             GUILayout.Label("Process Id:", EditorStyles.boldLabel);
-            settings.TargetPackage.processId = EditorGUILayout.IntField(settings.TargetPackage.processId);
+            settings.TargetProcess.processId = EditorGUILayout.IntField(settings.TargetProcess.processId);
 
             GUILayout.BeginVertical();
 
@@ -559,11 +559,11 @@ namespace Unity.Android.Logcat
 
             if (GUILayout.Button(new GUIContent("Copy from the selected", "Copy information from selected package"), options))
             {
-                if (package != null)
+                if (process != null)
                 {
-                    settings.TargetPackage.name = package.name;
-                    settings.TargetPackage.processId = package.processId;
-                    settings.TargetPackage.exited = package.exited;
+                    settings.TargetProcess.name = process.name;
+                    settings.TargetProcess.processId = process.processId;
+                    settings.TargetProcess.exited = process.exited;
                     GUIUtility.keyboardControl = 0;
                 }
             }
@@ -573,24 +573,24 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(new GUIContent("Start",
                 "Start package using 'adb shell monkey -p <packlage> -c android.intent.category.LAUNCHER 1'"), options))
             {
-                device.StartPackage(settings.TargetPackage.name);
+                device.StartPackage(settings.TargetProcess.name);
                 return true;
             }
             if (GUILayout.Button(new GUIContent("Force Stop", "Stop package using 'adb shell am force-stop <package>'"), options))
             {
-                device.StopPackage(settings.TargetPackage.name);
+                device.StopPackage(settings.TargetProcess.name);
                 return true;
             }
             if (GUILayout.Button(new GUIContent("Crash", "Crash package using 'adb shell am crash <package>'"), options))
             {
-                device.CrashPackage(settings.TargetPackage.name);
+                device.CrashPackage(settings.TargetProcess.name);
                 return true;
             }
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(new GUIContent("Kill with signal", "Kill application using 'adb shell run-as <package> kill -s <signal> <pid>'"), options))
             {
-                device.KillProcess(settings.TargetPackage.name, settings.TargetPackage.processId, settings.PosixKillSignal);
+                device.KillProcess(settings.TargetProcess.name, settings.TargetProcess.processId, settings.PosixKillSignal);
                 return true;
             }
             settings.PosixKillSignal = (PosixSignal)EditorGUILayout.EnumPopup(settings.PosixKillSignal);
@@ -617,7 +617,7 @@ namespace Unity.Android.Logcat
         {
             var dispatcher = runtime.Dispatcher;
             var device = runtime.DeviceQuery.SelectedDevice;
-            var package = runtime.UserSettings.LastSelectedPackage;
+            var package = runtime.UserSettings.LastSelectedProcess;
             var splitterRectVertical = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(5));
 
             m_VerticalSplitter.DoGUI(splitterRectVertical, ref extraWindowState.Height);
@@ -642,7 +642,7 @@ namespace Unity.Android.Logcat
             var refreshPackages = false;
             if (Unsupported.IsDeveloperMode())
             {
-                refreshPackages = DoDbgPackageOperations(runtime, device, package, extraWindowState.Height);
+                refreshPackages = DoDbgProcessOperations(runtime, device, package, extraWindowState.Height);
                 GUILayout.Space(4);
             }
 
