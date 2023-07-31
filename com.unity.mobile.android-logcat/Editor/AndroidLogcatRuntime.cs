@@ -59,7 +59,7 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
 
-        public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
+        public abstract AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int processId, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction);
         protected abstract AndroidLogcatDeviceQueryBase CreateDeviceQuery();
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
@@ -128,9 +128,9 @@ namespace Unity.Android.Logcat
             m_SubscribeToEditorUpdate = subscribeToEditorUpdate;
         }
 
-        public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int packageID, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
+        public override AndroidLogcatMessageProviderBase CreateMessageProvider(AndroidBridge.ADB adb, Priority priority, int processId, string logPrintFormat, IAndroidLogcatDevice device, Action<string> logCallbackAction)
         {
-            return new AndroidLogcatMessageProvider(adb, priority, packageID, logPrintFormat, device, logCallbackAction);
+            return new AndroidLogcatMessageProvider(adb, priority, processId, logPrintFormat, device, logCallbackAction);
         }
 
         public override void Initialize()

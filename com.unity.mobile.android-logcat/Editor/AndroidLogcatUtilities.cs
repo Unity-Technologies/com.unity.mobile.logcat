@@ -172,7 +172,7 @@ namespace Unity.Android.Logcat
             return string.Empty;
         }
 
-        public static string GetPackageNameFromPid(AndroidBridge.ADB adb, IAndroidLogcatDevice device, int processId)
+        public static string GetProcessNameFromPid(AndroidBridge.ADB adb, IAndroidLogcatDevice device, int processId)
         {
             if (device == null)
                 return string.Empty;
@@ -183,13 +183,13 @@ namespace Unity.Android.Logcat
                 string cmd = string.Format("-s {0} shell ps -p {1}", device.Id, processId);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-                var output = adb.Run(new[] { cmd }, "Unable to get the package name for pid " + processId);
+                var output = adb.Run(new[] { cmd }, "Unable to get the process name for pid " + processId);
                 if (string.IsNullOrEmpty(output))
                     return string.Empty;
 
                 var result = ProcessOutputFromPS(output);
                 if (string.IsNullOrEmpty(result))
-                    AndroidLogcatInternalLog.Log("Unable to get the package name for pid " + processId + "\nOutput:\n" + output);
+                    AndroidLogcatInternalLog.Log("Unable to get the process name for pid " + processId + "\nOutput:\n" + output);
                 return result;
             }
             catch (Exception ex)
@@ -505,7 +505,7 @@ namespace Unity.Android.Logcat
 
             logcat?.StripFilteredEntriesIfNeeded();
             logcat?.StripRawEntriesIfNeeded();
-            userSettings.CleanupDeadPackagesForDevice(selectedDevice, settings.MaxExitedPackagesToShow);
+            userSettings.CleanupDeadProcessesForDevice(selectedDevice, settings.MaxExitedPackagesToShow);
         }
 
         // When we use / in context menu, this creates submenu, which is no good

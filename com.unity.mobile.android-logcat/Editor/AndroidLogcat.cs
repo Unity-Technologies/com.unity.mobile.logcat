@@ -13,7 +13,7 @@ namespace Unity.Android.Logcat
         private AndroidBridge.ADB adb;
 
         private readonly IAndroidLogcatDevice m_Device;
-        private readonly int m_PackagePid;
+        private readonly int m_ProcessId;
         private readonly Priority m_MessagePriority;
         private readonly string[] m_Tags;
         private readonly LogcatFilterOptions m_FilterOptions;
@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
 
         public IAndroidLogcatDevice Device { get { return m_Device; } }
 
-        public int PackagePid { get { return m_PackagePid; } }
+        public int PackagePid { get { return m_ProcessId; } }
 
         public Priority MessagePriority { get { return m_MessagePriority; } }
 
@@ -117,7 +117,7 @@ namespace Unity.Android.Logcat
         public AndroidLogcat(AndroidLogcatRuntimeBase runtime,
             AndroidBridge.ADB adb,
             IAndroidLogcatDevice device,
-            int packagePid,
+            int processId,
             Priority priority,
             FilterOptions filterOptions,
             string[] tags)
@@ -125,7 +125,7 @@ namespace Unity.Android.Logcat
             this.m_Runtime = runtime;
             this.adb = adb;
             this.m_Device = device;
-            this.m_PackagePid = packagePid;
+            this.m_ProcessId = processId;
             this.m_MessagePriority = priority;
             this.m_FilterOptions = new LogcatFilterOptions(filterOptions);
             this.m_LastUsedFilterOptions = new FilterOptions(m_FilterOptions);
