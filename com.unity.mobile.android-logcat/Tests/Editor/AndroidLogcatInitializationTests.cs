@@ -164,7 +164,7 @@ myandroid2 device
             var device = query.Devices[deviceName];
             // Pretend to be a user and select the device
             query.SelectDevice(device);
-            m_Runtime.UserSettings.LastSelectedPackage = m_Runtime.UserSettings.CreatePackageInformation(packageName, 1, device);
+            m_Runtime.UserSettings.LastSelectedProcess = m_Runtime.UserSettings.CreateProcessInformation(packageName, 1, device);
 
             ScriptableObject.DestroyImmediate(consoleWindow);
             if (restartRuntime)
@@ -175,7 +175,7 @@ myandroid2 device
             }
 
             Assert.AreEqual(deviceName, m_Runtime.UserSettings.LastSelectedDeviceId);
-            Assert.AreEqual(packageName, m_Runtime.UserSettings.LastSelectedPackage.name);
+            Assert.AreEqual(packageName, m_Runtime.UserSettings.LastSelectedProcess.name);
 
             query = PrepareQuery();
             consoleWindow = AndroidLogcatTestConsoleWindow.CreateInstance<AndroidLogcatTestConsoleWindow>();
@@ -183,7 +183,7 @@ myandroid2 device
 
             // Check if Console Window didn't repick a different device/package
             Assert.AreEqual(query.Devices[deviceName], query.SelectedDevice);
-            Assert.AreEqual(packageName, m_Runtime.UserSettings.LastSelectedPackage.name);
+            Assert.AreEqual(packageName, m_Runtime.UserSettings.LastSelectedProcess.name);
 
             ScriptableObject.DestroyImmediate(consoleWindow);
         }
