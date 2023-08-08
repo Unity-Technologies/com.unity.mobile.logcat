@@ -59,6 +59,8 @@ namespace Unity.Android.Logcat
 
         internal virtual void CrashPackage(string packageName) { }
 
+        internal virtual void UninstallPackage(string packageName) { }
+
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
         internal bool SupportsFilteringByPid
@@ -436,6 +438,22 @@ namespace Unity.Android.Logcat
 
             m_ADB.Run(args, $"Failed to crash package '{packageName}'");
         }
+
+        internal override void UninstallPackage(string packageName)
+        {
+            var args = new[]
+{
+                "-s",
+                Id,
+                "shell",
+                "uninstall",
+                packageName
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
+        }
+        
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
         {
