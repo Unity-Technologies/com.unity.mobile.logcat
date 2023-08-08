@@ -2,8 +2,11 @@ using System;
 
 namespace Unity.Android.Logcat
 {
+    /// <summary>
+    /// Holds information about package or process.
+    /// </summary>
     [Serializable]
-    internal class PackageInformation
+    internal class ProcessInformation
     {
         public string deviceId;
         public string name;
@@ -21,7 +24,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public PackageInformation()
+        public ProcessInformation()
         {
             Reset();
         }

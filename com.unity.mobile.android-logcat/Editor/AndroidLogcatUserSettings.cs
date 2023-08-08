@@ -29,7 +29,7 @@ namespace Unity.Android.Logcat
             [SerializeField]
             internal PosixSignal PosixKillSignal;
             [SerializeField]
-            internal PackageInformation TargetPackage;
+            internal ProcessInformation TargetProcess;
         }
 
         [Serializable]
@@ -58,12 +58,12 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
-        private PackageInformation m_SelectedPackage;
+        private ProcessInformation m_SelectedProcess;
         [SerializeField]
         private Priority m_SelectedPriority;
-        private Dictionary<string, List<PackageInformation>> m_KnownPackages;
+        private Dictionary<string, List<ProcessInformation>> m_KnownProcesses;
         [SerializeField]
-        private List<PackageInformation> m_KnownPackagesForSerialization;
+        private List<ProcessInformation> m_KnownProcessesForSerialization;
         [SerializeField]
         private AndroidLogcatTags m_Tags;
         [SerializeField]
@@ -104,15 +104,15 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public PackageInformation LastSelectedPackage
+        public ProcessInformation LastSelectedProcess
         {
             set
             {
-                m_SelectedPackage = value;
+                m_SelectedProcess = value;
             }
             get
             {
-                return m_SelectedPackage;
+                return m_SelectedProcess;
             }
         }
 
@@ -120,9 +120,9 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                return m_SelectedPackage != null &&
-                    !string.IsNullOrEmpty(m_SelectedPackage.deviceId) &&
-                    m_SelectedPackage.processId > 0;
+                return m_SelectedProcess != null &&
+                    !string.IsNullOrEmpty(m_SelectedProcess.deviceId) &&
+                    m_SelectedProcess.processId > 0;
             }
         }
 
@@ -143,72 +143,72 @@ namespace Unity.Android.Logcat
         public PackagePropertiesSettings PackageWindowSettings { set => m_PackagePropertiesSettings = value; get => m_PackagePropertiesSettings; }
         public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
-        private void RefreshPackagesForSerialization()
+        private void RefreshProcessesForSerialization()
         {
-            m_KnownPackagesForSerialization = new List<PackageInformation>();
-            foreach (var p in m_KnownPackages)
+            m_KnownProcessesForSerialization = new List<ProcessInformation>();
+            foreach (var p in m_KnownProcesses)
             {
-                m_KnownPackagesForSerialization.AddRange(p.Value);
+                m_KnownProcessesForSerialization.AddRange(p.Value);
             }
         }
 
-        public IReadOnlyList<PackageInformation> GetKnownPackages(IAndroidLogcatDevice device)
+        public IReadOnlyList<ProcessInformation> GetKnownProcesses(IAndroidLogcatDevice device)
         {
-            return GetOrCreatePackagesForDevice(device);
+            return GetOrCreateProcessForDevice(device);
         }
 
-        private List<PackageInformation> GetOrCreatePackagesForDevice(IAndroidLogcatDevice device)
+        private List<ProcessInformation> GetOrCreateProcessForDevice(IAndroidLogcatDevice device)
         {
             if (device == null)
-                return new List<PackageInformation>();
+                return new List<ProcessInformation>();
 
-            List<PackageInformation> packages = null;
-            if (!m_KnownPackages.TryGetValue(device.Id, out packages))
+            List<ProcessInformation> processes = null;
+            if (!m_KnownProcesses.TryGetValue(device.Id, out processes))
             {
-                packages = new List<PackageInformation>();
-                m_KnownPackages[device.Id] = packages;
+                processes = new List<ProcessInformation>();
+                m_KnownProcesses[device.Id] = processes;
             }
-            return packages;
+            return processes;
         }
 
-        public void CleanupDeadPackagesForDevice(IAndroidLogcatDevice device, int maxExitedPackagesToShow)
+        public void CleanupDeadProcessesForDevice(IAndroidLogcatDevice device, int maxExitedPackagesToShow)
         {
             if (device == null)
                 return;
 
-            List<PackageInformation> packages = null;
-            if (!m_KnownPackages.TryGetValue(device.Id, out packages))
+            List<ProcessInformation> processes = null;
+            if (!m_KnownProcesses.TryGetValue(device.Id, out processes))
                 return;
 
-            int deadPackageCount = 0;
+            int deadProcessCount = 0;
 
-            for (int i = 0; i < packages.Count; i++)
+            for (int i = 0; i < processes.Count; i++)
             {
-                if (packages[i].IsAlive() == false)
-                    deadPackageCount++;
+                if (processes[i].IsAlive() == false)
+                    deadProcessCount++;
             }
 
             // Need to remove the package which were added first, since they are the oldest packages
-            int deadPackagesToRemove = deadPackageCount - maxExitedPackagesToShow;
-            if (deadPackagesToRemove <= 0)
+            int deadProcessesToRemove = deadProcessCount - maxExitedPackagesToShow;
+            if (deadProcessesToRemove <= 0)
                 return;
 
-            for (int i = 0; i < packages.Count && deadPackagesToRemove > 0;)
+            for (int i = 0; i < processes.Count && deadProcessesToRemove > 0;)
             {
-                if (packages[i].IsAlive())
+                if (processes[i].IsAlive())
                 {
                     i++;
                     continue;
                 }
 
-                deadPackagesToRemove--;
-                packages.RemoveAt(i);
+                deadProcessesToRemove--;
+                processes.RemoveAt(i);
             }
 
-            RefreshPackagesForSerialization();
+            RefreshProcessesForSerialization();
         }
 
-        public PackageInformation CreatePackageInformation(string packageName, int pid, IAndroidLogcatDevice device)
+        public ProcessInformation CreateProcessInformation(string processName, int pid, IAndroidLogcatDevice device)
         {
             if (pid <= 0)
                 return null;
@@ -219,38 +219,38 @@ namespace Unity.Android.Logcat
                 return null;
             }
 
-            var packages = GetOrCreatePackagesForDevice(device);
-            PackageInformation info = packages.FirstOrDefault(package => package.processId == pid);
+            var processes = GetOrCreateProcessForDevice(device);
+            ProcessInformation info = processes.FirstOrDefault(package => package.processId == pid);
             if (info != null)
                 return info;
 
-            var newPackage = new PackageInformation()
+            var newProcess = new ProcessInformation()
             {
-                name = packageName,
+                name = processName,
                 processId = pid,
                 deviceId = device.Id
             };
 
-            packages.Add(newPackage);
-            RefreshPackagesForSerialization();
-            return newPackage;
+            processes.Add(newProcess);
+            RefreshProcessesForSerialization();
+            return newProcess;
         }
 
-        private static Dictionary<string, List<PackageInformation>> PackagesToDictionary(List<PackageInformation> allPackages)
+        private static Dictionary<string, List<ProcessInformation>> ProcessesToDictionary(List<ProcessInformation> allPackages)
         {
-            var dictionaryPackages = new Dictionary<string, List<PackageInformation>>();
+            var dictionaryProcesses = new Dictionary<string, List<ProcessInformation>>();
             foreach (var p in allPackages)
             {
-                List<PackageInformation> packages;
-                if (!dictionaryPackages.TryGetValue(p.deviceId, out packages))
+                List<ProcessInformation> processes;
+                if (!dictionaryProcesses.TryGetValue(p.deviceId, out processes))
                 {
-                    packages = new List<PackageInformation>();
-                    dictionaryPackages[p.deviceId] = packages;
+                    processes = new List<ProcessInformation>();
+                    dictionaryProcesses[p.deviceId] = processes;
                 }
-                packages.Add(p);
+                processes.Add(p);
             }
 
-            return dictionaryPackages;
+            return dictionaryProcesses;
         }
 
         public AndroidLogcatTags Tags
@@ -305,7 +305,7 @@ namespace Unity.Android.Logcat
             m_SelectedDeviceId = string.Empty;
             m_SelectedPriority = Priority.Verbose;
             m_Tags = new AndroidLogcatTags();
-            m_KnownPackages = new Dictionary<string, List<PackageInformation>>();
+            m_KnownProcesses = new Dictionary<string, List<ProcessInformation>>();
             m_ExtraWindowState = new ExtraWindowState();
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
@@ -316,7 +316,7 @@ namespace Unity.Android.Logcat
             m_InputSettings = new InputSettings()
             {
                 SendText = string.Empty,
-                TargetPackage = new PackageInformation()
+                TargetProcess = new ProcessInformation()
             };
         }
 
@@ -350,7 +350,7 @@ namespace Unity.Android.Logcat
             {
                 var settings = new AndroidLogcatUserSettings();
                 JsonUtility.FromJsonOverwrite(jsonString, settings);
-                settings.m_KnownPackages = PackagesToDictionary(settings.m_KnownPackagesForSerialization);
+                settings.m_KnownProcesses = ProcessesToDictionary(settings.m_KnownProcessesForSerialization);
                 return settings;
             }
             catch (Exception ex)
