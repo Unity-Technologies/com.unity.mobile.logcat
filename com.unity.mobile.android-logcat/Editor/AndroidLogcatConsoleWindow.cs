@@ -340,6 +340,9 @@ namespace Unity.Android.Logcat
                 case ToolsContextMenu.StacktraceUtility:
                     AndroidLogcatStacktraceWindow.ShowStacktraceWindow();
                     break;
+                case ToolsContextMenu.PackageInformation:
+                    AndroidLogcatPackagesWindow.ShowWindow();
+                    break;
                 case ToolsContextMenu.WindowMemory:
                     m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Memory;
                     break;
@@ -363,6 +366,7 @@ namespace Unity.Android.Logcat
                 contextMenu.Add(ToolsContextMenu.ScreenCapture, "Screen Capture");
                 contextMenu.Add(ToolsContextMenu.OpenTerminal, "Open Terminal");
                 contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
+                contextMenu.Add(ToolsContextMenu.PackageInformation, "Package Information");
                 var b = m_Runtime.UserSettings.ExtraWindowState.Type;
                 contextMenu.Add(ToolsContextMenu.WindowMemory, "Window/Memory", b == ExtraWindow.Memory);
                 contextMenu.Add(ToolsContextMenu.WindowInputs, "Window/Inputs", b == ExtraWindow.Inputs);

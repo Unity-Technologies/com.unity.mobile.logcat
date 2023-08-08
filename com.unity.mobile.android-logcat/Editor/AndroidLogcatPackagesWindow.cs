@@ -39,20 +39,21 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatPackagesWindow : EditorWindow
     {
+        private GUIContent kRefresh = new GUIContent(L10n.Tr("Refresh"), L10n.Tr("Refresh package list."));
+
         AndroidLogcatRuntimeBase m_Runtime;
-        AndroidLogcatPackages m_Packages;
-        AndroidLogcatPackageProperties m_PackageProperties;
+        AndroidLogcatPackagesView m_Packages;
+        AndroidLogcatPackagePropertiesView m_PackageProperties;
         AndroidLogcatPackageUtilities m_PackageUtilities;
         AndroidLogcatDeviceSelection m_DeviceSelection;
         TwoPaneSplitView m_HorizontalSplit;
         TwoPaneSplitView m_VerticalSplit;
 
-        [MenuItem("Test/Test")]
-        static void Init()
+        internal static void ShowWindow()
         {
             // Get existing open window or if none, make a new one:
             AndroidLogcatPackagesWindow window = (AndroidLogcatPackagesWindow)EditorWindow.GetWindow(typeof(AndroidLogcatPackagesWindow));
-            window.titleContent = new UnityEngine.GUIContent("Packages");
+            window.titleContent = new UnityEngine.GUIContent("Pacakge Information");
             window.Show();
         }
 
@@ -63,8 +64,8 @@ namespace Unity.Android.Logcat
 
             if (rootVisualElement == null)
                 throw new NullReferenceException("rooVisualElement is null");
-            rootVisualElement.Insert(0, new IMGUIContainer(DoDeviceSelectionGUI));
             rootVisualElement.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+            rootVisualElement.Insert(0, new IMGUIContainer(DoToolbarGUI));
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.Closing += OnDisable;
@@ -80,9 +81,9 @@ namespace Unity.Android.Logcat
             m_VerticalSplit = rootVisualElement.Q<TwoPaneSplitView>("VerticalSplit");
             m_VerticalSplit.RegisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
 
-            m_Packages = new AndroidLogcatPackages(m_Runtime, rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
+            m_Packages = new AndroidLogcatPackagesView(m_Runtime, rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
             m_Packages.PackageSelected = PackageSelected;
-            m_PackageProperties = new AndroidLogcatPackageProperties(rootVisualElement);
+            m_PackageProperties = new AndroidLogcatPackagePropertiesView(rootVisualElement);
             m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
@@ -130,19 +131,6 @@ namespace Unity.Android.Logcat
             m_VerticalSplit.UnregisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
         }
 
-        /*
-        void CreateButton(string name)
-        {
-            var id = name.ToLower();
-            m_ListView.columns[id].makeCell = () => new PackageEntryButton();
-            m_ListView.columns[id].bindCell = (element, index) =>
-            {
-                var button = GetInitializedElement<PackageEntryButton>(element, index);
-                button.text = "Hello";
-            };
-        }
-        */
-
         void PackageSelected(PackageEntry entry)
         {
             // TODO: device selection
@@ -157,9 +145,16 @@ namespace Unity.Android.Logcat
 
         }
 
-        void DoDeviceSelectionGUI()
+        void DoToolbarGUI()
         {
+            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
+            EditorGUI.BeginDisabledGroup(true);
+            GUILayout.Label(GUIContent.none, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            EditorGUI.EndDisabledGroup();
             m_DeviceSelection.DoGUI();
+            if (GUILayout.Button(kRefresh, AndroidLogcatStyles.toolbarButton))
+                OnDeviceSelected(m_DeviceSelection.SelectedDevice);
+            EditorGUILayout.EndHorizontal();
         }
 
         void DoDebuggingGUI()
