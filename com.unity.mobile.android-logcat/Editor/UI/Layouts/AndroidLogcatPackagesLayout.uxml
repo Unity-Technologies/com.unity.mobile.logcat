@@ -9,6 +9,7 @@
                             <ui:Column name="name" title="Name" width="200" minWidth="200" stretchable="true" />
                             <ui:Column name="installer" title="Installer" width="150" />
                             <ui:Column name="uid" title="UID" width="120" />
+                            <ui:Column name="operations" title="" width="60" />
                         </ui:Columns>
                     </ui:MultiColumnListView>
                 </ui:VisualElement>

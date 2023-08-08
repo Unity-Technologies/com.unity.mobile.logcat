@@ -41,7 +41,7 @@ namespace Unity.Android.Logcat
             var dispatcher = AndroidLogcatManager.instance.Runtime.Dispatcher;
             root.Q<Button>("android-back-button").clicked += () =>
             {
-                // TODO: 
+                // TODO:
                 AndroidLogcatManager.instance.Runtime.DeviceQuery.FirstConnectedDevice.SendKeyAsync(dispatcher, AndroidKeyCode.BACK);
             };
 
@@ -77,7 +77,7 @@ namespace Unity.Android.Logcat
         internal void RefreshActivities(List<string> activities)
         {
             m_LaunchableActivities.itemsSource = activities;
-            if (activities.Count > 0) 
+            if (activities.Count > 0)
                 m_LaunchableActivities.selectedIndex = 0;
             m_LaunchableActivities.RefreshItems();
         }

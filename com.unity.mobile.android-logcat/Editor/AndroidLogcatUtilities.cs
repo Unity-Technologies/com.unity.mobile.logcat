@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
@@ -261,6 +262,14 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log(ex.Message);
                 return string.Empty;
             }
+        }
+
+        public static void UninstallPackageWithConfirmation(IAndroidLogcatDevice device, PackageEntry packageEntry)
+        {
+            if (!EditorUtility.DisplayDialog("Uninstall package?", $"Do you really want to uninstall '{packageEntry.Name}'?", "Yes", "No"))
+                return;
+
+            Debug.Log("Uninstalling");
         }
 
         /// <summary>

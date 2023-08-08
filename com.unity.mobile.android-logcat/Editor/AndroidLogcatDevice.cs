@@ -453,7 +453,7 @@ namespace Unity.Android.Logcat
 
             m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
         }
-        
+
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
         {

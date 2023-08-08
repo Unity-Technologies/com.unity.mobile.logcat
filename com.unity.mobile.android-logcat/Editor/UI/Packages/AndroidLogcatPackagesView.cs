@@ -17,7 +17,7 @@ namespace Unity.Android.Logcat
             CopyAll
         }
 
-
+        IAndroidLogcatDevice m_Device;
         MultiColumnListView m_ListView;
         TextField m_Filter;
 
@@ -46,11 +46,40 @@ namespace Unity.Android.Logcat
             CreateLabel(nameof(PackageEntry.Installer), (e) => e.Installer);
             CreateLabel(nameof(PackageEntry.UID), (e) => e.UID);
 
+            var operations = m_ListView.columns["operations"];
+            operations.makeCell = () =>
+            {
+                var operations = new VisualElement();
+                operations.style.flexDirection = FlexDirection.Row;
+                operations.Add(new PackageEntryButton() { name = "play", text = "►", tooltip = "Launch or Resume the package" });
+                var uninstall = new PackageEntryButton() { name = "uninstall", text = "X", tooltip = "Uninstall the package" };
+                uninstall.RegisterCallback<ClickEvent>((e) =>
+                {
+                    AndroidLogcatUtilities.UninstallPackageWithConfirmation(m_Device, uninstall.Entry);
+                });
+                operations.Add(uninstall);
+                return operations;
+            };
+
+            operations.bindCell = (element, index) =>
+            {
+                var entry = (PackageEntry)m_ListView.itemsSource[index];
+
+                var play = element.Q<PackageEntryButton>("play");
+                play.Entry = entry;
+                play.Index = index;
+
+                var uninstall = element.Q<PackageEntryButton>("uninstall");
+                uninstall.Entry = entry;
+                uninstall.Index = index;
+            };
+
             FilterBy(m_Filter.value);
         }
 
-        internal void RefreshEntries(List<PackageEntry> packageEntries)
+        internal void RefreshEntries(IAndroidLogcatDevice device, List<PackageEntry> packageEntries)
         {
+            m_Device = device;
             m_UnfilteredEntries = packageEntries;
             FilterBy(m_Filter.value);
         }

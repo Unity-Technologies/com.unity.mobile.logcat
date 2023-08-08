@@ -106,7 +106,7 @@ namespace Unity.Android.Logcat
 
         private void OnDeviceSelected(IAndroidLogcatDevice selectedDevice)
         {
-            m_Packages.RefreshEntries(GetPackageEntries(selectedDevice).ToList());
+            m_Packages.RefreshEntries(selectedDevice, GetPackageEntries(selectedDevice).ToList());
         }
 
         PackageEntry[] GetPackageEntries(IAndroidLogcatDevice selectedDevice)
