@@ -8,7 +8,7 @@ using UnityEditor.UIElements;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatPackageProperties
+    internal class AndroidLogcatPackagePropertiesView
     {
         enum PackagePropertiesContextMenu
         {
@@ -22,7 +22,7 @@ namespace Unity.Android.Logcat
         List<string> m_UnfilteredEntries;
         List<string> m_FilteredEntries;
 
-        internal AndroidLogcatPackageProperties(VisualElement root, List<string> properties = null)
+        internal AndroidLogcatPackagePropertiesView(VisualElement root, List<string> properties = null)
         {
             m_UnfilteredEntries = properties;
             if (m_UnfilteredEntries == null)

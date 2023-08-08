@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatPackages
+    internal class AndroidLogcatPackagesView
     {
         enum PackagesContextMenu
         {
@@ -26,7 +26,7 @@ namespace Unity.Android.Logcat
 
         internal Action<PackageEntry> PackageSelected { set; get; }
 
-        internal AndroidLogcatPackages(AndroidLogcatRuntimeBase runtime, VisualElement root, List<PackageEntry> packageEntries)
+        internal AndroidLogcatPackagesView(AndroidLogcatRuntimeBase runtime, VisualElement root, List<PackageEntry> packageEntries)
         {
             m_UnfilteredEntries = packageEntries;
             m_FilteredEntries = new List<PackageEntry>();
