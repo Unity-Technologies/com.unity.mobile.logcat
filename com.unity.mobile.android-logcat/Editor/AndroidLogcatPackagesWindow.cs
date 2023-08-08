@@ -106,6 +106,8 @@ namespace Unity.Android.Logcat
 
         private void OnDeviceSelected(IAndroidLogcatDevice selectedDevice)
         {
+            if (m_Packages == null)
+                throw new Exception("Package view was not created ?");
             m_Packages.RefreshEntries(selectedDevice, GetPackageEntries(selectedDevice).ToList());
         }
 

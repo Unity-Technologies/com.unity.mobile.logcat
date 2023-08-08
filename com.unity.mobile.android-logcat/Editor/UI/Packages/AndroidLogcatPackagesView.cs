@@ -68,10 +68,13 @@ namespace Unity.Android.Logcat
                 var play = element.Q<PackageEntryButton>("play");
                 play.Entry = entry;
                 play.Index = index;
-
+                
                 var uninstall = element.Q<PackageEntryButton>("uninstall");
                 uninstall.Entry = entry;
                 uninstall.Index = index;
+                // Disable uninstall for packages installed from Store, this also includes system pacakges
+                // We don't want users accidentally uninstalling important stuff
+                uninstall.SetEnabled(string.IsNullOrEmpty(entry.Installer) || entry.Installer.Equals("null"));
             };
 
             FilterBy(m_Filter.value);
