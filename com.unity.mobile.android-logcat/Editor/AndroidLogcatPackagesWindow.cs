@@ -83,6 +83,7 @@ namespace Unity.Android.Logcat
 
             m_Packages = new AndroidLogcatPackagesView(m_Runtime, rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
             m_Packages.PackageSelected = PackageSelected;
+            m_Packages.PackageUninstalled = PackageUninstalled;
             m_PackageProperties = new AndroidLogcatPackagePropertiesView(rootVisualElement);
             m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
 
@@ -109,6 +110,11 @@ namespace Unity.Android.Logcat
             if (m_Packages == null)
                 throw new Exception("Package view was not created ?");
             m_Packages.RefreshEntries(selectedDevice, GetPackageEntries(selectedDevice).ToList());
+        }
+
+        private void RefreshPackages()
+        {
+            OnDeviceSelected(m_DeviceSelection.SelectedDevice);
         }
 
         PackageEntry[] GetPackageEntries(IAndroidLogcatDevice selectedDevice)
@@ -147,6 +153,11 @@ namespace Unity.Android.Logcat
 
         }
 
+        void PackageUninstalled(PackageEntry entry)
+        {
+            RefreshPackages();
+        }
+
         void DoToolbarGUI()
         {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
@@ -155,7 +166,7 @@ namespace Unity.Android.Logcat
             EditorGUI.EndDisabledGroup();
             m_DeviceSelection.DoGUI();
             if (GUILayout.Button(kRefresh, AndroidLogcatStyles.toolbarButton))
-                OnDeviceSelected(m_DeviceSelection.SelectedDevice);
+                RefreshPackages();
             EditorGUILayout.EndHorizontal();
         }
 

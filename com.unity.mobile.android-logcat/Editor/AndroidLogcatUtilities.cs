@@ -264,12 +264,14 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public static void UninstallPackageWithConfirmation(IAndroidLogcatDevice device, PackageEntry packageEntry)
+        public static bool UninstallPackageWithConfirmation(IAndroidLogcatDevice device, PackageEntry packageEntry)
         {
-            if (!EditorUtility.DisplayDialog("Uninstall package?", $"Do you really want to uninstall '{packageEntry.Name}'?", "Yes", "No"))
-                return;
+            if (!EditorUtility.DisplayDialog("Uninstall package?", $"Do you really want to uninstall '{packageEntry.Name}' ?", "Yes", "No"))
+                return false;
 
-            Debug.Log("Uninstalling");
+            device.UninstallPackage(packageEntry.Name);
+            Debug.Log($"Uninstalled '{packageEntry.Name}' on device '{device.DisplayName}'.");
+            return true;
         }
 
         /// <summary>

@@ -25,6 +25,7 @@ namespace Unity.Android.Logcat
         List<PackageEntry> m_FilteredEntries;
 
         internal Action<PackageEntry> PackageSelected { set; get; }
+        internal Action<PackageEntry> PackageUninstalled { set; get; }
 
         internal AndroidLogcatPackagesView(AndroidLogcatRuntimeBase runtime, VisualElement root, List<PackageEntry> packageEntries)
         {
@@ -51,11 +52,17 @@ namespace Unity.Android.Logcat
             {
                 var operations = new VisualElement();
                 operations.style.flexDirection = FlexDirection.Row;
-                operations.Add(new PackageEntryButton() { name = "play", text = "►", tooltip = "Launch or Resume the package" });
+                var start = new PackageEntryButton() { name = "start", text = "►", tooltip = "Launch or Resume the package" };
+                start.RegisterCallback<ClickEvent>((e) =>
+                {
+                    m_Device.StartOrResumePackage(start.Entry.Name);
+                });
+                operations.Add(start);
                 var uninstall = new PackageEntryButton() { name = "uninstall", text = "X", tooltip = "Uninstall the package" };
                 uninstall.RegisterCallback<ClickEvent>((e) =>
                 {
-                    AndroidLogcatUtilities.UninstallPackageWithConfirmation(m_Device, uninstall.Entry);
+                    if (AndroidLogcatUtilities.UninstallPackageWithConfirmation(m_Device, uninstall.Entry))
+                        PackageUninstalled?.Invoke(uninstall.Entry);
                 });
                 operations.Add(uninstall);
                 return operations;
@@ -65,10 +72,10 @@ namespace Unity.Android.Logcat
             {
                 var entry = (PackageEntry)m_ListView.itemsSource[index];
 
-                var play = element.Q<PackageEntryButton>("play");
+                var play = element.Q<PackageEntryButton>("start");
                 play.Entry = entry;
                 play.Index = index;
-                
+
                 var uninstall = element.Q<PackageEntryButton>("uninstall");
                 uninstall.Entry = entry;
                 uninstall.Index = index;

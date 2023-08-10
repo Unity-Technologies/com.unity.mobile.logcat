@@ -53,7 +53,7 @@ namespace Unity.Android.Logcat
 
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
-        internal virtual void StartPackage(string packageName, string activityName = null) { }
+        internal virtual void StartOrResumePackage(string packageName, string activityName = null) { }
 
         internal virtual void StopPackage(string packageName) { }
 
@@ -373,7 +373,7 @@ namespace Unity.Android.Logcat
             false);
         }
 
-        internal override void StartPackage(string packageName, string activityName = null)
+        internal override void StartOrResumePackage(string packageName, string activityName = null)
         {
             var args = new List<string>();
             args.AddRange(new[]
@@ -445,7 +445,6 @@ namespace Unity.Android.Logcat
 {
                 "-s",
                 Id,
-                "shell",
                 "uninstall",
                 packageName
              };
