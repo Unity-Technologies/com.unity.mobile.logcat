@@ -1,12 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.UIElements;
-using UnityEditor;
-using System.Text;
 using UnityEditor.UIElements;
-using UnityEngine;
-using UnityEditor.PackageManager.Requests;
+
 
 namespace Unity.Android.Logcat
 {

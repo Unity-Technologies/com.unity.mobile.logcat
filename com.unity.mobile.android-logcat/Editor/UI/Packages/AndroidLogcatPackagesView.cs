@@ -14,7 +14,7 @@ namespace Unity.Android.Logcat
         {
             CopyPackageName,
             CopyPackageInfo,
-            CopyAll
+            CopyPacakgeInfoOfAllPackages
         }
 
         IAndroidLogcatDevice m_Device;
@@ -168,10 +168,10 @@ namespace Unity.Android.Logcat
                     m_ListView.SetSelection(l.Index);
 
                     var contextMenu = new AndroidContextMenu<PackagesContextMenu>();
-                    contextMenu.Add(PackagesContextMenu.CopyPackageName, "Copy Package Name");
                     contextMenu.Add(PackagesContextMenu.CopyPackageInfo, "Copy Package Information");
-                    contextMenu.Add(PackagesContextMenu.CopyAll, "Copy All");
-
+                    contextMenu.Add(PackagesContextMenu.CopyPacakgeInfoOfAllPackages, "Copy Package Information of all packages");
+                    contextMenu.Add(PackagesContextMenu.CopyPackageName, "Copy Package Name");
+                    
                     contextMenu.Show(e.mousePosition, (userData, options, selected) =>
                     {
                         var sender = (AndroidContextMenu<PackagesContextMenu>)userData;
@@ -187,7 +187,7 @@ namespace Unity.Android.Logcat
                             case PackagesContextMenu.CopyPackageInfo:
                                 EditorGUIUtility.systemCopyBuffer = l.Entry.ToString();
                                 break;
-                            case PackagesContextMenu.CopyAll:
+                            case PackagesContextMenu.CopyPacakgeInfoOfAllPackages:
                                 var data = new StringBuilder();
                                 foreach (var p in m_FilteredEntries)
                                 {
