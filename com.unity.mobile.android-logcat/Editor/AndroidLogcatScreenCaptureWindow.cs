@@ -186,7 +186,7 @@ namespace Unity.Android.Logcat
 
         private void DoSelectedDeviceGUI()
         {
-            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
+            var deviceNames = m_Devices.Select(m => new GUIContent(m.ShortDisplayName)).ToArray();
             if (deviceNames.Length == 0)
             {
                 m_SelectedDeviceIdx = 0;
