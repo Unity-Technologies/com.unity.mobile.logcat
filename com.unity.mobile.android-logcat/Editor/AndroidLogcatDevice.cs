@@ -49,13 +49,17 @@ namespace Unity.Android.Logcat
 
         internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress) { }
 
+        internal void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { SendKeyAsync(dispatcher, keyCode, false); }
+
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
-        internal virtual void StartPackage(string packageName, string activityName = null) { }
+        internal virtual void StartOrResumePackage(string packageName, string activityName = null) { }
 
         internal virtual void StopPackage(string packageName) { }
 
         internal virtual void CrashPackage(string packageName) { }
+
+        internal virtual void UninstallPackage(string packageName) { }
 
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
@@ -370,7 +374,7 @@ namespace Unity.Android.Logcat
             false);
         }
 
-        internal override void StartPackage(string packageName, string activityName = null)
+        internal override void StartOrResumePackage(string packageName, string activityName = null)
         {
             var args = new List<string>();
             args.AddRange(new[]
@@ -435,6 +439,21 @@ namespace Unity.Android.Logcat
 
             m_ADB.Run(args, $"Failed to crash package '{packageName}'");
         }
+
+        internal override void UninstallPackage(string packageName)
+        {
+            var args = new[]
+{
+                "-s",
+                Id,
+                "uninstall",
+                packageName
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
+        }
+
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
         {
