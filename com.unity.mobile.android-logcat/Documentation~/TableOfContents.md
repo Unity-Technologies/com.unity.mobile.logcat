@@ -21,3 +21,4 @@
     * [Memory window](memory-window.md)
       * [Memory window reference](memory-window-reference.md)
     * [Input window](inputs-window.md)
+* [Android Logcat Settings](android-logcat-settings)
