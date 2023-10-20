@@ -1,7 +1,6 @@
 # Android Logcat Settings
 
-Use the Android Logcat Settings window to customize the behavior of the 
-Android Logcat window and tools.
+Use the Android Logcat Settings window to customize the behavior of the Android Logcat window and tools.
 
 To open the Android Logcat Settings window in the Unity Editor, go to **Edit** > **Preferences** > **Analysis** >  **Android Logcat Settings** (Windows) or **Unity** > **Settings** > **Analysis** > **Android Logcat Settings** (macOS) from the main menu in Unity. The settings are grouped under the following sections:
 - [Android Logcat Settings](#android-logcat-settings)
