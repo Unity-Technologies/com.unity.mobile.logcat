@@ -61,5 +61,9 @@ From the regular expressions list, the one at the top is used for resolving the 
 For more information, refer to [configure stacktrace regular expressions](stacktrace-utility-set-up.md#configure-stacktrace-regular-expressions).
 
 
+## Symbol Extensions
 
+![](images/logcat-settings-symbol-extensions.png)
 
+Use the **Symbol Extensions** setting to configure file extensions which are appended to symbol file names during stacktrace resolving.
+For example, if symbol name is **libunity** and the specified symbol extensions are **.so.sym**, **.so.dbg**, stacktrace utility will look for **libunity.so.sym** and **libunity.so.dbg** symbols.
