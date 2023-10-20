@@ -49,7 +49,7 @@ public class AndroidLogcatStacktraceTests
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
 
         var path = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}");
-        var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile);
+        var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, new[] { ".so" });
 
         if (string.IsNullOrEmpty(result))
             throw new System.Exception($"Failed to locate symbol file for {libraryFile} in '{path}'");
@@ -167,14 +167,12 @@ public class AndroidLogcatStacktraceTests
     {
         if (!AndroidBridge.AndroidExtensionsInstalled)
         {
-            System.Console.WriteLine("Test ignored, because Android Support is not installed");
-            return;
+            Assert.Ignore("Test ignored, because Android Support is not installed");
         }
 
         if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
         {
-            System.Console.WriteLine("Test ignored, SDK & NDK are not available.");
-            return;
+            Assert.Ignore("Test ignored, SDK & NDK are not available.");
         }
 
         var tools = new AndroidTools();
@@ -185,16 +183,16 @@ public class AndroidLogcatStacktraceTests
         var symbolPathsArm64 = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArm64) } });
         var libunity = "libunity";
 
-        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArmV7, string.Empty, libunity + ".so"));
-        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArm64, string.Empty, libunity + ".so"));
+        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArmV7, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
+        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArm64, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
         // Since ABI is empty, we cannot resolve symbol path, thus the result will be empty
-        Assert.AreEqual(string.Empty, AndroidLogcatUtilities.GetSymbolFile(symbolPaths, string.Empty, libunity + ".so"));
+        Assert.AreEqual(string.Empty, AndroidLogcatUtilities.GetSymbolFile(symbolPaths, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
 
-        var armv7Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArmV7, libunity + ".so");
+        var armv7Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArmV7, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
         AssertStringContains(libunity, armv7Result);
         AssertStringContains(AndroidLogcatUtilities.kAbiArmV7, armv7Result);
 
-        var arm64Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArm64, libunity + ".so");
+        var arm64Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArm64, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
         AssertStringContains(libunity, arm64Result);
         AssertStringContains(AndroidLogcatUtilities.kAbiArm64, arm64Result);
     }
