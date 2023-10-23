@@ -66,4 +66,4 @@ For more information, refer to [configure stacktrace regular expressions](stackt
 ![](images/logcat-settings-symbol-extensions.png)
 
 Use the **Symbol Extensions** setting to configure file extensions which are appended to symbol file names during stacktrace resolving.
-For example, if symbol name is **libunity** and the specified symbol extensions are **.so.sym**, **.so.dbg**, stacktrace utility will look for **libunity.so.sym** and **libunity.so.dbg** symbols.
+For example, if the symbol file name is `libunity` and the specified symbol extensions are `.so.sym`, `.so.dbg`, the Stacktrace Utility tool looks for `libunity.so.sym` and `libunity.so.dbg` symbols.
