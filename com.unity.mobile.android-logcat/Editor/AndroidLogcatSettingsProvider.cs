@@ -15,7 +15,7 @@ namespace Unity.Android.Logcat
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
-            public static GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Configure which file extension to append while looking for symbol files.");
+            public static GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
 
             public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
