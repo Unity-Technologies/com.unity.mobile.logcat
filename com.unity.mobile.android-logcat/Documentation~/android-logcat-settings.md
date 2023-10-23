@@ -9,6 +9,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
   - [Memory Window](#memory-window)
   - [Packages](#packages)
   - [Stacktrace Regex](#stacktrace-regex)
+  - [Symbol Extensions](#symbol-exensions)
   
 **Note**: Use the **Reset** button at the bottom of the Settings window to restore the default settings.
 
