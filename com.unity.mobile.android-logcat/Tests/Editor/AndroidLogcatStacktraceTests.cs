@@ -49,7 +49,7 @@ public class AndroidLogcatStacktraceTests
         var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
 
         var path = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}");
-        var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, new[] { ".so" });
+        var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, AndroidLogcatSettings.kDefaultSymbolExtensions);
 
         if (string.IsNullOrEmpty(result))
             throw new System.Exception($"Failed to locate symbol file for {libraryFile} in '{path}'");
