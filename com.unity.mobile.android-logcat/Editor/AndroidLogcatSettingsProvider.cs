@@ -15,13 +15,16 @@ namespace Unity.Android.Logcat
             public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
             public static GUIContent fontSize = new GUIContent("Font Size");
             public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
+            public static GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
+
             public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
             public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
-        private AndroidLogcatRegexList m_RegexList;
+        private AndroidLogcatReordableListWithReset m_RegexList;
+        private AndroidLogcatReordableListWithReset m_SymbolExtList;
 
         private AndroidLogcatSettings Settings => m_Runtime.Settings;
 
@@ -30,7 +33,8 @@ namespace Unity.Android.Logcat
             : base(path, scope)
         {
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_RegexList = new AndroidLogcatRegexList(Settings.StacktraceResolveRegex, m_Runtime);
+            m_RegexList = new AndroidLogcatReordableListWithReset(Settings.StacktraceResolveRegex, () => m_Runtime.Settings.ResetStacktraceResolveRegex());
+            m_SymbolExtList = new AndroidLogcatReordableListWithReset(Settings.SymbolExtensions, () => m_Runtime.Settings.ResetSymbolExtensions());
         }
 
         public override void OnGUI(string searchContext)
@@ -64,6 +68,10 @@ namespace Unity.Android.Logcat
             GUILayout.Space(20);
             EditorGUILayout.LabelField(Styles.stactraceRegex, EditorStyles.boldLabel);
             m_RegexList.OnGUI(150.0f);
+
+            GUILayout.Space(20);
+            EditorGUILayout.LabelField(Styles.symbolExtensions, EditorStyles.boldLabel);
+            m_SymbolExtList.OnGUI(150.0f);
 
             GUILayout.Space(20);
             GUILayout.BeginHorizontal();

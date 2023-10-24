@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using System.Text;
+using System.IO;
 
 namespace Unity.Android.Logcat
 {
@@ -88,7 +89,11 @@ namespace Unity.Android.Logcat
             wnd.Focus();
         }
 
-        internal static string ResolveAddresses(string[] lines, IReadOnlyList<ReordableListItem> regexes, IReadOnlyList<ReordableListItem> symbolPaths, AndroidTools tools)
+        internal static string ResolveAddresses(string[] lines,
+            IReadOnlyList<ReordableListItem> regexes,
+            IReadOnlyList<ReordableListItem> symbolPaths,
+            IReadOnlyList<ReordableListItem> symbolExtensions,
+            AndroidTools tools)
         {
             var output = string.Empty;
             // Calling addr2line for every address is costly, that's why we need to do it in batch
@@ -107,12 +112,16 @@ namespace Unity.Android.Logcat
             foreach (var key in keys)
             {
                 var addresses = unresolved.GetAllAddresses(key);
-                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, key.ABI, key.Library);
+                var exts = symbolExtensions.GetEnabledValues();
+                var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths,
+                    key.ABI,
+                    key.Library,
+                    exts);
 
                 // Symbol file not found, set 'not found' messages for all addresses of this library
                 if (string.IsNullOrEmpty(symbolFile))
                 {
-                    var value = $"<color={m_RedColor}>({key.Library} not found)</color>";
+                    var value = $"<color={m_RedColor}>({Path.GetFileNameWithoutExtension(key.Library)}[{string.Join("|", exts)}] not found)</color>";
                     foreach (var a in addresses)
                         unresolved.SetAddressValue(key, a, value);
                     continue;
@@ -183,7 +192,11 @@ namespace Unity.Android.Logcat
 
 
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            m_ResolvedStacktraces = ResolveAddresses(lines, m_Runtime.Settings.StacktraceResolveRegex, m_Runtime.UserSettings.SymbolPaths, m_Runtime.Tools);
+            m_ResolvedStacktraces = ResolveAddresses(lines,
+                m_Runtime.Settings.StacktraceResolveRegex,
+                m_Runtime.UserSettings.SymbolPaths,
+                m_Runtime.Settings.SymbolExtensions,
+                m_Runtime.Tools);
         }
 
         private void OnEnable()
@@ -224,10 +237,15 @@ namespace Unity.Android.Logcat
                 ResolveStacktraces();
             }
             GUILayout.Space(20);
+            var oldAlign = GUI.skin.button.alignment;
+            GUI.skin.button.alignment = TextAnchor.MiddleLeft;
             if (GUILayout.Button("Configure Regex"))
                 SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
             if (GUILayout.Button("Configure Symbol Paths"))
                 SettingsService.OpenProjectSettings(AndroidLogcatProjectSettingsProvider.kSettingsPath);
+            if (GUILayout.Button("Configure Symbol Extensions"))
+                SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath);
+            GUI.skin.button.alignment = oldAlign;
             EditorGUILayout.EndVertical();
         }
 

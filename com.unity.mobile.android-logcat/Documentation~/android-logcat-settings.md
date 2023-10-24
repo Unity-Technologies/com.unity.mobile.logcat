@@ -9,6 +9,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
   - [Memory Window](#memory-window)
   - [Packages](#packages)
   - [Stacktrace Regex](#stacktrace-regex)
+  - [Symbol Extensions](#symbol-exensions)
   
 Use the **Reset** button at the bottom of the Settings window to restore the default settings.
 
@@ -60,5 +61,10 @@ From the regular expressions list, the one at the top is used for resolving the 
 For more information, refer to [configure stacktrace regular expressions](stacktrace-utility-set-up.md#configure-stacktrace-regular-expressions).
 
 
+## Symbol Extensions
 
+![](images/logcat-settings-symbol-extensions.png)
 
+Use the **Symbol Extensions** setting to specify file extensions which are appended to symbol file names during stacktrace resolving.
+
+For example, if the symbol file name is `libunity` and the specified symbol extensions are `.so.sym`, `.so.dbg`, the Stacktrace Utility tool looks for `libunity.so.sym` and `libunity.so.dbg` symbols.

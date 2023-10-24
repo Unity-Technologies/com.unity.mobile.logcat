@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Added inputs window - Tools->Window->Inputs, where you can easily inject keyboard/text input on to android device.
  - Add Scroll option for messages which allows you to explicitly to always scroll to end without automatic logic.
  - Device selection dropdown will contain device name + id, if device name is not available, only id will be displayed.
+ - You can now specify symbol file extensions in the new settings, Preferences->Android Logcat Settings> Symbol Extensions. Stacktrace Utility tool uses the symbol file extensions while looking for symbols to resolve stacktraces.
  
 ## [1.3.2] - 2022-04-12
 ### Fixes & Improvements
