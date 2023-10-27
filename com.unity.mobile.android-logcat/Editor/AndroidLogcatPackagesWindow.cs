@@ -53,7 +53,7 @@ namespace Unity.Android.Logcat
         {
             // Get existing open window or if none, make a new one:
             AndroidLogcatPackagesWindow window = (AndroidLogcatPackagesWindow)EditorWindow.GetWindow(typeof(AndroidLogcatPackagesWindow));
-            window.titleContent = new UnityEngine.GUIContent("Pacakge Information");
+            window.titleContent = new UnityEngine.GUIContent("Package Information");
             window.Show();
         }
 
@@ -82,8 +82,8 @@ namespace Unity.Android.Logcat
             m_VerticalSplit.RegisterCallback<GeometryChangedEvent>(InitializeVerticalLayout);
 
             m_Packages = new AndroidLogcatPackagesView(m_Runtime, rootVisualElement, GetPackageEntries(m_DeviceSelection.SelectedDevice).ToList());
-            m_Packages.PackageSelected = PackageSelected;
-            m_Packages.PackageUninstalled = PackageUninstalled;
+            m_Packages.OnPackageSelected = PackageSelected;
+            m_Packages.OnPackageUninstalled = PackageUninstalled;
             m_PackageProperties = new AndroidLogcatPackagePropertiesView(rootVisualElement);
             m_PackageUtilities = new AndroidLogcatPackageUtilities(rootVisualElement);
 
@@ -110,6 +110,8 @@ namespace Unity.Android.Logcat
             if (m_Packages == null)
                 throw new Exception("Package view was not created ?");
             m_Packages.RefreshEntries(selectedDevice, GetPackageEntries(selectedDevice).ToList());
+
+            PackageSelected(m_Packages.SelectedPackage);
         }
 
         private void RefreshPackages()
@@ -141,16 +143,13 @@ namespace Unity.Android.Logcat
 
         void PackageSelected(PackageEntry entry)
         {
-            // TODO: device selection
-
             var parser = new AndroidLogcatPackageInfoParser(AndroidLogcatUtilities.RetrievePackageProperties(
-                m_Runtime.Tools.ADB, m_Runtime.DeviceQuery.FirstConnectedDevice, entry));
+                m_Runtime.Tools.ADB, m_DeviceSelection.SelectedDevice, entry));
             var entries = parser.ParsePackageInformationAsSingleEntries(entry.Name);
             m_PackageProperties.RefreshProperties(entries);
 
             var activities = parser.ParseLaunchableActivities(entry.Name);
-            m_PackageUtilities.RefreshActivities(activities);
-
+            m_PackageUtilities.RefreshActivities(m_DeviceSelection.SelectedDevice, entry, activities);
         }
 
         void PackageUninstalled(PackageEntry entry)

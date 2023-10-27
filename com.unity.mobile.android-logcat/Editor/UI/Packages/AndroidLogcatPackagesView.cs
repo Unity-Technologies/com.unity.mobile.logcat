@@ -24,8 +24,18 @@ namespace Unity.Android.Logcat
         List<PackageEntry> m_UnfilteredEntries;
         List<PackageEntry> m_FilteredEntries;
 
-        internal Action<PackageEntry> PackageSelected { set; get; }
-        internal Action<PackageEntry> PackageUninstalled { set; get; }
+        internal Action<PackageEntry> OnPackageSelected { set; get; }
+        internal Action<PackageEntry> OnPackageUninstalled { set; get; }
+
+        internal PackageEntry SelectedPackage
+        {
+            get
+            {
+                if (m_ListView.selectedIndex < 0)
+                    return null;
+                return (PackageEntry)m_ListView.itemsSource[m_ListView.selectedIndex];
+            }
+        }
 
         internal AndroidLogcatPackagesView(AndroidLogcatRuntimeBase runtime, VisualElement root, List<PackageEntry> packageEntries)
         {
@@ -41,7 +51,7 @@ namespace Unity.Android.Logcat
                 FilterBy(s.newValue);
             });
 
-            m_ListView.sortingEnabled = true;
+            m_ListView.sortingMode = ColumnSortingMode.Default;
             m_ListView.columnSortingChanged += ColumnSortingChanged;
             CreateLabel(nameof(PackageEntry.Name), (e) => e.Name);
             CreateLabel(nameof(PackageEntry.Installer), (e) => e.Installer);
@@ -62,7 +72,7 @@ namespace Unity.Android.Logcat
                 uninstall.RegisterCallback<ClickEvent>((e) =>
                 {
                     if (AndroidLogcatUtilities.UninstallPackageWithConfirmation(m_Device, uninstall.Entry))
-                        PackageUninstalled?.Invoke(uninstall.Entry);
+                        OnPackageUninstalled?.Invoke(uninstall.Entry);
                 });
                 operations.Add(uninstall);
                 return operations;
@@ -157,7 +167,7 @@ namespace Unity.Android.Logcat
                     if (e.button == 1)
                         m_ListView.SetSelectionWithoutNotify(new[] { l.Index });
 
-                    PackageSelected?.Invoke(l.Entry);
+                    OnPackageSelected?.Invoke(l.Entry);
                 }, label);
 
                 label.RegisterCallback<MouseUpEvent, PackageEntryLabel>((e, l) =>
@@ -171,7 +181,7 @@ namespace Unity.Android.Logcat
                     contextMenu.Add(PackagesContextMenu.CopyPackageInfo, "Copy Package Information");
                     contextMenu.Add(PackagesContextMenu.CopyPacakgeInfoOfAllPackages, "Copy Package Information of all packages");
                     contextMenu.Add(PackagesContextMenu.CopyPackageName, "Copy Package Name");
-                    
+
                     contextMenu.Show(e.mousePosition, (userData, options, selected) =>
                     {
                         var sender = (AndroidContextMenu<PackagesContextMenu>)userData;

@@ -35,8 +35,8 @@
                     <ui:VisualElement name="package-tab-launch-options" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); height: 100px;">
                         <ui:Label text="Launchable Activities:" />
                         <ui:ListView fixed-item-height="20" name="launchable-activities" style="border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0);" />
-                        <ui:Button text="Launch" display-tooltip-when-elided="true" name="launch" />
-                        <ui:Button text="Stop" display-tooltip-when-elided="true" name="stop" />
+                        <ui:Button text="Launch" display-tooltip-when-elided="true" name="launch-android-application" />
+                        <ui:Button text="Stop" display-tooltip-when-elided="true" name="stop-android-application" />
                     </ui:VisualElement>
                     <ui:VisualElement name="package-tab-others" style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); flex-direction: row; transform-origin: center; height: 100px;">
                         <ui:Label tabindex="-1" text="Simulate Buttons:" display-tooltip-when-elided="true" />

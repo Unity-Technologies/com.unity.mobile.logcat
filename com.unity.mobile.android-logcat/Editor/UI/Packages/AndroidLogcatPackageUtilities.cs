@@ -21,6 +21,21 @@ namespace Unity.Android.Logcat
         VisualElement m_TabOthers;
         ListView m_LaunchableActivities;
 
+        Button m_LaunchApplication;
+        Button m_StopApplication;
+
+        IAndroidLogcatDevice m_Device;
+        PackageEntry m_PackageEntry;
+
+        internal string SelectedActivity
+        {
+            get
+            {
+                var item = m_LaunchableActivities.selectedItem;
+                return item?.ToString();
+            }
+        }
+
         internal AndroidLogcatPackageUtilities(VisualElement root)
         {
             m_TabContents = root.Q("package-tabs-contents");
@@ -33,6 +48,17 @@ namespace Unity.Android.Logcat
             m_TabLaunchOptions = root.Q("package-tab-launch-options");
             m_TabOthers = root.Q("package-tab-others");
             m_LaunchableActivities = root.Q<ListView>("launchable-activities");
+
+            m_LaunchApplication = root.Q<Button>("launch-android-application");
+            m_LaunchApplication.clicked += () =>
+            {
+                if (m_Device == null ||
+                    m_PackageEntry == null)
+                    return;
+                m_Device.StartOrResumePackage(m_PackageEntry.Name, SelectedActivity);
+            };
+
+            m_StopApplication = root.Q<Button>("stop-android-application");
 
             var dispatcher = AndroidLogcatManager.instance.Runtime.Dispatcher;
             root.Q<Button>("android-back-button").clicked += () =>
@@ -70,8 +96,10 @@ namespace Unity.Android.Logcat
                 m_TabContents.Add(m_TabOthers);
         }
 
-        internal void RefreshActivities(List<string> activities)
+        internal void RefreshActivities(IAndroidLogcatDevice device, PackageEntry packageEntry, List<string> activities)
         {
+            m_PackageEntry = packageEntry;
+            m_Device = device;
             m_LaunchableActivities.itemsSource = activities;
             if (activities.Count > 0)
                 m_LaunchableActivities.selectedIndex = 0;
