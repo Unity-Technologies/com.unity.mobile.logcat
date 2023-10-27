@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor;
 using System.Linq;
 
 namespace Unity.Android.Logcat
@@ -198,6 +199,80 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log(ex.Message);
                 return string.Empty;
             }
+        }
+
+        public static PackageEntry[] RetrievePackages(AndroidBridge.ADB adb, IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return Array.Empty<PackageEntry>();
+
+            try
+            {
+                var cmd = $"-s {device.Id} shell cmd package list packages -3 -U -i";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to retrieve packages");
+
+                if (string.IsNullOrEmpty(output))
+                    return Array.Empty<PackageEntry>();
+
+                var entries = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var packages = new List<PackageEntry>();
+                var regex = new Regex(@"package:(?<name>\S+)\s+installer=(?<installer>\S+)\s+uid:(?<uid>\S+)");
+                foreach (var e in entries)
+                {
+                    var result = regex.Match(e);
+                    if (result.Success)
+                    {
+                        packages.Add(new PackageEntry()
+                        {
+                            Name = result.Groups["name"].Value,
+                            Installer = result.Groups["installer"].Value,
+                            UID = result.Groups["uid"].Value
+                        });
+                    }
+                    else
+                    {
+                        AndroidLogcatInternalLog.Log($"Failed to parse package info:\n{e}");
+                    }
+                }
+
+                return packages.ToArray();
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return Array.Empty<PackageEntry>();
+            }
+        }
+
+        public static string RetrievePackageProperties(AndroidBridge.ADB adb, IAndroidLogcatDevice device, PackageEntry entry)
+        {
+            if (device == null)
+                return string.Empty;
+
+            try
+            {
+                var cmd = $"-s {device.Id} shell dumpsys package {entry.Name}";
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+                var output = adb.Run(new[] { cmd }, "Unable to retrieve package properties");
+
+                return output;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+                return string.Empty;
+            }
+        }
+
+        public static bool UninstallPackageWithConfirmation(IAndroidLogcatDevice device, PackageEntry packageEntry)
+        {
+            if (!EditorUtility.DisplayDialog("Uninstall package?", $"Do you really want to uninstall '{packageEntry.Name}' ?", "Yes", "No"))
+                return false;
+
+            device.UninstallPackage(packageEntry.Name);
+            Debug.Log($"Uninstalled '{packageEntry.Name}' on device '{device.DisplayName}'.");
+            return true;
         }
 
         /// <summary>
