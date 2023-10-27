@@ -4,20 +4,20 @@ using System.Text.RegularExpressions;
 
 namespace Unity.Android.Logcat
 {
-    internal class AndroidLogcatRegexList : AndroidLogcatReordableList
+    internal class AndroidLogcatReordableListWithReset : AndroidLogcatReordableList
     {
-        private AndroidLogcatRuntimeBase m_Runtime;
+        private Action m_ResetList;
 
-        public AndroidLogcatRegexList(List<ReordableListItem> dataSource, AndroidLogcatRuntimeBase runtime) :
-            base(dataSource)
+        public AndroidLogcatReordableListWithReset(List<ReordableListItem> dataSource, Action resetList)
+            : base(dataSource)
         {
             ShowResetGUI = true;
-            m_Runtime = runtime;
+            m_ResetList = resetList;
         }
 
         protected override void OnResetButtonClicked()
         {
-            m_Runtime.Settings.ResetStacktraceResolveRegex();
+            m_ResetList();
         }
 
         protected override string ValidateItem(string item)

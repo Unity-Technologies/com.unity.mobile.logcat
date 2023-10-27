@@ -23,6 +23,8 @@ namespace Unity.Android.Logcat
             @".*at (?<libName>lib.*)\.0x(?<address>[a-fA-F0-9]+)\(Native Method\)"
         };
 
+        internal static readonly string[] kDefaultSymbolExtensions = { ".so", ".so.sym", ".sym.so", ".so.dbg", ".dbg.so" };
+
         [SerializeField]
         private int m_MemoryRequestInterval;
 
@@ -48,6 +50,9 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private List<ReordableListItem> m_StacktraceResolveRegex;
+
+        [SerializeField]
+        private List<ReordableListItem> m_SymbolExtensions;
 
         [SerializeField]
         private int m_MaxExitedPackagesToShow;
@@ -185,6 +190,8 @@ namespace Unity.Android.Logcat
 
 
         internal List<ReordableListItem> StacktraceResolveRegex => m_StacktraceResolveRegex;
+        internal List<ReordableListItem> SymbolExtensions => m_SymbolExtensions;
+
 
         internal Action<AndroidLogcatSettings> OnSettingsChanged;
 
@@ -215,6 +222,7 @@ namespace Unity.Android.Logcat
             m_ColumnData = GetColumns();
 
             ResetStacktraceResolveRegex();
+            ResetSymbolExtensions();
 
             InvokeOnSettingsChanged();
         }
@@ -229,6 +237,17 @@ namespace Unity.Android.Logcat
             foreach (var r in kAddressResolveRegex)
             {
                 m_StacktraceResolveRegex.Add(new ReordableListItem() { Name = r, Enabled = true });
+            }
+        }
+
+        internal void ResetSymbolExtensions()
+        {
+            if (m_SymbolExtensions == null)
+                m_SymbolExtensions = new List<ReordableListItem>();
+            m_SymbolExtensions.Clear();
+            foreach (var e in kDefaultSymbolExtensions)
+            {
+                m_SymbolExtensions.Add(new ReordableListItem() { Name = e, Enabled = true });
             }
         }
 

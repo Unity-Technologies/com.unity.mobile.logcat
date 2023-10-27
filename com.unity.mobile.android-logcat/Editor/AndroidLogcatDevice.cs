@@ -202,7 +202,7 @@ namespace Unity.Android.Logcat
                 {
                     if (m_DisplayName != null)
                         return m_DisplayName;
-                    m_DisplayName = string.Format("{0} {1} (version: {2}, abi: {3}, sdk: {4}, id: {5})", Manufacturer, Model, OSVersion, ABI, APILevel, Id);
+                    m_DisplayName = $"{Manufacturer} {Model} (version: {OSVersion}, abi: {ABI}, sdk: {APILevel}, id: {Id})";
                     return m_DisplayName;
                 }
             }
@@ -212,10 +212,11 @@ namespace Unity.Android.Logcat
         {
             get
             {
+                var shortName = Manufacturer.Length > 0 ? $"{Manufacturer} {Model} ({Id})" : Id;
                 if (m_Device == null || State != DeviceState.Connected)
-                    return Id + " (" + State.ToString() + ")";
+                    return $"{shortName} ({State})";
                 else
-                    return Id;
+                    return shortName;
             }
         }
 
