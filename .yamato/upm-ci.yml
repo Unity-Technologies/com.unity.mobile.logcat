@@ -16,7 +16,7 @@ test_platforms:
     utr_cmd: utr.bat
   - name: mac
     type: Unity::VM::osx
-    image: package-ci/mac:stable
+    image: package-ci/macos-13:v4
     flavor: m1.mac
     move_alias: mv
     utr_download: curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr --output utr
