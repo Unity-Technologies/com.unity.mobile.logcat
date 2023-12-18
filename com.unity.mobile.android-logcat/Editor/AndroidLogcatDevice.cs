@@ -47,6 +47,10 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
+        internal abstract Priority GetTagPriority(string tag);
+
+        internal abstract void SetTagPriority(string tag, Priority priority);
+
         internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress) { }
 
         internal void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { SendKeyAsync(dispatcher, keyCode, false); }
@@ -218,6 +222,34 @@ namespace Unity.Android.Logcat
                 else
                     return shortName;
             }
+        }
+
+        internal override Priority GetTagPriority(string tag)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return Priority.Verbose;
+
+            var args = $"shell getprop log.tag.{tag}";
+            var output = m_ADB.Run(new[] { args }, $"Failed to get priority for tag '{tag}'");
+
+            if (string.IsNullOrEmpty(output))
+                return Priority.Verbose;
+
+            if (Enum.TryParse(output, true, out Priority priority))
+                return priority;
+            else
+            {
+                AndroidLogcatInternalLog.Log($"Failed to parse tag '{tag}' priority: {output}");
+                return Priority.Verbose;
+            }
+        }
+
+        internal override void SetTagPriority(string tag, Priority priority)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+            var args = $"shell setprop log.tag.{tag} {priority}";
+            m_ADB.Run(new[] { args }, $"Failed to set priority '{priority}' for tag '{tag}'");
         }
 
         /// <summary>
