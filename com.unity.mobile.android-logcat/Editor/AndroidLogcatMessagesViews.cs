@@ -231,6 +231,9 @@ namespace Unity.Android.Logcat
 
         private bool DoGUITagsValidation()
         {
+            var d = m_Runtime.DeviceQuery.SelectedDevice;
+            if (d == null)
+                return false;
             var result = false;
             var message = new StringBuilder();
             var fixCommand = new StringBuilder();
@@ -247,11 +250,10 @@ namespace Unity.Android.Logcat
                 return false;
 
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.HelpBox($"Some tags have invalid priorities, this can cause messages not to be displayed for these tags:\n{message}",
+            EditorGUILayout.HelpBox($"Some tags on the device '{d.ShortDisplayName}' have invalid priorities, this can cause messages for these tags not to be displayed:\n{message}",
                 MessageType.Error);
             var opts = new[] { GUILayout.Height(38), GUILayout.ExpandWidth(false) };
-            var d = m_Runtime.DeviceQuery.SelectedDevice;
-
+            
             if (GUILayout.Button(new GUIContent("Fix Me", $"The following commands will be executed:\n{fixCommand}"), opts) && d != null)
             {
                 foreach (var t in m_TagPriorityOnDevice)
