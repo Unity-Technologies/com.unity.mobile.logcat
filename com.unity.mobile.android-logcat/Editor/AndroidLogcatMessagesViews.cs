@@ -43,6 +43,7 @@ namespace Unity.Android.Logcat
         private float m_MaxLogEntryWidth = 0.0f;
         private static readonly List<LogcatEntry> kNoEntries = new List<LogcatEntry>();
         private Dictionary<string, Priority> m_TagPriorityOnDevice = new Dictionary<string, Priority>();
+        private float m_TagPriorityErrorHeight = 0.0f;
 
         public IReadOnlyList<LogcatEntry> FilteredEntries
         {
@@ -231,6 +232,9 @@ namespace Unity.Android.Logcat
 
         private bool DoGUITagsValidation()
         {
+            if (!AndroidLogcatSessionSettings.ShowTagPriorityErrors)
+                return false;
+
             var d = m_Runtime.DeviceQuery.SelectedDevice;
             if (d == null)
                 return false;
@@ -251,9 +255,12 @@ namespace Unity.Android.Logcat
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.HelpBox($"Some tags on the device '{d.ShortDisplayName}' have invalid priorities, this can cause messages for these tags not to be displayed:\n{message}",
-                MessageType.Error);
-            var opts = new[] { GUILayout.Height(38), GUILayout.ExpandWidth(false) };
+                MessageType.Error, true);
+            if (Event.current.type == EventType.Repaint)
+                m_TagPriorityErrorHeight = GUILayoutUtility.GetLastRect().height;
 
+            EditorGUILayout.BeginVertical();
+            var opts = new[] { GUILayout.Height(m_TagPriorityErrorHeight * 0.5f) };
             if (GUILayout.Button(new GUIContent("Fix Me", $"The following commands will be executed:\n{fixCommand}"), opts) && d != null)
             {
                 foreach (var t in m_TagPriorityOnDevice)
@@ -264,6 +271,9 @@ namespace Unity.Android.Logcat
                     result = true;
                 }
             }
+            if (GUILayout.Button(new GUIContent("Hide", "Hide the error in this Editor session."), opts))
+                AndroidLogcatSessionSettings.ShowTagPriorityErrors = false;
+            EditorGUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
             if (result)
                 CollectTagPrioritiesFromDevice();
