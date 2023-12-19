@@ -50,4 +50,18 @@ root      279   1     24908  908   20    0     0     0     ffffffff 00000000 S /
         Assert.AreEqual("/test/thermal-daemon", AndroidLogcatUtilities.ProcessOutputFromPS(android90Output2));
         Assert.AreEqual("/system/bin/netd", AndroidLogcatUtilities.ProcessOutputFromPS(android50Output));
     }
+
+    [Test]
+    public void CanSetGetTagPriorities()
+    {
+        var device = new AndroidLogcatFakeDevice90("Fake90");
+        var builtinTags = AndroidLogcatTags.DefaultTagNames;
+        foreach (var b in builtinTags)
+        {
+            Assert.AreEqual(Priority.Verbose, device.GetTagPriority(b));
+
+            device.SetTagPriority(b, Priority.Error);
+            Assert.AreEqual(Priority.Error, device.GetTagPriority(b));
+        }
+    }
 }

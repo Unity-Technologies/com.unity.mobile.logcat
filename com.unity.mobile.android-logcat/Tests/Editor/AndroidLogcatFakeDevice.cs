@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using Unity.Android.Logcat;
 
 internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
     private string m_DeviceId;
+    Dictionary<string, string> m_TagPriorities = new Dictionary<string, string>();
+
     internal override string Manufacturer
     {
         get { return "Undefined"; }
@@ -28,15 +31,16 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 
     internal override string ShortDisplayName => throw new NotImplementedException();
 
-    internal override Priority GetTagPriority(string tag)
+    protected override string GetTagPriorityAsString(string tag)
     {
-        // TODO
-        throw new NotImplementedException();
+        if (m_TagPriorities.TryGetValue(tag, out var priority))
+            return priority;
+        return string.Empty;
     }
 
-    internal override void SetTagPriority(string tag, Priority priority)
+    protected override void SetTagPriorityAsString(string tag, string priority)
     {
-        throw new NotImplementedException();
+        m_TagPriorities[tag] = priority;
     }
 
     internal AndroidLogcatFakeDevice(string deviceId)

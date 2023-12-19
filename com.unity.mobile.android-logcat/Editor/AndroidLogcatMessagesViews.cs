@@ -253,7 +253,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.HelpBox($"Some tags on the device '{d.ShortDisplayName}' have invalid priorities, this can cause messages for these tags not to be displayed:\n{message}",
                 MessageType.Error);
             var opts = new[] { GUILayout.Height(38), GUILayout.ExpandWidth(false) };
-            
+
             if (GUILayout.Button(new GUIContent("Fix Me", $"The following commands will be executed:\n{fixCommand}"), opts) && d != null)
             {
                 foreach (var t in m_TagPriorityOnDevice)
