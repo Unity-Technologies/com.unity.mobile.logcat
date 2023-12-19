@@ -28,6 +28,17 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 
     internal override string ShortDisplayName => throw new NotImplementedException();
 
+    internal override Priority GetTagPriority(string tag)
+    {
+        // TODO
+        throw new NotImplementedException();
+    }
+
+    internal override void SetTagPriority(string tag, Priority priority)
+    {
+        throw new NotImplementedException();
+    }
+
     internal AndroidLogcatFakeDevice(string deviceId)
     {
         m_DeviceId = deviceId;
