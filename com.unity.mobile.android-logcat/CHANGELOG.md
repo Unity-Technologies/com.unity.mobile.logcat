@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2024-12-12
+### Fixes & Improvements
+ - Logcat package will now detect if logs with specific tag are disabled on the device (this was causing messages not to be displayed), and if so, will provide an information message providing a button to fix such behavior.
+ 
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
  - Fix stacktrace resolve regex for entry like '  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so'. Reset regex to apply the fix

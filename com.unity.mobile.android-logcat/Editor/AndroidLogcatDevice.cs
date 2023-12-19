@@ -47,6 +47,30 @@ namespace Unity.Android.Logcat
 
         internal abstract string ShortDisplayName { get; }
 
+        protected abstract string GetTagPriorityAsString(string tag);
+
+        protected abstract void SetTagPriorityAsString(string tag, string priority);
+
+        internal Priority GetTagPriority(string tag)
+        {
+            var output = GetTagPriorityAsString(tag);
+            if (string.IsNullOrEmpty(output))
+                return Priority.Verbose;
+
+            if (Enum.TryParse(output, true, out Priority priority))
+                return priority;
+            else
+            {
+                AndroidLogcatInternalLog.Log($"Failed to parse tag '{tag}' priority: {output}");
+                return Priority.Verbose;
+            }
+        }
+
+        internal void SetTagPriority(string tag, Priority priority)
+        {
+            SetTagPriorityAsString(tag, priority.ToString());
+        }
+
         internal virtual void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode, bool longPress) { }
 
         internal void SendKeyAsync(AndroidLogcatDispatcher dispatcher, AndroidKeyCode keyCode) { SendKeyAsync(dispatcher, keyCode, false); }
@@ -218,6 +242,24 @@ namespace Unity.Android.Logcat
                 else
                     return shortName;
             }
+        }
+
+        protected override string GetTagPriorityAsString(string tag)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return string.Empty;
+
+            var args = $"shell getprop log.tag.{tag}";
+            var output = m_ADB.Run(new[] { args }, $"Failed to get priority for tag '{tag}'");
+            return output;
+        }
+
+        protected override void SetTagPriorityAsString(string tag, string priority)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+            var args = $"shell setprop log.tag.{tag} {priority}";
+            m_ADB.Run(new[] { args }, $"Failed to set priority '{priority}' for tag '{tag}'");
         }
 
         /// <summary>
