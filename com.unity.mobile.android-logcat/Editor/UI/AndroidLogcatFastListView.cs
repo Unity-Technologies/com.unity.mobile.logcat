@@ -25,7 +25,6 @@ namespace Unity.Android.Logcat
 
         List<Entry> m_LogEntries = new List<Entry>();
         Vector2 m_ScrollPosition = Vector2.zero;
-        Rect m_ScrollArea;
         float m_MaxEntryWidth;
         bool m_RecalculateMaxEntryWidth;
 
@@ -87,53 +86,43 @@ namespace Unity.Android.Logcat
         internal bool OnGUI()
         {
             RecalculateEntriesMaxWidthIfNeeded();
-
-            DoEntriesGUI();
-
             var logHeight = GetStyle().fixedHeight;
-            var e = Event.current;
+            var entriesView = new Rect(0, 0, m_MaxEntryWidth, logHeight * m_LogEntries.Count);
 
-            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);
-            GUILayoutUtility.GetRect(m_MaxEntryWidth, m_LogEntries.Count * logHeight);
-            GUILayout.EndScrollView();
+            var rc = GUILayoutUtility.GetRect(GUIContent.none, GetStyle(), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
-            if (e.type == EventType.Repaint)
-                m_ScrollArea = GUILayoutUtility.GetLastRect();
+            m_ScrollPosition = GUI.BeginScrollView(rc, m_ScrollPosition, entriesView, true, true);
+            DoEntries((int)(m_LogEntries.Count * m_ScrollPosition.y / entriesView.height), (int)(rc.height / logHeight));
+            GUI.EndScrollView();
 
-            if (HandleMouseAndKeyboardControls())
+            if (HandleMouseAndKeyboardControls(rc))
                 return true;
 
             return false;
         }
 
-        private void DoEntriesGUI()
+        private void DoEntries(int startIdx, int displayCount)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
 
             var logHeight = GetStyle().fixedHeight;
-            var startIdx = (int)(m_ScrollPosition.y / logHeight);
-            var displayCount = m_ScrollArea.height / logHeight;
-
             for (int i = 0; i < m_LogEntries.Count; i++)
             {
                 if (i < startIdx || i >= startIdx + displayCount)
                     continue;
                 var entry = m_LogEntries[i];
-                var rc = new Rect(-m_ScrollPosition.x, m_ScrollArea.y + (i - startIdx) * logHeight, m_MaxEntryWidth, logHeight);
+                var rc = new Rect(0, m_ScrollPosition.y + (i - startIdx) * logHeight, m_MaxEntryWidth, logHeight);
                 GetStyle().Draw(rc, entry.Value, false, false, entry.Selected, false);
             }
         }
 
-        private bool HandleMouseAndKeyboardControls()
+        private bool HandleMouseAndKeyboardControls(Rect view)
         {
             var e = Event.current;
-            if (e.type != EventType.MouseDown)
-                return false;
-
-            if (e.button == 0)
+            if (e.type == EventType.MouseDown)
             {
-                var idx = (int)((e.mousePosition.y - m_ScrollArea.y + (int)(m_ScrollPosition.y / GetStyle().fixedHeight) * GetStyle().fixedHeight) / (float)GetStyle().fixedHeight);
+                var idx = (int)((e.mousePosition.y - view.y + (int)(m_ScrollPosition.y / GetStyle().fixedHeight) * GetStyle().fixedHeight) / (float)GetStyle().fixedHeight);
                 if (idx < m_LogEntries.Count)
                 {
                     if (!e.HasCtrlOrCmdModifier())
@@ -146,7 +135,8 @@ namespace Unity.Android.Logcat
                     return true;
                 }
             }
-            else if (e.button == 1)
+
+            if (e.type == EventType.MouseUp && e.button == 1)
             {
                 var menuItems = new[] { new GUIContent("Copy"), new GUIContent("Select All") };
                 EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
