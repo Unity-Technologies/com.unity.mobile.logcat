@@ -217,7 +217,7 @@ namespace Unity.Android.Logcat
                 {
                     AndroidLogcatInternalLog.Log("Auto selecting process {0}", PlayerSettings.applicationIdentifier);
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
-                    SelectedProcess = process;
+                    SetProcess(process);
                     deviceQuery.SelectDevice(firstDevice, false);
 
                     RestartLogCat();
