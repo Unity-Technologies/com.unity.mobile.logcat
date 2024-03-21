@@ -12,7 +12,17 @@ namespace Unity.Android.Logcat
         const int MaxInternalLogMessages = 10000;
         static AndroidLogcatInternalLog ms_Instance = null;
 
-        AndroidLogcatFastListView m_ListView;
+        static AndroidLogcatFastListView m_ListView;
+
+        static AndroidLogcatFastListView ListView
+        {
+            get
+            {
+                if (m_ListView == null)
+                    m_ListView = new AndroidLogcatFastListView(() => AndroidLogcatStyles.internalLogStyle, MaxInternalLogMessages);
+                return m_ListView;
+            }
+        }
 
         public static void ShowLog(bool immediate)
         {
@@ -44,8 +54,7 @@ namespace Unity.Android.Logcat
             if (rawEntries.Length == 0)
                 return;
 
-            if (ms_Instance != null)
-                ms_Instance.m_ListView.AddEntries(rawEntries);
+            ListView.AddEntries(rawEntries);
 
             Console.WriteLine("[Logcat] " + timedMessage);
             if (AndroidLogcatDispatcher.isMainThread && ms_Instance != null)
@@ -59,7 +68,6 @@ namespace Unity.Android.Logcat
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
             ms_Instance = this;
-            m_ListView = new AndroidLogcatFastListView(() => AndroidLogcatStyles.internalLogStyle, MaxInternalLogMessages);
         }
 
         internal void OnGUI()
@@ -71,17 +79,17 @@ namespace Unity.Android.Logcat
             }
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"Entries: {m_ListView.Entries.Count()} / {MaxInternalLogMessages}");
+            GUILayout.Label($"Entries: {ListView.Entries.Count()} / {MaxInternalLogMessages}");
             if (GUILayout.Button("Clear"))
             {
-                m_ListView.ClearEntries();
+                ListView.ClearEntries();
             }
             if (Unsupported.IsDeveloperMode())
                 DoDebuggingGUI();
             GUILayout.EndHorizontal();
             GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
 
-            if (m_ListView.OnGUI())
+            if (ListView.OnGUI())
                 Repaint();
         }
 
