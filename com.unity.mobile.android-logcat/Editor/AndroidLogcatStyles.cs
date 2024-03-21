@@ -94,9 +94,12 @@ namespace Unity.Android.Logcat
             normal = new GUIStyleState() { textColor = Color.red }
         };
 
-        public static GUIStyle internalLogStyle = new GUIStyle("textArea")
+        public static GUIStyle internalLogStyle = new GUIStyle("CN EntryBackodd")
         {
+            fixedHeight = 13,
             fontSize = 13,
+            padding = new RectOffset(0, 0, 0, 0),
+            margin = new RectOffset(0, 0, 0, 0),
             font = GetFont()
         };
 
