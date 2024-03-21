@@ -532,5 +532,10 @@ namespace Unity.Android.Logcat
         {
             return list.Where(i => i.Enabled).Select(i => i.Name).ToArray();
         }
+
+        internal static bool HasCtrlOrCmdModifier(this Event e)
+        {
+            return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
+        }
     }
 }
