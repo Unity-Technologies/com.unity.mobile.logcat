@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.4.1] - 2024-12-12
 ### Fixes & Improvements
  - Logcat package will now detect if logs with specific tag are disabled on the device (this was causing messages not to be displayed), and if so, will provide an information message providing a button to fix such behavior.
-  - Fix issue with MemoryWindow, where active package would get lost during domain reload.
+ - Fix issue with MemoryWindow, where active package would get lost during domain reload.
  - Improve internal log to handle a large amount of messages
  - Fix hang with logcat dispatcher during domain reload
  - Fix issue where MemoryWindow would fail to query memory stats using package name, it will use process id instead now.
