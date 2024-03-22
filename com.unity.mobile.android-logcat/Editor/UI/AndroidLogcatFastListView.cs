@@ -76,11 +76,16 @@ namespace Unity.Android.Logcat
             if (!m_RecalculateMaxEntryWidth)
                 return;
             m_RecalculateMaxEntryWidth = false;
-            m_MaxEntryWidth = 0;
+            var longestText = string.Empty;
+            m_MaxEntryWidth = 0.0f;
             for (int i = 0; i < m_LogEntries.Count; i++)
             {
-                m_MaxEntryWidth = Mathf.Max(m_MaxEntryWidth, GetStyle().CalcSize(new GUIContent(m_LogEntries[i].Value)).x);
+                if (m_LogEntries[i].Value.Length > longestText.Length)
+                    longestText = m_LogEntries[i].Value;
             }
+
+            if (longestText.Length > 0)
+                m_MaxEntryWidth = Mathf.Max(m_MaxEntryWidth, GetStyle().CalcSize(new GUIContent(longestText)).x);
         }
 
         internal bool OnGUI()
