@@ -45,7 +45,6 @@ namespace Unity.Android.Logcat
         private Material m_Material;
 
         const int kMaxEntries = 300;
-        const UInt64 k16MB = 16 * 1000 * 1000;
         const float kMinMemoryWindowHeight = 255.0f;
         const float kMaxMemoryWindowHeight = 400.0f;
         const float kMinMemoryWindowWidth = 170.0f;
@@ -54,7 +53,6 @@ namespace Unity.Android.Logcat
         private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
         private int m_CurrentEntry = 0;
         private int m_EntryCount = 0;
-        static readonly int kMemoryGroupCount = Enum.GetValues(typeof(MemoryGroup)).Length;
         private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
