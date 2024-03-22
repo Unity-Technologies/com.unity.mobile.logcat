@@ -81,6 +81,7 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_ExpectedDevice;
         private ProcessInformation m_ExpectedProcessFromRequest;
         private AndroidLogcatMemoryViewerState m_State;
+        private string m_LastError;
 
         private MemoryType[] GetOrderMemoryTypes()
         {
@@ -309,10 +310,12 @@ namespace Unity.Android.Logcat
             var stats = AllocateMemoryStatistics();
             try
             {
+                m_LastError = string.Empty;
                 stats.Parse(memoryResult.contents);
             }
             catch (Exception ex)
             {
+                m_LastError = ex.Message;
                 stats.Clear();
                 AndroidLogcatInternalLog.Log(ex.Message);
             }
@@ -433,6 +436,14 @@ namespace Unity.Android.Logcat
 
             if (m_ExpectedProcessFromRequest == null)
                 EditorGUI.HelpBox(size, "Select a package", MessageType.Info);
+            else if (!string.IsNullOrEmpty(m_LastError))
+            {
+                var trimmed = m_LastError;
+                const int maxErrorLength = 100;
+                if (trimmed.Length > maxErrorLength)
+                    trimmed = trimmed.Substring(0, maxErrorLength) + "...";
+                EditorGUI.HelpBox(size, trimmed, MessageType.Error);
+            }
 
             GUILayout.EndVertical();
 
