@@ -4,6 +4,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2024-11-21
+### Fixes & Improvements
+ - Fix issue with MemoryWindow, where active package would get lost during domain reload.
+ - Improve internal log to handle a large amount of messages
+ - Fix hang with logcat dispatcher during domain reload
+ 
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
  - Fix stacktrace resolve regex for entry like '  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so'. Reset regex to apply the fix
