@@ -90,13 +90,17 @@ namespace Unity.Android.Logcat
             var entriesView = new Rect(0, 0, m_MaxEntryWidth, logHeight * m_LogEntries.Count);
 
             var rc = GUILayoutUtility.GetRect(GUIContent.none, GetStyle(), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-
+            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
             m_ScrollPosition = GUI.BeginScrollView(rc, m_ScrollPosition, entriesView, true, true);
             DoEntries((int)(m_LogEntries.Count * m_ScrollPosition.y / entriesView.height), (int)(rc.height / logHeight));
             GUI.EndScrollView();
 
-            if (HandleMouseAndKeyboardControls(rc))
+            // Note: Mouse handling must come before keys, since it sets keyboard control
+            if (HandleMouse(rc, controlId))
                 return true;
+            if (HandleKeys(controlId))
+                return true;
+
 
             return false;
         }
@@ -117,7 +121,26 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private bool HandleMouseAndKeyboardControls(Rect view)
+        private void DoCopy()
+        {
+            var builder = new StringBuilder();
+            foreach (var entry in m_LogEntries)
+            {
+                if (!entry.Selected)
+                    continue;
+                builder.AppendLine(entry.Value);
+            }
+
+            EditorGUIUtility.systemCopyBuffer = builder.ToString();
+        }
+
+        private void DoSelectAll()
+        {
+            foreach (var entry in m_LogEntries)
+                entry.Selected = true;
+        }
+
+        private bool HandleMouse(Rect view, int controldId)
         {
             var e = Event.current;
             if (e.type == EventType.MouseDown)
@@ -134,6 +157,8 @@ namespace Unity.Android.Logcat
                     m_LogEntries[idx].Selected = !m_LogEntries[idx].Selected;
                     return true;
                 }
+
+                GUIUtility.keyboardControl = controldId;
             }
 
             if (e.type == EventType.MouseUp && e.button == 1)
@@ -146,26 +171,47 @@ namespace Unity.Android.Logcat
             return false;
         }
 
+        private bool HandleKeys(int controlId)
+        {
+            if (GUIUtility.keyboardControl != controlId)
+                return false;
+
+            var requestRepaint = false;
+            var e = Event.current;
+            if (e.type == EventType.KeyDown)
+            {
+                bool hasCtrlOrCmd = e.HasCtrlOrCmdModifier();
+                switch (e.keyCode)
+                {
+                    case KeyCode.A:
+                        if (hasCtrlOrCmd)
+                        {
+                            DoSelectAll();
+                            e.Use();
+                            requestRepaint = true;
+                        }
+                        break;
+                    case KeyCode.C:
+                        DoCopy();
+                        e.Use();
+                        break;
+                }
+            }
+
+            return requestRepaint;
+        }
+
         private void MenuSelection(object userData, string[] options, int selected)
         {
             switch (selected)
             {
                 // Copy
                 case 0:
-                    var builder = new StringBuilder();
-                    foreach (var entry in m_LogEntries)
-                    {
-                        if (!entry.Selected)
-                            continue;
-                        builder.AppendLine(entry.Value);
-                    }
-
-                    EditorGUIUtility.systemCopyBuffer = builder.ToString();
+                    DoCopy();
                     break;
                 // Select All
                 case 1:
-                    foreach (var entry in m_LogEntries)
-                        entry.Selected = true;
+                    DoSelectAll();
                     break;
             }
         }
