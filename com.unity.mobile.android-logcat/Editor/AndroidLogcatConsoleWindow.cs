@@ -777,6 +777,8 @@ namespace Unity.Android.Logcat
             StopLogCat();
 
             StartLogcat();
+
+            CollectTagPrioritiesFromDevice();
         }
 
         private void StartLogcat()

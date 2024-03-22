@@ -17,6 +17,10 @@ namespace Unity.Android.Logcat
     [Serializable]
     internal class AndroidLogcatTags
     {
+        internal static readonly string TagNameUnity = "Unity";
+        internal static readonly string TagNameCrash = "CRASH";
+        internal static readonly string[] DefaultTagNames = new[] { TagNameUnity, TagNameCrash };
+
         [SerializeField]
         private List<TagInformation> m_Entries = new List<TagInformation>(
             new[]
@@ -26,8 +30,8 @@ namespace Unity.Android.Logcat
                 new TagInformation() { Name = string.Empty, Selected = false },
                 new TagInformation() { Name = "Tag Control...", Selected = false },
                 new TagInformation() { Name = string.Empty, Selected = false },
-                new TagInformation() { Name = "Unity", Selected = false },
-                new TagInformation() { Name = "CRASH", Selected = false },
+                new TagInformation() { Name = TagNameUnity, Selected = false },
+                new TagInformation() { Name = TagNameCrash, Selected = false },
             });
 
         public event Action TagSelectionChanged;

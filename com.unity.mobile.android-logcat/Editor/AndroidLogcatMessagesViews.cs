@@ -42,6 +42,8 @@ namespace Unity.Android.Logcat
         private Vector2 m_ScrollPosition = Vector2.zero;
         private float m_MaxLogEntryWidth = 0.0f;
         private static readonly List<LogcatEntry> kNoEntries = new List<LogcatEntry>();
+        private Dictionary<string, Priority> m_TagPriorityOnDevice = new Dictionary<string, Priority>();
+        private float m_TagPriorityErrorHeight = 0.0f;
 
         public IReadOnlyList<LogcatEntry> FilteredEntries
         {
@@ -67,6 +69,23 @@ namespace Unity.Android.Logcat
 
         private ScrollData m_ScrollData = new ScrollData();
         private float doubleClickStart = -1;
+
+        void CollectTagPrioritiesFromDevice()
+        {
+            m_TagPriorityOnDevice.Clear();
+            var d = m_Runtime.DeviceQuery.SelectedDevice;
+            if (d == null && d.State != IAndroidLogcatDevice.DeviceState.Connected)
+                return;
+
+            var tags = m_Runtime.UserSettings.Tags.GetSelectedTags(true);
+            if (tags == null || tags.Length == 0)
+                tags = AndroidLogcatTags.DefaultTagNames;
+
+            foreach (var tag in tags)
+            {
+                m_TagPriorityOnDevice[tag] = d.GetTagPriority(tag);
+            }
+        }
 
         private ColumnData[] Columns
         {
@@ -209,6 +228,56 @@ namespace Unity.Android.Logcat
 
             DoMouseEventsForHeaderToolbar(fullHeaderRect);
             return requestRepaint;
+        }
+
+        private bool DoGUITagsValidation()
+        {
+            if (!AndroidLogcatSessionSettings.ShowTagPriorityErrors)
+                return false;
+
+            var d = m_Runtime.DeviceQuery.SelectedDevice;
+            if (d == null)
+                return false;
+            var result = false;
+            var message = new StringBuilder();
+            var fixCommand = new StringBuilder();
+            foreach (var t in m_TagPriorityOnDevice)
+            {
+                if (t.Value == Priority.Verbose)
+                    continue;
+                message.AppendLine($" Tag '{t.Key}' has priority '{t.Value}'");
+                fixCommand.AppendLine($"  adb shell setprop log.tag.{t.Key} {Priority.Verbose}");
+            }
+
+            // No tags to fix
+            if (message.Length == 0)
+                return false;
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.HelpBox($"Some tags on the device '{d.ShortDisplayName}' have invalid priorities, this can cause messages for these tags not to be displayed:\n{message}",
+                MessageType.Error, true);
+            if (Event.current.type == EventType.Repaint)
+                m_TagPriorityErrorHeight = GUILayoutUtility.GetLastRect().height;
+
+            EditorGUILayout.BeginVertical();
+            var opts = new[] { GUILayout.Height(m_TagPriorityErrorHeight * 0.5f) };
+            if (GUILayout.Button(new GUIContent("Fix Me", $"The following commands will be executed:\n{fixCommand}"), opts) && d != null)
+            {
+                foreach (var t in m_TagPriorityOnDevice)
+                {
+                    if (t.Value == Priority.Verbose)
+                        continue;
+                    d.SetTagPriority(t.Key, Priority.Verbose);
+                    result = true;
+                }
+            }
+            if (GUILayout.Button(new GUIContent("Hide", "Hide the error in this Editor session."), opts))
+                AndroidLogcatSessionSettings.ShowTagPriorityErrors = false;
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.EndHorizontal();
+            if (result)
+                CollectTagPrioritiesFromDevice();
+            return result;
         }
 
         private void MenuSelectionColumns(object userData, string[] options, int selected)
@@ -705,7 +774,10 @@ namespace Unity.Android.Logcat
 
         public bool DoMessageView()
         {
-            return DoGUIHeader() | DoGUIEntries();
+            var repaint = DoGUIHeader();
+            repaint |= DoGUITagsValidation();
+            repaint |= DoGUIEntries();
+            return repaint;
         }
 
         private void SaveToFile(IEnumerable<LogcatEntry> logEntries)
