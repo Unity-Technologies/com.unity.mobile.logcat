@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix issue with MemoryWindow, where active package would get lost during domain reload.
  - Improve internal log to handle a large amount of messages
  - Fix hang with logcat dispatcher during domain reload
+ - Fix issue where MemoryWindow would fail to query memory stats using package name, it will use process id instead now.
  
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements

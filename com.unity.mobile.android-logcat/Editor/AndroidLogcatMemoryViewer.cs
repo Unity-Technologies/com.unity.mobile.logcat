@@ -212,13 +212,15 @@ namespace Unity.Android.Logcat
             if (adb == null)
                 throw new NullReferenceException("ADB interface has to be valid");
 
-            var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageName;
+            // Note: Using package name sometimes fails to dump memory, that's why we use process id
+            //       Also using process id you can query memory from system apps which are not packages.
+            var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageProcessId;
             AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
 
             string outputMsg = string.Empty;
             try
             {
-                outputMsg = adb.Run(new[] { cmd }, "Failed to query memory for " + workInput.packageName);
+                outputMsg = adb.Run(new[] { cmd }, $"Failed to query memory for {workInput.packageName} (PID = {workInput.packageProcessId}");
             }
             catch (Exception ex)
             {
