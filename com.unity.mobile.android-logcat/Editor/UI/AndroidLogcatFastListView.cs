@@ -148,13 +148,16 @@ namespace Unity.Android.Logcat
                 var idx = (int)((e.mousePosition.y - view.y + (int)(m_ScrollPosition.y / GetStyle().fixedHeight) * GetStyle().fixedHeight) / (float)GetStyle().fixedHeight);
                 if (idx < m_LogEntries.Count)
                 {
-                    if (!e.HasCtrlOrCmdModifier())
+                    if (!m_LogEntries[idx].Selected)
                     {
-                        foreach (var entry in m_LogEntries)
-                            entry.Selected = false;
+                        if (!e.HasCtrlOrCmdModifier())
+                        {
+                            foreach (var entry in m_LogEntries)
+                                entry.Selected = false;
+                        }
+                        m_LogEntries[idx].Selected = true;
                     }
 
-                    m_LogEntries[idx].Selected = !m_LogEntries[idx].Selected;
                     return true;
                 }
 
