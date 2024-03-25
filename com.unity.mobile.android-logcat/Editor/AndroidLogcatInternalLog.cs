@@ -51,9 +51,6 @@ namespace Unity.Android.Logcat
 
 
             var rawEntries = timedMessage.Split(new[] { '\n' });
-            if (rawEntries.Length == 0)
-                return;
-
             ListView.AddEntries(rawEntries);
 
             Console.WriteLine("[Logcat] " + timedMessage);

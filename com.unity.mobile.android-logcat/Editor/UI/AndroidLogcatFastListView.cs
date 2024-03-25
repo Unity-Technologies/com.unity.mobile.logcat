@@ -44,19 +44,29 @@ namespace Unity.Android.Logcat
         {
             lock (m_LogEntries)
             {
+                if (m_LogEntries.Count + newEntries.Length > m_MaxEntries)
+                    m_LogEntries.RemoveRange(0, Math.Min(m_LogEntries.Count, m_LogEntries.Count + newEntries.Length - (int)m_MaxEntries));
+
                 var start = m_LogEntries.Count;
-                m_LogEntries.AddRange(new Entry[newEntries.Length]);
-                var entries = new Entry[newEntries.Length];
-                for (int i = 0; i < entries.Length; i++)
+                var startForIncoming = 0;
+                var lengthForIncoming = newEntries.Length;
+
+                if (lengthForIncoming > m_MaxEntries)
+                {
+                    startForIncoming = lengthForIncoming - (int)m_MaxEntries;
+                    lengthForIncoming = (int)m_MaxEntries;
+                }
+
+                m_LogEntries.AddRange(new Entry[lengthForIncoming]);
+                var entries = new Entry[lengthForIncoming];
+                for (int i = 0; i < lengthForIncoming; i++)
                 {
                     m_LogEntries[start + i] = new Entry()
                     {
-                        Value = newEntries[i]
+                        Value = newEntries[startForIncoming + i]
                     };
                 }
 
-                if (m_LogEntries.Count > m_MaxEntries)
-                    m_LogEntries.RemoveRange(0, m_LogEntries.Count - (int)m_MaxEntries);
                 m_RecalculateMaxEntryWidth = true;
             }
         }
