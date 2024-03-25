@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using System.Text;
@@ -8,11 +9,20 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatInternalLog : EditorWindow
     {
-        const int kMaxInternalLogBuffer = 15000;
+        const int MaxInternalLogMessages = 10000;
         static AndroidLogcatInternalLog ms_Instance = null;
-        static StringBuilder ms_LogEntries = new StringBuilder();
 
-        Vector2 m_ScrollPosition = Vector2.zero;
+        static AndroidLogcatFastListView m_ListView;
+
+        static AndroidLogcatFastListView ListView
+        {
+            get
+            {
+                if (m_ListView == null)
+                    m_ListView = new AndroidLogcatFastListView(() => AndroidLogcatStyles.internalLogStyle, MaxInternalLogMessages);
+                return m_ListView;
+            }
+        }
 
         public static void ShowLog(bool immediate)
         {
@@ -36,27 +46,16 @@ namespace Unity.Android.Logcat
 
         public static void Log(string message)
         {
-            lock (ms_LogEntries)
-            {
-                var timedMessage = AndroidLogcatDispatcher.isMainThread ? "[MainThread]" : "[WorkThread] ";
-                timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + message;
-                ms_LogEntries.AppendLine(timedMessage);
+            var timedMessage = AndroidLogcatDispatcher.isMainThread ? "[MainThread]" : "[WorkThread] ";
+            timedMessage += DateTime.Now.ToString("HH:mm:ss.ffff") + " " + message;
 
-                const int MaxTriesToStripBuffer = 30;
-                for (int i = 0; i < MaxTriesToStripBuffer; i++)
-                {
-                    if (ms_LogEntries.Length < kMaxInternalLogBuffer)
-                        break;
-                    ms_LogEntries.Remove(0, Convert.ToString(ms_LogEntries).Split('\n').FirstOrDefault().Length + 1);
-                }
 
-                Console.WriteLine("[Logcat] " + timedMessage);
+            var rawEntries = timedMessage.Split(new[] { '\n' });
+            ListView.AddEntries(rawEntries);
 
-            }
-
+            Console.WriteLine("[Logcat] " + timedMessage);
             if (AndroidLogcatDispatcher.isMainThread && ms_Instance != null)
             {
-                ms_Instance.m_ScrollPosition = new Vector2(ms_Instance.m_ScrollPosition.x, float.MaxValue);
                 ms_Instance.Repaint();
             }
         }
@@ -68,7 +67,7 @@ namespace Unity.Android.Logcat
             ms_Instance = this;
         }
 
-        public void OnGUI()
+        internal void OnGUI()
         {
             if (!AndroidBridge.AndroidExtensionsInstalled)
             {
@@ -77,44 +76,34 @@ namespace Unity.Android.Logcat
             }
 
             GUILayout.BeginHorizontal();
-            int count;
-            lock (ms_LogEntries)
-            {
-                count = ms_LogEntries.Length;
-            }
-
-            GUILayout.Label("Entries: " + count);
+            GUILayout.Label($"Entries: {ListView.Entries.Count()} / {MaxInternalLogMessages}");
             if (GUILayout.Button("Clear"))
             {
-                lock (ms_LogEntries)
-                {
-                    ms_LogEntries = new StringBuilder();
-                }
+                ListView.ClearEntries();
             }
-
+            if (Unsupported.IsDeveloperMode())
+                DoDebuggingGUI();
             GUILayout.EndHorizontal();
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && e.button == 1)
-            {
-                var menuItems = new[] { new GUIContent("Copy All") };
-                EditorUtility.DisplayCustomMenu(new Rect(e.mousePosition.x, e.mousePosition.y, 0, 0),
-                    menuItems.ToArray(), -1, MenuSelection, null);
-            }
+            GUI.Box(GUILayoutUtility.GetLastRect(), GUIContent.none, EditorStyles.helpBox);
 
-            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, true, true);
-            GUILayout.TextArea(ms_LogEntries.ToString(), AndroidLogcatStyles.internalLogStyle,
-                GUILayout.ExpandHeight(true));
-            GUILayout.EndScrollView();
+            if (ListView.OnGUI())
+                Repaint();
         }
 
-        private void MenuSelection(object userData, string[] options, int selected)
+        void DoDebuggingGUI()
         {
-            switch (selected)
+            var entryCount = 1000;
+            GUILayout.Label("Debugging Options:");
+            if (GUILayout.Button($"Add {entryCount} entries"))
             {
-                // Copy All
-                case 0:
-                    EditorGUIUtility.systemCopyBuffer = ms_LogEntries.ToString();
-                    break;
+                const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                var random = new System.Random(0);
+                for (int i = 0; i < entryCount; i++)
+                {
+                    var randomText = new String(Enumerable.Repeat(chars, UnityEngine.Random.Range(50, 100))
+                        .Select(s => s[random.Next(s.Length)]).ToArray());
+                    Log($"[{i}] {randomText}");
+                }
             }
         }
     }

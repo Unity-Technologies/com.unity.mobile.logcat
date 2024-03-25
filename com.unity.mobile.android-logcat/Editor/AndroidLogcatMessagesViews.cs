@@ -507,16 +507,12 @@ namespace Unity.Android.Logcat
             GUI.color = orgColor;
         }
 
-        private static bool HasCtrlOrCmdModifier(Event e)
-        {
-            return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
-        }
 
         private void DoMouseSelection(Event e, int logEntryIndex, bool isLogEntrySelected, int keyboardControlId)
         {
             var entry = FilteredEntries[logEntryIndex];
             var selectedEntries = GetSelectedFilteredEntries(out var minSelectedIndex, out var maxSelectedIndex);
-            if (HasCtrlOrCmdModifier(e))
+            if (e.HasCtrlOrCmdModifier())
             {
                 entry.Selected = !entry.Selected;
             }
@@ -732,7 +728,7 @@ namespace Unity.Android.Logcat
             var e = Event.current;
             if (e.type == EventType.KeyDown)
             {
-                bool hasCtrlOrCmd = HasCtrlOrCmdModifier(e);
+                bool hasCtrlOrCmd = e.HasCtrlOrCmdModifier();
                 bool hasShift = (e.modifiers & EventModifiers.Shift) != 0;
                 switch (e.keyCode)
                 {

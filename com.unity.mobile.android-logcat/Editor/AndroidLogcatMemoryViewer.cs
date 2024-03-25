@@ -45,7 +45,6 @@ namespace Unity.Android.Logcat
         private Material m_Material;
 
         const int kMaxEntries = 300;
-        const UInt64 k16MB = 16 * 1000 * 1000;
         const float kMinMemoryWindowHeight = 255.0f;
         const float kMaxMemoryWindowHeight = 400.0f;
         const float kMinMemoryWindowWidth = 170.0f;
@@ -54,7 +53,6 @@ namespace Unity.Android.Logcat
         private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
         private int m_CurrentEntry = 0;
         private int m_EntryCount = 0;
-        static readonly int kMemoryGroupCount = Enum.GetValues(typeof(MemoryGroup)).Length;
         private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
         private int m_SelectedEntry;
@@ -83,6 +81,7 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_ExpectedDevice;
         private ProcessInformation m_ExpectedProcessFromRequest;
         private AndroidLogcatMemoryViewerState m_State;
+        private string m_LastError;
 
         private MemoryType[] GetOrderMemoryTypes()
         {
@@ -214,13 +213,15 @@ namespace Unity.Android.Logcat
             if (adb == null)
                 throw new NullReferenceException("ADB interface has to be valid");
 
-            var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageName;
+            // Note: Using package name sometimes fails to dump memory, that's why we use process id
+            //       Also using process id you can query memory from system apps which are not packages.
+            var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageProcessId;
             AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
 
             string outputMsg = string.Empty;
             try
             {
-                outputMsg = adb.Run(new[] { cmd }, "Failed to query memory for " + workInput.packageName);
+                outputMsg = adb.Run(new[] { cmd }, $"Failed to query memory for {workInput.packageName} (PID = {workInput.packageProcessId}");
             }
             catch (Exception ex)
             {
@@ -309,10 +310,12 @@ namespace Unity.Android.Logcat
             var stats = AllocateMemoryStatistics();
             try
             {
+                m_LastError = string.Empty;
                 stats.Parse(memoryResult.contents);
             }
             catch (Exception ex)
             {
+                m_LastError = ex.Message;
                 stats.Clear();
                 AndroidLogcatInternalLog.Log(ex.Message);
             }
@@ -433,6 +436,14 @@ namespace Unity.Android.Logcat
 
             if (m_ExpectedProcessFromRequest == null)
                 EditorGUI.HelpBox(size, "Select a package", MessageType.Info);
+            else if (!string.IsNullOrEmpty(m_LastError))
+            {
+                var trimmed = m_LastError;
+                const int maxErrorLength = 100;
+                if (trimmed.Length > maxErrorLength)
+                    trimmed = trimmed.Substring(0, maxErrorLength) + "...";
+                EditorGUI.HelpBox(size, trimmed, MessageType.Error);
+            }
 
             GUILayout.EndVertical();
 

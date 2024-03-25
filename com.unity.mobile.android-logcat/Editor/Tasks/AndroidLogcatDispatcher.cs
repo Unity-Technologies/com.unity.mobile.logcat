@@ -64,7 +64,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Update -= IntegrateMainThread;
             m_Running = false;
             m_AutoResetEvent.Set();
-            if (!m_FinishedEvent.WaitOne(1000))
+            if (!m_FinishedEvent.WaitOne(5000))
                 throw new Exception("Time out while waiting for android logcat dispatcher to exit.");
 
             lock (m_AsyncTaskQueue)
@@ -94,10 +94,10 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log("Worker thread started");
             Profiler.BeginThreadProfiling("AndroidLogcat", "Dispatcher");
 
-            while (m_AutoResetEvent.WaitOne() && m_Running)
+            while (m_Running && m_AutoResetEvent.WaitOne())
             {
                 bool remainingOperations = true;
-                while (remainingOperations)
+                while (m_Running && remainingOperations)
                 {
                     AsyncTask task = null;
                     lock (m_AsyncTaskQueue)
@@ -129,11 +129,21 @@ namespace Unity.Android.Logcat
                         }
                         catch (Exception ex)
                         {
-                            AndroidLogcatInternalLog.Log("\nERROR while invoking async operation: \n" + ex.Message);
+                            AndroidLogcatInternalLog.Log($"\nERROR while invoking async operation (Running={m_Running}: \n{ex.GetType().FullName}\n{ex.Message}");
+                            if (ex is ThreadAbortException)
+                            {
+                                FinalizeWorkerThread();
+                                throw;
+                            }
                         }
                     }
                 }
             }
+            FinalizeWorkerThread();
+        }
+
+        private void FinalizeWorkerThread()
+        {
             AndroidLogcatInternalLog.Log("Worker thread exited");
             Profiler.EndThreadProfiling();
             m_FinishedEvent.Set();

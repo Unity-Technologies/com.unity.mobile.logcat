@@ -54,7 +54,8 @@ namespace Unity.Android.Logcat
         internal Priority GetTagPriority(string tag)
         {
             var output = GetTagPriorityAsString(tag);
-            if (string.IsNullOrEmpty(output))
+            // Note: output can be just \r\n (Happened on Google Pixel 2 Android 10)
+            if (string.IsNullOrEmpty(output) || string.IsNullOrEmpty(output.Trim()))
                 return Priority.Verbose;
 
             if (Enum.TryParse(output, true, out Priority priority))
