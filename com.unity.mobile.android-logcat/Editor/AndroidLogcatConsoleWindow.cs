@@ -243,7 +243,7 @@ namespace Unity.Android.Logcat
                     IAndroidLogcatDevice selectedDevice;
                     ProcessInformation selectedProcess;
                     GetDeviceAndProcessFromSavedState(out selectedDevice, out selectedProcess);
-                    if (selectedDevice == null)
+                    if (selectedDevice == null || selectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
                         selectedDevice = deviceQuery.FirstConnectedDevice;
                     if (selectedDevice != null)
                     {
