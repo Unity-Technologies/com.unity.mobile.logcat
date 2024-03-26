@@ -1,14 +1,12 @@
 using System.Collections.Generic;
-using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatActivityManager
     {
         internal virtual void StartOrResumePackage(string packageName, string activityName = null) { }
-
         internal virtual void StopPackage(string packageName) { }
-
+        internal virtual void StopProcess(int processId) { }
         internal virtual void CrashPackage(string packageName) { }
         internal virtual void CrashProcess(int processId) { }
         internal virtual void SendTrimMemory(int processId, AndroidLogcatSendTrimMemoryUsage usage) { }
@@ -76,6 +74,13 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args, $"Failed to stop package '{packageName}'");
+        }
+
+        internal override void StopProcess(int processId)
+        {
+            var packageName = AndroidLogcatUtilities.GetProcessNameFromPid(m_ADB, m_DeviceId, processId);
+            if (!string.IsNullOrEmpty(packageName))
+                StopPackage(packageName);
         }
 
         internal override void CrashPackage(string packageName)

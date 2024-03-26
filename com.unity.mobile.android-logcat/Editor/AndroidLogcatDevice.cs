@@ -82,7 +82,7 @@ namespace Unity.Android.Logcat
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
         internal virtual void UninstallPackage(string packageName) { }
-
+        internal virtual void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
         internal bool SupportsFilteringByPid
@@ -431,6 +431,12 @@ namespace Unity.Android.Logcat
             m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
         }
 
+        internal override void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE)
+        {
+            var packageName = AndroidLogcatUtilities.GetProcessNameFromPid(m_ADB, this, processId);
+            if (!string.IsNullOrEmpty(packageName))
+                KillProcess(packageName, processId, signal);
+        }
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
         {
