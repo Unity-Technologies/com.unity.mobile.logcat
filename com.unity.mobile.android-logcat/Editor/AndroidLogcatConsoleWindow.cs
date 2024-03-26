@@ -579,7 +579,7 @@ namespace Unity.Android.Logcat
             // * Package defined from player settings
             // * Package which is from top activity on phone and if it's not the one from player settings
             var displayName = SelectedProcess != null && SelectedProcess.processId != 0 ? SelectedProcess.DisplayName : "No Filter";
-            GUILayout.Label(new GUIContent(displayName, "Select pacakge name"), AndroidLogcatStyles.toolbarPopup);
+            GUILayout.Label(new GUIContent(displayName, "Select package name"), AndroidLogcatStyles.toolbarPopup);
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
