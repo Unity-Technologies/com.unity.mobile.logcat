@@ -598,7 +598,7 @@ namespace Unity.Android.Logcat
                     contextMenu.AddSplitter();
                     foreach (var usage in AndroidLogcatSendTrimMemoryUsage.All)
                     {
-                        contextMenu.Add(MessagesContextMenu.SendTrimMemory, $"Activity Manager (pid = '{processId}')/Send Trim Memory/{usage.DisplayName}", false, true,
+                        contextMenu.Add(MessagesContextMenu.SendTrimMemory, $"Activity Manager (pid = '{processId}')/Send Trim Memory/{usage.DisplayName}", false, IsLogcatConnected,
                             new KeyValuePair<int, AndroidLogcatSendTrimMemoryUsage>(processId, usage));
                     }
                 }
