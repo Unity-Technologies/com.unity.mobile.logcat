@@ -594,6 +594,13 @@ namespace Unity.Android.Logcat
                 {
                     contextMenu.AddSplitter();
                     contextMenu.Add(MessagesContextMenu.FilterByProcessId, $"Filter by process id '{processId}'", false, IsLogcatConnected);
+
+                    contextMenu.AddSplitter();
+                    foreach (var usage in AndroidLogcatSendTrimMemoryUsage.All)
+                    {
+                        contextMenu.Add(MessagesContextMenu.SendTrimMemory, $"Activity Manager (pid = '{processId}')/Send Trim Memory/{usage.DisplayName}", false, true,
+                            new KeyValuePair<int, AndroidLogcatSendTrimMemoryUsage>(processId, usage));
+                    }
                 }
             }
             else
@@ -640,6 +647,12 @@ namespace Unity.Android.Logcat
                 // Filter by process id
                 case MessagesContextMenu.FilterByProcessId:
                     FilterByProcessId(contextMenuUserData.TagProcessIdEntry.processId);
+                    break;
+                case MessagesContextMenu.SendTrimMemory:
+                    {
+                        var data = (KeyValuePair<int, AndroidLogcatSendTrimMemoryUsage>)item.UserData;
+                        m_Runtime.DeviceQuery.SelectedDevice.ActivityManager.SendTrimMemory(data.Key, data.Value);
+                    }
                     break;
             }
         }

@@ -10,8 +10,13 @@ namespace Unity.Android.Logcat
         internal virtual void StopPackage(string packageName) { }
 
         internal virtual void CrashPackage(string packageName) { }
+        internal virtual void SendTrimMemory(int processId, AndroidLogcatSendTrimMemoryUsage usage) { }
     }
 
+    /// <summary>
+    /// Expose Activity Manager commands
+    /// For full list do adb shell am help
+    /// </summary>
     internal class AndroidLogcatActivityManager : IAndroidLogcatActivityManager
     {
         AndroidBridge.ADB m_ADB;
@@ -86,6 +91,23 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args, $"Failed to crash package '{packageName}'");
+        }
+
+        internal override void SendTrimMemory(int processId, AndroidLogcatSendTrimMemoryUsage usage)
+        {
+            var args = new[]
+            {
+                "-s",
+                m_DeviceId,
+                "shell",
+                "am",
+                "send-trim-memory",
+                processId.ToString(),
+                usage.Value
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to send-trim-memory {processId} {usage.Value}");
         }
     }
 }
