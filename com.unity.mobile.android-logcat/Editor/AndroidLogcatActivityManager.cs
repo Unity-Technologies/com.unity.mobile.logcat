@@ -10,6 +10,7 @@ namespace Unity.Android.Logcat
         internal virtual void StopPackage(string packageName) { }
 
         internal virtual void CrashPackage(string packageName) { }
+        internal virtual void CrashProcess(int processId) { }
         internal virtual void SendTrimMemory(int processId, AndroidLogcatSendTrimMemoryUsage usage) { }
     }
 
@@ -91,6 +92,22 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args, $"Failed to crash package '{packageName}'");
+        }
+
+        internal override void CrashProcess(int processId)
+        {
+            var args = new[]
+            {
+                "-s",
+                m_DeviceId,
+                "shell",
+                "am",
+                "crash",
+                processId.ToString()
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to crash process '{processId}'");
         }
 
         internal override void SendTrimMemory(int processId, AndroidLogcatSendTrimMemoryUsage usage)

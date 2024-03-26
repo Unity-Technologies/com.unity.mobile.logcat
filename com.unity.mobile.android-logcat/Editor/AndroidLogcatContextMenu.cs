@@ -14,6 +14,7 @@ namespace Unity.Android.Logcat
         AddTag,
         RemoveTag,
         FilterByProcessId,
+        CrashProcess,
         SendTrimMemory
     }
 
