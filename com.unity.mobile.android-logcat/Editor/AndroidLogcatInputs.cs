@@ -573,17 +573,17 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(new GUIContent("Start",
                 "Start package using 'adb shell monkey -p <packlage> -c android.intent.category.LAUNCHER 1'"), options))
             {
-                device.StartOrResumePackage(settings.TargetProcess.name);
+                device.ActivityManager.StartOrResumePackage(settings.TargetProcess.name);
                 return true;
             }
             if (GUILayout.Button(new GUIContent("Force Stop", "Stop package using 'adb shell am force-stop <package>'"), options))
             {
-                device.StopPackage(settings.TargetProcess.name);
+                device.ActivityManager.StopPackage(settings.TargetProcess.name);
                 return true;
             }
             if (GUILayout.Button(new GUIContent("Crash", "Crash package using 'adb shell am crash <package>'"), options))
             {
-                device.CrashPackage(settings.TargetProcess.name);
+                device.ActivityManager.CrashPackage(settings.TargetProcess.name);
                 return true;
             }
 
