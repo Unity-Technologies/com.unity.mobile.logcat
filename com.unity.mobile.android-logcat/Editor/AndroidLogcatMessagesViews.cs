@@ -600,7 +600,7 @@ namespace Unity.Android.Logcat
                     var prefix = $"Process Manager (pid = '{processId}')/";
                     foreach (var signal in (PosixSignal[])Enum.GetValues(typeof(PosixSignal)))
                     {
-                        contextMenu.Add(MessagesContextMenu.KillProcess, $"{prefix}Kill with signal/{signal} ({(int)signal})", false, IsLogcatConnected,
+                        contextMenu.Add(MessagesContextMenu.SendUnixSignal, $"{prefix}Send Unix signal/{signal} ({(int)signal})", false, IsLogcatConnected,
                             new KeyValuePair<int, PosixSignal>(processId, signal));
                     }
 
@@ -659,7 +659,7 @@ namespace Unity.Android.Logcat
                 case MessagesContextMenu.FilterByProcessId:
                     FilterByProcessId(contextMenuUserData.TagProcessIdEntry.processId);
                     break;
-                case MessagesContextMenu.KillProcess:
+                case MessagesContextMenu.SendUnixSignal:
                     {
                         var data = (KeyValuePair<int, PosixSignal>)item.UserData;
                         m_Runtime.DeviceQuery.SelectedDevice.KillProcess(data.Key, data.Value);
