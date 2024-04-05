@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Improve internal log to handle a large amount of messages
  - Fix hang with logcat dispatcher during domain reload
  - Fix issue where MemoryWindow would fail to query memory stats using package name, it will use process id instead now.
+ - Added extra application controls which you can use to crash the application or send a trim memory event.
  
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
