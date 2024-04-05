@@ -65,7 +65,7 @@ You can force application to quit in the following ways:
 
 | **Type** | **Description**                                              |
 | - | - |
-| Kill with signal | Sends a posix signal to the process using command **adb shell run-as <package_name> kill -s <posix_signal> <process_id>**. You can read about about posix signal [here](https://man7.org/linux/man-pages/man7/signal.7.html).<br>You can use **SIGSEGV** signal to test Unity Android [crash handler](https://docs.unity3d.com/Manual/android-handle-crashes.html). |
+| Kill with signal | Sends a posix signal to the process using command **adb shell run-as <package_name> kill -s <posix_signal> <process_id>**. You can read about about posix signals [here](https://man7.org/linux/man-pages/man7/signal.7.html).<br>You can use **SIGSEGV** signal to test Unity Android [crash handler](https://docs.unity3d.com/Manual/android-handle-crashes.html). |
 | Crash | Induce a VM crash in the specified package or process using command **adb shell am crash <process_id>**. |
 | Force Stop | Completely stop the given application package using command **adb shell am force-stop <package_name>**. The application is stopped without having a chance to react.|
 
