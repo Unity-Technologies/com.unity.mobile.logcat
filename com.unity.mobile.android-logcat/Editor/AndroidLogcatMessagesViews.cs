@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
             public void Reset()
             {
                 ScrollToItemWhileInDisabled = -1;
-                PerformScrollWhileInAuto = false;
+                PerformScrollWhileInAuto = true;
             }
         }
         internal enum Column
