@@ -56,6 +56,29 @@ The message log contains functionality that helps you to navigate through and sh
 | **Save**     | To save the selected logs to a file on your computer, right-click the selected messages and select **Save**. |
 | **Navigate** | To navigate through message logs using the keyboard, use the arrow keys. |
 
+### Additional controls
+
+## Forcing application shutdown
+![](images/android-logcat-app-shutdown.png)
+
+You can force application to quit in the following ways:
+
+| **Type** | **Description**                                              |
+| - | - |
+| Kill with signal | Sends a posix signal to the process using command **adb shell run-as <package_name> kill -s <posix_signal> <process_id>**. You can read about about posix signal [here](https://man7.org/linux/man-pages/man7/signal.7.html).<br>You can use **SIGSEGV** signal to test Unity Android [crash handler](https://docs.unity3d.com/Manual/android-handle-crashes.html). |
+| Crash | Induce a VM crash in the specified package or process using command **adb shell am crash <process_id>**. |
+| Force Stop | Completely stop the given application package using command **adb shell am force-stop <package_name>**. The application is stopped without having a chance to react.|
+
+## Trim Memory signal
+![](images/android-logcat-app-trim-memory.png)
+
+Send a memory trim event to a process using command **adb shell am send-trim-memory <process_id> <trim_level>.
+
+For example, by using **RUNNING_CRITICAL** trim level you can test the following Unity APIs:
+* [Application.lowMemory](https://docs.unity3d.com/ScriptReference/Application-lowMemory.html)
+* [Application.memoryUsageChanged](https://docs.unity3d.com/ScriptReference/Application-memoryUsageChanged.html)
+
+
 ## Additional resources
 
 * [Customize message log columns](android-logcat-window-message-log-customize.md)
