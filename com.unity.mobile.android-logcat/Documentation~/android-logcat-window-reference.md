@@ -72,7 +72,7 @@ You can force application to quit in the following ways:
 ## Trim Memory signal
 ![](images/android-logcat-app-trim-memory.png)
 
-Send a memory trim event to a process using command **adb shell am send-trim-memory <process_id> <trim_level>.
+Send a memory trim event to a process using command **adb shell am send-trim-memory <process_id> <trim_level>**.
 
 For example, by using **RUNNING_CRITICAL** trim level you can test the following Unity APIs:
 * [Application.lowMemory](https://docs.unity3d.com/ScriptReference/Application-lowMemory.html)
