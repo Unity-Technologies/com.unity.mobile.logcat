@@ -45,6 +45,11 @@ public class MemoryAllocations : MonoBehaviour
         m_JavaClass = new AndroidJavaObject("com.unity3d.player.JavaMemory");
         if (m_JavaClass == null)
             throw new Exception("Failed to find com.unity3d.player.JavaMemory");
+
+        Application.lowMemory += () => Log("Application.lowMemory called");
+#if UNITY_2022_3_OR_NEWER
+        Application.memoryUsageChanged += (in ApplicationMemoryUsageChange usage) => Log($"Application.memoryUsageChanged called with usage: {usage.memoryUsage}");
+#endif
     }
 
     // Update is called once per frame
@@ -52,9 +57,14 @@ public class MemoryAllocations : MonoBehaviour
     {
     }
 
+    private static void Log(string message)
+    {
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+    }
+
     private void OnDisable()
     {
-        Debug.Log("Cleaning up");
+        Log("Cleaning up");
         ClearNativeMemory();
     }
 
@@ -78,7 +88,7 @@ public class MemoryAllocations : MonoBehaviour
     private void AllocateJavaMemory(int bytes)
     {
         var result = m_JavaClass.CallStatic<int>("allocateMemory", bytes);
-        Debug.Log("Total java memory allocated " + result);
+        Log("Total java memory allocated " + result);
     }
 
     private void DeallocateJavaMemory()

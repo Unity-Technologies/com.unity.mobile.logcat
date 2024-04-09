@@ -8,6 +8,7 @@ namespace Unity.Android.Logcat
 {
     internal abstract class IAndroidLogcatDevice
     {
+        internal IAndroidLogcatActivityManager m_ActivityManager;
         internal static Regex kNetworkDeviceRegex = new Regex(@"^.*:\d{1,5}$");
 
         private DeviceState m_State;
@@ -30,6 +31,8 @@ namespace Unity.Android.Logcat
         // 2) 'logcat -v year'
         // 3) '--regex'
         internal static readonly Version kAndroidVersion70 = new Version(7, 0);
+
+        internal IAndroidLogcatActivityManager ActivityManager => m_ActivityManager;
 
         internal abstract int APILevel { get; }
 
@@ -78,14 +81,8 @@ namespace Unity.Android.Logcat
 
         internal virtual void SendTextAsync(AndroidLogcatDispatcher dispatcher, string text) { }
 
-        internal virtual void StartOrResumePackage(string packageName, string activityName = null) { }
-
-        internal virtual void StopPackage(string packageName) { }
-
-        internal virtual void CrashPackage(string packageName) { }
-
         internal virtual void UninstallPackage(string packageName) { }
-
+        internal virtual void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
         internal bool SupportsFilteringByPid
@@ -116,9 +113,11 @@ namespace Unity.Android.Logcat
             m_State = state;
         }
 
-        internal IAndroidLogcatDevice()
+        internal IAndroidLogcatDevice(IAndroidLogcatActivityManager activityManager)
         {
             m_State = DeviceState.Unknown;
+            m_ActivityManager = activityManager;
+
         }
     }
 
@@ -132,6 +131,7 @@ namespace Unity.Android.Logcat
 
 
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
+            : base(new AndroidLogcatActivityManager(adb, deviceId))
         {
             m_ADB = adb;
             m_Id = deviceId;
@@ -417,72 +417,6 @@ namespace Unity.Android.Logcat
             false);
         }
 
-        internal override void StartOrResumePackage(string packageName, string activityName = null)
-        {
-            var args = new List<string>();
-            args.AddRange(new[]
-            {
-                "-s",
-                Id,
-                "shell",
-             });
-
-            if (activityName == null)
-            {
-                args.AddRange(new[]
-                {
-                    "monkey",
-                    $"-p {packageName}",
-                    "-c android.intent.category.LAUNCHER 1"
-                 });
-            }
-            else
-            {
-                args.AddRange(new[]
-                {
-                    "am",
-                    "start",
-                    $"-n \"{packageName}/{activityName}\""
-                });
-            }
-
-            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
-
-            m_ADB.Run(args.ToArray(), $"Failed to start package '{packageName}'");
-        }
-
-        internal override void StopPackage(string packageName)
-        {
-            var args = new[]
-            {
-                "-s",
-                Id,
-                "shell",
-                "am",
-                "force-stop",
-                packageName
-             };
-            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
-
-            m_ADB.Run(args, $"Failed to stop package '{packageName}'");
-        }
-
-        internal override void CrashPackage(string packageName)
-        {
-            var args = new[]
-            {
-                "-s",
-                Id,
-                "shell",
-                "am",
-                "crash",
-                packageName
-             };
-            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
-
-            m_ADB.Run(args, $"Failed to crash package '{packageName}'");
-        }
-
         internal override void UninstallPackage(string packageName)
         {
             var args = new[]
@@ -497,6 +431,12 @@ namespace Unity.Android.Logcat
             m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
         }
 
+        internal override void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE)
+        {
+            var packageName = AndroidLogcatUtilities.GetProcessNameFromPid(m_ADB, this, processId);
+            if (!string.IsNullOrEmpty(packageName))
+                KillProcess(packageName, processId, signal);
+        }
 
         internal override void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE)
         {

@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
             public void Reset()
             {
                 ScrollToItemWhileInDisabled = -1;
-                PerformScrollWhileInAuto = false;
+                PerformScrollWhileInAuto = true;
             }
         }
         internal enum Column
@@ -594,6 +594,24 @@ namespace Unity.Android.Logcat
                 {
                     contextMenu.AddSplitter();
                     contextMenu.Add(MessagesContextMenu.FilterByProcessId, $"Filter by process id '{processId}'", false, IsLogcatConnected);
+
+                    contextMenu.AddSplitter();
+
+                    var prefix = $"Process Manager (pid = '{processId}')/";
+                    foreach (var signal in (PosixSignal[])Enum.GetValues(typeof(PosixSignal)))
+                    {
+                        contextMenu.Add(MessagesContextMenu.SendUnixSignal, $"{prefix}Send Unix signal/{signal} ({(int)signal})", false, IsLogcatConnected,
+                            new KeyValuePair<int, PosixSignal>(processId, signal));
+                    }
+
+                    contextMenu.Add(MessagesContextMenu.CrashProcess, $"{prefix}Crash", false, IsLogcatConnected, processId);
+                    contextMenu.Add(MessagesContextMenu.ForceStop, $"{prefix}Force Stop", false, IsLogcatConnected, processId);
+                    contextMenu.Add(default, prefix);
+                    foreach (var usage in AndroidLogcatSendTrimMemoryUsage.All)
+                    {
+                        contextMenu.Add(MessagesContextMenu.SendTrimMemory, $"{prefix}Send Trim Memory/{usage.DisplayName}", false, IsLogcatConnected,
+                            new KeyValuePair<int, AndroidLogcatSendTrimMemoryUsage>(processId, usage));
+                    }
                 }
             }
             else
@@ -640,6 +658,24 @@ namespace Unity.Android.Logcat
                 // Filter by process id
                 case MessagesContextMenu.FilterByProcessId:
                     FilterByProcessId(contextMenuUserData.TagProcessIdEntry.processId);
+                    break;
+                case MessagesContextMenu.SendUnixSignal:
+                    {
+                        var data = (KeyValuePair<int, PosixSignal>)item.UserData;
+                        m_Runtime.DeviceQuery.SelectedDevice.KillProcess(data.Key, data.Value);
+                    }
+                    break;
+                case MessagesContextMenu.CrashProcess:
+                    m_Runtime.DeviceQuery.SelectedDevice.ActivityManager.CrashProcess((int)item.UserData);
+                    break;
+                case MessagesContextMenu.ForceStop:
+                    m_Runtime.DeviceQuery.SelectedDevice.ActivityManager.StopProcess((int)item.UserData);
+                    break;
+                case MessagesContextMenu.SendTrimMemory:
+                    {
+                        var data = (KeyValuePair<int, AndroidLogcatSendTrimMemoryUsage>)item.UserData;
+                        m_Runtime.DeviceQuery.SelectedDevice.ActivityManager.SendTrimMemory(data.Key, data.Value);
+                    }
                     break;
             }
         }

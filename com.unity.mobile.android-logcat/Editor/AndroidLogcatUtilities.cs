@@ -178,10 +178,16 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return string.Empty;
 
+            return GetProcessNameFromPid(adb, device.Id, processId);
+        }
+
+        public static string GetProcessNameFromPid(AndroidBridge.ADB adb, string deviceId, int processId)
+        {
+
             try
             {
                 // Note: Flag -o doesn't work on Android 5.0 devices (tested on LGE LG-D620, 5.0.2)
-                string cmd = string.Format("-s {0} shell ps -p {1}", device.Id, processId);
+                string cmd = string.Format("-s {0} shell ps -p {1}", deviceId, processId);
 
                 AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
                 var output = adb.Run(new[] { cmd }, "Unable to get the process name for pid " + processId);

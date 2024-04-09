@@ -13,7 +13,11 @@ namespace Unity.Android.Logcat
         SaveSelection,
         AddTag,
         RemoveTag,
-        FilterByProcessId
+        FilterByProcessId,
+        SendUnixSignal,
+        CrashProcess,
+        ForceStop,
+        SendTrimMemory
     }
 
     internal enum ToolsContextMenu
@@ -41,13 +45,16 @@ namespace Unity.Android.Logcat
             public string Name { get; }
             public bool Selected { get; }
             public bool Enabled { get; }
+            public object UserData { get; }
 
-            public MenuItemData(T item, string name, bool selected, bool enabled)
+            public MenuItemData(T item, string name, bool selected, bool enabled, object userData)
             {
                 Item = item;
                 Name = name;
                 Selected = selected;
                 Enabled = enabled;
+                UserData = userData;
+
             }
         }
 
@@ -55,9 +62,9 @@ namespace Unity.Android.Logcat
 
         private List<MenuItemData> m_Items = new List<MenuItemData>();
 
-        public void Add(T item, string name, bool selected = false, bool enabled = true)
+        public void Add(T item, string name, bool selected = false, bool enabled = true, object userData = null)
         {
-            m_Items.Add(new MenuItemData(item, name, selected, enabled));
+            m_Items.Add(new MenuItemData(item, name, selected, enabled, userData));
         }
 
         public void AddSplitter()

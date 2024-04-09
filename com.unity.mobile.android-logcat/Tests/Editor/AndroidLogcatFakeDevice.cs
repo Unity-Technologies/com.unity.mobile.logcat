@@ -44,6 +44,7 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     }
 
     internal AndroidLogcatFakeDevice(string deviceId)
+        : base(null)
     {
         m_DeviceId = deviceId;
     }

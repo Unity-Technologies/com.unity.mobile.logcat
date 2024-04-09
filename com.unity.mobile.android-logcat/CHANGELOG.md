@@ -4,13 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [1.4.1] - 2024-12-12
+## [1.4.1] - 2024-04-12
 ### Fixes & Improvements
- - Logcat package will now detect if logs with specific tag are disabled on the device (this was causing messages not to be displayed), and if so, will provide an information message providing a button to fix such behavior.
- - Fix issue with MemoryWindow, where active package would get lost during domain reload.
- - Improve internal log to handle a large amount of messages
- - Fix hang with logcat dispatcher during domain reload
- - Fix issue where MemoryWindow would fail to query memory stats using package name, it will use process id instead now.
+ - Logcat package now detects if the logs with a specific tag are disabled on a device (this was causing messages not to be displayed), and if so, displays a message with an option to fix such behavior.
+ - Fixed an issue with MemoryWindow, where active package would get lost during domain reload.
+ - Improved internal log to handle a large amount of messages.
+ - Fixed an issue where logcat dispatcher would stop responding during domain reload.
+ - Fixed an issue where MemoryWindow would fail to query memory stats using package name. It now uses process id instead.
+ - Added Process Manager control which you can use to terminate an application or send a trim memory event.
  
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
