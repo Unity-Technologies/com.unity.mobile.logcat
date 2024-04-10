@@ -352,13 +352,7 @@ namespace Unity.Android.Logcat
 
         private bool MatchTagsFilter(string tagInMsg)
         {
-            foreach (var tag in Tags)
-            {
-                if (tagInMsg.Equals(tag))
-                    return true;
-            }
-
-            return false;
+            return Tags.Contains(tagInMsg);
         }
 
         private LogcatEntry ParseLogEntry(Match m)

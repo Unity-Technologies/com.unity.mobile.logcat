@@ -249,9 +249,12 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         ShutdownRuntime();
     }
 
-    [TestCase("chromium", 2)]
-    [TestCase("chromiu", 0)]
-    public void FilteringTagWorks(string tag, int expectedEntryCount)
+    [TestCase(new string[] { "chromium" }, 2)]
+    [TestCase(new string[] { "chromiu" }, 0)]
+    [TestCase(new string[] { "" }, 0)]
+    // Note: Empty or null messages are skipped.
+    [TestCase(null, 2)]
+    public void FilteringTagWorks(string[] tags, int expectedEntryCount)
     {
         var messages = new[]
         {
@@ -267,7 +270,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         foreach (var device in kDevices)
         {
-            var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose, new FilterOptions(), new string[] { tag });
+            var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose, new FilterOptions(), tags);
             logcat.Start();
 
             SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
