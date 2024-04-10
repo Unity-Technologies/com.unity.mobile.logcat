@@ -354,7 +354,7 @@ namespace Unity.Android.Logcat
         {
             foreach (var tag in Tags)
             {
-                if (tagInMsg.Contains(tag))
+                if (tagInMsg.Equals(tag))
                     return true;
             }
 

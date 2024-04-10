@@ -99,7 +99,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     [TestCase(true, false)]
     [TestCase(false, false)]
     [TestCase(false, true)]
-    public void FilteringWorks(bool useRegularExpressions, bool matchCase)
+    public void FilteringTextWorks(bool useRegularExpressions, bool matchCase)
     {
         var messages = new[]
         {
@@ -244,6 +244,44 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
                 // Logcat was stopped, check that our filter still works
                 check.Value(entries);
             }
+        }
+
+        ShutdownRuntime();
+    }
+
+    [TestCase("chromium", 2)]
+    [TestCase("chromiu", 0)]
+    public void FilteringTagWorks(string tag, int expectedEntryCount)
+    {
+        var messages = new[]
+        {
+            @"10-25 14:27:56.862  2255  2255 I chromium: Help",
+            @"10-25 14:27:56.863  2255  2255 I chromium: .abc",
+            // Empty lines were reported by devices like LG with Android 5
+            @"",
+            null
+        };
+
+        InitRuntime();
+
+
+        foreach (var device in kDevices)
+        {
+            var logcat = new AndroidLogcat(m_Runtime, null, device, -1, Priority.Verbose, new FilterOptions(), new string[] { tag });
+            logcat.Start();
+
+            SupplyFakeMessages((AndroidLogcatFakeMessageProvider)logcat.MessageProvider, device, messages);
+
+            m_Runtime.OnUpdate();
+            var entries = logcat.FilteredEntries.Select(e => e.message).ToList();
+
+            Assert.AreEqual(expectedEntryCount, entries.Count);
+
+            logcat.Stop();
+
+            // Logcat was stopped, check that our filter still works
+            Assert.AreEqual(expectedEntryCount, entries.Count);
+
         }
 
         ShutdownRuntime();
