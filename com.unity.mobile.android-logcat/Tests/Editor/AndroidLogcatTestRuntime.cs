@@ -49,6 +49,21 @@ internal class AndroidLogcatRuntimeTestBase
 {
     protected AndroidLogcatTestRuntime m_Runtime;
 
+    protected class AutoRuntime : IDisposable
+    {
+        AndroidLogcatRuntimeTestBase m_Parent;
+        public AutoRuntime(AndroidLogcatRuntimeTestBase parent)
+        {
+            m_Parent = parent;
+            m_Parent.InitRuntime();
+        }
+
+        public void Dispose()
+        {
+            m_Parent.ShutdownRuntime();
+        }
+    }
+
     protected void Cleanup()
     {
         if (Directory.Exists("Tests"))

@@ -1,12 +1,9 @@
 using System;
-using System.Collections;
-using System.Diagnostics;
 using NUnit.Framework;
 using Unity.Android.Logcat;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using UnityEngine.TestTools;
 
 internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBase
 {
@@ -84,9 +81,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
     {
         foreach (var m in messages)
         {
-            if (m == null)
-                provider.SupplyFakeMessage(null);
-            else if (device.APILevel > 23)
+            if (device.APILevel > 23 && !string.IsNullOrEmpty(m))
                 provider.SupplyFakeMessage("1991-" + m);
             else
                 provider.SupplyFakeMessage(m);
@@ -215,7 +210,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             ),
         };
 
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
         foreach (var device in kDevices)
         {
             foreach (var check in checks)
@@ -246,7 +241,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             }
         }
 
-        ShutdownRuntime();
+
     }
 
     [TestCase(new string[] { "chromium" }, 2)]
@@ -265,7 +260,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             null
         };
 
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
 
         foreach (var device in kDevices)
@@ -287,7 +282,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         }
 
-        ShutdownRuntime();
+
     }
 
     [Test]
@@ -301,7 +296,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             @"10-25 14:27:56.863  2255  2255 I chromium: ABCDE",
         };
 
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose,
             new FilterOptions() { UseRegularExpressions = false, MatchCase = false },
@@ -369,7 +364,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
-        ShutdownRuntime();
+
     }
 
     [Test]
@@ -384,7 +379,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             null
         };
 
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose,
             new FilterOptions() { UseRegularExpressions = true },
@@ -395,18 +390,16 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
         m_Runtime.OnUpdate();
 
         logcat.FilterOptions.Filter = "PPP";
-        Assert.AreEqual(3, logcat.RawEntries.Count);
+        Assert.AreEqual(2, logcat.RawEntries.Count);
         Assert.AreEqual(0, logcat.FilteredEntries.Count);
         Assert.AreEqual(true, logcat.FilterOptions.UseRegularExpressions);
 
         logcat.FilterOptions.Filter = @"\P";
-        Assert.AreEqual(3, logcat.RawEntries.Count);
-        Assert.AreEqual(3, logcat.FilteredEntries.Count);
+        Assert.AreEqual(2, logcat.RawEntries.Count);
+        Assert.AreEqual(2, logcat.FilteredEntries.Count);
         Assert.AreEqual(true, logcat.FilterOptions.UseRegularExpressions);
 
         logcat.Stop();
-
-        ShutdownRuntime();
     }
 
     [Test]
@@ -419,7 +412,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             @"10-25 14:27:56.863  3  2255 I chromium: "
         };
 
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         foreach (var device in kDevices)
         {
@@ -469,13 +462,13 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             }
         }
 
-        ShutdownRuntime();
+
     }
 
     [Test]
     public void MessagesSettingsWork()
     {
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         m_Runtime.Settings.MaxCachedMessageCount = 20;
         m_Runtime.Settings.MaxDisplayedMessageCount = 20;
@@ -514,21 +507,21 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
-        ShutdownRuntime();
+
     }
 
     [Test]
     public void CanApplySettingsWithNullLogcat()
     {
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
         AndroidLogcatUtilities.ApplySettings(m_Runtime, null);
-        ShutdownRuntime();
+
     }
 
     [Test]
     public void MessageSelectionWorks()
     {
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         const int kMaxFilteredMessages = 20;
 
@@ -566,7 +559,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
-        ShutdownRuntime();
+
     }
 
     [Test]
@@ -578,7 +571,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             "bbb",
             "ccc"
         };
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
         logcat.Start();
@@ -608,7 +601,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
-        ShutdownRuntime();
+
     }
 
 
@@ -621,7 +614,7 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
             "bbb",
             "ccc"
         };
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         var logcat = new AndroidLogcat(m_Runtime, null, kDefaultDevice, -1, Priority.Verbose, new FilterOptions(), new string[] { });
         logcat.Start();
@@ -659,6 +652,6 @@ internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 
         logcat.Stop();
 
-        ShutdownRuntime();
+
     }
 }
