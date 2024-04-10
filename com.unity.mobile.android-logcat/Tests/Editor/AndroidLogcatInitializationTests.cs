@@ -2,7 +2,6 @@ using System;
 using NUnit.Framework;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 using UnityEngine;
 

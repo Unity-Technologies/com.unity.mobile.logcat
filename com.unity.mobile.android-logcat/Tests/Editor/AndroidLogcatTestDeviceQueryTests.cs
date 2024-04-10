@@ -18,7 +18,7 @@ class AndroidLogcatDeviceQueryTests : AndroidLogcatRuntimeTestBase
         m_UpdatedCount = 0;
         m_SelectedCount = 0;
         bool notUsed = true;
-        InitRuntime();
+        using var autoRuntime = new AutoRuntime(this);
 
         var query = (AndroidLogcatFakeDeviceQuery)m_Runtime.DeviceQuery;
         query.DeviceSelected += Query_DeviceSelected;
@@ -78,8 +78,6 @@ myandroid3 offline
 
         Assert.AreEqual(null, query.SelectedDevice);
         Assert.AreEqual(2, m_SelectedCount);
-
-        ShutdownRuntime();
     }
 
     private void Query_DevicesUpdated()

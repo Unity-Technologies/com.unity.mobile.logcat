@@ -52,15 +52,17 @@ internal class AndroidLogcatRuntimeTestBase
     protected class AutoRuntime : IDisposable
     {
         AndroidLogcatRuntimeTestBase m_Parent;
-        public AutoRuntime(AndroidLogcatRuntimeTestBase parent)
+        bool m_CleanUp;
+        public AutoRuntime(AndroidLogcatRuntimeTestBase parent, bool cleanup = true)
         {
             m_Parent = parent;
-            m_Parent.InitRuntime();
+            m_CleanUp = cleanup;
+            m_Parent.InitRuntime(m_CleanUp);
         }
 
         public void Dispose()
         {
-            m_Parent.ShutdownRuntime();
+            m_Parent.ShutdownRuntime(m_CleanUp);
         }
     }
 
@@ -70,7 +72,7 @@ internal class AndroidLogcatRuntimeTestBase
             Directory.Delete("Tests", true);
     }
 
-    protected void InitRuntime(bool cleanup = true)
+    protected void InitRuntime(bool cleanup)
     {
         if (m_Runtime != null)
             throw new Exception("Runtime was not shutdown by previous test?");
@@ -80,7 +82,7 @@ internal class AndroidLogcatRuntimeTestBase
         m_Runtime.Initialize();
     }
 
-    protected void ShutdownRuntime(bool cleanup = true)
+    protected void ShutdownRuntime(bool cleanup)
     {
         if (m_Runtime == null)
             throw new Exception("Runtime was not created?");
