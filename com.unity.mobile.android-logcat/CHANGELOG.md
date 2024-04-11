@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fixed an issue where logcat dispatcher would stop responding during domain reload.
  - Fixed an issue where MemoryWindow would fail to query memory stats using package name. It now uses process id instead.
  - Added Process Manager control which you can use to terminate an application or send a trim memory event.
+ - Fixed tag filtering, previously logcat would check if incoming_tag contains tag_in_filter, now it will perform incoming_tag equals tag_in_filter. That way it's easier to filter messages with tags which have the same begining.
  
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
