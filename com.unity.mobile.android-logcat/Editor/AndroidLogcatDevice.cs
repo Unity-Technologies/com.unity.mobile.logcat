@@ -250,8 +250,9 @@ namespace Unity.Android.Logcat
             if (m_Device == null || State != DeviceState.Connected)
                 return string.Empty;
 
-            var args = $"shell getprop log.tag.{tag}";
+            var args = $"-s {Id} shell getprop log.tag.{tag}";
             var output = m_ADB.Run(new[] { args }, $"Failed to get priority for tag '{tag}'");
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}\n{output}");
             return output;
         }
 
@@ -259,7 +260,8 @@ namespace Unity.Android.Logcat
         {
             if (m_Device == null || State != DeviceState.Connected)
                 return;
-            var args = $"shell setprop log.tag.{tag} {priority}";
+            var args = $"-s {Id} shell setprop log.tag.{tag} {priority}";
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
             m_ADB.Run(new[] { args }, $"Failed to set priority '{priority}' for tag '{tag}'");
         }
 
