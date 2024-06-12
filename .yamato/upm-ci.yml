@@ -56,6 +56,8 @@ pack:
 {% for module_support in test_module_support %}
 
 test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
+  metadata:
+    Job Maintainers: Hello this is my custom description
   name : Test {{ editor.version }} on {{ platform.name }} with install '{{ module_support.name }}'
   agent:
     type: {{ platform.type }}
