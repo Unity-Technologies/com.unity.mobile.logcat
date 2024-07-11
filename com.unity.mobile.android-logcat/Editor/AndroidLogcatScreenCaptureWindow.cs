@@ -300,7 +300,7 @@ namespace Unity.Android.Logcat
                 {
                     try
                     {
-                        m_ImagePath[(int)m_Mode] = path;
+                        m_ImagePath[(int)m_Mode] = Path.GetDirectoryName(path);
                         File.Copy(TemporaryPath, path, true);
                     }
                     catch (Exception ex)
