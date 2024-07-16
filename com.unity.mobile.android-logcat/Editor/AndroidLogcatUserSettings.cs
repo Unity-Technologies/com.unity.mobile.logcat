@@ -46,6 +46,39 @@ namespace Unity.Android.Logcat
             internal string DisplayId;
         }
 
+        [Serializable]
+        internal class ScreenCaptureSettings
+        {
+            [SerializeField]
+            internal AndroidLogcatScreenCaptureWindow.Mode Mode;
+            [SerializeField]
+            private string[] m_LastSaveLocation;
+
+            internal void SetLastSaveLocation(AndroidLogcatScreenCaptureWindow.Mode mode, string path)
+            {
+                if (m_LastSaveLocation == null || (int)mode >= m_LastSaveLocation.Length)
+                    ResetLastSaveLocation();
+                m_LastSaveLocation[(int)mode] = path;
+            }
+
+            internal string GetLastSaveLocation(AndroidLogcatScreenCaptureWindow.Mode mode)
+            {
+                if (m_LastSaveLocation == null || (int)mode >= m_LastSaveLocation.Length)
+                    ResetLastSaveLocation();
+                return m_LastSaveLocation[(int)mode];
+            }
+
+            internal void ResetLastSaveLocation()
+            {
+                var length = Enum.GetValues(typeof(AndroidLogcatScreenCaptureWindow.Mode)).Length;
+                var defaultDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+                m_LastSaveLocation = new string[length];
+                for (int i = 0; i < m_LastSaveLocation.Length; i++)
+                    m_LastSaveLocation[i] = defaultDirectory;
+
+            }
+        }
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -67,6 +100,8 @@ namespace Unity.Android.Logcat
         private List<ReordableListItem> m_SymbolPaths;
         [SerializeField]
         private VideoSettings m_CaptureVideoSettings;
+        [SerializeField]
+        private ScreenCaptureSettings m_ScreenCaptureSettings;
         [SerializeField]
         private InputSettings m_InputSettings;
 
@@ -128,6 +163,7 @@ namespace Unity.Android.Logcat
         }
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
+        public ScreenCaptureSettings CaptureSettings { set => m_ScreenCaptureSettings = value; get => m_ScreenCaptureSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
 
         public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
@@ -301,6 +337,7 @@ namespace Unity.Android.Logcat
             m_FilterOptions = new FilterOptions();
 
             ResetCaptureVideoSettings();
+            ResetScreenCaptureSettings();
 
             m_InputSettings = new InputSettings()
             {
@@ -324,6 +361,15 @@ namespace Unity.Android.Logcat
                 VideoSizeY = 720,
                 DisplayId = string.Empty
             };
+        }
+
+        internal void ResetScreenCaptureSettings()
+        {
+            m_ScreenCaptureSettings = new ScreenCaptureSettings
+            {
+                Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot
+            };
+            m_ScreenCaptureSettings.ResetLastSaveLocation();
         }
 
         internal static AndroidLogcatUserSettings Load(string path)

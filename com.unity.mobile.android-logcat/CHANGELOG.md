@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-01-01
+### Fixes & Improvements
+ - Fix Screen Capture window not saving last image/video save location correctly between Unity domain reloads or launches, previously it would always reset to Unity project directory.
+
 ## [1.4.2] - 2024-05-13
 ### Fixes & Improvements
  - Fix issue, where logcat package would throw an error if there are multiple devices connected.

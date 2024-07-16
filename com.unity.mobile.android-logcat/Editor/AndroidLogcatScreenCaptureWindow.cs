@@ -22,17 +22,11 @@ namespace Unity.Android.Logcat
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
-        private enum Mode
+        internal enum Mode
         {
             Screenshot,
             Video
         }
-
-        [SerializeField]
-        private string[] m_ImagePath;
-        [SerializeField]
-        private Mode m_Mode;
-
         private AndroidLogcatRuntimeBase m_Runtime;
 
         private const int kButtonAreaHeight = 30;
@@ -48,12 +42,13 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                switch (m_Mode)
+                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
+                switch (mode)
                 {
                     case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
                     case Mode.Video: return m_CaptureVideo.IsRecording;
                     default:
-                        throw new NotImplementedException(m_Mode.ToString());
+                        throw new NotImplementedException(mode.ToString());
                 }
             }
         }
@@ -62,12 +57,13 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                switch (m_Mode)
+                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
+                switch (mode)
                 {
                     case Mode.Screenshot: return m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
                     case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
                     default:
-                        throw new NotImplementedException(m_Mode.ToString());
+                        throw new NotImplementedException(mode.ToString());
                 }
             }
         }
@@ -157,7 +153,7 @@ namespace Unity.Android.Logcat
 
         void DoModeGUI()
         {
-            m_Mode = (Mode)EditorGUILayout.EnumPopup(m_Mode, AndroidLogcatStyles.toolbarPopup);
+            m_Runtime.UserSettings.CaptureSettings.Mode = (Mode)EditorGUILayout.EnumPopup(m_Runtime.UserSettings.CaptureSettings.Mode, AndroidLogcatStyles.toolbarPopup);
         }
 
         void OnGUI()
@@ -212,7 +208,7 @@ namespace Unity.Android.Logcat
         private void DoCaptureGUI()
         {
             EditorGUI.BeginDisabledGroup(m_DeviceSelection.SelectedDevice == null);
-            switch (m_Mode)
+            switch (m_Runtime.UserSettings.CaptureSettings.Mode)
             {
                 case Mode.Screenshot:
                     EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.IsCapturing);
@@ -286,21 +282,17 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
             if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
             {
-                var length = Enum.GetValues(typeof(Mode)).Length;
-                if (m_ImagePath == null || m_ImagePath.Length != length)
-                {
-                    var defaultDirectory = Path.Combine(Application.dataPath, "..");
-                    m_ImagePath = new string[length];
-                    for (int i = 0; i < length; i++)
-                        m_ImagePath[i] = defaultDirectory;
-                }
-
-                var path = EditorUtility.SaveFilePanel("Save Screen Capture", m_ImagePath[(int)m_Mode], Path.GetFileName(TemporaryPath), ExtensionForDialog);
+                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
+                var path = EditorUtility.SaveFilePanel(
+                    "Save Screen Capture",
+                    m_Runtime.UserSettings.CaptureSettings.GetLastSaveLocation(mode),
+                    Path.GetFileName(TemporaryPath),
+                    ExtensionForDialog);
                 if (!string.IsNullOrEmpty(path))
                 {
                     try
                     {
-                        m_ImagePath[(int)m_Mode] = path;
+                        m_Runtime.UserSettings.CaptureSettings.SetLastSaveLocation(mode, Path.GetFullPath(Path.GetDirectoryName(path)));
                         File.Copy(TemporaryPath, path, true);
                     }
                     catch (Exception ex)
@@ -314,7 +306,7 @@ namespace Unity.Android.Logcat
 
         private void DoPreviewGUI()
         {
-            switch (m_Mode)
+            switch (m_Runtime.UserSettings.CaptureSettings.Mode)
             {
                 case Mode.Screenshot:
                     {
