@@ -5,7 +5,7 @@ using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
 
-public class AndroidLogcatStacktraceTests
+class AndroidLogcatStacktraceTests
 {
     static string GetSymbolAddressUsingNM(AndroidTools tools, string symbolFilePath, string symbolName)
     {

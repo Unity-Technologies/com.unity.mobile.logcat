@@ -8,7 +8,7 @@ using UnityEditor;
 using UnityEditor.Compilation;
 using Assembly = System.Reflection.Assembly;
 
-public class AndroidLogcatNetTests
+class AndroidLogcatNetTests
 {
     // Ensure we're running tests with .NET 3.5, because Unity 2018.3 and older don't have .NET 3.5 deprecated
     [Test]
@@ -104,7 +104,7 @@ public class AndroidLogcatNetTests
     }
 
     /// <summary>
-    /// Check that we don't have unexpected using <namespace>;
+    /// Check that we don't have unexpected using namespace
     /// For ex., using using NUnit.Framework is not valid
     /// This test is not perfect since you can access classes from those namespaces without using, but it's better than nothing
     /// </summary>

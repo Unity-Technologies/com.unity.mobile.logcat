@@ -1,2 +1,15 @@
 {
+  "per_package": {
+    "com.unity.mobile.android-logcat@1": {
+      "exempts": {
+        "PVP-92-3": {
+          "errors": [
+            "Editor/AndroidTools/AndroidTools.cs: \"llvm-nm\"",
+            "Editor/AndroidTools/AndroidTools.cs: \"llvm-addr2line\"",
+            "Editor/AndroidTools/AndroidTools.cs: \"llvm-readelf\""
+          ]
+        }
+      }
+    }
+  }
 }

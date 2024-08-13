@@ -7,7 +7,7 @@ using UnityEditor;
 using System;
 
 [InitializeOnLoad]
-public class AndroidLogcatTestsSetup
+class AndroidLogcatTestsSetup
 {
     public static bool AndroidSDKAndNDKAvailable()
     {

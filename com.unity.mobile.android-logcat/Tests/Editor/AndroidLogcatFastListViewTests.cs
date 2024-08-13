@@ -2,7 +2,7 @@ using NUnit.Framework;
 using System;
 using Unity.Android.Logcat;
 
-public class AndroidLogcatFastListViewTests
+class AndroidLogcatFastListViewTests
 {
     [Test]
     public void CanClearItems()
