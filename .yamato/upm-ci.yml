@@ -46,6 +46,8 @@ pack:
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - upm-ci package pack --package-path ./com.unity.mobile.android-logcat
+    - upm-pvp xray --packages "upm-ci~/packages/*.tgz" --results upm-ci~/xray
+    - upm-pvp require "supported rme .yamato/xray-exemptions.json" --allow-missing --results upm-ci~/xray
   artifacts:
     packages:
       paths:
