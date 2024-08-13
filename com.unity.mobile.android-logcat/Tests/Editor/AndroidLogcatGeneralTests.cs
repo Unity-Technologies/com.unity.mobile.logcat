@@ -5,7 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Android.Logcat;
 
-public class AndroidLogcatGeneralTests
+class AndroidLogcatGeneralTests
 {
     [Test]
     public void ParseVersionTests()

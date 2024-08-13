@@ -7,7 +7,7 @@ using Unity.Android.Logcat;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-public class AndroidLogcatDispatcherTests
+class AndroidLogcatDispatcherTests
 {
     internal struct TaskInputData : IAndroidLogcatTaskInput
     {

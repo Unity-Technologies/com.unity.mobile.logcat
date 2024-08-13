@@ -2,7 +2,7 @@ using NUnit.Framework;
 using System;
 using Unity.Android.Logcat;
 
-public class AndroidLogcatMemoryTests
+class AndroidLogcatMemoryTests
 {
     const int kKiloByte = 1000;
 
