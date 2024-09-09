@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
             var names = new List<GUIContent>();
             var paths = new List<string>();
 
-            var engineDirectory = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+            var engineDirectory = AndroidLogcatUtilities.GetPlaybackEngineDirectory();
 
             foreach (var b in backends)
             {

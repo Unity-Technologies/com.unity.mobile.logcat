@@ -38,8 +38,14 @@ namespace Unity.Android.Logcat
                 if (s_AndroidExtensions != null)
                     return s_AndroidExtensions;
                 var assemblyName = "UnityEditor.Android.Extensions";
-                s_AndroidExtensions = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.FullName.Contains(assemblyName));
+
+#if UNITY_7000_0_OR_NEWER
+                var loadedAssemblies = UnityEngine.Assemblies.CurrentAssemblies.GetLoadedAssemblies();
+#else
+                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+#endif
+
+                s_AndroidExtensions = loadedAssemblies.FirstOrDefault(a => a.FullName.Contains(assemblyName));
                 s_AndroidExtensionsState = s_AndroidExtensions == null ? ExtensionState.Unavalaible : ExtensionState.Available;
 
                 // Warn user once why logcat is disabled

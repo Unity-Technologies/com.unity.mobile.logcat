@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
@@ -542,6 +543,14 @@ namespace Unity.Android.Logcat
         internal static bool HasCtrlOrCmdModifier(this Event e)
         {
             return (e.modifiers & (Application.platform == RuntimePlatform.OSXEditor ? EventModifiers.Command : EventModifiers.Control)) != 0;
+        }
+        internal static string GetPlaybackEngineDirectory()
+        {
+#if UNITY_7000_0_OR_NEWER
+            return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android);
+#else
+            return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+#endif
         }
     }
 }

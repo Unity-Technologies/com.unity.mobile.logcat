@@ -46,7 +46,7 @@ class AndroidLogcatStacktraceTests
 
     private static string GetSymbolPath(string abi, string libraryFile)
     {
-        var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+        var playerPackage = AndroidLogcatUtilities.GetPlaybackEngineDirectory();
 
         var path = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}");
         var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, AndroidLogcatSettings.kDefaultSymbolExtensions);
@@ -176,7 +176,7 @@ class AndroidLogcatStacktraceTests
         }
 
         var tools = new AndroidTools();
-        var playerPackage = BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+        var playerPackage = AndroidLogcatUtilities.GetPlaybackEngineDirectory();
         var symbolsDirectory = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols");
         var symbolPaths = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = symbolsDirectory } });
         var symbolPathsArmV7 = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArmV7) } });
