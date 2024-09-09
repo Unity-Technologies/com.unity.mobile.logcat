@@ -1,0 +1,22 @@
+{
+   "ErrorExceptions":[
+      {
+         "ValidationTest":"NDA Keyword Validation",
+         "ExceptionMessage":"#if UNITY_7000_0_OR_NEWER",
+         "PackageVersion":"1.4.3"
+      },
+      {
+         "ValidationTest":"NDA Keyword Validation",
+         "ExceptionMessage":"File 'Editor/AndroidTools/AndroidBridge.cs' contains deny-listed keyword pattern '(?<!BestPracticeUnderstandingPerformanceIn)unity[ _]*7' It must not be published",
+         "PackageVersion":"1.4.3"
+      },
+      {
+         "ValidationTest":"NDA Keyword Validation",
+         "ExceptionMessage":"File 'Editor/AndroidLogcatUtilities.cs' contains deny-listed keyword pattern '(?<!BestPracticeUnderstandingPerformanceIn)unity[ _]*7' It must not be published",
+         "PackageVersion":"1.4.3"
+      }
+   ],
+   "WarningExceptions":[
+      
+   ]
+}
