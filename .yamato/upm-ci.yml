@@ -5,6 +5,7 @@ test_editors:
   - version: 2022.3
   - version: 2023.2
   - version: trunk
+  - version: main
 test_platforms:
   - name: win
     type: Unity::VM
