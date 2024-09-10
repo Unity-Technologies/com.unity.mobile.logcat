@@ -4,8 +4,8 @@
       "exempts": {
         "PVP-92-3": {
           "errors": [
-            "Editor/AndroidTools/AndroidBridge.cs: \"UNITY_7\"",
-            "Editor/AndroidLogcatUtilities.cs: \"UNITY_7\"",
+            "Editor/AndroidTools/AndroidBridge.cs: UNITY_7",
+            "Editor/AndroidLogcatUtilities.cs: UNITY_7",
             "Editor/AndroidTools/AndroidTools.cs: \"llvm-nm\"",
             "Editor/AndroidTools/AndroidTools.cs: \"llvm-addr2line\"",
             "Editor/AndroidTools/AndroidTools.cs: \"llvm-readelf\""
