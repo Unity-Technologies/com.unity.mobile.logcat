@@ -2,7 +2,8 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEditor;
-using System.Linq;
+using System.Collections.Generic;
+using UnityEditor.IMGUI.Controls;
 
 namespace Unity.Android.Logcat
 {
@@ -19,6 +20,7 @@ namespace Unity.Android.Logcat
             public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
             public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
             public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
+            public static GUIContent CaptureLayout = new GUIContent("Capture Layout", "Captures UI layout from the android device.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
@@ -33,6 +35,7 @@ namespace Unity.Android.Logcat
         private const int kBottomAreaHeight = 8;
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
+        private AndroidLogcatCaptureUILayout m_CaptureLayout;
         private AndroidLogcatVideoPlayer m_VideoPlayer;
 
         private AndroidLogcatDeviceSelection m_DeviceSelection;
@@ -76,7 +79,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-
         public static void ShowWindow()
         {
             GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
@@ -93,6 +95,7 @@ namespace Unity.Android.Logcat
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
+            m_CaptureLayout = new AndroidLogcatCaptureUILayout(m_Runtime);
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
@@ -310,8 +313,14 @@ namespace Unity.Android.Logcat
             {
                 case Mode.Screenshot:
                     {
-                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        if (GUILayout.Button(Styles.CaptureLayout))
+                            m_CaptureLayout.QueueCapture(m_DeviceSelection.SelectedDevice, () => Repaint());
+
+                        var rc = new Rect(0, kButtonAreaHeight * 2, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
                         m_CaptureScreenshot.DoGUI(rc);
+
+                        if (m_CaptureLayout != null)
+                            m_CaptureLayout.DoGUI(rc);
                     }
                     break;
                 case Mode.Video:
