@@ -23,6 +23,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatQueryLayout m_QueryLayout;
         TreeView m_LayoutNodesTreeView;
         MultiColumnListView m_LayoutNodeValues;
+        AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
 
         internal static void ShowWindow()
         {
@@ -76,11 +77,15 @@ namespace Unity.Android.Logcat
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
                 {
                     if (objs.Count() == 0)
+                    {
+                        m_SelectedNode = null;
                         m_LayoutNodeValues.itemsSource = Array.Empty<AndroidLogcatQueryLayout.LayoutNode>();
+                    }
                     else
                     {
                         var item = (AndroidLogcatQueryLayout.LayoutNode)objs.First();
                         m_LayoutNodeValues.itemsSource = item.Values.ToArray();
+                        m_SelectedNode = item;
                     }
                     m_LayoutNodeValues.RefreshItems();
                 };
@@ -190,6 +195,7 @@ namespace Unity.Android.Logcat
             m_DeviceSelection.DoGUI();
             if (GUILayout.Button(Styles.QueryUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
+                Debug.Log($"Selected device {m_DeviceSelection.SelectedDevice.DisplaySize}");
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
                 m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
             }
@@ -218,6 +224,19 @@ namespace Unity.Android.Logcat
         {
             var rc = GUILayoutUtility.GetRect(0, Screen.width, 0, Screen.height);
             m_CaptureScreenshot.DoGUI(rc);
+
+            if (m_SelectedNode == null || m_DeviceSelection.SelectedDevice == null)
+                return;
+            var bounds = m_SelectedNode.Bounds;
+            var display = m_DeviceSelection.SelectedDevice.DisplaySize;
+            rc = m_CaptureScreenshot.ScreenshotDrawingRect;
+            rc = new Rect(
+                (bounds.x / display.x) * rc.width + rc.x,
+                (bounds.y / display.y) * rc.height + rc.y,
+                Mathf.Ceil((bounds.width / display.x) * rc.width),
+                Mathf.Ceil((bounds.height / display.y) * rc.height));
+
+            AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);
         }
     }
 }

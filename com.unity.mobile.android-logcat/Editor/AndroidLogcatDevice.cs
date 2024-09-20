@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Text.RegularExpressions;
+using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
@@ -243,10 +243,10 @@ namespace Unity.Android.Logcat
             get
             {
                 if (m_Device == null || State != DeviceState.Connected)
-                    return Vector2.Zero;
+                    return Vector2.zero;
                 else
                 {
-                    if (m_DisplaySize.LengthSquared() > 0.0f)
+                    if (m_DisplaySize.sqrMagnitude > 0.0f)
                         return m_DisplaySize;
                     var args = $"-s {Id} shell wm size";
                     var output = m_ADB.Run(new[] { args }, $"Failed to get display size");
@@ -254,8 +254,8 @@ namespace Unity.Android.Logcat
                     var result = DisplaySizeRegex.Match(output);
                     if (result.Success)
                     {
-                        m_DisplaySize.X = int.Parse(result.Groups["x"].Value);
-                        m_DisplaySize.Y = int.Parse(result.Groups["y"].Value);
+                        m_DisplaySize.x = int.Parse(result.Groups["x"].Value);
+                        m_DisplaySize.y = int.Parse(result.Groups["y"].Value);
                     }
                     return m_DisplaySize;
                 }

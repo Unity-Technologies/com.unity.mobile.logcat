@@ -26,10 +26,12 @@ namespace Unity.Android.Logcat
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private string m_Error;
+        private Rect m_ScreenshotDrawingRect;
 
         public bool IsCapturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
+        public Rect ScreenshotDrawingRect => m_ScreenshotDrawingRect;
         public string GetImagePath(IAndroidLogcatDevice device)
         {
             return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", ".png");
@@ -108,6 +110,20 @@ namespace Unity.Android.Logcat
             else if (m_ImageTexture != null)
             {
                 GUI.DrawTexture(rc, m_ImageTexture, ScaleMode.ScaleToFit);
+                m_ScreenshotDrawingRect = GUILayoutUtility.GetLastRect();
+
+                var imageAspect = (float)m_ImageTexture.width / (float)m_ImageTexture.height;
+                var windowAspect = m_ScreenshotDrawingRect.width / m_ScreenshotDrawingRect.height;
+                if (imageAspect < windowAspect)
+                {
+                    var width = m_ScreenshotDrawingRect.height * imageAspect;
+                    m_ScreenshotDrawingRect = new Rect((m_ScreenshotDrawingRect.width - width) * 0.5f, m_ScreenshotDrawingRect.y, width, m_ScreenshotDrawingRect.height);
+                }
+                else
+                {
+                    var height = m_ScreenshotDrawingRect.width / imageAspect;
+                    m_ScreenshotDrawingRect = new Rect(m_ScreenshotDrawingRect.x, (m_ScreenshotDrawingRect.height - height) * 0.5f, m_ScreenshotDrawingRect.width, height);
+                }
             }
             else
             {

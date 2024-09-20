@@ -562,5 +562,25 @@ namespace Unity.Android.Logcat
                 throw new FileNotFoundException($"Failed to load '{path}'");
             return result;
         }
+
+        internal static void DrawRectangle(Rect area, int frameWidth, Color color)
+        {
+            var texture = EditorGUIUtility.whiteTexture;
+            var oldColor = GUI.color;
+            GUI.color = color;
+
+            var lineArea = area;
+            lineArea.height = frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea.y = area.yMax - frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea = area;
+            lineArea.width = frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea.x = area.xMax - frameWidth;
+
+            GUI.DrawTexture(lineArea, texture);
+            GUI.color = oldColor;
+        }
     }
 }
