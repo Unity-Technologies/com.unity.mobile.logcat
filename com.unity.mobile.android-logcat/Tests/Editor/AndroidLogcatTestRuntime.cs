@@ -43,6 +43,11 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
     {
         // Don't save editor settings for tests
     }
+
+    protected override AndroidLogcatQueryLayout CreateQueryLayout()
+    {
+        return null;
+    }
 }
 
 internal class AndroidLogcatRuntimeTestBase

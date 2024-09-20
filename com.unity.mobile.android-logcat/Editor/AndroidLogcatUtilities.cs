@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -551,6 +552,15 @@ namespace Unity.Android.Logcat
 #else
             return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
 #endif
+        }
+
+        internal static VisualTreeAsset LoadUXML(string uxmlFileName)
+        {
+            var path = $"Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/{uxmlFileName}";
+            var result = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/{uxmlFileName}");
+            if (result == null)
+                throw new FileNotFoundException($"Failed to load '{path}'");
+            return result;
         }
     }
 }

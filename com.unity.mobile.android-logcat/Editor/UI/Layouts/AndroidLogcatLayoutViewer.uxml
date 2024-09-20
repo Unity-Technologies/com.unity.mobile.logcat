@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:TwoPaneSplitView name="MainSplit" fixed-pane-initial-dimension="300">
+        <ui:VisualElement>
+            <ui:IMGUIContainer name="LayoutImage" />
+        </ui:VisualElement>
+        <ui:VisualElement>
+            <ui:TwoPaneSplitView name="LayoutTreeValuesSplit" orientation="Vertical" fixed-pane-initial-dimension="300">
+                <ui:VisualElement>
+                    <ui:TreeView name="LayoutNodes" />
+                </ui:VisualElement>
+                <ui:VisualElement>
+                    <ui:MultiColumnListView name="NodeValues" />
+                </ui:VisualElement>
+            </ui:TwoPaneSplitView>
+        </ui:VisualElement>
+    </ui:TwoPaneSplitView>
+</ui:UXML>

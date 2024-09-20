@@ -26,6 +26,7 @@ namespace Unity.Android.Logcat
         ScreenCapture,
         OpenTerminal,
         StacktraceUtility,
+        LayoutViewer,
         WindowMemory,
         WindowInputs,
         WindowHidden
