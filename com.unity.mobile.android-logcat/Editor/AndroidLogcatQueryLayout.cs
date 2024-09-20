@@ -2,11 +2,14 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatQueryLayout
     {
+        Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
+
         internal class LayoutNode
         {
             // Ensures class/bounds/text is at the top of the list
@@ -140,7 +143,17 @@ namespace Unity.Android.Logcat
         {
             foreach (var xNode in nodeList)
             {
-                var node = new LayoutNode(id++, xNode.Attribute("class").Value, Rect.zero/*TODO*/);
+                var rc = Rect.zero;
+                var b = BoundsRegex.Match(xNode.Attribute("bounds").Value);
+                if (b.Success)
+                {
+                    rc = new Rect(int.Parse(b.Groups["x1"].Value),
+                        int.Parse(b.Groups["y1"].Value),
+                        0, 0);
+                    rc.width = int.Parse(b.Groups["x2"].Value) - rc.xMin;
+                    rc.height = int.Parse(b.Groups["y2"].Value) - rc.yMin;
+                }
+                var node = new LayoutNode(id++, xNode.Attribute("class").Value, rc);
                 foreach (var a in xNode.Attributes())
                 {
                     node.Values[a.Name.ToString()] = a.Value;

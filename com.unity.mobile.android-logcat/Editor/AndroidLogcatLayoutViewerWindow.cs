@@ -4,7 +4,6 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
 using System.Linq;
-using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 namespace Unity.Android.Logcat
 {
@@ -72,6 +71,7 @@ namespace Unity.Android.Logcat
                 {
                     var item = m_LayoutNodesTreeView.GetItemDataForIndex<AndroidLogcatQueryLayout.LayoutNode>(i);
                     ((Label)v).text = item.ClassName;
+                    ((Label)v).tooltip = item.Bounds.ToString();
                 };
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
                 {
