@@ -9,10 +9,36 @@ namespace Unity.Android.Logcat
     {
         internal class LayoutNode
         {
+            // Ensures class/bounds/text is at the top of the list
+            class Comparer : IComparer<string>
+            {
+                const string ClassName = "class";
+                const string BoundsName = "bounds";
+                const string TextName = "text";
+
+                readonly string[] Items = new[] { ClassName, BoundsName, TextName };
+
+                public int Compare(string x, string y)
+                {
+                    var result = x.CompareTo(y);
+                    if (result == 0)
+                        return 0;
+                    for (int i = 0; i < Items.Length; i++)
+                    {
+                        if (x.Equals(Items[i]))
+                            return -i - 2;
+                        if (y.Equals(Items[i]))
+                            return i + 2;
+                    }
+
+                    return result;
+                }
+            }
+
             internal string ClassName { get; }
             internal Rect Bounds { get; }
             internal List<LayoutNode> Childs { get; } = new List<LayoutNode>();
-            internal Dictionary<string, string> Values { get; } = new Dictionary<string, string>();
+            internal SortedDictionary<string, string> Values { get; } = new SortedDictionary<string, string>(new Comparer());
             internal int Id { get; }
 
             internal LayoutNode(int id, string className, Rect bounds)

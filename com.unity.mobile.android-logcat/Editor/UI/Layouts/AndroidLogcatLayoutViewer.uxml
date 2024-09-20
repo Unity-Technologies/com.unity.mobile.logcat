@@ -4,7 +4,7 @@
             <ui:IMGUIContainer name="LayoutImage" />
         </ui:VisualElement>
         <ui:VisualElement>
-            <ui:TwoPaneSplitView name="LayoutTreeValuesSplit" orientation="Vertical" fixed-pane-initial-dimension="300">
+            <ui:TwoPaneSplitView name="LayoutTreeValuesSplit" orientation="Horizontal" fixed-pane-initial-dimension="300">
                 <ui:VisualElement>
                     <ui:TreeView name="LayoutNodes" show-alternating-row-backgrounds="All" />
                 </ui:VisualElement>

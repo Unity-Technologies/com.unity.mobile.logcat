@@ -74,8 +74,13 @@ namespace Unity.Android.Logcat
                 };
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
                 {
-                    var item = (AndroidLogcatQueryLayout.LayoutNode)objs.First();
-                    m_LayoutNodeValues.itemsSource = item.Values.ToArray();
+                    if (objs.Count() == 0)
+                        m_LayoutNodeValues.itemsSource = Array.Empty<AndroidLogcatQueryLayout.LayoutNode>();
+                    else
+                    {
+                        var item = (AndroidLogcatQueryLayout.LayoutNode)objs.First();
+                        m_LayoutNodeValues.itemsSource = item.Values.ToArray();
+                    }
                     m_LayoutNodeValues.RefreshItems();
                 };
 
