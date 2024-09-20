@@ -93,6 +93,8 @@ namespace Unity.Android.Logcat
                 m_LayoutNodeValues = r.Q<MultiColumnListView>("NodeValues");
                 m_LayoutNodeValues.RegisterCallback<MouseUpEvent>((e) =>
                 {
+                    if (e.button != 1)
+                        return;
                     var contextMenu = new AndroidContextMenu<MessagesContextMenu>();
                     contextMenu.Add(MessagesContextMenu.Copy, "Copy");
                     contextMenu.Add(MessagesContextMenu.CopyAll, "Copy All");
