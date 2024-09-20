@@ -9,6 +9,7 @@ namespace Unity.Android.Logcat
     {
         None,
         Copy,
+        CopyAll,
         SelectAll,
         SaveSelection,
         AddTag,

@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
 using System.Linq;
+using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
 
 namespace Unity.Android.Logcat
 {
@@ -90,6 +91,37 @@ namespace Unity.Android.Logcat
             // Setup listview for node values
             {
                 m_LayoutNodeValues = r.Q<MultiColumnListView>("NodeValues");
+                m_LayoutNodeValues.RegisterCallback<MouseUpEvent>((e) =>
+                {
+                    var contextMenu = new AndroidContextMenu<MessagesContextMenu>();
+                    contextMenu.Add(MessagesContextMenu.Copy, "Copy");
+                    contextMenu.Add(MessagesContextMenu.CopyAll, "Copy All");
+                    contextMenu.Show(e.mousePosition, (userData, options, selected) =>
+                    {
+                        var contextMenu = (AndroidContextMenu<MessagesContextMenu>)userData;
+                        var item = contextMenu.GetItemAt(selected);
+
+                        switch (item.Item)
+                        {
+                            case MessagesContextMenu.Copy:
+                                {
+                                    if (m_LayoutNodeValues.selectedItem == null)
+                                        break;
+                                    var value = (KeyValuePair<string, string>)m_LayoutNodeValues.selectedItem;
+                                    EditorGUIUtility.systemCopyBuffer = $"{value.Key}={value.Value}";
+                                }
+                                break;
+                            case MessagesContextMenu.CopyAll:
+                                {
+                                    if (m_LayoutNodesTreeView.selectedItem == null)
+                                        break;
+                                    var value = (AndroidLogcatQueryLayout.LayoutNode)m_LayoutNodesTreeView.selectedItem;
+                                    EditorGUIUtility.systemCopyBuffer = string.Join("\n", value.Values.Select(x => $"{x.Key}={x.Value}"));
+                                }
+                                break;
+                        }
+                    });
+                });
                 m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
                 m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
                 m_LayoutNodeValues.columns[Name].bindCell = (v, i) =>
