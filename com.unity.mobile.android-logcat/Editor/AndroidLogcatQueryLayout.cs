@@ -110,7 +110,6 @@ namespace Unity.Android.Logcat
 
             try
             {
-
                 var adb = workInput.adb;
 
                 if (adb == null)
@@ -118,7 +117,7 @@ namespace Unity.Android.Logcat
 
                 var cmd = $"-s {workInput.deviceId} exec-out uiautomator dump /dev/tty";
                 var outputMsg = adb.Run(new[] { cmd }, "Unable to get UI layout");
-
+                AndroidLogcatInternalLog.Log($"adb {cmd}");
 
                 if (!string.IsNullOrEmpty(outputMsg))
                 {
