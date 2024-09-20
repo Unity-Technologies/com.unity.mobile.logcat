@@ -1,9 +1,6 @@
 using System;
 using UnityEngine;
-using UnityEditor;
-using System.IO;
 using System.Collections.Generic;
-using static Unity.Android.Logcat.AndroidLogcatCaptureUILayout;
 using System.Xml.Linq;
 
 namespace Unity.Android.Logcat
@@ -12,24 +9,33 @@ namespace Unity.Android.Logcat
     {
         internal class LayoutNode
         {
-            internal string className;
-            internal Rect bounds;
-            internal List<LayoutNode> childs;
+            internal string ClassName { get; }
+            internal Rect Bounds { get; }
+            internal List<LayoutNode> Childs { get; } = new List<LayoutNode>();
+            internal Dictionary<string, string> Values { get; } = new Dictionary<string, string>();
+            internal int Id { get; }
+
+            internal LayoutNode(int id, string className, Rect bounds)
+            {
+                this.Id = id;
+                this.ClassName = className;
+                this.Bounds = bounds;
+            }
 
             public override string ToString()
             {
-                return $"{className} {bounds}";
+                return $"{ClassName} {Bounds} Id = {Id}";
             }
         }
 
-        internal class QueryLayoutInput : IAndroidLogcatTaskInput
+        private class QueryLayoutInput : IAndroidLogcatTaskInput
         {
             internal AndroidBridge.ADB adb;
             internal string deviceId;
             internal Action onCompleted;
         }
 
-        internal class QueryLayoutResult : IAndroidLogcatTaskResult
+        private class QueryLayoutResult : IAndroidLogcatTaskResult
         {
             internal string rawLayout;
             internal Action onCompleted;
@@ -44,9 +50,12 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
         private List<LayoutNode> m_Nodes;
 
+        internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
+
         internal AndroidLogcatQueryLayout(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
+            m_Nodes = new List<LayoutNode>();
         }
 
         internal void QueueCaptureLayout(IAndroidLogcatDevice device, Action onCompleted)
@@ -55,7 +64,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime.Dispatcher.Schedule(
-                new AndroidLogcatCaptureUILayoutInput()
+                new QueryLayoutInput()
                 {
                     adb = m_Runtime.Tools.ADB,
                     deviceId = device.Id,
@@ -68,7 +77,7 @@ namespace Unity.Android.Logcat
 
         private static IAndroidLogcatTaskResult Execute(IAndroidLogcatTaskInput input)
         {
-            var workInput = ((AndroidLogcatCaptureUILayoutInput)input);
+            var workInput = ((QueryLayoutInput)input);
 
             try
             {
@@ -91,19 +100,35 @@ namespace Unity.Android.Logcat
                         outputMsg = outputMsg.Substring(0, idx + endTag.Length);
                 }
 
-                return new AndroidLogcatCaptureUILayoutResult(outputMsg, workInput.onCompleted);
+                return new QueryLayoutResult(outputMsg, workInput.onCompleted);
 
             }
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.Message);
-                return new AndroidLogcatCaptureUILayoutResult(string.Empty, workInput.onCompleted);
+                return new QueryLayoutResult(string.Empty, workInput.onCompleted);
+            }
+        }
+
+        private void ConstructNodes(List<LayoutNode> nodes, IEnumerable<XElement> nodeList, ref int id)
+        {
+            foreach (var xNode in nodeList)
+            {
+                var node = new LayoutNode(id++, xNode.Attribute("class").Value, Rect.zero/*TODO*/);
+                foreach (var a in xNode.Attributes())
+                {
+                    node.Values[a.Name.ToString()] = a.Value;
+                }
+
+                nodes.Add(node);
+
+                ConstructNodes(node.Childs, xNode.Elements("node"), ref id);
             }
         }
 
         private void Integrate(IAndroidLogcatTaskResult result)
         {
-            var r = (AndroidLogcatCaptureUILayoutResult)result;
+            var r = (QueryLayoutResult)result;
             m_Nodes.Clear();
 
             try
@@ -112,7 +137,8 @@ namespace Unity.Android.Logcat
                 {
                     var doc = XDocument.Parse(r.rawLayout);
                     var xmlNodes = doc.Root.Elements("node");
-                    //ConstructNodes(m_Nodes, xmlNodes);
+                    var id = 0;
+                    ConstructNodes(m_Nodes, xmlNodes, ref id);
                 }
                 catch (Exception ex)
                 {

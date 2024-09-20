@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
-using UnityEditor.Graphs;
+using System.Collections.Generic;
 
 namespace Unity.Android.Logcat
 {
@@ -17,7 +17,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatDeviceSelection m_DeviceSelection;
         AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         AndroidLogcatQueryLayout m_QueryLayout;
-        TreeView m_LayoutNodes;
+        TreeView m_LayoutNodesTreeView;
 
         internal static void ShowWindow()
         {
@@ -57,7 +57,14 @@ namespace Unity.Android.Logcat
             tree.CloneTree(r);
 
             r.Q<IMGUIContainer>("LayoutImage").onGUIHandler = DoLayoutImage;
-            m_LayoutNodes = r.Q<TreeView>("LayoutNodes");
+            m_LayoutNodesTreeView = r.Q<TreeView>("LayoutNodes");
+
+            m_LayoutNodesTreeView.makeItem = () => new Label();
+            m_LayoutNodesTreeView.bindItem = (v, i) =>
+            {
+                var item = m_LayoutNodesTreeView.GetItemDataForIndex<AndroidLogcatQueryLayout.LayoutNode>(i);
+                ((Label)v).text = item.ClassName;
+            };
         }
 
         private void OnDisable()
@@ -80,6 +87,27 @@ namespace Unity.Android.Logcat
             // TODO:
         }
 
+        private void OnQueryLayout()
+        {
+            List<TreeViewItemData<AndroidLogcatQueryLayout.LayoutNode>> GetItems(IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes)
+            {
+                if (nodes == null)
+                    return null;
+
+                var items = new List<TreeViewItemData<AndroidLogcatQueryLayout.LayoutNode>>();
+                foreach (var node in nodes)
+                {
+                    items.Add(new TreeViewItemData<AndroidLogcatQueryLayout.LayoutNode>(node.Id, node, GetItems(node.Childs)));
+                }
+                return items;
+            }
+
+
+            m_LayoutNodesTreeView.SetRootItems<AndroidLogcatQueryLayout.LayoutNode>(GetItems(m_QueryLayout.Nodes));
+            m_LayoutNodesTreeView.RefreshItems();
+            m_LayoutNodesTreeView.ExpandAll();
+        }
+
         void DoToolbarGUI()
         {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
@@ -90,8 +118,7 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(Styles.QueryUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
-                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, () =>
-                    m_LayoutNodes.RefreshItems());
+                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, OnQueryLayout);
             }
             EditorGUILayout.EndHorizontal();
         }
