@@ -6,10 +6,15 @@
         <ui:VisualElement>
             <ui:TwoPaneSplitView name="LayoutTreeValuesSplit" orientation="Vertical" fixed-pane-initial-dimension="300">
                 <ui:VisualElement>
-                    <ui:TreeView name="LayoutNodes" />
+                    <ui:TreeView name="LayoutNodes" show-alternating-row-backgrounds="All" />
                 </ui:VisualElement>
                 <ui:VisualElement>
-                    <ui:MultiColumnListView name="NodeValues" />
+                    <ui:MultiColumnListView name="NodeValues" show-alternating-row-backgrounds="All">
+                        <ui:Columns>
+                            <ui:Column name="Name" title="Name" stretchable="true" />
+                            <ui:Column name="Value" title="Value" stretchable="true" />
+                        </ui:Columns>
+                    </ui:MultiColumnListView>
                 </ui:VisualElement>
             </ui:TwoPaneSplitView>
         </ui:VisualElement>

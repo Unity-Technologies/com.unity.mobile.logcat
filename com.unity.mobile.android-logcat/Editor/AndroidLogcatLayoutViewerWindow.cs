@@ -3,11 +3,15 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatLayoutViewerWindow : EditorWindow
     {
+        const string Name = nameof(Name);
+        const string Value = nameof(Value);
+
         class Styles
         {
             public static GUIContent QueryUIHierarchy = new GUIContent("Query UI Layout");
@@ -18,6 +22,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         AndroidLogcatQueryLayout m_QueryLayout;
         TreeView m_LayoutNodesTreeView;
+        MultiColumnListView m_LayoutNodeValues;
 
         internal static void ShowWindow()
         {
@@ -57,14 +62,43 @@ namespace Unity.Android.Logcat
             tree.CloneTree(r);
 
             r.Q<IMGUIContainer>("LayoutImage").onGUIHandler = DoLayoutImage;
-            m_LayoutNodesTreeView = r.Q<TreeView>("LayoutNodes");
 
-            m_LayoutNodesTreeView.makeItem = () => new Label();
-            m_LayoutNodesTreeView.bindItem = (v, i) =>
+            // Setup layout nodes tree view
             {
-                var item = m_LayoutNodesTreeView.GetItemDataForIndex<AndroidLogcatQueryLayout.LayoutNode>(i);
-                ((Label)v).text = item.ClassName;
-            };
+                m_LayoutNodesTreeView = r.Q<TreeView>("LayoutNodes");
+                m_LayoutNodesTreeView.makeItem = () => new Label();
+                m_LayoutNodesTreeView.bindItem = (v, i) =>
+                {
+                    var item = m_LayoutNodesTreeView.GetItemDataForIndex<AndroidLogcatQueryLayout.LayoutNode>(i);
+                    ((Label)v).text = item.ClassName;
+                };
+                m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
+                {
+                    var item = (AndroidLogcatQueryLayout.LayoutNode)objs.First();
+                    m_LayoutNodeValues.itemsSource = item.Values.ToArray();
+                    m_LayoutNodeValues.RefreshItems();
+                };
+
+                RefreshTreeView();
+            }
+
+            // Setup listview for node values
+            {
+                m_LayoutNodeValues = r.Q<MultiColumnListView>("NodeValues");
+                m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
+                m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
+                m_LayoutNodeValues.columns[Name].bindCell = (v, i) =>
+                {
+                    var item = (KeyValuePair<string, string>)m_LayoutNodeValues.itemsSource[i];
+                    ((Label)v).text = item.Key;
+                };
+
+                m_LayoutNodeValues.columns[Value].bindCell = (v, i) =>
+                {
+                    var item = (KeyValuePair<string, string>)m_LayoutNodeValues.itemsSource[i];
+                    ((Label)v).text = item.Value;
+                };
+            }
         }
 
         private void OnDisable()
@@ -87,7 +121,7 @@ namespace Unity.Android.Logcat
             // TODO:
         }
 
-        private void OnQueryLayout()
+        private void RefreshTreeView()
         {
             List<TreeViewItemData<AndroidLogcatQueryLayout.LayoutNode>> GetItems(IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes)
             {
@@ -118,7 +152,7 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(Styles.QueryUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
-                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, OnQueryLayout);
+                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
             }
             EditorGUILayout.EndHorizontal();
         }
