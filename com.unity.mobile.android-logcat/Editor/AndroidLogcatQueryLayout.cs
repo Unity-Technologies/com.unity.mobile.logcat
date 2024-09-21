@@ -10,16 +10,18 @@ namespace Unity.Android.Logcat
     {
         Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
 
+        const string NodeTag = "node";
+        const string ClassTag = "class";
+        const string BoundsTag = "bounds";
+        const string ResourceIdTag = "resource-id";
+        const string TextTag = "text";
+
         internal class LayoutNode
         {
-            // Ensures class/bounds/text is at the top of the list
+            // Ensures class/bounds/resource-id/text is at the top of the list
             class Comparer : IComparer<string>
             {
-                const string ClassName = "class";
-                const string BoundsName = "bounds";
-                const string TextName = "text";
-
-                readonly string[] Items = new[] { ClassName, BoundsName, TextName };
+                readonly string[] Items = new[] { ClassTag, BoundsTag, ResourceIdTag, TextTag };
 
                 public int Compare(string x, string y)
                 {
@@ -148,7 +150,7 @@ namespace Unity.Android.Logcat
             foreach (var xNode in nodeList)
             {
                 var rc = Rect.zero;
-                var b = BoundsRegex.Match(xNode.Attribute("bounds").Value);
+                var b = BoundsRegex.Match(xNode.Attribute(BoundsTag).Value);
                 if (b.Success)
                 {
                     rc = new Rect(int.Parse(b.Groups["x1"].Value),
@@ -157,7 +159,7 @@ namespace Unity.Android.Logcat
                     rc.width = int.Parse(b.Groups["x2"].Value) - rc.xMin;
                     rc.height = int.Parse(b.Groups["y2"].Value) - rc.yMin;
                 }
-                var node = new LayoutNode(id++, xNode.Attribute("class").Value, rc);
+                var node = new LayoutNode(id++, xNode.Attribute(ClassTag).Value, rc);
                 foreach (var a in xNode.Attributes())
                 {
                     node.Values[a.Name.ToString()] = a.Value;
@@ -165,7 +167,7 @@ namespace Unity.Android.Logcat
 
                 nodes.Add(node);
 
-                ConstructNodes(node.Childs, xNode.Elements("node"), ref id);
+                ConstructNodes(node.Childs, xNode.Elements(NodeTag), ref id);
             }
         }
 
@@ -179,7 +181,7 @@ namespace Unity.Android.Logcat
                 try
                 {
                     var doc = XDocument.Parse(r.rawLayout);
-                    var xmlNodes = doc.Root.Elements("node");
+                    var xmlNodes = doc.Root.Elements(NodeTag);
                     var id = 0;
                     ConstructNodes(m_Nodes, xmlNodes, ref id);
                 }
