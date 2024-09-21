@@ -133,8 +133,13 @@ namespace Unity.Android.Logcat
                         }
                     });
                 });
-                m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
-                m_LayoutNodeValues.columns[Name].makeCell = () => new Label();
+                m_LayoutNodeValues.columns[Name].makeCell = () =>
+                {
+                    var l = new Label();
+                    l.style.marginLeft = 5;
+                    return l;
+                };
+                m_LayoutNodeValues.columns[Value].makeCell = () => new Label();
                 m_LayoutNodeValues.columns[Name].bindCell = (v, i) =>
                 {
                     var item = (KeyValuePair<string, string>)m_LayoutNodeValues.itemsSource[i];
