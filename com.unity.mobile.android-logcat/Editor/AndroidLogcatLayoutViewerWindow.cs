@@ -253,6 +253,7 @@ namespace Unity.Android.Logcat
                 Mathf.Ceil((bounds.width / m_CacheDisplaySize.x) * rc.width),
                 Mathf.Ceil((bounds.height / m_CacheDisplaySize.y) * rc.height));
 
+            AndroidLogcatUtilities.DrawRectangle(rc, 3, Color.black);
             AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);
         }
     }
