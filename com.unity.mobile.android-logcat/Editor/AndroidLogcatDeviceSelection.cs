@@ -57,7 +57,7 @@ namespace Unity.Android.Logcat
             QueryDevices();
             if (SelectedDevice != m_PreviousDeviceSelected)
             {
-                m_OnNewDeviceSelected.Invoke(SelectedDevice);
+                m_OnNewDeviceSelected?.Invoke(SelectedDevice);
                 m_PreviousDeviceSelected = SelectedDevice;
             }
         }
@@ -77,7 +77,7 @@ namespace Unity.Android.Logcat
                 GUILayout.MaxWidth(300));
             if (EditorGUI.EndChangeCheck())
             {
-                m_OnNewDeviceSelected.Invoke(SelectedDevice);
+                m_OnNewDeviceSelected?.Invoke(SelectedDevice);
                 m_PreviousDeviceSelected = SelectedDevice;
             }
         }
