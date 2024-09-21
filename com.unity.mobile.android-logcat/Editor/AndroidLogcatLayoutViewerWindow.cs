@@ -45,7 +45,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.Closing += OnDisable;
-            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, OnDeviceSelected);
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, null);
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_QueryLayout = m_Runtime.QueryLayout;
 
@@ -77,6 +77,7 @@ namespace Unity.Android.Logcat
                     ((Label)v).text = item.ClassName;
                     ((Label)v).tooltip = item.Bounds.ToString();
                 };
+
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
                 {
                     if (objs.Count() == 0)
@@ -163,11 +164,6 @@ namespace Unity.Android.Logcat
             m_Runtime = null;
         }
 
-        private void OnDeviceSelected(IAndroidLogcatDevice selectedDevice)
-        {
-            // TODO:
-        }
-
         private void RefreshTreeView()
         {
             List<TreeViewItemData<AndroidLogcatQueryLayout.LayoutNode>> GetItems(IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes)
@@ -238,20 +234,48 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
+        /// <summary>
+        /// Performs recursive picking of elements.
+        /// Since elments can overlap, we prefer elements with higher depth in the hierarchy
+        /// </summary>
+        void DoNodeRecursivePicking(IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes, Vector2 mousePosition, int depth, ref KeyValuePair<int, int> result)
+        {
+            foreach (var n in nodes)
+            {
+                DoNodeRecursivePicking(n.Childs, mousePosition, depth + 1, ref result);
+
+                // No point in check, if result's depth is higher than this node depth
+                if (result.Key >= 0 && result.Value > depth)
+                    continue;
+                var rc = n.BoundsToScreen(m_CacheDisplaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
+                if (rc.Contains(mousePosition))
+                    result = new KeyValuePair<int, int>(n.Id, depth);
+            }
+        }
+
+        void DoNodePicking()
+        {
+            var e = Event.current;
+            if (m_QueryLayout.Nodes.Count > 0 && e.type == EventType.MouseDown)
+            {
+                var r = new KeyValuePair<int, int>(-1, -1);
+                DoNodeRecursivePicking(m_QueryLayout.Nodes, e.mousePosition, 0, ref r);
+
+                if (r.Key >= 0)
+                    m_LayoutNodesTreeView.SetSelection(r.Key);
+            }
+        }
+
         void DoLayoutImage()
         {
             var rc = GUILayoutUtility.GetRect(0, Screen.width, 0, Screen.height);
             m_CaptureScreenshot.DoGUI(rc);
 
-            if (m_SelectedNode == null || m_DeviceSelection.SelectedDevice == null)
+            DoNodePicking();
+
+            if (m_SelectedNode == null)
                 return;
-            var bounds = m_SelectedNode.Bounds;
-            rc = m_CaptureScreenshot.ScreenshotDrawingRect;
-            rc = new Rect(
-                (bounds.x / m_CacheDisplaySize.x) * rc.width + rc.x,
-                (bounds.y / m_CacheDisplaySize.y) * rc.height + rc.y,
-                Mathf.Ceil((bounds.width / m_CacheDisplaySize.x) * rc.width),
-                Mathf.Ceil((bounds.height / m_CacheDisplaySize.y) * rc.height));
+            rc = m_SelectedNode.BoundsToScreen(m_CacheDisplaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
 
             AndroidLogcatUtilities.DrawRectangle(rc, 3, Color.black);
             AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);

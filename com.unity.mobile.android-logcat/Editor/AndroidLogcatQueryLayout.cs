@@ -46,6 +46,15 @@ namespace Unity.Android.Logcat
             internal SortedDictionary<string, string> Values { get; } = new SortedDictionary<string, string>(new Comparer());
             internal int Id { get; }
 
+            internal Rect BoundsToScreen(Vector2 deviceDisplaySize, Rect uiWindow)
+            {
+                return new Rect(
+                    (Bounds.x / deviceDisplaySize.x) * uiWindow.width + uiWindow.x,
+                    (Bounds.y / deviceDisplaySize.y) * uiWindow.height + uiWindow.y,
+                    Mathf.Ceil((Bounds.width / deviceDisplaySize.x) * uiWindow.width),
+                    Mathf.Ceil((Bounds.height / deviceDisplaySize.y) * uiWindow.height));
+            }
+
             internal LayoutNode(int id, string className, Rect bounds)
             {
                 this.Id = id;
