@@ -60,7 +60,10 @@ internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
 {
     internal override int APILevel => 28;
     internal override Version OSVersion => new Version(9, 0);
-    internal override Vector2 DisplaySize => Vector2.zero;
+    internal override Vector2 QueryDisplaySize()
+    {
+        return Vector2.zero;
+    }
 
     internal AndroidLogcatFakeDevice90(string deviceId) : base(deviceId)
     {
@@ -71,7 +74,10 @@ internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
 {
     internal override int APILevel => 23;
     internal override Version OSVersion => new Version(6, 0);
-    internal override Vector2 DisplaySize => Vector2.zero;
+    internal override Vector2 QueryDisplaySize()
+    {
+        return Vector2.zero;
+    }
 
     internal AndroidLogcatFakeDevice60(string deviceId) : base(deviceId)
     {

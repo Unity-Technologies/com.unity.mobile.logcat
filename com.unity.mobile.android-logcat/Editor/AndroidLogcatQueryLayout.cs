@@ -87,6 +87,11 @@ namespace Unity.Android.Logcat
             m_Nodes = new List<LayoutNode>();
         }
 
+        internal void ClearNodes()
+        {
+            m_Nodes.Clear();
+        }
+
         internal void QueueCaptureLayout(IAndroidLogcatDevice device, Action onCompleted)
         {
             if (device == null)

@@ -24,6 +24,7 @@ namespace Unity.Android.Logcat
         TreeView m_LayoutNodesTreeView;
         MultiColumnListView m_LayoutNodeValues;
         AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
+        Vector2 m_CacheDisplaySize;
 
         internal static void ShowWindow()
         {
@@ -180,10 +181,19 @@ namespace Unity.Android.Logcat
                 return items;
             }
 
-
+            m_LayoutNodesTreeView.ClearSelection();
             m_LayoutNodesTreeView.SetRootItems<AndroidLogcatQueryLayout.LayoutNode>(GetItems(m_QueryLayout.Nodes));
             m_LayoutNodesTreeView.RefreshItems();
             m_LayoutNodesTreeView.ExpandAll();
+        }
+
+        void OnQueryCaptureLayoutCompleted()
+        {
+            RefreshTreeView();
+            if (m_DeviceSelection.SelectedDevice != null)
+                m_CacheDisplaySize = m_DeviceSelection.SelectedDevice.QueryDisplaySize();
+            else
+                m_CacheDisplaySize = Vector2.zero;
         }
 
         void DoToolbarGUI()
@@ -193,12 +203,15 @@ namespace Unity.Android.Logcat
             GUILayout.Label(GUIContent.none, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
             EditorGUI.EndDisabledGroup();
             m_DeviceSelection.DoGUI();
+            EditorGUI.BeginDisabledGroup(m_DeviceSelection.SelectedDevice == null);
             if (GUILayout.Button(Styles.QueryUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
-                Debug.Log($"Selected device {m_DeviceSelection.SelectedDevice.DisplaySize}");
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
-                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
+                m_QueryLayout.ClearNodes();
+                RefreshTreeView();
+                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, OnQueryCaptureLayoutCompleted);
             }
+            EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
         }
 
@@ -228,13 +241,12 @@ namespace Unity.Android.Logcat
             if (m_SelectedNode == null || m_DeviceSelection.SelectedDevice == null)
                 return;
             var bounds = m_SelectedNode.Bounds;
-            var display = m_DeviceSelection.SelectedDevice.DisplaySize;
             rc = m_CaptureScreenshot.ScreenshotDrawingRect;
             rc = new Rect(
-                (bounds.x / display.x) * rc.width + rc.x,
-                (bounds.y / display.y) * rc.height + rc.y,
-                Mathf.Ceil((bounds.width / display.x) * rc.width),
-                Mathf.Ceil((bounds.height / display.y) * rc.height));
+                (bounds.x / m_CacheDisplaySize.x) * rc.width + rc.x,
+                (bounds.y / m_CacheDisplaySize.y) * rc.height + rc.y,
+                Mathf.Ceil((bounds.width / m_CacheDisplaySize.x) * rc.width),
+                Mathf.Ceil((bounds.height / m_CacheDisplaySize.y) * rc.height));
 
             AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);
         }

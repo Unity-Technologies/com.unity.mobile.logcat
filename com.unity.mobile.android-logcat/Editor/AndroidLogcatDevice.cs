@@ -48,7 +48,7 @@ namespace Unity.Android.Logcat
 
         internal abstract string DisplayName { get; }
 
-        internal abstract Vector2 DisplaySize { get; }
+        internal abstract Vector2 QueryDisplaySize();
 
         internal abstract string ShortDisplayName { get; }
 
@@ -132,9 +132,6 @@ namespace Unity.Android.Logcat
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
-        private Vector2 m_DisplaySize;
-
-
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
             : base(new AndroidLogcatActivityManager(adb, deviceId))
         {
@@ -238,27 +235,24 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal override Vector2 DisplaySize
+        internal override Vector2 QueryDisplaySize()
         {
-            get
+            if (m_Device == null || State != DeviceState.Connected)
+                return Vector2.zero;
+            else
             {
-                if (m_Device == null || State != DeviceState.Connected)
-                    return Vector2.zero;
-                else
+                // Don't cache display size, since it can change, for ex., foldabales devices
+                var displaySize = Vector2.zero;
+                var args = $"-s {Id} shell wm size";
+                var output = m_ADB.Run(new[] { args }, $"Failed to get display size");
+                AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}\n{output}");
+                var result = DisplaySizeRegex.Match(output);
+                if (result.Success)
                 {
-                    if (m_DisplaySize.sqrMagnitude > 0.0f)
-                        return m_DisplaySize;
-                    var args = $"-s {Id} shell wm size";
-                    var output = m_ADB.Run(new[] { args }, $"Failed to get display size");
-                    AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}\n{output}");
-                    var result = DisplaySizeRegex.Match(output);
-                    if (result.Success)
-                    {
-                        m_DisplaySize.x = int.Parse(result.Groups["x"].Value);
-                        m_DisplaySize.y = int.Parse(result.Groups["y"].Value);
-                    }
-                    return m_DisplaySize;
+                    displaySize.x = int.Parse(result.Groups["x"].Value);
+                    displaySize.y = int.Parse(result.Groups["y"].Value);
                 }
+                return displaySize;
             }
         }
 
