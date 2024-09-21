@@ -267,7 +267,10 @@ namespace Unity.Android.Logcat
                 DoNodeRecursivePicking(m_QueryLayout.Nodes, e.mousePosition, 0, ref r);
 
                 if (r.Key >= 0)
+                {
                     m_LayoutNodesTreeView.SetSelection(r.Key);
+                    m_LayoutNodesTreeView.ScrollToItem(r.Key);
+                }
             }
         }
 
