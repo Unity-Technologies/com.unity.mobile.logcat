@@ -1,6 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:TwoPaneSplitView name="MainSplit" fixed-pane-initial-dimension="300">
         <ui:VisualElement>
+            <ui:TextField label="Display Size:" placeholder-text="&lt;No Information&gt;" name="DisplaySize" readonly="true" style="border-left-color: rgb(0, 0, 0); border-right-color: rgb(0, 0, 0); border-top-color: rgb(0, 0, 0); border-bottom-color: rgb(0, 0, 0); border-bottom-width: 1px;" />
             <ui:IMGUIContainer name="LayoutImage" />
         </ui:VisualElement>
         <ui:VisualElement>

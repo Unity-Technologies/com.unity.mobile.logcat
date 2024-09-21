@@ -24,7 +24,9 @@ namespace Unity.Android.Logcat
         TreeView m_LayoutNodesTreeView;
         MultiColumnListView m_LayoutNodeValues;
         AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
+        TextField m_DisplaySizeTextField;
         Vector2 m_CacheDisplaySize;
+
 
         internal static void ShowWindow()
         {
@@ -64,7 +66,7 @@ namespace Unity.Android.Logcat
             tree.CloneTree(r);
 
             r.Q<IMGUIContainer>("LayoutImage").onGUIHandler = DoLayoutImage;
-
+            m_DisplaySizeTextField = r.Q<TextField>("DisplaySize");
             // Setup layout nodes tree view
             {
                 m_LayoutNodesTreeView = r.Q<TreeView>("LayoutNodes");
@@ -187,13 +189,15 @@ namespace Unity.Android.Logcat
             m_LayoutNodesTreeView.ExpandAll();
         }
 
-        void OnQueryCaptureLayoutCompleted()
+        void RefreshDisplaySize()
         {
             RefreshTreeView();
             if (m_DeviceSelection.SelectedDevice != null)
                 m_CacheDisplaySize = m_DeviceSelection.SelectedDevice.QueryDisplaySize();
             else
                 m_CacheDisplaySize = Vector2.zero;
+
+            m_DisplaySizeTextField.value = $"{(int)m_CacheDisplaySize.x},{(int)m_CacheDisplaySize.y}";
         }
 
         void DoToolbarGUI()
@@ -209,7 +213,8 @@ namespace Unity.Android.Logcat
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
                 m_QueryLayout.ClearNodes();
                 RefreshTreeView();
-                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, OnQueryCaptureLayoutCompleted);
+                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
+                RefreshDisplaySize();
             }
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
