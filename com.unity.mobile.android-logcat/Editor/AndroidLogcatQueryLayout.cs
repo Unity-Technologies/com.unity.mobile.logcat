@@ -225,7 +225,7 @@ namespace Unity.Android.Logcat
             {
                 m_QueryCount--;
             }
-            
+
             r.onCompleted();
         }
 

@@ -306,7 +306,8 @@ namespace Unity.Android.Logcat
                 case Mode.Screenshot:
                     {
                         var rc = new Rect(0, kButtonAreaHeight * 2, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        m_CaptureScreenshot.DoGUI(rc);
+                        if (!m_CaptureScreenshot.DoGUI(rc))
+                            EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
                     }
                     break;
                 case Mode.Video:

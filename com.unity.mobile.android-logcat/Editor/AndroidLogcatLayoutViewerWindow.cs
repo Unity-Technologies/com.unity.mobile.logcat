@@ -277,7 +277,11 @@ namespace Unity.Android.Logcat
         void DoLayoutImage()
         {
             var rc = GUILayoutUtility.GetRect(0, Screen.width, 0, Screen.height);
-            m_CaptureScreenshot.DoGUI(rc);
+            if (!m_CaptureScreenshot.DoGUI(rc))
+            {
+                EditorGUI.HelpBox(rc, $"No layout to show, click {Styles.QueryUIHierarchy.text} button.", MessageType.Info);
+                return;
+            }
 
             DoNodePicking();
 

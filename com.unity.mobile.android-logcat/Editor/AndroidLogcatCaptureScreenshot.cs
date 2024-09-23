@@ -101,11 +101,11 @@ namespace Unity.Android.Logcat
                 return;
         }
 
-        public void DoGUI(Rect rc)
+        public bool DoGUI(Rect rc)
         {
             if (!string.IsNullOrEmpty(m_Error))
             {
-                EditorGUILayout.HelpBox(m_Error, MessageType.Error);
+                EditorGUI.HelpBox(rc, m_Error, MessageType.Error);
             }
             else if (m_ImageTexture != null)
             {
@@ -127,8 +127,10 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
+                return false;
             }
+
+            return true;
         }
     }
 }
