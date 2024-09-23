@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
+using System.IO;
 
 namespace Unity.Android.Logcat
 {
@@ -231,16 +232,23 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 m_Nodes.Clear();
+
+                var path = "<Not Saved>";
+                if (!string.IsNullOrEmpty(r.rawLayout))
+                {
+                    path = Path.Combine("Temp", "failed_to_parse.txt");
+                    File.WriteAllText(path, r.rawLayout);
+                }
+
                 var node = new LayoutNode(0, "Error while parsing layout", string.Empty, Rect.zero)
                 {
                     Values =
                     {
-                        ["error"] = ex.Message,
-                        ["rawLayout"] = r.rawLayout
+                        ["save_location"] = path
                     }
                 };
                 m_Nodes.Add(node);
-                AndroidLogcatInternalLog.Log($"Failed to create layout Doc:\n{ex.Message}");
+                AndroidLogcatInternalLog.Log($"Failed to parse layout (saved in '<project>/{path}'):\n{ex.Message}");
             }
             finally
             {
