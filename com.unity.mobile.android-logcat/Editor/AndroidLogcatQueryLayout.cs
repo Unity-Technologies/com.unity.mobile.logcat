@@ -9,7 +9,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatQueryLayout
     {
-        Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
+        static Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
 
         const string NodeTag = "node";
         const string ClassTag = "class";
@@ -169,7 +169,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private string SafeAttributeValue(XElement element, string attributeName)
+        private static string SafeAttributeValue(XElement element, string attributeName)
         {
             if (element == null)
                 return string.Empty;
@@ -179,7 +179,7 @@ namespace Unity.Android.Logcat
             return a.Value;
         }
 
-        private void ConstructNodes(List<LayoutNode> nodes, IEnumerable<XElement> nodeList, ref int id)
+        private static void ConstructNodes(List<LayoutNode> nodes, IEnumerable<XElement> nodeList, ref int id)
         {
             foreach (var xNode in nodeList)
             {
@@ -209,21 +209,25 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal static void ParseNodes(List<LayoutNode> nodes, string rawLayout)
+        {
+            nodes.Clear();
+            if (string.IsNullOrEmpty(rawLayout))
+                return;
+            var doc = XDocument.Parse(rawLayout);
+            var xmlNodes = doc.Root.Elements(NodeTag);
+            var id = 0;
+            ConstructNodes(nodes, xmlNodes, ref id);
+        }
+
         private void Integrate(IAndroidLogcatTaskResult result)
         {
             var r = (QueryLayoutResult)result;
-            m_Nodes.Clear();
 
             try
             {
                 m_LastLoadedRawLayout = r.rawLayout;
-                if (!string.IsNullOrEmpty(r.rawLayout))
-                {
-                    var doc = XDocument.Parse(r.rawLayout);
-                    var xmlNodes = doc.Root.Elements(NodeTag);
-                    var id = 0;
-                    ConstructNodes(m_Nodes, xmlNodes, ref id);
-                }
+                ParseNodes(m_Nodes, r.rawLayout);
 
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)
