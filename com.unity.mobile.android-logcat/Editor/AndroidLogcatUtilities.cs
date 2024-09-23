@@ -563,6 +563,16 @@ namespace Unity.Android.Logcat
             return result;
         }
 
+        internal static void DrawProgressIcon(bool inProgress)
+        {
+            var statusIcon = GUIContent.none;
+            if (inProgress)
+            {
+                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
+                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
+            }
+            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+        }
         internal static void DrawRectangle(Rect area, int frameWidth, Color color)
         {
             var texture = EditorGUIUtility.whiteTexture;

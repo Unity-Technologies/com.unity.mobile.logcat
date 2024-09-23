@@ -195,14 +195,9 @@ namespace Unity.Android.Logcat
 
         private void DoProgressGUI()
         {
-            GUIContent statusIcon = GUIContent.none;
+            AndroidLogcatUtilities.DrawProgressIcon(IsCapturing);
             if (IsCapturing)
-            {
-                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
-                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
                 Repaint();
-            }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
         }
 
         private void DoCaptureGUI()
