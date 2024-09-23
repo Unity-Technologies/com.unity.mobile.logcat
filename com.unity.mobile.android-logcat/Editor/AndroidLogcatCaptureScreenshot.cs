@@ -34,7 +34,14 @@ namespace Unity.Android.Logcat
         public Rect ScreenshotDrawingRect => m_ScreenshotDrawingRect;
         public string GetImagePath(IAndroidLogcatDevice device)
         {
-            return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", ".png");
+            if (device == null)
+                return string.Empty;
+            return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", GetImageExtension());
+        }
+
+        public string GetImageExtension()
+        {
+            return ".png";
         }
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)

@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEngine.UIElements;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 
 namespace Unity.Android.Logcat
 {
@@ -15,6 +16,8 @@ namespace Unity.Android.Logcat
         class Styles
         {
             public static GUIContent QueryUIHierarchy = new GUIContent("Query UI Layout");
+            public static GUIContent SaveUIHierarchy = new GUIContent("Save Layout");
+            public static GUIContent SaveScreenshot = new GUIContent("Save Screenshot");
         }
 
         AndroidLogcatRuntimeBase m_Runtime;
@@ -212,13 +215,70 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(Styles.QueryUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
-                m_QueryLayout.ClearNodes();
+                m_QueryLayout.Clear();
                 RefreshTreeView();
                 m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
                 RefreshDisplaySize();
             }
+            DoScreenshotSaveAsGUI();
+            DoLayoutSaveAsGUI();
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void DoScreenshotSaveAsGUI()
+        {
+            var srcPath = m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
+            EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
+            if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
+            {
+                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.{m_CaptureScreenshot.GetImageExtension()}";
+                var path = EditorUtility.SaveFilePanel(
+                    "Save Screenshot",
+                    m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation,
+                    fileName,
+                    m_CaptureScreenshot.GetImageExtension().Substring(1));
+                if (!string.IsNullOrEmpty(path))
+                {
+                    try
+                    {
+                        m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation = Path.GetFullPath(Path.GetDirectoryName(path));
+                        File.Copy(srcPath, path, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Failed to save to '{path}'\n:'{ex.Message}'.");
+                    }
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+        }
+
+        private void DoLayoutSaveAsGUI()
+        {
+            EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoadedRawLayout));
+            if (GUILayout.Button(Styles.SaveUIHierarchy, AndroidLogcatStyles.toolbarButton))
+            {
+                var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.xml";
+                var path = EditorUtility.SaveFilePanel(
+                    "Save Layout",
+                    m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation,
+                    fileName,
+                    "xml");
+                if (!string.IsNullOrEmpty(path))
+                {
+                    try
+                    {
+                        m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation = Path.GetFullPath(Path.GetDirectoryName(path));
+                        File.WriteAllText(path, m_QueryLayout.LastLoadedRawLayout);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Failed to save to '{path}'\n:'{ex.Message}'.");
+                    }
+                }
+            }
+            EditorGUI.EndDisabledGroup();
         }
 
         void DoDebuggingGUI()

@@ -90,18 +90,23 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
         private List<LayoutNode> m_Nodes;
         private int m_QueryCount;
-        public bool IsQuerying => m_QueryCount > 0;
+        private string m_LastLoadedRawLayout;
+        internal bool IsQuerying => m_QueryCount > 0;
 
         internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
+
+        internal string LastLoadedRawLayout => m_LastLoadedRawLayout;
 
         internal AndroidLogcatQueryLayout(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
+            m_LastLoadedRawLayout = string.Empty;
             m_Nodes = new List<LayoutNode>();
         }
 
-        internal void ClearNodes()
+        internal void Clear()
         {
+            m_LastLoadedRawLayout = string.Empty;
             m_Nodes.Clear();
         }
 
@@ -151,7 +156,6 @@ namespace Unity.Android.Logcat
                         outputMsg = string.Empty;
                     }
                 }
-
                 return new QueryLayoutResult(outputMsg, workInput.onCompleted);
 
             }
@@ -195,6 +199,7 @@ namespace Unity.Android.Logcat
 
             try
             {
+                m_LastLoadedRawLayout = r.rawLayout;
                 if (!string.IsNullOrEmpty(r.rawLayout))
                 {
                     var doc = XDocument.Parse(r.rawLayout);
