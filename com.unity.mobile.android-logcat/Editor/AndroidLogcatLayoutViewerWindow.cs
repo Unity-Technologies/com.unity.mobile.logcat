@@ -60,10 +60,11 @@ namespace Unity.Android.Logcat
         private void LoadUI()
         {
             var r = rootVisualElement;
+            /* Keep it for reference
             if (Unsupported.IsDeveloperMode())
                 r.Insert(0, new IMGUIContainer(DoDebuggingGUI));
+            //*/
             r.Insert(0, new IMGUIContainer(DoToolbarGUI));
-
 
             var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatLayoutViewer.uxml");
             tree.CloneTree(r);
