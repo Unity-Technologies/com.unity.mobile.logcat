@@ -142,6 +142,11 @@ namespace Unity.Android.Logcat
                     var idx = outputMsg.IndexOf(endTag, StringComparison.InvariantCultureIgnoreCase);
                     if (idx > 0)
                         outputMsg = outputMsg.Substring(0, idx + endTag.Length);
+                    else if (!outputMsg.StartsWith("<hierarchy"))
+                    {
+                        AndroidLogcatInternalLog.Log($"No layout?\n{outputMsg}");
+                        outputMsg = string.Empty;
+                    }
                 }
 
                 return new QueryLayoutResult(outputMsg, workInput.onCompleted);
@@ -184,26 +189,36 @@ namespace Unity.Android.Logcat
         {
             var r = (QueryLayoutResult)result;
             m_Nodes.Clear();
-
+            
             try
             {
-                try
+                if (!string.IsNullOrEmpty(r.rawLayout))
                 {
                     var doc = XDocument.Parse(r.rawLayout);
                     var xmlNodes = doc.Root.Elements(NodeTag);
                     var id = 0;
                     ConstructNodes(m_Nodes, xmlNodes, ref id);
                 }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Failed to create layout Doc", ex);
-                }
+
+                // If there were no nodes, create empty one
+                if (m_Nodes.Count == 0)
+                    m_Nodes.Add(new LayoutNode(0, "Empty", Rect.zero));
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log(ex.Message);
+                m_Nodes.Clear();
+                var node = new LayoutNode(0, "Error while parsing layout", Rect.zero)
+                {
+                    Values =
+                    {
+                        ["error"] = ex.Message,
+                        ["rawLayout"] = r.rawLayout
+                    }
+                };
+                m_Nodes.Add(node);
+                AndroidLogcatInternalLog.Log($"Failed to create layout Doc:\n{ex.Message}");
             }
-
+            
             r.onCompleted();
         }
 
