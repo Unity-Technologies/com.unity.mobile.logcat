@@ -158,7 +158,11 @@ namespace Unity.Android.Logcat
                 m_LayoutNodeValues.columns[Value].bindCell = (v, i) =>
                 {
                     var item = (KeyValuePair<string, string>)m_LayoutNodeValues.itemsSource[i];
-                    ((Label)v).text = item.Value;
+
+                    var value = item.Value;
+                    if (value.Length > 50)
+                        value = value.Substring(0, 50);
+                    ((Label)v).text = value;
                 };
             }
         }

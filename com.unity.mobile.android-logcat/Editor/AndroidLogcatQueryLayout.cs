@@ -168,12 +168,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        private string SafeAttributeValue(XElement element, string attributeName)
+        {
+            if (element == null)
+                return string.Empty;
+            var a = element.Attribute(attributeName);
+            if (a == null)
+                return string.Empty;
+            return a.Value;
+        }
+
         private void ConstructNodes(List<LayoutNode> nodes, IEnumerable<XElement> nodeList, ref int id)
         {
             foreach (var xNode in nodeList)
             {
                 var rc = Rect.zero;
-                var b = BoundsRegex.Match(xNode.Attribute(BoundsTag).Value);
+                var b = BoundsRegex.Match(SafeAttributeValue(xNode, BoundsTag));
                 if (b.Success)
                 {
                     rc = new Rect(int.Parse(b.Groups["x1"].Value),
@@ -182,9 +192,10 @@ namespace Unity.Android.Logcat
                     rc.width = int.Parse(b.Groups["x2"].Value) - rc.xMin;
                     rc.height = int.Parse(b.Groups["y2"].Value) - rc.yMin;
                 }
+
                 var node = new LayoutNode(id++,
                     xNode.Attribute(ClassTag).Value,
-                    xNode.Attribute(ResourceIdTag).Value,
+                    SafeAttributeValue(xNode, ResourceIdTag),
                     rc);
                 foreach (var a in xNode.Attributes())
                 {
