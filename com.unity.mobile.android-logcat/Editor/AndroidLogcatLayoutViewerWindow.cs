@@ -79,7 +79,12 @@ namespace Unity.Android.Logcat
                 {
                     var item = m_LayoutNodesTreeView.GetItemDataForIndex<AndroidLogcatQueryLayout.LayoutNode>(i);
                     ((Label)v).text = item.ClassName;
-                    ((Label)v).tooltip = item.Bounds.ToString();
+
+                    var tooltip = string.Empty;
+                    if (!string.IsNullOrEmpty(item.ResourceId))
+                        tooltip = item.ResourceId + "\n";
+                    tooltip += item.Bounds.ToString();
+                    ((Label)v).tooltip = tooltip;
                 };
 
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>

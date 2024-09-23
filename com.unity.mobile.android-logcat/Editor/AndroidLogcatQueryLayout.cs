@@ -41,6 +41,7 @@ namespace Unity.Android.Logcat
             }
 
             internal string ClassName { get; }
+            internal string ResourceId { get; }
             internal Rect Bounds { get; }
             internal List<LayoutNode> Childs { get; } = new List<LayoutNode>();
             internal SortedDictionary<string, string> Values { get; } = new SortedDictionary<string, string>(new Comparer());
@@ -55,10 +56,11 @@ namespace Unity.Android.Logcat
                     Mathf.Ceil((Bounds.height / deviceDisplaySize.y) * uiWindow.height));
             }
 
-            internal LayoutNode(int id, string className, Rect bounds)
+            internal LayoutNode(int id, string className, string resourceId, Rect bounds)
             {
                 this.Id = id;
                 this.ClassName = className;
+                this.ResourceId = resourceId;
                 this.Bounds = bounds;
             }
 
@@ -180,7 +182,10 @@ namespace Unity.Android.Logcat
                     rc.width = int.Parse(b.Groups["x2"].Value) - rc.xMin;
                     rc.height = int.Parse(b.Groups["y2"].Value) - rc.yMin;
                 }
-                var node = new LayoutNode(id++, xNode.Attribute(ClassTag).Value, rc);
+                var node = new LayoutNode(id++,
+                    xNode.Attribute(ClassTag).Value,
+                    xNode.Attribute(ResourceIdTag).Value,
+                    rc);
                 foreach (var a in xNode.Attributes())
                 {
                     node.Values[a.Name.ToString()] = a.Value;
@@ -210,12 +215,12 @@ namespace Unity.Android.Logcat
 
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)
-                    m_Nodes.Add(new LayoutNode(0, "Empty", Rect.zero));
+                    m_Nodes.Add(new LayoutNode(0, "Empty", string.Empty, Rect.zero));
             }
             catch (Exception ex)
             {
                 m_Nodes.Clear();
-                var node = new LayoutNode(0, "Error while parsing layout", Rect.zero)
+                var node = new LayoutNode(0, "Error while parsing layout", string.Empty, Rect.zero)
                 {
                     Values =
                     {
