@@ -148,7 +148,7 @@ namespace Unity.Android.Logcat
 
                 if (!string.IsNullOrEmpty(outputMsg))
                 {
-                    // Srip UI hierchary dumped to: /dev/tty at the end
+                    // Strip UI hierchary dumped to: /dev/tty at the end
                     var endTag = "</hierarchy>";
                     var idx = outputMsg.IndexOf(endTag, StringComparison.InvariantCultureIgnoreCase);
                     if (idx > 0)
@@ -261,6 +261,5 @@ namespace Unity.Android.Logcat
 
             r.onCompleted();
         }
-
     }
 }
