@@ -10,6 +10,14 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatLayoutViewerWindow : EditorWindow
     {
+        internal static void ShowWindow()
+        {
+            var window = (AndroidLogcatLayoutViewerWindow)EditorWindow.GetWindow(typeof(AndroidLogcatLayoutViewerWindow));
+            window.titleContent = new GUIContent("Layout Viewer");
+            window.Show();
+        }
+
+#if UNITY_2022_3_OR_NEWER
         const string Name = nameof(Name);
         const string Value = nameof(Value);
 
@@ -31,12 +39,7 @@ namespace Unity.Android.Logcat
         Vector2 m_CacheDisplaySize;
 
 
-        internal static void ShowWindow()
-        {
-            var window = (AndroidLogcatLayoutViewerWindow)EditorWindow.GetWindow(typeof(AndroidLogcatLayoutViewerWindow));
-            window.titleContent = new GUIContent("Layout Viewer");
-            window.Show();
-        }
+
 
         private void OnEnable()
         {
@@ -362,5 +365,11 @@ namespace Unity.Android.Logcat
             AndroidLogcatUtilities.DrawRectangle(rc, 3, Color.black);
             AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);
         }
+#else
+        public void OnGUI()
+        {
+            EditorGUILayout.HelpBox("Layout Viewer requires Unity 2022.3 or higher.", MessageType.Error);
+        }
+#endif
     }
 }
