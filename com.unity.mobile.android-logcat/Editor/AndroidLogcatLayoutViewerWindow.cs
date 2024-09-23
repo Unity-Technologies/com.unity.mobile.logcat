@@ -205,7 +205,7 @@ namespace Unity.Android.Logcat
         {
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
             EditorGUI.BeginDisabledGroup(true);
-            GUILayout.Label(GUIContent.none, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            AndroidLogcatUtilities.DrawProgressIcon(m_CaptureScreenshot.IsCapturing || m_QueryLayout.IsQuerying);
             EditorGUI.EndDisabledGroup();
             m_DeviceSelection.DoGUI();
             EditorGUI.BeginDisabledGroup(m_DeviceSelection.SelectedDevice == null);

@@ -89,6 +89,8 @@ namespace Unity.Android.Logcat
 
         private AndroidLogcatRuntimeBase m_Runtime;
         private List<LayoutNode> m_Nodes;
+        private int m_QueryCount;
+        public bool IsQuerying => m_QueryCount > 0;
 
         internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
 
@@ -108,6 +110,7 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return;
 
+            m_QueryCount++;
             m_Runtime.Dispatcher.Schedule(
                 new QueryLayoutInput()
                 {
@@ -189,7 +192,7 @@ namespace Unity.Android.Logcat
         {
             var r = (QueryLayoutResult)result;
             m_Nodes.Clear();
-            
+
             try
             {
                 if (!string.IsNullOrEmpty(r.rawLayout))
@@ -217,6 +220,10 @@ namespace Unity.Android.Logcat
                 };
                 m_Nodes.Add(node);
                 AndroidLogcatInternalLog.Log($"Failed to create layout Doc:\n{ex.Message}");
+            }
+            finally
+            {
+                m_QueryCount--;
             }
             
             r.onCompleted();
