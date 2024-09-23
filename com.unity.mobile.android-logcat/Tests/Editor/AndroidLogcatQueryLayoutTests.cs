@@ -36,6 +36,13 @@ class AndroidLogcatQueryLayoutTests
         Assert.AreEqual(7, childs[0].Bounds.xMax);
         Assert.AreEqual(8, childs[0].Bounds.yMax);
         Assert.AreEqual(1, childs[0].Id);
+    }
 
+    [Test]
+    public void CanParseEmptyLayout()
+    {
+        var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
+        AndroidLogcatQueryLayout.ParseNodes(nodes, string.Empty);
+        Assert.AreEqual(0, nodes.Count);
     }
 }
