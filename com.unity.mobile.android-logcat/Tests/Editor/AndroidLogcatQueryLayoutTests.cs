@@ -17,8 +17,12 @@ class AndroidLogcatQueryLayoutTests
         var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
         AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, contents);
 
-        Assert.AreEqual(2, rotation);
+        Assert.AreEqual(AndroidScreenRotation.ProtraitReversed, rotation);
 
+        Assert.AreEqual(1, nodes.Count);
+        StringAssert.AreEqualIgnoringCase("hierarchy", nodes[0].ClassName);
+
+        nodes = nodes[0].Childs;
         Assert.AreEqual(1, nodes.Count);
         StringAssert.AreEqualIgnoringCase("android.widget.FrameLayout", nodes[0].ClassName);
         StringAssert.AreEqualIgnoringCase("test", nodes[0].ResourceId);
@@ -26,7 +30,7 @@ class AndroidLogcatQueryLayoutTests
         Assert.AreEqual(2, nodes[0].Bounds.y);
         Assert.AreEqual(3, nodes[0].Bounds.xMax);
         Assert.AreEqual(4, nodes[0].Bounds.yMax);
-        Assert.AreEqual(0, nodes[0].Id);
+        Assert.AreEqual(1, nodes[0].Id);
 
         var childs = nodes[0].Childs;
         Assert.AreEqual(1, childs.Count);
@@ -37,7 +41,7 @@ class AndroidLogcatQueryLayoutTests
         Assert.AreEqual(6, childs[0].Bounds.y);
         Assert.AreEqual(7, childs[0].Bounds.xMax);
         Assert.AreEqual(8, childs[0].Bounds.yMax);
-        Assert.AreEqual(1, childs[0].Id);
+        Assert.AreEqual(2, childs[0].Id);
     }
 
     [Test]
@@ -45,7 +49,7 @@ class AndroidLogcatQueryLayoutTests
     {
         var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
         AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, string.Empty);
-        Assert.AreEqual(0, rotation);
+        Assert.AreEqual(AndroidScreenRotation.Portrait, rotation);
         Assert.AreEqual(0, nodes.Count);
     }
 }
