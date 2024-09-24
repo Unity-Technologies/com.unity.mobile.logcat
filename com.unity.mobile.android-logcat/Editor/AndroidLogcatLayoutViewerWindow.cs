@@ -253,7 +253,7 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
             if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
             {
-                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.{m_CaptureScreenshot.GetImageExtension()}";
+                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}{m_CaptureScreenshot.GetImageExtension()}";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Screenshot",
                     m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation,
@@ -265,6 +265,11 @@ namespace Unity.Android.Logcat
                     {
                         m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation = Path.GetFullPath(Path.GetDirectoryName(path));
                         File.Copy(srcPath, path, true);
+                        GUIUtility.ExitGUI();
+                    }
+                    catch (ExitGUIException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -280,6 +285,7 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoadedRawLayout));
             if (GUILayout.Button(Styles.SaveUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
+
                 var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.xml";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Layout",
@@ -292,6 +298,11 @@ namespace Unity.Android.Logcat
                     {
                         m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation = Path.GetFullPath(Path.GetDirectoryName(path));
                         File.WriteAllText(path, m_QueryLayout.LastLoadedRawLayout);
+                        GUIUtility.ExitGUI();
+                    }
+                    catch (ExitGUIException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
