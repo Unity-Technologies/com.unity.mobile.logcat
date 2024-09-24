@@ -36,6 +36,7 @@ namespace Unity.Android.Logcat
         MultiColumnListView m_LayoutNodeValues;
         AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
         TextField m_DisplaySizeTextField;
+        [SerializeField]
         Vector2 m_CacheDisplaySize;
 
         Vector2 DisplaySizeRotated(AndroidScreenRotation screenRotation)
@@ -174,8 +175,9 @@ namespace Unity.Android.Logcat
                     if (value.Length > 50)
                         value = value.Substring(0, 50);
                     ((Label)v).text = value;
-                };
+                };  
             }
+            UpdateDisplaySizeField();
         }
 
         private void OnDisable()
@@ -222,6 +224,11 @@ namespace Unity.Android.Logcat
             else
                 m_CacheDisplaySize = Vector2.zero;
 
+            UpdateDisplaySizeField();
+        }
+
+        void UpdateDisplaySizeField()
+        {
             m_DisplaySizeTextField.value = $"{(int)m_CacheDisplaySize.x},{(int)m_CacheDisplaySize.y}";
         }
 
@@ -285,7 +292,6 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoadedRawLayout));
             if (GUILayout.Button(Styles.SaveUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
-
                 var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.xml";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Layout",
