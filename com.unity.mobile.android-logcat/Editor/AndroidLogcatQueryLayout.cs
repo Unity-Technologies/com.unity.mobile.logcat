@@ -99,6 +99,7 @@ namespace Unity.Android.Logcat
         internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
 
         internal string LastLoadedRawLayout => m_LastLoadedRawLayout;
+        internal int LastRotation { private set; get; }
 
         internal AndroidLogcatQueryLayout(AndroidLogcatRuntimeBase runtime)
         {
@@ -209,12 +210,17 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal static void ParseNodes(List<LayoutNode> nodes, string rawLayout)
+        internal static void ParseNodes(List<LayoutNode> nodes, out int rotation, string rawLayout)
         {
+            rotation = 0;
             nodes.Clear();
             if (string.IsNullOrEmpty(rawLayout))
                 return;
             var doc = XDocument.Parse(rawLayout);
+            var attrRotation = doc.Root.Attribute("rotation");
+            if (attrRotation == null)
+                throw new Exception($"Failed to find rotation attribute");
+            rotation = int.Parse(attrRotation.Value);
             var xmlNodes = doc.Root.Elements(NodeTag);
             var id = 0;
             ConstructNodes(nodes, xmlNodes, ref id);
@@ -227,7 +233,8 @@ namespace Unity.Android.Logcat
             try
             {
                 m_LastLoadedRawLayout = r.rawLayout;
-                ParseNodes(m_Nodes, r.rawLayout);
+                ParseNodes(m_Nodes, out var rotation, r.rawLayout);
+                LastRotation = rotation;
 
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)

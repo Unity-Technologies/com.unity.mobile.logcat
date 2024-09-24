@@ -38,8 +38,16 @@ namespace Unity.Android.Logcat
         TextField m_DisplaySizeTextField;
         Vector2 m_CacheDisplaySize;
 
-
-
+        Vector2 DisplaySizeRotated(int rotation)
+        {
+            //0 # Protrait
+            //1 # Landscape
+            //2 # Protrait Reversed
+            //3 # Landscape Reversed
+            if (rotation == 1 || rotation == 3)
+                return new Vector2(m_CacheDisplaySize.y, m_CacheDisplaySize.x);
+            return m_CacheDisplaySize;
+        }
 
         private void OnEnable()
         {
@@ -316,28 +324,28 @@ namespace Unity.Android.Logcat
         /// Performs recursive picking of elements.
         /// Since elments can overlap, we prefer elements with higher depth in the hierarchy
         /// </summary>
-        void DoNodeRecursivePicking(IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes, Vector2 mousePosition, int depth, ref KeyValuePair<int, int> result)
+        void DoNodeRecursivePicking(Vector2 displaySize, IReadOnlyList<AndroidLogcatQueryLayout.LayoutNode> nodes, Vector2 mousePosition, int depth, ref KeyValuePair<int, int> result)
         {
             foreach (var n in nodes)
             {
-                DoNodeRecursivePicking(n.Childs, mousePosition, depth + 1, ref result);
+                DoNodeRecursivePicking(displaySize, n.Childs, mousePosition, depth + 1, ref result);
 
                 // No point in check, if result's depth is higher than this node depth
                 if (result.Key >= 0 && result.Value > depth)
                     continue;
-                var rc = n.BoundsToScreen(m_CacheDisplaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
+                var rc = n.BoundsToScreen(displaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
                 if (rc.Contains(mousePosition))
                     result = new KeyValuePair<int, int>(n.Id, depth);
             }
         }
 
-        void DoNodePicking()
+        void DoNodePicking(Vector2 displaySize)
         {
             var e = Event.current;
             if (m_QueryLayout.Nodes.Count > 0 && e.type == EventType.MouseDown)
             {
                 var r = new KeyValuePair<int, int>(-1, -1);
-                DoNodeRecursivePicking(m_QueryLayout.Nodes, e.mousePosition, 0, ref r);
+                DoNodeRecursivePicking(displaySize, m_QueryLayout.Nodes, e.mousePosition, 0, ref r);
 
                 if (r.Key >= 0)
                 {
@@ -356,11 +364,13 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            DoNodePicking();
+            var displaySize = DisplaySizeRotated(m_QueryLayout.LastRotation);
+
+            DoNodePicking(displaySize);
 
             if (m_SelectedNode == null)
                 return;
-            rc = m_SelectedNode.BoundsToScreen(m_CacheDisplaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
+            rc = m_SelectedNode.BoundsToScreen(displaySize, m_CaptureScreenshot.ScreenshotDrawingRect);
 
             AndroidLogcatUtilities.DrawRectangle(rc, 3, Color.black);
             AndroidLogcatUtilities.DrawRectangle(rc, 2, Color.red);
