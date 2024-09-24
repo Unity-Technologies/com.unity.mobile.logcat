@@ -100,7 +100,7 @@ namespace Unity.Android.Logcat
 
                 m_LayoutNodesTreeView.selectionChanged += (IEnumerable<object> objs) =>
                 {
-                    if (objs.Count() == 0)
+                    if (objs.Count() == 0 || objs.First() == null)
                     {
                         m_SelectedNode = null;
                         m_LayoutNodeValues.itemsSource = Array.Empty<AndroidLogcatQueryLayout.LayoutNode>();
@@ -360,8 +360,9 @@ namespace Unity.Android.Logcat
 
                 if (r.Key >= 0)
                 {
-                    m_LayoutNodesTreeView.SetSelection(r.Key);
+                    m_LayoutNodesTreeView.ExpandAll();
                     m_LayoutNodesTreeView.ScrollToItem(r.Key);
+                    m_LayoutNodesTreeView.SetSelection(r.Key);
                 }
             }
         }
