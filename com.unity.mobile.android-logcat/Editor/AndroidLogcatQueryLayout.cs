@@ -99,7 +99,7 @@ namespace Unity.Android.Logcat
         internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
 
         internal string LastLoadedRawLayout => m_LastLoadedRawLayout;
-        internal int LastRotation { private set; get; }
+        internal AndroidScreenRotation LastRotation { private set; get; }
 
         internal AndroidLogcatQueryLayout(AndroidLogcatRuntimeBase runtime)
         {
@@ -210,20 +210,26 @@ namespace Unity.Android.Logcat
             }
         }
 
-        internal static void ParseNodes(List<LayoutNode> nodes, out int rotation, string rawLayout)
+        internal static void ParseNodes(List<LayoutNode> nodes, out AndroidScreenRotation rotation, string rawLayout)
         {
             rotation = 0;
             nodes.Clear();
             if (string.IsNullOrEmpty(rawLayout))
                 return;
             var doc = XDocument.Parse(rawLayout);
-            var attrRotation = doc.Root.Attribute("rotation");
+            const string Rotation = "rotation";
+            var attrRotation = doc.Root.Attribute(Rotation);
             if (attrRotation == null)
-                throw new Exception($"Failed to find rotation attribute");
-            rotation = int.Parse(attrRotation.Value);
-            var xmlNodes = doc.Root.Elements(NodeTag);
+                throw new Exception($"Failed to find {Rotation} attribute.");
+            rotation = (AndroidScreenRotation)int.Parse(attrRotation.Value);
+
             var id = 0;
-            ConstructNodes(nodes, xmlNodes, ref id);
+            var rootNode = new LayoutNode(id++, doc.Root.Name.ToString(), string.Empty, Rect.zero);
+            rootNode.Values[Rotation] = $"{rotation.ToString()}({(int)rotation})";
+            nodes.Add(rootNode);
+
+            var xmlNodes = doc.Root.Elements(NodeTag);
+            ConstructNodes(rootNode.Childs, xmlNodes, ref id);
         }
 
         private void Integrate(IAndroidLogcatTaskResult result)
@@ -234,7 +240,7 @@ namespace Unity.Android.Logcat
             {
                 m_LastLoadedRawLayout = r.rawLayout;
                 ParseNodes(m_Nodes, out var rotation, r.rawLayout);
-                LastRotation = rotation;
+                LastRotation = (AndroidScreenRotation)rotation;
 
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)

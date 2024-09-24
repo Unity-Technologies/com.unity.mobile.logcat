@@ -8,7 +8,7 @@
         <ui:VisualElement>
             <ui:TwoPaneSplitView name="LayoutTreeValuesSplit" orientation="Horizontal" fixed-pane-initial-dimension="300">
                 <ui:VisualElement>
-                    <ui:Label text=" &lt;b&gt;Hierarchy&lt;/b&gt;" style="border-left-color: rgb(120, 120, 120); border-right-color: rgb(120, 120, 120); border-top-color: rgb(120, 120, 120); border-bottom-color: rgb(120, 120, 120); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px;" />
+                    <ui:Label text=" &lt;b&gt;Layout&lt;/b&gt;" style="border-left-color: rgb(120, 120, 120); border-right-color: rgb(120, 120, 120); border-top-color: rgb(120, 120, 120); border-bottom-color: rgb(120, 120, 120); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px;" />
                     <ui:TreeView name="LayoutNodes" show-alternating-row-backgrounds="All" />
                 </ui:VisualElement>
                 <ui:VisualElement>

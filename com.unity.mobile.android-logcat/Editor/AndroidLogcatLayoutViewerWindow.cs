@@ -38,13 +38,13 @@ namespace Unity.Android.Logcat
         TextField m_DisplaySizeTextField;
         Vector2 m_CacheDisplaySize;
 
-        Vector2 DisplaySizeRotated(int rotation)
+        Vector2 DisplaySizeRotated(AndroidScreenRotation screenRotation)
         {
             //0 # Protrait
             //1 # Landscape
             //2 # Protrait Reversed
             //3 # Landscape Reversed
-            if (rotation == 1 || rotation == 3)
+            if (screenRotation == AndroidScreenRotation.Landscape || screenRotation == AndroidScreenRotation.LandscapeReversed)
                 return new Vector2(m_CacheDisplaySize.y, m_CacheDisplaySize.x);
             return m_CacheDisplaySize;
         }
