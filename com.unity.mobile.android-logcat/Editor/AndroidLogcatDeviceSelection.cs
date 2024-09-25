@@ -64,21 +64,34 @@ namespace Unity.Android.Logcat
 
         public void DoGUI()
         {
-            var deviceNames = m_Devices.Select(m => new GUIContent(m.ShortDisplayName)).ToArray();
-            if (deviceNames.Length == 0)
+            var currentSelectedDevice = SelectedDevice == null ? "No device" : SelectedDevice.ShortDisplayName;
+
+            GUILayout.Label(new GUIContent(currentSelectedDevice, "Select android device"), AndroidLogcatStyles.toolbarPopup);
+
+            var rect = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
-                m_SelectedDeviceIdx = 0;
-                deviceNames = new[] { new GUIContent("No Device") };
-            }
-            EditorGUI.BeginChangeCheck();
-            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
-                deviceNames,
-                AndroidLogcatStyles.toolbarPopup,
-                GUILayout.MaxWidth(300));
-            if (EditorGUI.EndChangeCheck())
-            {
-                m_OnNewDeviceSelected?.Invoke(SelectedDevice);
-                m_PreviousDeviceSelected = SelectedDevice;
+                // Only update device list, when we select this UI item
+                m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
+
+                var names = m_Devices.Select(m => new GUIContent(m.ShortDisplayName)).ToList();
+
+                var selectedIndex = -1;
+                for (int i = 0; i < names.Count && currentSelectedDevice != null; i++)
+                {
+                    if (currentSelectedDevice == names[i].text)
+                    {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+
+                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names.ToArray(), selectedIndex, (userData, options, selected) =>
+                {
+                    m_SelectedDeviceIdx = selected;
+                    m_OnNewDeviceSelected?.Invoke(SelectedDevice);
+                    m_PreviousDeviceSelected = SelectedDevice;
+                }, null);
             }
         }
     }
