@@ -89,7 +89,6 @@ namespace Unity.Android.Logcat
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, ReloadCaptureAssetsIfNeeded, nameof(AndroidLogcatScreenCaptureWindow) + "_DeviceId");
-            m_Runtime.Update += OnUpdate;
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
@@ -97,12 +96,6 @@ namespace Unity.Android.Logcat
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
-
-        private void OnUpdate()
-        {
-            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
-        }
-
         private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
         {
             if (m_LastDeviceUsedForAssets == device)
@@ -126,7 +119,6 @@ namespace Unity.Android.Logcat
 
             if (m_Runtime == null)
                 return;
-            m_Runtime.Update -= OnUpdate;
             m_DeviceSelection.Dispose();
             m_DeviceSelection = null;
             m_Runtime = null;
