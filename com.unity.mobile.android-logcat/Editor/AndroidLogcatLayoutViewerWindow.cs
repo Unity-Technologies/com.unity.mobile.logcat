@@ -36,19 +36,6 @@ namespace Unity.Android.Logcat
         MultiColumnListView m_LayoutNodeValues;
         AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
         TextField m_DisplaySizeTextField;
-        [SerializeField]
-        Vector2 m_CacheDisplaySize;
-
-        Vector2 DisplaySizeRotated(AndroidScreenRotation screenRotation)
-        {
-            //0 # Protrait
-            //1 # Landscape
-            //2 # Protrait Reversed
-            //3 # Landscape Reversed
-            if (screenRotation == AndroidScreenRotation.Landscape || screenRotation == AndroidScreenRotation.LandscapeReversed)
-                return new Vector2(m_CacheDisplaySize.y, m_CacheDisplaySize.x);
-            return m_CacheDisplaySize;
-        }
 
         private void OnEnable()
         {
@@ -82,7 +69,7 @@ namespace Unity.Android.Logcat
             tree.CloneTree(r);
 
             r.Q<IMGUIContainer>("LayoutImage").onGUIHandler = DoLayoutImage;
-            m_DisplaySizeTextField = r.Q<TextField>("DisplaySize");
+
             // Setup layout nodes tree view
             {
                 m_LayoutNodesTreeView = r.Q<TreeView>("LayoutNodes");
@@ -175,8 +162,10 @@ namespace Unity.Android.Logcat
                     if (value.Length > 50)
                         value = value.Substring(0, 50);
                     ((Label)v).text = value;
-                };  
+                };
             }
+
+            m_DisplaySizeTextField = r.Q<TextField>("DisplaySize");
             UpdateDisplaySizeField();
         }
 
@@ -216,20 +205,10 @@ namespace Unity.Android.Logcat
             m_LayoutNodesTreeView.ExpandAll();
         }
 
-        void RefreshDisplaySize()
-        {
-            RefreshTreeView();
-            if (m_DeviceSelection.SelectedDevice != null)
-                m_CacheDisplaySize = m_DeviceSelection.SelectedDevice.QueryDisplaySize();
-            else
-                m_CacheDisplaySize = Vector2.zero;
-
-            UpdateDisplaySizeField();
-        }
-
         void UpdateDisplaySizeField()
         {
-            m_DisplaySizeTextField.value = $"{(int)m_CacheDisplaySize.x},{(int)m_CacheDisplaySize.y}";
+            var d = m_QueryLayout.LastLoaded.DisplaySize;
+            m_DisplaySizeTextField.value = $"{(int)d.x},{(int)d.y}";
         }
 
         void DoToolbarGUI()
@@ -245,8 +224,11 @@ namespace Unity.Android.Logcat
                 m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, Repaint);
                 m_QueryLayout.Clear();
                 RefreshTreeView();
-                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, RefreshTreeView);
-                RefreshDisplaySize();
+                m_QueryLayout.QueueCaptureLayout(m_DeviceSelection.SelectedDevice, () =>
+                {
+                    RefreshTreeView();
+                    UpdateDisplaySizeField();
+                });
             }
             DoScreenshotSaveAsGUI();
             DoLayoutSaveAsGUI();
@@ -260,7 +242,8 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
             if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
             {
-                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}{m_CaptureScreenshot.GetImageExtension()}";
+                var d = m_QueryLayout.LastLoaded.DisplaySize;
+                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)d.x}x{(int)d.y}{m_CaptureScreenshot.GetImageExtension()}";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Screenshot",
                     m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation,
@@ -289,10 +272,11 @@ namespace Unity.Android.Logcat
 
         private void DoLayoutSaveAsGUI()
         {
-            EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoadedRawLayout));
+            EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoaded.RawLayout));
             if (GUILayout.Button(Styles.SaveUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
-                var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)m_CacheDisplaySize.x}x{(int)m_CacheDisplaySize.y}.xml";
+                var d = m_QueryLayout.LastLoaded.DisplaySize;
+                var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)d.x}x{(int)d.y}.xml";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Layout",
                     m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation,
@@ -303,7 +287,7 @@ namespace Unity.Android.Logcat
                     try
                     {
                         m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation = Path.GetFullPath(Path.GetDirectoryName(path));
-                        File.WriteAllText(path, m_QueryLayout.LastLoadedRawLayout);
+                        File.WriteAllText(path, m_QueryLayout.LastLoaded.RawLayout);
                         GUIUtility.ExitGUI();
                     }
                     catch (ExitGUIException)
@@ -382,7 +366,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            var displaySize = DisplaySizeRotated(m_QueryLayout.LastRotation);
+            var displaySize = m_QueryLayout.LastLoaded.DisplaySizeRotated;
 
             DoNodePicking(displaySize);
 

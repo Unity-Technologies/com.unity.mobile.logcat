@@ -74,43 +74,78 @@ namespace Unity.Android.Logcat
         private class QueryLayoutInput : IAndroidLogcatTaskInput
         {
             internal AndroidBridge.ADB adb;
-            internal string deviceId;
+            internal IAndroidLogcatDevice device;
             internal Action onCompleted;
         }
 
         private class QueryLayoutResult : IAndroidLogcatTaskResult
         {
             internal string rawLayout;
+            internal IAndroidLogcatDevice device;
             internal Action onCompleted;
 
-            internal QueryLayoutResult(string layout, Action onCompleted)
+            internal QueryLayoutResult(string layout, IAndroidLogcatDevice device, Action onCompleted)
             {
-                this.onCompleted = onCompleted;
                 this.rawLayout = layout;
+                this.device = device;
+                this.onCompleted = onCompleted;
+            }
+        }
+
+        internal class LoadResult
+        {
+            internal string RawLayout { get; private set; }
+            internal AndroidScreenRotation Rotation { get; private set; }
+            internal Vector2 DisplaySize { get; private set; }
+            internal Vector2 DisplaySizeRotated
+            {
+                get
+                {
+                    if (Rotation == AndroidScreenRotation.Landscape || Rotation == AndroidScreenRotation.LandscapeReversed)
+                        return new Vector2(DisplaySize.y, DisplaySize.x);
+                    return DisplaySize;
+                }
+            }
+
+            internal LoadResult()
+            {
+                Clear();
+            }
+
+            internal LoadResult(string rawLayout, AndroidScreenRotation rotation, Vector2 displaySize)
+            {
+                RawLayout = rawLayout;
+                Rotation = rotation;
+                DisplaySize = displaySize;
+            }
+
+            private void Clear()
+            {
+                RawLayout = string.Empty;
+                Rotation = 0;
+                DisplaySize = Vector2.zero;
             }
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
         private List<LayoutNode> m_Nodes;
         private int m_QueryCount;
-        private string m_LastLoadedRawLayout;
         internal bool IsQuerying => m_QueryCount > 0;
 
         internal IReadOnlyList<LayoutNode> Nodes => m_Nodes;
 
-        internal string LastLoadedRawLayout => m_LastLoadedRawLayout;
-        internal AndroidScreenRotation LastRotation { private set; get; }
+        internal LoadResult LastLoaded { get; private set; }
 
         internal AndroidLogcatQueryLayout(AndroidLogcatRuntimeBase runtime)
         {
             m_Runtime = runtime;
-            m_LastLoadedRawLayout = string.Empty;
+            LastLoaded = new LoadResult();
             m_Nodes = new List<LayoutNode>();
         }
 
         internal void Clear()
         {
-            m_LastLoadedRawLayout = string.Empty;
+            LastLoaded = new LoadResult();
             m_Nodes.Clear();
         }
 
@@ -124,7 +159,7 @@ namespace Unity.Android.Logcat
                 new QueryLayoutInput()
                 {
                     adb = m_Runtime.Tools.ADB,
-                    deviceId = device.Id,
+                    device = device,
                     onCompleted = onCompleted
                 },
                 Execute,
@@ -143,7 +178,7 @@ namespace Unity.Android.Logcat
                 if (adb == null)
                     throw new NullReferenceException("ADB interface has to be valid");
 
-                var cmd = $"-s {workInput.deviceId} exec-out uiautomator dump /dev/tty";
+                var cmd = $"-s {workInput.device.Id} exec-out uiautomator dump /dev/tty";
                 var outputMsg = adb.Run(new[] { cmd }, "Unable to get UI layout");
                 AndroidLogcatInternalLog.Log($"adb {cmd}");
 
@@ -160,13 +195,13 @@ namespace Unity.Android.Logcat
                         outputMsg = string.Empty;
                     }
                 }
-                return new QueryLayoutResult(outputMsg, workInput.onCompleted);
+                return new QueryLayoutResult(outputMsg, workInput.device, workInput.onCompleted);
 
             }
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.Message);
-                return new QueryLayoutResult(string.Empty, workInput.onCompleted);
+                return new QueryLayoutResult(string.Empty, null, workInput.onCompleted);
             }
         }
 
@@ -238,10 +273,14 @@ namespace Unity.Android.Logcat
 
             try
             {
-                m_LastLoadedRawLayout = r.rawLayout;
                 ParseNodes(m_Nodes, out var rotation, r.rawLayout);
-                LastRotation = (AndroidScreenRotation)rotation;
 
+                var displaySize = Vector2.zero;
+                if (r.device != null)
+                    displaySize = r.device.QueryDisplaySize();
+
+
+                LastLoaded = new LoadResult(r.rawLayout, (AndroidScreenRotation)rotation, displaySize);
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)
                     m_Nodes.Add(new LayoutNode(0, "Empty", string.Empty, Rect.zero));
