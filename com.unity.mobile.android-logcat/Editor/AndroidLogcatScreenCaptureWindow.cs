@@ -88,7 +88,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, ReloadCaptureAssetsIfNeeded);
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, ReloadCaptureAssetsIfNeeded, nameof(AndroidLogcatScreenCaptureWindow) + "_DeviceId");
             m_Runtime.Update += OnUpdate;
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;

@@ -47,7 +47,7 @@ namespace Unity.Android.Logcat
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.Closing += OnDisable;
-            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, null);
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, null, nameof(AndroidLogcatLayoutViewerWindow) + "_DeviceId");
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_QueryLayout = m_Runtime.QueryLayout;
 
