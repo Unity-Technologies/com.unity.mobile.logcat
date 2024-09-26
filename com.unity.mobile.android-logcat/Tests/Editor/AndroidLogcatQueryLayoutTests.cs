@@ -12,8 +12,12 @@ class AndroidLogcatQueryLayoutTests
     <node index=""0"" resource-id=""test"" class=""android.widget.FrameLayout"" bounds=""[1,2][3,4]"">
         <node index=""0"" resource-id=""test2"" class=""android.widget.View"" bounds=""[5,6][7,8]""/>
     </node>
-</hierarchy>
+</hierarchy>UI hierchary dumped to: /dev/tty
 ";
+        contents = AndroidLogcatQueryLayout.ExtractLayoutXmlFromOutput(contents);
+        StringAssert.StartsWith("<?xml", contents);
+        StringAssert.EndsWith("</hierarchy>", contents);
+
         var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
         AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, contents);
 
@@ -48,8 +52,36 @@ class AndroidLogcatQueryLayoutTests
     public void CanParseEmptyLayout()
     {
         var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
-        AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, string.Empty);
+        var contents = AndroidLogcatQueryLayout.ExtractLayoutXmlFromOutput(string.Empty);
+        AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, contents);
         Assert.AreEqual(AndroidScreenRotation.Portrait, rotation);
         Assert.AreEqual(0, nodes.Count);
+    }
+
+    // Test case where uiautomator shows some errors, but still dumps layout
+    [Test]
+    public void CanParseLayoutWithExtraErrorOutput()
+    {
+        var contents = @"java.io.FileNotFoundException: /data/system/theme_config/theme_compatibility.xml: open failed: ENOENT (No such file or directory)
+        at libcore.io.IoBridge.open(IoBridge.java:574)
+        at java.io.FileInputStream.<init>(FileInputStream.java:160)
+        at java.io.FileInputStream.<init>(FileInputStream.java:115)
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<hierarchy rotation=""2"">
+    <node index=""0"" resource-id=""test"" class=""android.widget.FrameLayout"" bounds=""[1,2][3,4]"">
+        <node index=""0"" resource-id=""test2"" class=""android.widget.View"" bounds=""[5,6][7,8]""/>
+    </node>
+</hierarchy>UI hierchary dumped to: /dev/tty
+";
+        contents = AndroidLogcatQueryLayout.ExtractLayoutXmlFromOutput(contents);
+        StringAssert.StartsWith("<?xml", contents);
+        StringAssert.EndsWith("</hierarchy>", contents);
+
+        var nodes = new List<AndroidLogcatQueryLayout.LayoutNode>();
+        AndroidLogcatQueryLayout.ParseNodes(nodes, out var rotation, contents);
+
+        Assert.AreEqual(1, nodes.Count);
+        StringAssert.AreEqualIgnoringCase("hierarchy", nodes[0].ClassName);
+
     }
 }

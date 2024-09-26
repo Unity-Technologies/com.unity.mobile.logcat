@@ -184,16 +184,10 @@ namespace Unity.Android.Logcat
 
                 if (!string.IsNullOrEmpty(outputMsg))
                 {
-                    // Strip UI hierchary dumped to: /dev/tty at the end
-                    var endTag = "</hierarchy>";
-                    var idx = outputMsg.IndexOf(endTag, StringComparison.InvariantCultureIgnoreCase);
-                    if (idx > 0)
-                        outputMsg = outputMsg.Substring(0, idx + endTag.Length);
-                    else if (!outputMsg.StartsWith("<hierarchy"))
-                    {
+                    var stripped = ExtractLayoutXmlFromOutput(outputMsg);
+                    if (string.IsNullOrEmpty(stripped))
                         AndroidLogcatInternalLog.Log($"No layout?\n{outputMsg}");
-                        outputMsg = string.Empty;
-                    }
+                    outputMsg = stripped;
                 }
                 return new QueryLayoutResult(outputMsg, workInput.device, workInput.onCompleted);
 
@@ -203,6 +197,22 @@ namespace Unity.Android.Logcat
                 AndroidLogcatInternalLog.Log(ex.Message);
                 return new QueryLayoutResult(string.Empty, null, workInput.onCompleted);
             }
+        }
+
+        internal static string ExtractLayoutXmlFromOutput(string contents)
+        {
+            if (string.IsNullOrEmpty(contents))
+                return contents;
+            var startTag = "<?xml";
+            var endTag = "</hierarchy>";
+
+            var startIndex = contents.IndexOf(startTag, StringComparison.InvariantCultureIgnoreCase);
+            var endIndex = contents.IndexOf(endTag, StringComparison.InvariantCultureIgnoreCase);
+
+            if (startIndex == -1 || endIndex == -1 || startIndex > endIndex)
+                return string.Empty;
+
+            return contents.Substring(startIndex, endIndex + endTag.Length - startIndex);
         }
 
         private static string SafeAttributeValue(XElement element, string attributeName)
