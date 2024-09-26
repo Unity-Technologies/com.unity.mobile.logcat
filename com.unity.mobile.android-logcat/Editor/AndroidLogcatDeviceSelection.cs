@@ -15,6 +15,7 @@ namespace Unity.Android.Logcat
         int m_SelectedDeviceIdx;
         IAndroidLogcatDevice m_PreviousDeviceSelected;
         Action<IAndroidLogcatDevice> m_OnNewDeviceSelected;
+        string m_DeviceSelectionKey;
 
         public IAndroidLogcatDevice SelectedDevice
         {
@@ -26,10 +27,11 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public AndroidLogcatDeviceSelection(AndroidLogcatRuntimeBase runtime, Action<IAndroidLogcatDevice> onNewDeviceSelected)
+        public AndroidLogcatDeviceSelection(AndroidLogcatRuntimeBase runtime, Action<IAndroidLogcatDevice> onNewDeviceSelected, string deviceSelectionKey)
         {
             m_Runtime = runtime;
             m_OnNewDeviceSelected = onNewDeviceSelected;
+            m_DeviceSelectionKey = deviceSelectionKey;
             m_Runtime.DeviceQuery.DevicesUpdated += OnDevicesUpdated;
             QueryDevices();
         }
@@ -46,6 +48,16 @@ namespace Unity.Android.Logcat
                 m_SelectedDeviceIdx = -1;
             else
             {
+                var lastChosenDevice = SessionState.GetString(m_DeviceSelectionKey, string.Empty);
+                for (int i = 0; i < m_Devices.Length && !string.IsNullOrEmpty(lastChosenDevice); i++)
+                {
+                    if (lastChosenDevice.Equals(m_Devices[i].Id))
+                    {
+                        m_SelectedDeviceIdx = i;
+                        break;
+                    }
+                }
+
                 m_SelectedDeviceIdx = Math.Min(m_SelectedDeviceIdx, m_Devices.Length - 1);
                 if (m_SelectedDeviceIdx < 0)
                     m_SelectedDeviceIdx = 0;
@@ -57,28 +69,47 @@ namespace Unity.Android.Logcat
             QueryDevices();
             if (SelectedDevice != m_PreviousDeviceSelected)
             {
-                m_OnNewDeviceSelected.Invoke(SelectedDevice);
-                m_PreviousDeviceSelected = SelectedDevice;
+                InvokeNewDeviceSelected(SelectedDevice);
             }
+        }
+
+        private void InvokeNewDeviceSelected(IAndroidLogcatDevice device)
+        {
+            m_OnNewDeviceSelected?.Invoke(device);
+            m_PreviousDeviceSelected = device;
+
+            SessionState.SetString(m_DeviceSelectionKey, device != null ? device.Id : string.Empty);
         }
 
         public void DoGUI()
         {
-            var deviceNames = m_Devices.Select(m => new GUIContent(m.ShortDisplayName)).ToArray();
-            if (deviceNames.Length == 0)
+            var currentSelectedDevice = SelectedDevice == null ? "No device" : SelectedDevice.ShortDisplayName;
+
+            GUILayout.Label(new GUIContent(currentSelectedDevice, "Select android device"), AndroidLogcatStyles.toolbarPopup);
+
+            var rect = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
-                m_SelectedDeviceIdx = 0;
-                deviceNames = new[] { new GUIContent("No Device") };
-            }
-            EditorGUI.BeginChangeCheck();
-            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
-                deviceNames,
-                AndroidLogcatStyles.toolbarPopup,
-                GUILayout.MaxWidth(300));
-            if (EditorGUI.EndChangeCheck())
-            {
-                m_OnNewDeviceSelected.Invoke(SelectedDevice);
-                m_PreviousDeviceSelected = SelectedDevice;
+                // Only update device list, when we select this UI item
+                m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
+
+                var names = m_Devices.Select(m => new GUIContent(m.ShortDisplayName)).ToList();
+
+                var selectedIndex = -1;
+                for (int i = 0; i < names.Count && currentSelectedDevice != null; i++)
+                {
+                    if (currentSelectedDevice == names[i].text)
+                    {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+
+                EditorUtility.DisplayCustomMenu(new Rect(rect.x, rect.yMax, 0, 0), names.ToArray(), selectedIndex, (userData, options, selected) =>
+                {
+                    m_SelectedDeviceIdx = selected;
+                    InvokeNewDeviceSelected(SelectedDevice);
+                }, null);
             }
         }
     }

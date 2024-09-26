@@ -26,13 +26,22 @@ namespace Unity.Android.Logcat
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private string m_Error;
+        private Rect m_ScreenshotDrawingRect;
 
         public bool IsCapturing => m_CaptureCount > 0;
         public Texture2D ImageTexture => m_ImageTexture;
         public string Error => m_Error;
+        public Rect ScreenshotDrawingRect => m_ScreenshotDrawingRect;
         public string GetImagePath(IAndroidLogcatDevice device)
         {
-            return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", ".png");
+            if (device == null)
+                return string.Empty;
+            return AndroidLogcatUtilities.GetTemporaryPath(device, "screenshot", GetImageExtension());
+        }
+
+        public string GetImageExtension()
+        {
+            return ".png";
         }
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)
@@ -99,20 +108,36 @@ namespace Unity.Android.Logcat
                 return;
         }
 
-        public void DoGUI(Rect rc)
+        public bool DoGUI(Rect rc)
         {
             if (!string.IsNullOrEmpty(m_Error))
             {
-                EditorGUILayout.HelpBox(m_Error, MessageType.Error);
+                EditorGUI.HelpBox(rc, m_Error, MessageType.Error);
             }
             else if (m_ImageTexture != null)
             {
                 GUI.DrawTexture(rc, m_ImageTexture, ScaleMode.ScaleToFit);
+                m_ScreenshotDrawingRect = GUILayoutUtility.GetLastRect();
+
+                var imageAspect = (float)m_ImageTexture.width / (float)m_ImageTexture.height;
+                var windowAspect = m_ScreenshotDrawingRect.width / m_ScreenshotDrawingRect.height;
+                if (imageAspect < windowAspect)
+                {
+                    var width = m_ScreenshotDrawingRect.height * imageAspect;
+                    m_ScreenshotDrawingRect = new Rect((m_ScreenshotDrawingRect.width - width) * 0.5f, m_ScreenshotDrawingRect.y, width, m_ScreenshotDrawingRect.height);
+                }
+                else
+                {
+                    var height = m_ScreenshotDrawingRect.width / imageAspect;
+                    m_ScreenshotDrawingRect = new Rect(m_ScreenshotDrawingRect.x, (m_ScreenshotDrawingRect.height - height) * 0.5f, m_ScreenshotDrawingRect.width, height);
+                }
             }
             else
             {
-                EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
+                return false;
             }
+
+            return true;
         }
     }
 }

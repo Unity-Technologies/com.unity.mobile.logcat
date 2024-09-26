@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using UnityEditor.Android;
+using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
@@ -47,6 +47,8 @@ namespace Unity.Android.Logcat
         internal abstract string Id { get; }
 
         internal abstract string DisplayName { get; }
+
+        internal abstract Vector2 QueryDisplaySize();
 
         internal abstract string ShortDisplayName { get; }
 
@@ -123,13 +125,13 @@ namespace Unity.Android.Logcat
 
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
+        static readonly Regex DisplaySizeRegex = new Regex(@"Physical size: (?<x>\d+)x(?<y>\d+)");
+
         private string m_Id;
         private AndroidBridge.AndroidDevice m_Device;
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
-
-
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
             : base(new AndroidLogcatActivityManager(adb, deviceId))
         {
@@ -230,6 +232,27 @@ namespace Unity.Android.Logcat
                     m_DisplayName = $"{Manufacturer} {Model} (version: {OSVersion}, abi: {ABI}, sdk: {APILevel}, id: {Id})";
                     return m_DisplayName;
                 }
+            }
+        }
+
+        internal override Vector2 QueryDisplaySize()
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return Vector2.zero;
+            else
+            {
+                // Don't cache display size, since it can change, for ex., foldabales devices
+                var displaySize = Vector2.zero;
+                var args = $"-s {Id} shell wm size";
+                var output = m_ADB.Run(new[] { args }, $"Failed to get display size");
+                AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}\n{output}");
+                var result = DisplaySizeRegex.Match(output);
+                if (result.Success)
+                {
+                    displaySize.x = int.Parse(result.Groups["x"].Value);
+                    displaySize.y = int.Parse(result.Groups["y"].Value);
+                }
+                return displaySize;
             }
         }
 

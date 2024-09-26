@@ -6,6 +6,7 @@
 [Ss]treaming[Aa]ssets/
 [Ll]ogs/
 **/UserSettings/**
+.utmp
 .vs
 .vscode
 .idea

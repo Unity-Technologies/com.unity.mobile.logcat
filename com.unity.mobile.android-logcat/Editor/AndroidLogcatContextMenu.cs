@@ -9,6 +9,7 @@ namespace Unity.Android.Logcat
     {
         None,
         Copy,
+        CopyAll,
         SelectAll,
         SaveSelection,
         AddTag,
@@ -26,6 +27,7 @@ namespace Unity.Android.Logcat
         ScreenCapture,
         OpenTerminal,
         StacktraceUtility,
+        LayoutViewer,
         WindowMemory,
         WindowInputs,
         WindowHidden

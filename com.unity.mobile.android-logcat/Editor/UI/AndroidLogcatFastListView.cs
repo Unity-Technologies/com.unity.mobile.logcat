@@ -102,7 +102,7 @@ namespace Unity.Android.Logcat
         {
             RecalculateEntriesMaxWidthIfNeeded();
             var logHeight = GetStyle().fixedHeight;
-            var entriesView = new Rect(0, 0, m_MaxEntryWidth, logHeight * m_LogEntries.Count);
+            var entriesView = new Rect(0, 0, m_MaxEntryWidth, logHeight * (m_LogEntries.Count + 1));
 
             var rc = GUILayoutUtility.GetRect(GUIContent.none, GetStyle(), GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);

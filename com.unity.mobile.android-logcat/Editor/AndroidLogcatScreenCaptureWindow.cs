@@ -2,7 +2,8 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEditor;
-using System.Linq;
+using System.Collections.Generic;
+using UnityEditor.IMGUI.Controls;
 
 namespace Unity.Android.Logcat
 {
@@ -76,7 +77,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-
         public static void ShowWindow()
         {
             GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
@@ -88,8 +88,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, ReloadCaptureAssetsIfNeeded);
-            m_Runtime.Update += OnUpdate;
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, ReloadCaptureAssetsIfNeeded, nameof(AndroidLogcatScreenCaptureWindow) + "_DeviceId");
             m_Runtime.Closing += OnDisable;
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
@@ -97,12 +96,6 @@ namespace Unity.Android.Logcat
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
-
-        private void OnUpdate()
-        {
-            m_Runtime.DeviceQuery.UpdateConnectedDevicesList(false);
-        }
-
         private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
         {
             if (m_LastDeviceUsedForAssets == device)
@@ -126,7 +119,6 @@ namespace Unity.Android.Logcat
 
             if (m_Runtime == null)
                 return;
-            m_Runtime.Update -= OnUpdate;
             m_DeviceSelection.Dispose();
             m_DeviceSelection = null;
             m_Runtime = null;
@@ -195,14 +187,9 @@ namespace Unity.Android.Logcat
 
         private void DoProgressGUI()
         {
-            GUIContent statusIcon = GUIContent.none;
+            AndroidLogcatUtilities.DrawProgressIcon(IsCapturing);
             if (IsCapturing)
-            {
-                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
-                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
                 Repaint();
-            }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
         }
 
         private void DoCaptureGUI()
@@ -310,8 +297,9 @@ namespace Unity.Android.Logcat
             {
                 case Mode.Screenshot:
                     {
-                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        m_CaptureScreenshot.DoGUI(rc);
+                        var rc = new Rect(0, kButtonAreaHeight * 2, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        if (!m_CaptureScreenshot.DoGUI(rc))
+                            EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
                     }
                     break;
                 case Mode.Video:

@@ -4,6 +4,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using static Unity.Android.Logcat.AndroidLogcatConsoleWindow;
+using static Unity.Android.Logcat.AndroidLogcatUserSettings;
 
 namespace Unity.Android.Logcat
 {
@@ -79,6 +80,15 @@ namespace Unity.Android.Logcat
             }
         }
 
+        [Serializable]
+        internal class QueryLayoutSettings
+        {
+            [SerializeField]
+            internal string LastLayoutSaveLocation;
+            [SerializeField]
+            internal string LastScreenshotSaveLocation;
+        }
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -102,6 +112,8 @@ namespace Unity.Android.Logcat
         private VideoSettings m_CaptureVideoSettings;
         [SerializeField]
         private ScreenCaptureSettings m_ScreenCaptureSettings;
+        [SerializeField]
+        private QueryLayoutSettings m_QueryLayoutSettings;
         [SerializeField]
         private InputSettings m_InputSettings;
 
@@ -164,6 +176,7 @@ namespace Unity.Android.Logcat
 
         public VideoSettings CaptureVideoSettings { set => m_CaptureVideoSettings = value; get => m_CaptureVideoSettings; }
         public ScreenCaptureSettings CaptureSettings { set => m_ScreenCaptureSettings = value; get => m_ScreenCaptureSettings; }
+        public QueryLayoutSettings LayoutSettings { set => m_QueryLayoutSettings = value; get => m_QueryLayoutSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
 
         public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
@@ -338,6 +351,8 @@ namespace Unity.Android.Logcat
 
             ResetCaptureVideoSettings();
             ResetScreenCaptureSettings();
+
+            m_QueryLayoutSettings = new QueryLayoutSettings();
 
             m_InputSettings = new InputSettings()
             {

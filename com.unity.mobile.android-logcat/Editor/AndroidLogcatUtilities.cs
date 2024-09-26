@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -551,6 +552,45 @@ namespace Unity.Android.Logcat
 #else
             return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
 #endif
+        }
+
+        internal static VisualTreeAsset LoadUXML(string uxmlFileName)
+        {
+            var path = $"Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/{uxmlFileName}";
+            var result = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Packages/com.unity.mobile.android-logcat/Editor/UI/Layouts/{uxmlFileName}");
+            if (result == null)
+                throw new FileNotFoundException($"Failed to load '{path}'");
+            return result;
+        }
+
+        internal static void DrawProgressIcon(bool inProgress)
+        {
+            var statusIcon = GUIContent.none;
+            if (inProgress)
+            {
+                int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
+                statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
+            }
+            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+        }
+        internal static void DrawRectangle(Rect area, int frameWidth, Color color)
+        {
+            var texture = EditorGUIUtility.whiteTexture;
+            var oldColor = GUI.color;
+            GUI.color = color;
+
+            var lineArea = area;
+            lineArea.height = frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea.y = area.yMax - frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea = area;
+            lineArea.width = frameWidth;
+            GUI.DrawTexture(lineArea, texture);
+            lineArea.x = area.xMax - frameWidth;
+
+            GUI.DrawTexture(lineArea, texture);
+            GUI.color = oldColor;
         }
     }
 }
