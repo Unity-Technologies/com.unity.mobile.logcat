@@ -3,6 +3,7 @@
         <ui:VisualElement>
             <ui:Label text=" &lt;b&gt;Appearance&lt;/b&gt;" style="border-left-color: rgb(120, 120, 120); border-right-color: rgb(120, 120, 120); border-top-color: rgb(120, 120, 120); border-bottom-color: rgb(120, 120, 120); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px;" />
             <ui:TextField label=" &lt;b&gt;Display Size:&lt;/b&gt;" placeholder-text="&lt;No Information&gt;" name="DisplaySize" readonly="true" style="border-left-color: rgb(120, 120, 120); border-right-color: rgb(120, 120, 120); border-top-color: rgb(120, 120, 120); border-bottom-color: rgb(120, 120, 120); border-bottom-width: 1px;" />
+            <ui:TextField label=" &lt;b&gt;Overriden Size:&lt;/b&gt;" placeholder-text="&lt;No Information&gt;" name="OverridenDisplaySize" readonly="true" style="border-left-color: rgb(120, 120, 120); border-right-color: rgb(120, 120, 120); border-top-color: rgb(120, 120, 120); border-bottom-color: rgb(120, 120, 120); border-bottom-width: 1px;" />
             <ui:IMGUIContainer name="LayoutImage" />
         </ui:VisualElement>
         <ui:VisualElement>

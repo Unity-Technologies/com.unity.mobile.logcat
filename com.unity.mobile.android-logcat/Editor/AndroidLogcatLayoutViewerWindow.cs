@@ -36,6 +36,7 @@ namespace Unity.Android.Logcat
         MultiColumnListView m_LayoutNodeValues;
         AndroidLogcatQueryLayout.LayoutNode m_SelectedNode;
         TextField m_DisplaySizeTextField;
+        TextField m_OverridenDisplaySizeTextField;
 
         private void OnEnable()
         {
@@ -166,6 +167,7 @@ namespace Unity.Android.Logcat
             }
 
             m_DisplaySizeTextField = r.Q<TextField>("DisplaySize");
+            m_OverridenDisplaySizeTextField = r.Q<TextField>("OverridenDisplaySize");
             UpdateDisplaySizeField();
         }
 
@@ -209,6 +211,18 @@ namespace Unity.Android.Logcat
         {
             var d = m_QueryLayout.LastLoaded.DisplaySize;
             m_DisplaySizeTextField.value = $"{(int)d.x},{(int)d.y}";
+
+            var od = m_QueryLayout.LastLoaded.OverridenDisplaySize;
+            if (od.HasValue)
+            {
+                m_OverridenDisplaySizeTextField.value = $"{(int)od.Value.x},{(int)od.Value.y}";
+                m_OverridenDisplaySizeTextField.visible = true;
+            }
+            else
+            {
+                m_OverridenDisplaySizeTextField.value = "0,0";
+                m_OverridenDisplaySizeTextField.visible = false;
+            }
         }
 
         void DoToolbarGUI()
