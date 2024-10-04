@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -59,16 +60,16 @@ namespace Unity.Android.Logcat
             var result = DisplaySizeRegex.Match(input);
             if (result.Success)
             {
-                displaySize.x = int.Parse(result.Groups["x"].Value);
-                displaySize.y = int.Parse(result.Groups["y"].Value);
+                displaySize.x = int.Parse(result.Groups["x"].Value, CultureInfo.InvariantCulture);
+                displaySize.y = int.Parse(result.Groups["y"].Value, CultureInfo.InvariantCulture);
             }
 
             result = OverridenDisplaySizeRegex.Match(input);
             if (result.Success)
             {
                 Vector2 v = new Vector2();
-                v.x = int.Parse(result.Groups["x"].Value);
-                v.y = int.Parse(result.Groups["y"].Value);
+                v.x = int.Parse(result.Groups["x"].Value, CultureInfo.InvariantCulture);
+                v.y = int.Parse(result.Groups["y"].Value, CultureInfo.InvariantCulture);
                 overridenDisplaySize = v;
             }
         }
