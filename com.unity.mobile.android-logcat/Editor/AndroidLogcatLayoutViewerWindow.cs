@@ -250,14 +250,21 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
+        private string ResolveDisplaySizeString()
+        {
+            var d = m_QueryLayout.LastLoaded.OverridenDisplaySize.HasValue ?
+                m_QueryLayout.LastLoaded.OverridenDisplaySize.Value :
+                m_QueryLayout.LastLoaded.DisplaySize;
+            return $"{(int)d.x}x{(int)d.y}";
+        }
         private void DoScreenshotSaveAsGUI()
         {
             var srcPath = m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
             if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
             {
-                var d = m_QueryLayout.LastLoaded.DisplaySize;
-                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{(int)d.x}x{(int)d.y}{m_CaptureScreenshot.GetImageExtension()}";
+                var d = ResolveDisplaySizeString();
+                var fileName = $"{Path.GetFileNameWithoutExtension(srcPath)}_{d}{m_CaptureScreenshot.GetImageExtension()}";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Screenshot",
                     m_Runtime.UserSettings.LayoutSettings.LastScreenshotSaveLocation,
@@ -289,8 +296,8 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(m_QueryLayout.LastLoaded.RawLayout));
             if (GUILayout.Button(Styles.SaveUIHierarchy, AndroidLogcatStyles.toolbarButton))
             {
-                var d = m_QueryLayout.LastLoaded.DisplaySize;
-                var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{(int)d.x}x{(int)d.y}.xml";
+                var d = ResolveDisplaySizeString();
+                var fileName = $"layout_{m_DeviceSelection.SelectedDevice.Id}_{d}.xml";
                 var path = EditorUtility.SaveFilePanel(
                     "Save Layout",
                     m_Runtime.UserSettings.LayoutSettings.LastLayoutSaveLocation,
