@@ -7,6 +7,7 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
 {
     private string m_DeviceId;
     Dictionary<string, string> m_TagPriorities = new Dictionary<string, string>();
+    private string m_DisplayInfo = string.Empty;
 
     internal override string Manufacturer
     {
@@ -26,6 +27,16 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     internal override string Id
     {
         get { return m_DeviceId; }
+    }
+
+    internal override void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize)
+    {
+        ParseDisplaySize(m_DisplayInfo, out displaySize, out overridenDisplaySize);
+    }
+
+    internal void SetRawDisplayInfo(string displayInfo)
+    {
+        m_DisplayInfo = displayInfo;
     }
 
     internal override string DisplayName => throw new NotImplementedException();
@@ -60,11 +71,6 @@ internal class AndroidLogcatFakeDevice90 : AndroidLogcatFakeDevice
 {
     internal override int APILevel => 28;
     internal override Version OSVersion => new Version(9, 0);
-    internal override Vector2 QueryDisplaySize()
-    {
-        return Vector2.zero;
-    }
-
     internal AndroidLogcatFakeDevice90(string deviceId) : base(deviceId)
     {
     }
@@ -74,11 +80,6 @@ internal class AndroidLogcatFakeDevice60 : AndroidLogcatFakeDevice
 {
     internal override int APILevel => 23;
     internal override Version OSVersion => new Version(6, 0);
-    internal override Vector2 QueryDisplaySize()
-    {
-        return Vector2.zero;
-    }
-
     internal AndroidLogcatFakeDevice60(string deviceId) : base(deviceId)
     {
     }

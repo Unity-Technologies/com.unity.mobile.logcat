@@ -97,13 +97,16 @@ namespace Unity.Android.Logcat
             internal string RawLayout { get; private set; }
             internal AndroidScreenRotation Rotation { get; private set; }
             internal Vector2 DisplaySize { get; private set; }
+            internal Vector2? OverridenDisplaySize { get; private set; }
             internal Vector2 DisplaySizeRotated
             {
                 get
                 {
+                    var size = OverridenDisplaySize.HasValue ? OverridenDisplaySize.Value : DisplaySize;
+
                     if (Rotation == AndroidScreenRotation.Landscape || Rotation == AndroidScreenRotation.LandscapeReversed)
-                        return new Vector2(DisplaySize.y, DisplaySize.x);
-                    return DisplaySize;
+                        return new Vector2(size.y, size.x);
+                    return size;
                 }
             }
 
@@ -112,11 +115,12 @@ namespace Unity.Android.Logcat
                 Clear();
             }
 
-            internal LoadResult(string rawLayout, AndroidScreenRotation rotation, Vector2 displaySize)
+            internal LoadResult(string rawLayout, AndroidScreenRotation rotation, Vector2 displaySize, Vector2? overridenDisplaySize)
             {
                 RawLayout = rawLayout;
                 Rotation = rotation;
                 DisplaySize = displaySize;
+                OverridenDisplaySize = overridenDisplaySize;
             }
 
             private void Clear()
@@ -124,6 +128,7 @@ namespace Unity.Android.Logcat
                 RawLayout = string.Empty;
                 Rotation = 0;
                 DisplaySize = Vector2.zero;
+                OverridenDisplaySize = null;
             }
         }
 
@@ -286,11 +291,11 @@ namespace Unity.Android.Logcat
                 ParseNodes(m_Nodes, out var rotation, r.rawLayout);
 
                 var displaySize = Vector2.zero;
+                Vector2? overridenDisplaySize = null;
                 if (r.device != null)
-                    displaySize = r.device.QueryDisplaySize();
+                    r.device.QueryDisplaySize(out displaySize, out overridenDisplaySize);
 
-
-                LastLoaded = new LoadResult(r.rawLayout, (AndroidScreenRotation)rotation, displaySize);
+                LastLoaded = new LoadResult(r.rawLayout, (AndroidScreenRotation)rotation, displaySize, overridenDisplaySize);
                 // If there were no nodes, create empty one
                 if (m_Nodes.Count == 0)
                     m_Nodes.Add(new LayoutNode(0, "Empty", string.Empty, Rect.zero));

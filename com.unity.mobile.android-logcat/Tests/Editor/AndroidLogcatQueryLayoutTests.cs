@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Android.Logcat;
+using UnityEngine;
+using UnityEngine.TestTools.Utils;
 
 class AndroidLogcatQueryLayoutTests
 {
@@ -83,5 +85,27 @@ class AndroidLogcatQueryLayoutTests
         Assert.AreEqual(1, nodes.Count);
         StringAssert.AreEqualIgnoringCase("hierarchy", nodes[0].ClassName);
 
+    }
+
+    [Test]
+    public void CanParseDisplayInfo()
+    {
+        Vector2 displaySize;
+        Vector2? overridenDisplaySize;
+        var device = new AndroidLogcatFakeDevice90(string.Empty);
+
+        device.SetRawDisplayInfo("Physical size: 1080x2340");
+        device.QueryDisplaySize(out displaySize, out overridenDisplaySize);
+        Assert.That(displaySize, Is.EqualTo(new Vector2(1080, 2340)).Using(Vector2EqualityComparer.Instance));
+        Assert.IsFalse(overridenDisplaySize.HasValue);
+
+
+        device.SetRawDisplayInfo(
+            @"Physical size: 1080x2340
+Override size: 540x1170");
+        device.QueryDisplaySize(out displaySize, out overridenDisplaySize);
+        Assert.That(displaySize, Is.EqualTo(new Vector2(1080, 2340)).Using(Vector2EqualityComparer.Instance));
+        Assert.IsTrue(overridenDisplaySize.HasValue);
+        Assert.That(overridenDisplaySize.Value, Is.EqualTo(new Vector2(540, 1170)).Using(Vector2EqualityComparer.Instance));
     }
 }
