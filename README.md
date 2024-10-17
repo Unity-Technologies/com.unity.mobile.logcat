@@ -10,7 +10,7 @@ Steps describing to install Logcat package directly from github.
 * Enter
 
 ```
-    https://github.com/Unity-Technologies/com.unity.mobile.logcat.git?path=/com.unity.mobile.android-logcat
+https://github.com/Unity-Technologies/com.unity.mobile.logcat.git?path=/com.unity.mobile.android-logcat
 ```
 
 * That's it
