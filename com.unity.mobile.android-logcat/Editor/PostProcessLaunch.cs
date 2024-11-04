@@ -13,7 +13,8 @@ namespace UnityEditor.Build
 
     public interface IPostprocessLaunch : IOrderedCallback
     {
-        void OnPostprocessLaunch(ILaunchProperties properties);
+        // On some platforms like Android, you can launch on multiple devices at once
+        void OnPostprocessLaunch(ILaunchProperties[] launchProperties);
     }
 }
 
@@ -95,14 +96,17 @@ class MyPostprocessLaunch : IPostprocessLaunch
 {
     public int callbackOrder => 0;
 
-    public void OnPostprocessLaunch(ILaunchProperties properties)
+    public void OnPostprocessLaunch(ILaunchProperties[] properties)
     {
-        var a = properties.AsAndroidProperties();
-
-        if (a != null)
+        foreach (ILaunchProperties p in properties)
         {
-            // Do something with data. For ex., query process id
-            ///var pid = ADB.GetInstance().Run($"get pid -s {a.DeviceId} {a.PackageName}/{a.ActivityName}");
+            var androidLaunchProperties = p.AsAndroidProperties();
+
+            if (androidLaunchProperties != null)
+            {
+                // Do something with data. For ex., query process id
+                ///var pid = ADB.GetInstance().Run($"get pid -s {a.DeviceId} {a.PackageName}/{a.ActivityName}");
+            }
         }
     }
 }
