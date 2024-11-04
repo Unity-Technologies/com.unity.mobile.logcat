@@ -1,7 +1,6 @@
-using System.IO;
+using System.Diagnostics;
 using UnityEditor.Android;
 using UnityEditor.Build;
-using UnityEditor.Build.Reporting;
 using UnityEditor.Windows;
 
 // UnityEditor.dll
@@ -11,6 +10,12 @@ namespace UnityEditor.Build
     {
         // Not sure if need this
         public NamedBuildTarget BuildTarget { get; }
+    }
+
+    // Platforms which don't implement their own launch properties will return DefaultLaunchProperties instance
+    public class DefaultLaunchProperties : UnityEditor.Build.ILaunchProperties
+    {
+        public virtual NamedBuildTarget BuildTarget => NamedBuildTarget.Unknown;
     }
 
     public interface IPostprocessLaunch : IOrderedCallback
@@ -23,7 +28,7 @@ namespace UnityEditor.Build
 // UnityEditor.Android.Extensions.dll
 namespace UnityEditor.Android
 {
-    public class AndroidLaunchProperties : UnityEditor.Build.ILaunchProperties
+    public class AndroidLaunchProperties : DefaultLaunchProperties
     {
         public string DeviceId { get; }
         public string PackageName { get; }
@@ -50,7 +55,7 @@ namespace UnityEditor.Android
 // UnityEditor.Windows.Extensions.dll
 namespace UnityEditor.Windows
 {
-    public class WindowsStandaloneLaunchProperties : UnityEditor.Build.ILaunchProperties
+    public class WindowsStandaloneLaunchProperties : DefaultLaunchProperties
     {
         public string ExecutablePath { get; }
         public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
@@ -73,7 +78,7 @@ namespace UnityEditor.Windows
 // UnityEditor.OSX.Extensions.dll
 namespace UnityEditor.OSX
 {
-    public class MacOsStandaloneLaunchProperties : UnityEditor.Build.ILaunchProperties
+    public class MacOsStandaloneLaunchProperties : DefaultLaunchProperties
     {
         public string BundlePath { get; }
         public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
@@ -115,6 +120,11 @@ class MyPostprocessLaunch : IPostprocessLaunch
             {
                 // Do something with data. For ex., query process id
                 ///var pid = Shell.Execute($"Get-Process {Path.GetFileName(windowsStandaloneLaunchProprties.ExecutablePath)}");
+            }
+
+            if (p.BuildTarget == NamedBuildTarget.PS4)
+            {
+                UnityEngine.Debug.Log("Unity launched something on PS4");
             }
         }
     }
