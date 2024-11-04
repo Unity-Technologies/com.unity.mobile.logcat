@@ -44,6 +44,52 @@ namespace UnityEditor.Android
     }
 }
 
+// UnityEditor.Windows.Extensions.dll
+namespace UnityEditor.Windows
+{
+    public class WindowsStandaloneLaunchProperties : UnityEditor.Build.ILaunchProperties
+    {
+        public string ExecutablePath { get; }
+        public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
+
+        internal WindowsStandaloneLaunchProperties(string executablePath)
+        {
+            ExecutablePath = executablePath;
+        }
+    }
+
+    public static class WindowsLaunchPropertiesExtensions
+    {
+        public static WindowsStandaloneLaunchProperties AsWindowsStandaloneProperties(this ILaunchProperties properties)
+        {
+            return properties as WindowsStandaloneLaunchProperties;
+        }
+    }
+}
+
+// UnityEditor.OSX.Extensions.dll
+namespace UnityEditor.OSX
+{
+    public class MacOsStandaloneLaunchProperties : UnityEditor.Build.ILaunchProperties
+    {
+        public string BundlePath { get; }
+        public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
+
+        internal MacOsStandaloneLaunchProperties(string bundlePath)
+        {
+            BundlePath = bundlePath;
+        }
+    }
+
+    public static class WindowsLaunchPropertiesExtensions
+    {
+        public static MacOsStandaloneLaunchProperties AsMacOsStandaloneProperties(this ILaunchProperties properties)
+        {
+            return properties as MacOsStandaloneLaunchProperties;
+        }
+    }
+}
+
 // User code
 class MyPostprocessLaunch : IPostprocessLaunch
 {
