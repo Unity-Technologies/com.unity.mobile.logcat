@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using UnityEditor.Android;
 using UnityEditor.Build;
 using UnityEditor.Windows;
@@ -15,7 +14,12 @@ namespace UnityEditor.Build
     // Platforms which don't implement their own launch properties will return DefaultLaunchProperties instance
     public class DefaultLaunchProperties : UnityEditor.Build.ILaunchProperties
     {
-        public virtual NamedBuildTarget BuildTarget => NamedBuildTarget.Unknown;
+        public NamedBuildTarget BuildTarget { get; }
+
+        internal DefaultLaunchProperties(NamedBuildTarget buildTarget)
+        {
+            BuildTarget = buildTarget;
+        }
     }
 
     public interface IPostprocessLaunch : IOrderedCallback
@@ -33,9 +37,9 @@ namespace UnityEditor.Android
         public string DeviceId { get; }
         public string PackageName { get; }
         public string ActivityName { get; }
-        public NamedBuildTarget BuildTarget => NamedBuildTarget.Android;
 
         internal AndroidLaunchProperties(string deviceId, string packageName, string activityName)
+            : base (NamedBuildTarget.Android)
         {
             DeviceId = deviceId;
             PackageName = packageName;
@@ -58,9 +62,9 @@ namespace UnityEditor.Windows
     public class WindowsStandaloneLaunchProperties : DefaultLaunchProperties
     {
         public string ExecutablePath { get; }
-        public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
 
         internal WindowsStandaloneLaunchProperties(string executablePath)
+            : base(NamedBuildTarget.Standalone)
         {
             ExecutablePath = executablePath;
         }
@@ -81,9 +85,9 @@ namespace UnityEditor.OSX
     public class MacOsStandaloneLaunchProperties : DefaultLaunchProperties
     {
         public string BundlePath { get; }
-        public NamedBuildTarget BuildTarget => NamedBuildTarget.Standalone;
 
         internal MacOsStandaloneLaunchProperties(string bundlePath)
+            : base(NamedBuildTarget.Standalone)
         {
             BundlePath = bundlePath;
         }
