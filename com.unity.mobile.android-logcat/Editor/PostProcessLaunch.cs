@@ -1,6 +1,8 @@
+using System.IO;
 using UnityEditor.Android;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.Windows;
 
 // UnityEditor.dll
 namespace UnityEditor.Build
@@ -106,6 +108,13 @@ class MyPostprocessLaunch : IPostprocessLaunch
             {
                 // Do something with data. For ex., query process id
                 ///var pid = ADB.GetInstance().Run($"get pid -s {a.DeviceId} {a.PackageName}/{a.ActivityName}");
+            }
+
+            var windowsStandaloneLaunchProprties = p.AsWindowsStandaloneProperties();
+            if (windowsStandaloneLaunchProprties != null)
+            {
+                // Do something with data. For ex., query process id
+                ///var pid = Shell.Execute($"Get-Process {Path.GetFileName(windowsStandaloneLaunchProprties.ExecutablePath)}");
             }
         }
     }
