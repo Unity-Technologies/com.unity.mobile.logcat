@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-#if UNITY_2023_3_OR_NEWER
+#if UNITY_6000_1_OR_NEWER
     internal class AndroidLogcatRunCallbacks : IPostprocessLaunch
     {
         public int callbackOrder => 0;
