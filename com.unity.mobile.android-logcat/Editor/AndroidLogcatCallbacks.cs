@@ -11,11 +11,6 @@ namespace Unity.Android.Logcat
     {
         public int callbackOrder => 0;
 
-        private void Log(string message)
-        {
-            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
-        }
-
         public void OnPostprocessLaunch(ILaunchReport launchReport)
         {
             if (!AndroidLogcatConsoleWindow.ShowDuringBuildRun)
