@@ -16,21 +16,26 @@ namespace Unity.Android.Logcat
             Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
         }
 
-        public void OnPostprocessLaunch(ILaunchResult launchResult)
+        public void OnPostprocessLaunch(ILaunchReport launchReport)
         {
             if (!AndroidLogcatConsoleWindow.ShowDuringBuildRun)
                 return;
 
-            if (launchResult.BuildTarget != NamedBuildTarget.Android)
+            if (launchReport.buildTarget != NamedBuildTarget.Android)
                 return;
 
 #if UNITY_ANDROID
-            var androidResult = launchResult.AsAndroidResult();
-            if (androidResult != null)
+            var androidReport = launchReport.AsAndroidReport();
+            if (androidReport != null)
             {
                 var wnd = AndroidLogcatConsoleWindow.ShowNewOrExisting();
-                if (androidResult.Launches.Length > 0)
-                    wnd.SetAutoSelect(androidResult.Launches[0].DeviceId, androidResult.Launches[0].PackageName);
+                foreach (var l in androidReport.Launches)
+                {
+                    if (!l.Success)
+                        continue;
+                    wnd.SetAutoSelect(l.DeviceId, l.PackageName);
+                    break;
+                }
             }
 #endif
         }
