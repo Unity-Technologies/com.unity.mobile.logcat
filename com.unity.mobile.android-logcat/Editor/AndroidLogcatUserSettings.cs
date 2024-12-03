@@ -348,6 +348,7 @@ namespace Unity.Android.Logcat
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
+            m_AutoScroll = AutoScroll.Auto;
 
             ResetCaptureVideoSettings();
             ResetScreenCaptureSettings();
