@@ -7,6 +7,8 @@ using UnityEngine;
 namespace Unity.Android.Logcat
 {
 #if UNITY_6000_1_OR_NEWER
+
+#if UNITY_ANDROID
     internal class AndroidLogcatRunCallbacks : IPostprocessLaunch
     {
         public int callbackOrder => 0;
@@ -19,7 +21,6 @@ namespace Unity.Android.Logcat
             if (launchReport.buildTarget != NamedBuildTarget.Android)
                 return;
 
-#if UNITY_ANDROID
             var androidReport = launchReport.AsAndroidReport();
             if (androidReport != null)
             {
@@ -32,9 +33,10 @@ namespace Unity.Android.Logcat
                     break;
                 }
             }
-#endif
         }
     }
+#endif
+
 #else
     internal class AndroidLogcatCallbacks : IPostprocessBuildWithReport
     {
