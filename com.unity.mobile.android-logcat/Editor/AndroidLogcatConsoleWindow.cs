@@ -29,15 +29,11 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
         private AndroidLogcat m_Logcat;
         private AndroidLogcatStatusBar m_StatusBar;
-        private DateTime m_TimeOfLastAutoConnectUpdate;
-        private DateTime m_TimeOfLastAutoConnectStart;
         private const byte kSpace = 3;
         private const int kMillisecondsBetweenConsecutiveDeviceChecks = 1000;
-        private const int kMillisecondsBetweenConsecutiveAutoConnectChecks = 1000;
-        private const int kMillisecondsMaxAutoconnectTimeOut = 5000;
 
-        private bool m_AutoSelectProcess;
-        private bool m_FinishedAutoselectingProcess;
+        private AutoSelect m_AutoSelect = new AutoSelect();
+
         private bool m_ApplySettings;
 
         private AndroidLogcatMemoryViewer m_MemoryViewer;
@@ -58,21 +54,12 @@ namespace Unity.Android.Logcat
             }
         }
 
-        public bool AutoSelectProcess
-        {
-            set
-            {
-                m_AutoSelectProcess = value;
-                m_FinishedAutoselectingProcess = false;
-                m_TimeOfLastAutoConnectStart = DateTime.Now;
-                if (m_StatusBar != null && m_AutoSelectProcess)
-                    m_StatusBar.Message = "Waiting for '" + PlayerSettings.applicationIdentifier + "'";
-            }
 
-            get
-            {
-                return m_AutoSelectProcess;
-            }
+        public void SetAutoSelect(string deviceId, string packageName)
+        {
+            m_AutoSelect.Start(deviceId, packageName);
+            if (m_StatusBar != null)
+                m_StatusBar.Message = $"Waiting for '{packageName}' on device '{deviceId}'";
         }
 
         private bool IsLogcatConnected => m_Logcat != null && m_Logcat.IsConnected;
@@ -94,12 +81,9 @@ namespace Unity.Android.Logcat
                 m_SearchField = new SearchField();
 
             m_Runtime.UserSettings.Tags.TagSelectionChanged += TagSelectionChanged;
-
-            m_TimeOfLastAutoConnectStart = DateTime.Now;
             m_Runtime.Update += OnUpdate;
 
-            m_FinishedAutoselectingProcess = false;
-            AndroidLogcatInternalLog.Log("Package: {0}, Auto select: {1}", PlayerSettings.applicationIdentifier, AutoSelectProcess);
+            AndroidLogcatInternalLog.Log($"AutoSelect: {m_AutoSelect}");
 
             m_StatusBar = new AndroidLogcatStatusBar();
 
@@ -140,7 +124,7 @@ namespace Unity.Android.Logcat
             StopLogCat();
 
             m_Runtime.Update -= OnUpdate;
-            AndroidLogcatInternalLog.Log("OnDisable, Auto select: {0}", m_AutoSelectProcess);
+            AndroidLogcatInternalLog.Log($"OnDisable, Auto select: {m_AutoSelect}");
             m_Runtime = null;
         }
 
@@ -197,42 +181,53 @@ namespace Unity.Android.Logcat
             if (deviceQuery.FirstConnectedDevice == null)
                 deviceQuery.UpdateConnectedDevicesList(false);
 
-            if (deviceQuery.FirstConnectedDevice == null)
+            var firstDevice = deviceQuery.FirstConnectedDevice;
+            if (firstDevice == null)
                 return;
 
-            if (m_AutoSelectProcess && !m_FinishedAutoselectingProcess)
+            if (m_AutoSelect.GetState() == AutoSelect.State.InProgress)
             {
-                // This is for AutoRun triggered by "Build And Run".
-                if ((DateTime.Now - m_TimeOfLastAutoConnectUpdate).TotalMilliseconds < kMillisecondsBetweenConsecutiveAutoConnectChecks)
+                if (!m_AutoSelect.ShouldTick())
                     return;
-                AndroidLogcatInternalLog.Log("Waiting for {0} launch, elapsed {1} seconds", PlayerSettings.applicationIdentifier, (DateTime.Now - m_TimeOfLastAutoConnectStart).Seconds);
-                m_TimeOfLastAutoConnectUpdate = DateTime.Now;
 
-                var firstDevice = deviceQuery.FirstConnectedDevice;
-                ResetProcesses(firstDevice);
+                IAndroidLogcatDevice targetDevice;
 
-                int projectApplicationPid = GetPidFromPackageName(null, PlayerSettings.applicationIdentifier, firstDevice);
-                var process = m_Runtime.UserSettings.CreateProcessInformation(PlayerSettings.applicationIdentifier, projectApplicationPid, firstDevice);
+                if (string.IsNullOrEmpty(m_AutoSelect.DeviceId))
+                {
+                    targetDevice = firstDevice;
+                }
+                else
+                {
+                    targetDevice = deviceQuery.GetDevice(m_AutoSelect.DeviceId);
+                    if (targetDevice == null)
+                        targetDevice = firstDevice;
+                }
+
+                var targetPackageName = string.IsNullOrEmpty(m_AutoSelect.PackageName) ? PlayerSettings.applicationIdentifier : m_AutoSelect.PackageName;
+                ResetProcesses(targetDevice);
+
+                int projectApplicationPid = GetPidFromPackageName(null, targetPackageName, targetDevice);
+                var process = m_Runtime.UserSettings.CreateProcessInformation(targetPackageName, projectApplicationPid, targetDevice);
                 if (process != null)
                 {
-                    AndroidLogcatInternalLog.Log("Auto selecting process {0}", PlayerSettings.applicationIdentifier);
+                    AndroidLogcatInternalLog.Log($"Auto selecting process {targetPackageName} on device '{targetDevice.Id}'");
                     // Note: Don't call SelectPackage as that will reset m_AutoselectPackage
                     SetProcess(process);
-                    deviceQuery.SelectDevice(firstDevice, false);
+                    deviceQuery.SelectDevice(targetDevice, false);
 
                     RestartLogCat();
-                    m_FinishedAutoselectingProcess = true;
+                    m_AutoSelect.Finish();
                     UpdateStatusBar();
                 }
                 else
                 {
-                    var timeoutMS = (DateTime.Now - m_TimeOfLastAutoConnectStart).TotalMilliseconds;
-                    if (timeoutMS > kMillisecondsMaxAutoconnectTimeOut)
+                    var timeOut = m_AutoSelect.CheckTimeout();
+                    if (timeOut > 0)
                     {
-                        var msg = string.Format("Timeout {0} ms while waiting for '{1}' to launch.", timeoutMS, PlayerSettings.applicationIdentifier);
+                        var msg = $"Timeout {timeOut} ms while waiting for '{targetPackageName}' to launch on device '{targetDevice}'.";
                         UpdateStatusBar(msg);
                         AndroidLogcatInternalLog.Log(msg);
-                        m_FinishedAutoselectingProcess = true;
+                        m_AutoSelect.Finish();
                     }
                 }
             }
@@ -244,7 +239,7 @@ namespace Unity.Android.Logcat
                     ProcessInformation selectedProcess;
                     GetDeviceAndProcessFromSavedState(out selectedDevice, out selectedProcess);
                     if (selectedDevice == null || selectedDevice.State != IAndroidLogcatDevice.DeviceState.Connected)
-                        selectedDevice = deviceQuery.FirstConnectedDevice;
+                        selectedDevice = firstDevice;
                     if (selectedDevice != null)
                     {
                         SelectedProcess = null;
@@ -467,9 +462,13 @@ namespace Unity.Android.Logcat
             }
 
 
-            if (GUILayout.Button("AutoSelect " + AutoSelectProcess.ToString(), AndroidLogcatStyles.toolbarButton))
+            if (GUILayout.Button("AutoSelect " + m_AutoSelect.ToString(), AndroidLogcatStyles.toolbarButton))
             {
-                AutoSelectProcess = true;
+                var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
+                if (selectedDevice != null && SelectedProcess != null)
+                    m_AutoSelect.Start(selectedDevice.Id, SelectedProcess.DisplayName);
+                else
+                    Debug.Log("Cannot auto select");
             }
 
             m_Logcat?.DoDebuggingGUI();
@@ -558,7 +557,7 @@ namespace Unity.Android.Logcat
                 (newProcess != null && SelectedProcess != null && newProcess.name == SelectedProcess.name && newProcess.processId == SelectedProcess.processId))
                 return;
 
-            m_AutoSelectProcess = false;
+            m_AutoSelect.Finish();
 
             AndroidLogcatInternalLog.Log("Selecting process {0}", newProcess == null ? "<null>" : newProcess.DisplayName);
 
@@ -869,10 +868,10 @@ namespace Unity.Android.Logcat
         [MenuItem("Window/Analysis/Android Logcat &6")]
         internal static AndroidLogcatConsoleWindow ShowWindow()
         {
-            return ShowNewOrExisting(false);
+            return ShowNewOrExisting();
         }
 
-        internal static AndroidLogcatConsoleWindow ShowNewOrExisting(bool autoSelectPackage)
+        internal static AndroidLogcatConsoleWindow ShowNewOrExisting()
         {
             var wnd = GetWindow<AndroidLogcatConsoleWindow>();
             if (wnd == null)
@@ -881,10 +880,8 @@ namespace Unity.Android.Logcat
             }
 
             wnd.titleContent = new GUIContent("Android Logcat");
-            wnd.AutoSelectProcess = autoSelectPackage;
             wnd.Show();
             wnd.Focus();
-
             return wnd;
         }
     }

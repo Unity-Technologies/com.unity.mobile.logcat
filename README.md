@@ -14,3 +14,10 @@ https://github.com/Unity-Technologies/com.unity.mobile.logcat.git?path=/com.unit
 ```
 
 * That's it
+
+
+In case you want to **Install package from git URL with custom branch**, do this - replace **branch-name** with your branch
+
+```
+https://github.com/Unity-Technologies/com.unity.mobile.logcat.git?path=/com.unity.mobile.android-logcat#branch-name
+```
