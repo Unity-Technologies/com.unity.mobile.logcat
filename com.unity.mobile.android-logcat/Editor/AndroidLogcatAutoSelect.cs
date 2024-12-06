@@ -72,7 +72,7 @@ namespace Unity.Android.Logcat
 
         public override string ToString()
         {
-            return $"State: {m_State}, DeviceId: {DeviceId}, Pacakge: {PackageName}";
+            return $"State: {m_State}, DeviceId: {DeviceId}, Package: {PackageName}";
         }
     }
 }
