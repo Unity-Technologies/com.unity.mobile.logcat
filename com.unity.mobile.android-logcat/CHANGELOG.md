@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.4.4] - 2024-12-07
 ### Fixes & Improvements
  - Default AutoScroll to Auto when there's not logcat settings saved
- - Fix a bug, where logcat would sometimes connect to wrong device when you have two or more devices connected to host.
+ - Fix a bug, where logcat would sometimes connect to wrong device when you have two or more devices connected to host. The fix is only available for Unity 6.1 or higher, since that's the version where the required application launch callback was introduced.
 
 ## [1.4.3] - 2024-09-09
 ### Fixes & Improvements
