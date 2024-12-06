@@ -38,12 +38,7 @@ namespace Unity.Android.Logcat
                 if (s_AndroidExtensions != null)
                     return s_AndroidExtensions;
                 var assemblyName = "UnityEditor.Android.Extensions";
-
-#if UNITY_7000_0_OR_NEWER
-                var loadedAssemblies = UnityEngine.Assemblies.CurrentAssemblies.GetLoadedAssemblies();
-#else
                 var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-#endif
 
                 s_AndroidExtensions = loadedAssemblies.FirstOrDefault(a => a.FullName.Contains(assemblyName));
                 s_AndroidExtensionsState = s_AndroidExtensions == null ? ExtensionState.Unavalaible : ExtensionState.Available;

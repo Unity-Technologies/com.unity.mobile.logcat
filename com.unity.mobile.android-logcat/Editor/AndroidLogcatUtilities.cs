@@ -547,11 +547,7 @@ namespace Unity.Android.Logcat
         }
         internal static string GetPlaybackEngineDirectory()
         {
-#if UNITY_7000_0_OR_NEWER
-            return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android);
-#else
             return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
-#endif
         }
 
         internal static VisualTreeAsset LoadUXML(string uxmlFileName)
