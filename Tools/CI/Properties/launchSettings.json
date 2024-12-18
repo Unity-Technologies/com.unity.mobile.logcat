@@ -1,0 +1,8 @@
+{  
+  "profiles": {
+    "Canaries": {
+      "commandName": "Project",
+      "workingDirectory": "$(SolutionDir)/../../"      
+    }
+  }
+}
