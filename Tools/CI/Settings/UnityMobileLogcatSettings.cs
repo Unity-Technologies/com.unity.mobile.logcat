@@ -1,4 +1,5 @@
-﻿using RecipeEngine.Api.Settings;
+﻿using RecipeEngine.Api.Dependencies;
+using RecipeEngine.Api.Settings;
 using RecipeEngine.Modules.Wrench.Models;
 using RecipeEngine.Modules.Wrench.Settings;
 
@@ -14,7 +15,13 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
     {
         {
             "com.unity.mobile.android-logcat",
-            new PackageOptions() { ReleaseOptions = new ReleaseOptions() { IsReleasing = true } }
+            new PackageOptions() {
+                ReleaseOptions = new ReleaseOptions() { IsReleasing = true } ,
+                PackJobOptions = new PackJobOptions()
+                { 
+                    Dependencies = new List<Dependency>() { new("format", "check_formatting") } 
+                }
+            }
         }
     };
 
@@ -23,7 +30,7 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
         Wrench = new WrenchSettings(
             PackagesRootPaths,
             PackageOptions
-        );      
+        );
     }
 
     public WrenchSettings Wrench { get; private set; }

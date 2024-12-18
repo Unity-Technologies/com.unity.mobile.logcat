@@ -27,6 +27,8 @@ package_pack_-_mobile_android-logcat:
     packages:
       paths:
       - upm-ci~/packages/**/*
+  dependencies:
+  - path: .yamato/format.yml#check_formatting
   variables:
     UPMCI_ACK_LARGE_PACKAGE: 1
     UPMPVP_CONTEXT_WRENCH: 0.10.25.0
