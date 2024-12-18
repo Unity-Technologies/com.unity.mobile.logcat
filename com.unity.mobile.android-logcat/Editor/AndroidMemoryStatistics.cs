@@ -7,7 +7,6 @@ namespace Unity.Android.Logcat
 {
     /// <summary>
     /// https://developer.android.com/studio/command-line/dumpsys#meminfo
-	/// TEST
     /// </summary>
     internal enum MemoryGroup
     {
