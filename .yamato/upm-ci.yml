@@ -38,21 +38,6 @@ test_module_support:
     install_command: -c android
 
 ---
-pack:
-  name: Pack
-  agent:
-    type: Unity::VM
-    image: package-ci/win10:v4
-    flavor: b1.large
-  commands:
-    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
-    - upm-ci package pack --package-path ./com.unity.mobile.android-logcat
-    - upm-pvp xray --packages "upm-ci~/packages/*.tgz" --results upm-ci~/xray
-    - upm-pvp require "supported rme .yamato/xray-exemptions.json" --allow-missing --results upm-ci~/xray
-  artifacts:
-    packages:
-      paths:
-        - "upm-ci~/**/*"
 
 {% for editor in test_editors %}
 {% for platform in test_platforms %}
@@ -79,7 +64,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
       paths:
         - "upm-ci~/test-results/**/*"
   dependencies:
-    - .yamato/upm-ci.yml#pack
+    - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
 {% endfor %}
 {% endfor %}
 {% endfor %}
@@ -106,7 +91,7 @@ test_all_trigger:
       paths:
         - "upm-ci~/packages/**/*"
   dependencies:
-    - .yamato/upm-ci.yml#pack
+    - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
     {% for editor in test_editors_for_integration %}
     - .yamato/upm-integration-ci.yml#test_integration_{{ editor.version }}
     {% endfor %}
@@ -117,26 +102,3 @@ test_all_trigger:
     {% endfor %}
     {% endfor %}
     {% endfor %}
-
-publish:
-  name: Publish to Internal Registry
-  agent:
-    type: Unity::VM
-    image: package-ci/win10:v4
-    flavor: b1.large
-  variables:
-    UPMCI_ENABLE_PACKAGE_SIGNING: 1
-  commands:
-    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
-    - upm-ci package publish --package-path ./com.unity.mobile.android-logcat
-  triggers:
-    tags:
-      only:
-        - /^(r|R)(c|C)-\d+\.\d+\.\d+(-preview(\.\d+)?)?$/
-  artifacts:
-    artifacts:
-      paths:
-        - "upm-ci~/packages/*.tgz"
-  dependencies:
-    - .yamato/upm-ci.yml#pack
-    - .yamato/upm-ci.yml#test_all_trigger

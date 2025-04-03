@@ -25,5 +25,5 @@ test_integration_{{ editor.version }}:
       paths:
         - "upm-ci~/test-results/**/*"
   dependencies:
-    - .yamato/upm-ci.yml#pack
+    - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
 {% endfor %}
