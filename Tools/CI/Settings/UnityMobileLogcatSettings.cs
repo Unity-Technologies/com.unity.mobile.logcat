@@ -16,10 +16,20 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
         {
             "com.unity.mobile.android-logcat",
             new PackageOptions() {
-                ReleaseOptions = new ReleaseOptions() { IsReleasing = true } ,
+                ReleaseOptions = new ReleaseOptions() 
+                { 
+                    IsReleasing = true 
+                },
                 PackJobOptions = new PackJobOptions()
                 { 
-                    Dependencies = new List<Dependency>() { new("format", "check_formatting") } 
+                    Dependencies = new List<Dependency>()
+                    {
+                        new("format", "check_formatting") 
+                    }
+                },
+                CustomChecks = new HashSet<Dependency>() 
+                { 
+                    new Dependency("upm-ci", "test_all_trigger") 
                 }
             }
         }
