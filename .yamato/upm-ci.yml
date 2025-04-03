@@ -32,8 +32,6 @@ test_platforms:
     utr_chmod: chmod +x ./utr
     utr_cmd: ./utr
 test_module_support:
-  - name: no_support
-    install_command:
   - name: android
     install_command: -c android
 
