@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0.14</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <BaseOutputPath></BaseOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="RecipeEngine.Modules.Wrench" Version="0.10.45" />
+    </ItemGroup>
+
+</Project>
