@@ -1,4 +1,4 @@
-USER      PID   PPID  VSIZE  RSS   WCHAN              PC  NAME
+﻿USER      PID   PPID  VSIZE  RSS   WCHAN              PC  NAME
 root      1     0     30720  1432  SyS_epoll_ 0000000000 S /init
 root      2     0     0      0       kthreadd 0000000000 S kthreadd
 root      3     2     0      0     smpboot_th 0000000000 S ksoftirqd/0
