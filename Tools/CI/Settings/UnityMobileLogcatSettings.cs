@@ -8,7 +8,7 @@ namespace UnityMobileLogcat.Cookbook.Settings;
 public class UnityMobileLogcatSettings : AnnotatedSettingsBase
 {
     // Path from the root of the repository where packages are located.
-    readonly string[] PackagesRootPaths = {"."};
+    private readonly string[] PackagesRootPaths = {"."};
 
     // update this to list all packages in this repo that you want to release.
     Dictionary<string, PackageOptions> PackageOptions = new()
