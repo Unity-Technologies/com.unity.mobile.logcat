@@ -1,5 +1,5 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.EditorPerformanceTests",
+    "name": "Unity.Mobile.AndroidLogcat.Editor.PerformanceTests",
     "references": [
         "Unity.Mobile.AndroidLogcat.Editor",
         "Unity.PerformanceTesting",
