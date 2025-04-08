@@ -4,7 +4,7 @@
         "Unity.Mobile.AndroidLogcat.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "Unity.Mobile.AndroidLogcat.Tests"
+        "Unity.Mobile.AndroidLogcat.Editor.Tests.Shared"
     ],
     "includePlatforms": [
         "Editor"
