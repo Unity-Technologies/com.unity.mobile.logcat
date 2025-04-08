@@ -1,4 +1,4 @@
-﻿ACTIVITY MANAGER PENDING INTENTS (dumpsys activity intents)
+ACTIVITY MANAGER PENDING INTENTS (dumpsys activity intents)
   * PendingIntentRecord{7a09760 com.sec.android.inputmethod broadcastIntent}
   * PendingIntentRecord{1f7c3ec com.google.android.partnersetup startService}
   * PendingIntentRecord{9f2c6cb com.android.systemui broadcastIntent}
