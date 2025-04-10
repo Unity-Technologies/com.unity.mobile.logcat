@@ -1,5 +1,5 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.RuntimeTests",
+    "name": "Unity.Mobile.AndroidLogcat.Runtime.Tests",
     "references": [],
     "optionalUnityReferences": [
         "TestAssemblies"

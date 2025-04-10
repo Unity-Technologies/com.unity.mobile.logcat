@@ -1,8 +1,7 @@
 {
-    "name": "Unity.Mobile.AndroidLogcat.EditorPerformanceTests",
+    "name": "Unity.Mobile.AndroidLogcat.Editor.Tests",
     "references": [
         "Unity.Mobile.AndroidLogcat.Editor",
-        "Unity.PerformanceTesting",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
@@ -17,14 +16,9 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [
-        "UNITY_INCLUDE_TESTS"
+        "UNITY_INCLUDE_TESTS",
+        "!DISABLE_LOGCAT_TESTS"
     ],
-    "versionDefines": [
-        {
-            "name": "com.unity.test-framework.performance",
-            "expression": "",
-            "define": "ENABLE_PERFORMANCE_TESTS"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }
