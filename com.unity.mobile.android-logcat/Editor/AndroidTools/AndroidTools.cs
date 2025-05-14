@@ -138,7 +138,7 @@ namespace Unity.Android.Logcat
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
         }
 
-        internal string[] RunReadElf(string symbolFilePath)
+        internal string[] RunReadElf(string arguments)
         {
             ResolvePathsIfNeeded();
 
@@ -147,8 +147,8 @@ namespace Unity.Android.Logcat
 
             var result = Shell.RunProcess(
                 m_ReadElfPath,
-                "-Ws \"" + symbolFilePath + "\"",
-                Path.GetDirectoryName(m_NMPath));
+                arguments,
+                Path.GetDirectoryName(m_ReadElfPath));
             ValidateResult(result);
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
         }

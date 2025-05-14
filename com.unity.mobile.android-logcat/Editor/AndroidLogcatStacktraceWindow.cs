@@ -100,10 +100,7 @@ namespace Unity.Android.Logcat
             var unresolved = new UnresolvedAddresses();
             foreach (var l in lines)
             {
-                string address;
-                string library;
-                string abi;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
                     continue;
                 unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address);
             }
@@ -151,10 +148,7 @@ namespace Unity.Android.Logcat
 
             foreach (var l in lines)
             {
-                string address;
-                string library;
-                string abi;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
                 {
                     output += l;
                 }
