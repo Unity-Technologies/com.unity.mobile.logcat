@@ -15,37 +15,41 @@ namespace Unity.Android.Logcat
 
         class UnresolvedAddresses
         {
-            internal struct AddressKey
+            class AddressToFunctionName : Dictionary<string, string>
+            {
+
+            }
+
+            internal struct SymbolFile
             {
                 internal string ABI { set; get; }
                 internal string Library { set; get; }
             }
 
-            Dictionary<AddressKey, Dictionary<string, string>> m_Addresses = new Dictionary<AddressKey, Dictionary<string, string>>();
+            Dictionary<SymbolFile, AddressToFunctionName> m_Addresses = new Dictionary<SymbolFile, AddressToFunctionName>();
 
-            private Dictionary<string, string> GetOrCreateAddressMap(AddressKey key)
+            private AddressToFunctionName GetOrCreateAddressMap(SymbolFile key)
             {
-                Dictionary<string, string> addresses;
-                if (m_Addresses.TryGetValue(key, out addresses))
+                if (m_Addresses.TryGetValue(key, out var addresses))
                     return addresses;
-                addresses = new Dictionary<string, string>();
+                addresses = new AddressToFunctionName();
                 m_Addresses[key] = addresses;
                 return addresses;
             }
 
-            internal void CreateAddressEntry(AddressKey key, string address)
+            internal void CreateAddressEntry(SymbolFile key, string address)
             {
                 var addresses = GetOrCreateAddressMap(key);
                 addresses[address] = string.Empty;
             }
 
-            internal void SetAddressValue(AddressKey key, string address, string value)
+            internal void SetFunctionNameForAddress(SymbolFile key, string address, string value)
             {
                 var addresses = GetOrCreateAddressMap(key);
                 addresses[address] = value;
             }
 
-            internal string GetAddressValue(AddressKey key, string address)
+            internal string GetFunctionNameFromAddress(SymbolFile key, string address)
             {
                 var addresses = GetOrCreateAddressMap(key);
                 string value = string.Empty;
@@ -54,12 +58,12 @@ namespace Unity.Android.Logcat
                 return string.Empty;
             }
 
-            internal IReadOnlyList<AddressKey> GetKeys()
+            internal IReadOnlyList<SymbolFile> GetKeys()
             {
                 return m_Addresses.Keys.ToArray();
             }
 
-            internal IReadOnlyList<string> GetAllAddresses(AddressKey key)
+            internal IReadOnlyList<string> GetAllAddresses(SymbolFile key)
             {
                 return m_Addresses[key].Keys.ToArray();
             }
@@ -72,6 +76,7 @@ namespace Unity.Android.Logcat
         }
 
         Vector2 m_ScrollPosition;
+        Vector2 m_ErrorsScrollPosition;
         string m_Text = String.Empty;
         string m_ResolvedStacktraces = String.Empty;
 
@@ -102,7 +107,7 @@ namespace Unity.Android.Logcat
             {
                 if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
                     continue;
-                unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address);
+                unresolved.CreateAddressEntry(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
             }
 
             var keys = unresolved.GetKeys();
@@ -120,7 +125,7 @@ namespace Unity.Android.Logcat
                 {
                     var value = $"<color={m_RedColor}>({Path.GetFileNameWithoutExtension(key.Library)}[{string.Join("|", exts)}] not found)</color>";
                     foreach (var a in addresses)
-                        unresolved.SetAddressValue(key, a, value);
+                        unresolved.SetFunctionNameForAddress(key, a, value);
                     continue;
                 }
 
@@ -136,7 +141,7 @@ namespace Unity.Android.Logcat
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         AndroidLogcatInternalLog.Log($"{addresses[i]} ---> {result[i]}");
-                        unresolved.SetAddressValue(key, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
+                        unresolved.SetFunctionNameForAddress(key, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
                     }
                 }
                 catch (Exception ex)
@@ -154,7 +159,7 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    output += l.Replace(address, address + " " + unresolved.GetAddressValue(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address));
+                    output += l.Replace(address, address + " " + unresolved.GetFunctionNameFromAddress(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address));
                 }
 
                 output += Environment.NewLine;
@@ -243,6 +248,18 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
+
+        void ShowErrorsIfNeeded()
+        {
+            if (m_WindowMode != WindowMode.ResolvedLog)
+                return;
+
+            EditorGUILayout.LabelField("Errors", EditorStyles.boldLabel);
+            m_ErrorsScrollPosition = EditorGUILayout.BeginScrollView(m_ErrorsScrollPosition, GUILayout.Height(150));
+            EditorGUILayout.TextArea("sdsds\nsdsds\nsdsds\nsdsds\nsdsds\nsdsds\nsdsds\nsdsds\nsdsds\nsdsds\n", GUILayout.ExpandHeight(true));
+            EditorGUILayout.EndScrollView();
+        }
+
         void OnGUI()
         {
             if (!AndroidBridge.AndroidExtensionsInstalled)
@@ -258,7 +275,7 @@ namespace Unity.Android.Logcat
             if (EditorGUI.EndChangeCheck())
                 SelectWindowMode(m_WindowMode);
 
-            m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
+            m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition, GUILayout.ExpandHeight(true));
             GUI.SetNextControlName(WindowMode.ResolvedLog.ToString());
             switch (m_WindowMode)
             {
@@ -272,6 +289,7 @@ namespace Unity.Android.Logcat
             }
 
             EditorGUILayout.EndScrollView();
+            ShowErrorsIfNeeded();
             GUILayout.EndVertical();
             DoInfoGUI();
             GUILayout.EndHorizontal();
