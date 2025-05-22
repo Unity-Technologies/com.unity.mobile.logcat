@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 using System.IO;
+using System.Diagnostics;
 
 namespace Unity.Android.Logcat
 {
@@ -13,15 +14,18 @@ namespace Unity.Android.Logcat
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
 
+
+        public class AndroidStackFrame
+        {
+            public string Address { set; get; } = string.Empty;
+            public string MethodName { set; get; } = string.Empty;
+            public int LineNumber { set; get; } = -1;
+            public string BuildId { set; get; } = string.Empty;
+        }
+
+
         class UnresolvedAddresses
         {
-            public class AndroidStackFrame
-            {
-                public string MethodName { set; get; } = string.Empty;
-                public int LineNumber { set; get; } = -1;
-                public string BuildId { set; get; } = string.Empty;
-            }
-
             class AddressToStackFrame : Dictionary<string, AndroidStackFrame>
             {
 
@@ -50,7 +54,10 @@ namespace Unity.Android.Logcat
                 if (addresses.TryGetValue(address, out var value))
                     return value;
 
-                value = new AndroidStackFrame();
+                value = new AndroidStackFrame()
+                {
+                    Address = address
+                };
                 addresses[address] = value;
                 return value;
             }
@@ -100,12 +107,19 @@ namespace Unity.Android.Logcat
             var output = string.Empty;
             // Calling addr2line for every address is costly, that's why we need to do it in batch
             var unresolved = new UnresolvedAddresses();
-            foreach (var l in lines)
+            var frames = new AndroidStackFrame[lines.Length];
+            for (int i = 0; i < lines.Length; i++)
             {
+                var l = lines[i];
                 if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
+                {
+                    frames[i] = null;
                     continue;
+                }
 
-                unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
+                var frame = unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
+                frame.BuildId = buildId;
+                frames[i] = frame;
             }
 
             var keys = unresolved.GetKeys();
@@ -149,17 +163,13 @@ namespace Unity.Android.Logcat
             }
 
 
-            foreach (var l in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
-                {
-                    output += l;
-                }
-                else
-                {
-                    output += l.Replace(address, address + " " + unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address).MethodName);
-                }
-
+                var l = lines[i];
+                var f = frames[i];
+                output += f == null ?
+                    l :
+                    l.Replace(f.Address, f.Address + " " + f.MethodName);
                 output += Environment.NewLine;
             }
 
