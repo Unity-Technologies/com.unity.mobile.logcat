@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 using System.IO;
+using System.Diagnostics;
 
 namespace Unity.Android.Logcat
 {
@@ -12,56 +13,79 @@ namespace Unity.Android.Logcat
     {
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
+        static readonly string m_YellowColor = "#ffff00ff";
+
+
+        internal class AndroidStackFrame
+        {
+            internal string Address { set; get; } = string.Empty;
+            internal string MethodName { set; get; } = string.Empty;
+            internal int LineNumber { set; get; } = -1;
+            internal string BuildId { set; get; } = string.Empty;
+        }
+
 
         class UnresolvedAddresses
         {
-            internal struct AddressKey
+            internal class AddressToStackFrame : Dictionary<string, AndroidStackFrame>
+            {
+
+            }
+
+            internal struct SymbolFile
             {
                 internal string ABI { set; get; }
                 internal string Library { set; get; }
             }
 
-            Dictionary<AddressKey, Dictionary<string, string>> m_Addresses = new Dictionary<AddressKey, Dictionary<string, string>>();
+            Dictionary<SymbolFile, AddressToStackFrame> m_Addresses = new Dictionary<SymbolFile, AddressToStackFrame>();
 
-            private Dictionary<string, string> GetOrCreateAddressMap(AddressKey key)
+            internal IReadOnlyDictionary<SymbolFile, AddressToStackFrame> AdressesPerSymbolFile => m_Addresses;
+
+            private AddressToStackFrame GetOrCreateAddressMap(SymbolFile key)
             {
-                Dictionary<string, string> addresses;
-                if (m_Addresses.TryGetValue(key, out addresses))
+                if (m_Addresses.TryGetValue(key, out var addresses))
                     return addresses;
-                addresses = new Dictionary<string, string>();
+                addresses = new AddressToStackFrame();
                 m_Addresses[key] = addresses;
                 return addresses;
             }
 
-            internal void CreateAddressEntry(AddressKey key, string address)
+            internal AndroidStackFrame GetStackFrame(SymbolFile key, string address)
             {
                 var addresses = GetOrCreateAddressMap(key);
-                addresses[address] = string.Empty;
-            }
-
-            internal void SetAddressValue(AddressKey key, string address, string value)
-            {
-                var addresses = GetOrCreateAddressMap(key);
-                addresses[address] = value;
-            }
-
-            internal string GetAddressValue(AddressKey key, string address)
-            {
-                var addresses = GetOrCreateAddressMap(key);
-                string value = string.Empty;
-                if (addresses.TryGetValue(address, out value))
+                if (addresses.TryGetValue(address, out var value))
                     return value;
-                return string.Empty;
+
+                value = new AndroidStackFrame()
+                {
+                    Address = address
+                };
+                addresses[address] = value;
+                return value;
             }
 
-            internal IReadOnlyList<AddressKey> GetKeys()
+            internal IReadOnlyList<SymbolFile> GetKeys()
             {
                 return m_Addresses.Keys.ToArray();
             }
+        }
 
-            internal IReadOnlyList<string> GetAllAddresses(AddressKey key)
+        internal class ResolveResult
+        {
+            internal string Result { get; private set; }
+            internal string Errors { get; private set; }
+
+            internal ResolveResult(string result)
             {
-                return m_Addresses[key].Keys.ToArray();
+                Result = result;
+                Errors = string.Empty;
+            }
+
+            internal ResolveResult(string result, string errors)
+            {
+                Result = result;
+                Errors = errors;
             }
         }
 
@@ -72,8 +96,9 @@ namespace Unity.Android.Logcat
         }
 
         Vector2 m_ScrollPosition;
+        Vector2 m_ErrorsScrollPosition;
         string m_Text = String.Empty;
-        string m_ResolvedStacktraces = String.Empty;
+        ResolveResult m_ResolveResult;
 
         private WindowMode m_WindowMode;
 
@@ -89,29 +114,40 @@ namespace Unity.Android.Logcat
             wnd.Focus();
         }
 
-        internal static string ResolveAddresses(string[] lines,
+        internal static ResolveResult ResolveAddresses(string[] lines,
             IReadOnlyList<ReordableListItem> regexes,
             IReadOnlyList<ReordableListItem> symbolPaths,
             IReadOnlyList<ReordableListItem> symbolExtensions,
             AndroidTools tools)
         {
             var output = string.Empty;
+            var errorsMismatchingBuildIds = new HashSet<string>();
             // Calling addr2line for every address is costly, that's why we need to do it in batch
             var unresolved = new UnresolvedAddresses();
-            foreach (var l in lines)
+            var frames = new AndroidStackFrame[lines.Length];
+            for (int i = 0; i < lines.Length; i++)
             {
-                string address;
-                string library;
-                string abi;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
+                var l = lines[i];
+                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
+                {
+                    frames[i] = null;
                     continue;
-                unresolved.CreateAddressEntry(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address);
+                }
+
+                var frame = unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
+                frame.BuildId = buildId;
+                frames[i] = frame;
             }
+
+            var buildIds = new Dictionary<string, string>();
 
             var keys = unresolved.GetKeys();
             foreach (var key in keys)
             {
-                var addresses = unresolved.GetAllAddresses(key);
+                var adressesPerSymbolFile = unresolved.AdressesPerSymbolFile[key];
+                var addressKeys = adressesPerSymbolFile.Keys.ToArray();
+                var addressValues = adressesPerSymbolFile.Values.ToArray();
+
                 var exts = symbolExtensions.GetEnabledValues();
                 var symbolFile = AndroidLogcatUtilities.GetSymbolFile(symbolPaths,
                     key.ABI,
@@ -122,77 +158,88 @@ namespace Unity.Android.Logcat
                 if (string.IsNullOrEmpty(symbolFile))
                 {
                     var value = $"<color={m_RedColor}>({Path.GetFileNameWithoutExtension(key.Library)}[{string.Join("|", exts)}] not found)</color>";
-                    foreach (var a in addresses)
-                        unresolved.SetAddressValue(key, a, value);
+
+                    foreach (var v in addressValues)
+                        v.MethodName = value;
                     continue;
                 }
 
                 try
                 {
-                    var result = tools.RunAddr2Line(symbolFile, addresses.ToArray());
-
-                    if (result.Length != addresses.Count)
+                    if (!buildIds.TryGetValue(symbolFile, out var buildId))
                     {
-                        return $"Failed to run addr2line, expected to receive {addresses.Count} addresses, but received {result.Length}";
+                        buildId = AndroidLogcatUtilities.GetBuildId(tools, symbolFile);
+                        buildIds[symbolFile] = buildId;
                     }
 
-                    for (int i = 0; i < addresses.Count; i++)
+                    var result = tools.RunAddr2Line(symbolFile, addressKeys);
+
+                    if (result.Length != addressKeys.Length)
                     {
-                        AndroidLogcatInternalLog.Log($"{addresses[i]} ---> {result[i]}");
-                        unresolved.SetAddressValue(key, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
+                        return new ResolveResult($"Failed to run addr2line, expected to receive {addressKeys.Length} addresses, but received {result.Length}");
+                    }
+
+                    for (int i = 0; i < addressKeys.Length; i++)
+                    {
+                        AndroidLogcatInternalLog.Log($"{addressKeys[i]} ---> {result[i]}");
+
+                        var color = m_GreenColor;
+
+                        if (!string.IsNullOrEmpty(buildId) &&
+                            !string.IsNullOrEmpty(addressValues[i].BuildId) &&
+                            !buildId.Equals(addressValues[i].BuildId))
+                        {
+                            errorsMismatchingBuildIds.Add($" '{symbolFile}' contains unexpected buildId '{buildId}', expected buildId '{addressValues[i].BuildId}'.");
+                            color = m_YellowColor;
+                        }
+
+                        addressValues[i].MethodName = $"<color={color}>({result[i].Trim()})</color>";
                     }
                 }
                 catch (Exception ex)
                 {
-                    return $"Exception while running addr2line:\n{ex.Message}";
+                    return new ResolveResult($"Exception while running addr2line:\n{ex.Message}");
                 }
             }
 
 
-            foreach (var l in lines)
+            for (int i = 0; i < lines.Length; i++)
             {
-                string address;
-                string library;
-                string abi;
-                if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out abi, out address, out library))
-                {
-                    output += l;
-                }
-                else
-                {
-                    output += l.Replace(address, address + " " + unresolved.GetAddressValue(new UnresolvedAddresses.AddressKey() { ABI = abi, Library = library }, address));
-                }
-
+                var l = lines[i];
+                var f = frames[i];
+                output += f == null ?
+                    l :
+                    l.Replace(f.Address, f.Address + " " + f.MethodName);
                 output += Environment.NewLine;
             }
 
-            return output;
+            return new ResolveResult(output, $"<color={m_RedColor}>Wrong symbol files?:\n" + string.Join("\n", errorsMismatchingBuildIds) + "</color>");
         }
 
         void ResolveStacktraces()
         {
-            m_ResolvedStacktraces = String.Empty;
+            m_ResolveResult = null;
             if (string.IsNullOrEmpty(m_Text))
             {
-                m_ResolvedStacktraces = $"<color={m_RedColor}>Please add some log with addresses first.</color>";
+                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>Please add some log with addresses first.</color>");
                 return;
             }
 
             if (m_Runtime.Settings.StacktraceResolveRegex.Count == 0)
             {
-                m_ResolvedStacktraces = $"<color={m_RedColor}>No stacktrace regular expressions found.\nClick <b>Configure Regex</b> and configure Stacktrace Regex.</color>";
+                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>No stacktrace regular expressions found.\nClick <b>Configure Regex</b> and configure Stacktrace Regex.</color>");
                 return;
             }
 
             if (m_Runtime.UserSettings.SymbolPaths.Count == 0)
             {
-                m_ResolvedStacktraces = $"<color={m_RedColor}>At least one symbol path needs to be specified.\nClick Configure Symbol Paths and add the necessary symbol path.</color>";
+                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>At least one symbol path needs to be specified.\nClick Configure Symbol Paths and add the necessary symbol path.</color>");
                 return;
             }
 
 
             var lines = m_Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            m_ResolvedStacktraces = ResolveAddresses(lines,
+            m_ResolveResult = ResolveAddresses(lines,
                 m_Runtime.Settings.StacktraceResolveRegex,
                 m_Runtime.UserSettings.SymbolPaths,
                 m_Runtime.Settings.SymbolExtensions,
@@ -249,6 +296,18 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndVertical();
         }
 
+
+        void ShowErrorsIfNeeded()
+        {
+            if (m_WindowMode != WindowMode.ResolvedLog || m_ResolveResult == null || string.IsNullOrEmpty(m_ResolveResult.Errors))
+                return;
+
+            EditorGUILayout.LabelField("Errors", EditorStyles.boldLabel);
+            m_ErrorsScrollPosition = EditorGUILayout.BeginScrollView(m_ErrorsScrollPosition, GUILayout.Height(150));
+            EditorGUILayout.TextArea(m_ResolveResult.Errors, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
+            EditorGUILayout.EndScrollView();
+        }
+
         void OnGUI()
         {
             if (!AndroidBridge.AndroidExtensionsInstalled)
@@ -264,13 +323,14 @@ namespace Unity.Android.Logcat
             if (EditorGUI.EndChangeCheck())
                 SelectWindowMode(m_WindowMode);
 
-            m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
+            m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition, GUILayout.ExpandHeight(true));
             GUI.SetNextControlName(WindowMode.ResolvedLog.ToString());
             switch (m_WindowMode)
             {
                 case WindowMode.ResolvedLog:
+                    var text = m_ResolveResult != null ? m_ResolveResult.Result : string.Empty;
                     // Note: Not using EditorGUILayout.SelectableLabel, because scrollbars are not working correctly
-                    EditorGUILayout.TextArea(m_ResolvedStacktraces, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
+                    EditorGUILayout.TextArea(text, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
                     break;
                 case WindowMode.OriginalLog:
                     m_Text = EditorGUILayout.TextArea(m_Text, AndroidLogcatStyles.stacktraceStyle, GUILayout.ExpandHeight(true));
@@ -278,6 +338,7 @@ namespace Unity.Android.Logcat
             }
 
             EditorGUILayout.EndScrollView();
+            ShowErrorsIfNeeded();
             GUILayout.EndVertical();
             DoInfoGUI();
             GUILayout.EndHorizontal();

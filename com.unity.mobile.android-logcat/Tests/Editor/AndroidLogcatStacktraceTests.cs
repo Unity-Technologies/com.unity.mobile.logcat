@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using UnityEditor;
 using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -30,7 +29,7 @@ class AndroidLogcatStacktraceTests
         //     63: 000000000000083c   144 FUNC    GLOBAL DEFAULT   10 JNI_OnLoad
 
         var regex = new Regex(@".*:\s*(?<address>\S*).*");
-        var symbols = tools.RunReadElf(symbolFilePath);
+        var symbols = tools.RunReadElf($"-Ws \"{symbolFilePath}\"");
         foreach (var s in symbols)
         {
             if (s.Contains(symbolName))
@@ -62,7 +61,9 @@ class AndroidLogcatStacktraceTests
         return targetAddress;
     }
 
-    private void CanResolveStacktraces(string abi)
+    [TestCase("armeabi-v7a")]
+    [TestCase("arm64-v8a")]
+    public void CanResolveStacktraces(string abi)
     {
         if (!AndroidBridge.AndroidExtensionsInstalled)
         {
@@ -100,16 +101,28 @@ class AndroidLogcatStacktraceTests
         }
     }
 
-    [Test]
-    public void CanResolveStacktracesARM64()
+    [TestCase("armeabi-v7a")]
+    [TestCase("arm64-v8a")]
+    public void CanResolveBuildIdFromSymbol(string abi)
     {
-        CanResolveStacktraces("arm64-v8a");
-    }
+        if (!AndroidBridge.AndroidExtensionsInstalled)
+        {
+            System.Console.WriteLine("Test ignored, because Android Support is not installed");
+            return;
+        }
 
-    [Test]
-    public void CanResolveStacktracesARMv7()
-    {
-        CanResolveStacktraces("armeabi-v7a");
+        if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
+        {
+            System.Console.WriteLine("Test ignored");
+            return;
+        }
+
+        var symbolPath = GetSymbolPath(abi, "libunity.so");
+        var tools = new AndroidTools();
+        var buildId = AndroidLogcatUtilities.GetBuildId(tools, symbolPath);
+
+        // BuildId looks like this 4d911593b4008c7250197a60a320d872575ecc1b
+        Assert.AreEqual(40, buildId.Length, $"Unexpected build id string length: {buildId} (Length = {buildId.Length})");
     }
 
     [Test]
@@ -123,7 +136,32 @@ class AndroidLogcatStacktraceTests
             "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x1234567890123456(Native Method)",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/arm64/libunity.so",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/x86_64/libunity.so",
-            "  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so"
+            "  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so",
+            "2025/05/14 15:30:41.520 2672 2694 Error CRASH       #01 pc 1234567890123456  /data/app/com.DefaultCompany.ForceCrash-YCyru7yBnQrlx6Q4p4Am_w==/lib/arm64/libunity.so (Utils_CUSTOM_ForceCrash(DiagnosticsUtils_Bindings::ForcedCrashCategory)+60) (BuildId: 4d911593b4008c7250197a60a320d872575ecc1b)"
+        };
+
+        var expectedABIs = new[]
+        {
+            string.Empty,
+            AndroidLogcatUtilities.kAbiArmV7,
+            AndroidLogcatUtilities.kAbiX86,
+            string.Empty,
+            AndroidLogcatUtilities.kAbiArm64,
+            AndroidLogcatUtilities.kAbiX86_64,
+            AndroidLogcatUtilities.kAbiArm64,
+            AndroidLogcatUtilities.kAbiArm64
+        };
+
+        var expectedBuildIds = new[]
+{
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            "4d911593b4008c7250197a60a320d872575ecc1b"
         };
 
         var regexs = new List<ReordableListItem>();
@@ -135,25 +173,14 @@ class AndroidLogcatStacktraceTests
 
         for (int i = 0; i < logLines.Length; i++)
         {
-            string expectedABI = string.Empty;
-            switch (i)
-            {
-                case 1: expectedABI = AndroidLogcatUtilities.kAbiArmV7; break;
-                case 2: expectedABI = AndroidLogcatUtilities.kAbiX86; break;
-                case 6:
-                case 4: expectedABI = AndroidLogcatUtilities.kAbiArm64; break;
-                case 5: expectedABI = AndroidLogcatUtilities.kAbiX86_64; break;
-            }
-
+            UnityEngine.Debug.Log($"Validating: {logLines[i]}");
             var line = logLines[i];
-            string address;
-            string libName;
-            string abi;
-            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out abi, out address, out libName);
+            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out var abi, out var address, out var libName, out var buildId);
             Assert.IsTrue(result, "Failed to parse " + line);
             Assert.IsTrue(address.Equals("0041e340") || address.Equals("1234567890123456") || address.Equals("0x0000000000a0de84"), $"Invalid resolved address: {address}");
             StringAssert.AreEqualIgnoringCase("libunity.so", libName);
-            StringAssert.AreEqualIgnoringCase(expectedABI, abi);
+            StringAssert.AreEqualIgnoringCase(expectedABIs[i], abi);
+            StringAssert.AreEqualIgnoringCase(expectedBuildIds[i], buildId);
         }
     }
 
