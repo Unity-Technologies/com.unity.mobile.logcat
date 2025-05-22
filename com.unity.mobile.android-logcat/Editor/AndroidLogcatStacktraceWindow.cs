@@ -15,7 +15,14 @@ namespace Unity.Android.Logcat
 
         class UnresolvedAddresses
         {
-            class AddressToFunctionName : Dictionary<string, string>
+            public class AndroidStackFrame
+            {
+                public string MethodName { set; get; } = string.Empty;
+                public int LineNumber { set; get; } = -1;
+                public string BuildId { set; get; } = string.Empty;
+            }
+
+            class AddressToStackFrame : Dictionary<string, AndroidStackFrame>
             {
 
             }
@@ -26,36 +33,26 @@ namespace Unity.Android.Logcat
                 internal string Library { set; get; }
             }
 
-            Dictionary<SymbolFile, AddressToFunctionName> m_Addresses = new Dictionary<SymbolFile, AddressToFunctionName>();
+            Dictionary<SymbolFile, AddressToStackFrame> m_Addresses = new Dictionary<SymbolFile, AddressToStackFrame>();
 
-            private AddressToFunctionName GetOrCreateAddressMap(SymbolFile key)
+            private AddressToStackFrame GetOrCreateAddressMap(SymbolFile key)
             {
                 if (m_Addresses.TryGetValue(key, out var addresses))
                     return addresses;
-                addresses = new AddressToFunctionName();
+                addresses = new AddressToStackFrame();
                 m_Addresses[key] = addresses;
                 return addresses;
             }
 
-            internal void CreateAddressEntry(SymbolFile key, string address)
+            internal AndroidStackFrame GetStackFrame(SymbolFile key, string address)
             {
                 var addresses = GetOrCreateAddressMap(key);
-                addresses[address] = string.Empty;
-            }
-
-            internal void SetFunctionNameForAddress(SymbolFile key, string address, string value)
-            {
-                var addresses = GetOrCreateAddressMap(key);
-                addresses[address] = value;
-            }
-
-            internal string GetFunctionNameFromAddress(SymbolFile key, string address)
-            {
-                var addresses = GetOrCreateAddressMap(key);
-                string value = string.Empty;
-                if (addresses.TryGetValue(address, out value))
+                if (addresses.TryGetValue(address, out var value))
                     return value;
-                return string.Empty;
+
+                value = new AndroidStackFrame();
+                addresses[address] = value;
+                return value;
             }
 
             internal IReadOnlyList<SymbolFile> GetKeys()
@@ -107,7 +104,8 @@ namespace Unity.Android.Logcat
             {
                 if (!AndroidLogcatUtilities.ParseCrashLine(regexes, l, out var abi, out var address, out var library, out var buildId))
                     continue;
-                unresolved.CreateAddressEntry(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
+
+                unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address);
             }
 
             var keys = unresolved.GetKeys();
@@ -125,7 +123,7 @@ namespace Unity.Android.Logcat
                 {
                     var value = $"<color={m_RedColor}>({Path.GetFileNameWithoutExtension(key.Library)}[{string.Join("|", exts)}] not found)</color>";
                     foreach (var a in addresses)
-                        unresolved.SetFunctionNameForAddress(key, a, value);
+                        unresolved.GetStackFrame(key, a).MethodName = value;
                     continue;
                 }
 
@@ -141,7 +139,7 @@ namespace Unity.Android.Logcat
                     for (int i = 0; i < addresses.Count; i++)
                     {
                         AndroidLogcatInternalLog.Log($"{addresses[i]} ---> {result[i]}");
-                        unresolved.SetFunctionNameForAddress(key, addresses[i], $"<color={m_GreenColor}>({result[i].Trim()})</color>");
+                        unresolved.GetStackFrame(key, addresses[i]).MethodName = $"<color={m_GreenColor}>({result[i].Trim()})</color>";
                     }
                 }
                 catch (Exception ex)
@@ -159,7 +157,7 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    output += l.Replace(address, address + " " + unresolved.GetFunctionNameFromAddress(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address));
+                    output += l.Replace(address, address + " " + unresolved.GetStackFrame(new UnresolvedAddresses.SymbolFile() { ABI = abi, Library = library }, address).MethodName);
                 }
 
                 output += Environment.NewLine;
