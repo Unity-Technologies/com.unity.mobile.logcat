@@ -31,10 +31,42 @@ namespace Unity.Android.Logcat
 
             }
 
-            internal struct SymbolFile
+            internal struct SymbolFile : IEquatable<SymbolFile>
             {
                 internal string ABI { set; get; }
                 internal string Library { set; get; }
+
+                public override bool Equals(object obj)
+                {
+                    return obj is SymbolFile other && Equals(other);
+                }
+
+                public bool Equals(SymbolFile other)
+                {
+                    return string.Equals(ABI, other.ABI, StringComparison.Ordinal) &&
+                           string.Equals(Library, other.Library, StringComparison.Ordinal);
+                }
+
+                public override int GetHashCode()
+                {
+                    unchecked
+                    {
+                        int hash = 17;
+                        hash = hash * 31 + (ABI != null ? ABI.GetHashCode() : 0);
+                        hash = hash * 31 + (Library != null ? Library.GetHashCode() : 0);
+                        return hash;
+                    }
+                }
+
+                public static bool operator ==(SymbolFile left, SymbolFile right)
+                {
+                    return left.Equals(right);
+                }
+
+                public static bool operator !=(SymbolFile left, SymbolFile right)
+                {
+                    return !(left == right);
+                }
             }
 
             Dictionary<SymbolFile, AddressToStackFrame> m_Addresses = new Dictionary<SymbolFile, AddressToStackFrame>();
