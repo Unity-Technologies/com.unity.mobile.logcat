@@ -5,7 +5,6 @@ using UnityEngine;
 using UnityEditor;
 using System.Text;
 using System.IO;
-using System.Diagnostics;
 
 namespace Unity.Android.Logcat
 {
@@ -213,7 +212,10 @@ namespace Unity.Android.Logcat
                 output += Environment.NewLine;
             }
 
-            return new ResolveResult(output, $"<color={m_RedColor}>Wrong symbol files?:\n" + string.Join("\n", errorsMismatchingBuildIds) + "</color>");
+            var errors = errorsMismatchingBuildIds.Count == 0 ?
+                string.Empty :
+                $"<color={m_RedColor}>Wrong symbol files?:\n" + string.Join("\n", errorsMismatchingBuildIds) + "</color>";
+            return new ResolveResult(output, errors);
         }
 
         void ResolveStacktraces()
