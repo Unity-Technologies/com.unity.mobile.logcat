@@ -259,7 +259,7 @@ namespace Unity.Android.Logcat
                 var placeholder = new StringBuilder();
                 placeholder.AppendLine("Copy paste log with address and click Resolve Stackraces");
                 placeholder.AppendLine("For example:");
-                placeholder.AppendLine("2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 002983fc  /data/app/com.mygame==/lib/arm/libunity.so");
+                placeholder.AppendLine("2025/05/26 13:13:11.488 16541 16557 Error CRASH       #01 pc 00000000001fc0a4  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.MyGame-gYtNtB9HCft5sX98ZKtsTQ==/lib/arm64/libunity.so (BuildId: 4ae70803f1f19d46fb4148bb3e739e51ae1b0038)");
                 m_Text = placeholder.ToString();
             }
         }
