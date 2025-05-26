@@ -132,7 +132,7 @@ namespace Unity.Android.Logcat
 
             var result = Shell.RunProcess(
                 m_NMPath,
-                "-extern-only \"" + symbolFilePath + "\"",
+                "--extern-only \"" + symbolFilePath + "\"",
                 Path.GetDirectoryName(m_NMPath));
             ValidateResult(result);
             return result.GetStandardOut().Split(new[] { '\r', '\n' }, System.StringSplitOptions.RemoveEmptyEntries);
