@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixes & Improvements
+ - Stacktrace window will validate buildId when resolving stacktrace, informing you if wrong symbol file is used. Reset symbol regexes if needed.
+
 ## [1.4.4] - 2024-12-07
 ### Fixes & Improvements
  - Default AutoScroll to Auto when there's not logcat settings saved
