@@ -53,7 +53,7 @@ class AndroidLogcatStacktraceTests
 
     private static string GetSymbolPath(string abi, string libraryFile)
     {
-        var path = $"{GetSymbolsDirectory()}/{abi}";
+        var path = Path.Combine(GetSymbolsDirectory(), abi);
         var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, AndroidLogcatSettings.kDefaultSymbolExtensions);
 
         if (string.IsNullOrEmpty(result))
