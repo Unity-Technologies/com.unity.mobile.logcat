@@ -71,7 +71,7 @@ namespace Unity.Android.Logcat
 
             Dictionary<SymbolFile, AddressToStackFrame> m_Addresses = new Dictionary<SymbolFile, AddressToStackFrame>();
 
-            internal IReadOnlyDictionary<SymbolFile, AddressToStackFrame> AdressesPerSymbolFile => m_Addresses;
+            internal IReadOnlyDictionary<SymbolFile, AddressToStackFrame> AddressesPerSymbolFile => m_Addresses;
 
             private AddressToStackFrame GetOrCreateAddressMap(SymbolFile key)
             {
