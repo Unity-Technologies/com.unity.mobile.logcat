@@ -1,1 +1,3 @@
-dotnet run --project Tools\CI\UnityMobileLogcat.Cookbook.csproj
+!/bin/sh
+
+dotnet run --project Tools/CI/UnityMobileLogcat.Cookbook.csproj
