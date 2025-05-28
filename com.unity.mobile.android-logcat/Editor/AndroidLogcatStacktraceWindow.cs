@@ -175,7 +175,7 @@ namespace Unity.Android.Logcat
             var keys = unresolved.GetKeys();
             foreach (var key in keys)
             {
-                var adressesPerSymbolFile = unresolved.AdressesPerSymbolFile[key];
+                var adressesPerSymbolFile = unresolved.AddressesPerSymbolFile[key];
                 var addressKeys = adressesPerSymbolFile.Keys.ToArray();
                 var addressValues = adressesPerSymbolFile.Values.ToArray();
 
