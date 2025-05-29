@@ -220,7 +220,7 @@ class AndroidLogcatStacktraceTests
                 m_SymbolExtensions,
                 m_Tools);
 
-            Assert.IsTrue(string.IsNullOrEmpty(result.Errors), result.Errors);
+            Assert.IsTrue(string.IsNullOrEmpty(result.ErrorsAndWarnings), result.ErrorsAndWarnings);
             StringAssert.Contains("JNI_OnLoad", result.Result);
             StringAssert.Contains("UnitySendMessage", result.Result);
         }
@@ -244,7 +244,7 @@ class AndroidLogcatStacktraceTests
                 m_SymbolExtensions,
                 m_Tools);
 
-            StringAssert.Contains("Wrong symbol files?", result.Errors);
+            StringAssert.Contains("Wrong symbol files?", result.ErrorsAndWarnings);
             StringAssert.Contains("JNI_OnLoad", result.Result);
             StringAssert.Contains("UnitySendMessage", result.Result);
         }
@@ -267,7 +267,7 @@ class AndroidLogcatStacktraceTests
                 m_SymbolExtensions,
                 m_Tools);
 
-            Assert.IsTrue(string.IsNullOrEmpty(result.Errors), result.Errors);
+            Assert.IsTrue(string.IsNullOrEmpty(result.ErrorsAndWarnings), result.ErrorsAndWarnings);
             StringAssert.Contains("JNI_OnLoad", result.Result);
             StringAssert.Contains("UnitySendMessage", result.Result);
         }

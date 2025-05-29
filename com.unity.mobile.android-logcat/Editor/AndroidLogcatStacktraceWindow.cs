@@ -13,7 +13,8 @@ namespace Unity.Android.Logcat
         static readonly string m_RedColor = "#ff0000ff";
         static readonly string m_GreenColor = "#00ff00ff";
         static readonly string m_YellowColor = "#ffff00ff";
-
+        static readonly string m_ConfigureRegexLabel = "<b>Configure Regex</b>";
+        static readonly string m_ConfigureSymbolsLabel = "<b>Configure Symbol Paths</b>";
 
         internal class AndroidStackFrame
         {
@@ -105,18 +106,17 @@ namespace Unity.Android.Logcat
         internal class ResolveResult
         {
             internal string Result { get; private set; }
-            internal string Errors { get; private set; }
-
+            internal string ErrorsAndWarnings { get; private set; }
             internal ResolveResult(string result)
             {
                 Result = result;
-                Errors = string.Empty;
+                ErrorsAndWarnings = string.Empty;
             }
 
-            internal ResolveResult(string result, string errors)
+            internal ResolveResult(string result, string errorsAndWarnings)
             {
                 Result = result;
-                Errors = errors;
+                ErrorsAndWarnings = errorsAndWarnings;
             }
         }
 
@@ -246,8 +246,49 @@ namespace Unity.Android.Logcat
 
             var errors = errorsMismatchingBuildIds.Count == 0 ?
                 string.Empty :
-                $"<color={m_RedColor}>Wrong symbol files?:\n" + string.Join("\n", errorsMismatchingBuildIds) + "</color>";
-            return new ResolveResult(output, errors);
+                $"<color={m_RedColor}>\nWrong symbol files?:\n" + string.Join("\n", errorsMismatchingBuildIds) + $"\nPlease provide correct symbols by clicking '{m_ConfigureSymbolsLabel}'.</color>";
+            var warnings = ValidateRegexes(regexes);
+            if (!string.IsNullOrEmpty(warnings))
+                warnings = $"<color={m_YellowColor}>{warnings}</color>";
+
+
+            return new ResolveResult(output, string.Join("\n", new[] { errors, warnings }));
+        }
+
+        static string ValidateRegexes(IReadOnlyList<ReordableListItem> regexes)
+        {
+            var enabledRegexes = 0;
+            var captureGroups = new[] { "<buildId>", "<libName>", "<address>" };
+            var captureGroupPresent = new bool[captureGroups.Length];
+            foreach (var regex in regexes)
+            {
+                if (!regex.Enabled)
+                    continue;
+                enabledRegexes++;
+
+                var captureGroupIdx = 0;
+                foreach (var captureGroup in captureGroups)
+                {
+                    if (regex.Name.Contains(captureGroup))
+                        captureGroupPresent[captureGroupIdx] = true;
+                    captureGroupIdx++;
+                }
+            }
+
+            var warnings = new StringBuilder();
+            if (enabledRegexes == 0)
+                warnings.AppendLine($"No enabled regexes for resolving stacktraces. Click '{m_ConfigureRegexLabel}' button and reset/fix regexes.");
+            else
+            {
+                var captureGroupIdx = 0;
+                foreach (var captureGroup in captureGroups)
+                {
+                    if (!captureGroupPresent[captureGroupIdx++])
+                        warnings.AppendLine($"None of the regexes contain {captureGroup} capture group. Click '{m_ConfigureRegexLabel}' button and reset/fix regexes.");
+                }
+            }
+
+            return warnings.ToString();
         }
 
         void ResolveStacktraces()
@@ -261,13 +302,13 @@ namespace Unity.Android.Logcat
 
             if (m_Runtime.Settings.StacktraceResolveRegex.Count == 0)
             {
-                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>No stacktrace regular expressions found.\nClick <b>Configure Regex</b> and configure Stacktrace Regex.</color>");
+                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>No stacktrace regular expressions found.\nClick {m_ConfigureRegexLabel} and configure Stacktrace Regex.</color>");
                 return;
             }
 
             if (m_Runtime.UserSettings.SymbolPaths.Count == 0)
             {
-                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>At least one symbol path needs to be specified.\nClick Configure Symbol Paths and add the necessary symbol path.</color>");
+                m_ResolveResult = new ResolveResult($"<color={m_RedColor}>At least one symbol path needs to be specified.\nClick {m_ConfigureSymbolsLabel} and add the necessary symbol path.</color>");
                 return;
             }
 
@@ -331,14 +372,14 @@ namespace Unity.Android.Logcat
         }
 
 
-        void ShowErrorsIfNeeded()
+        void ShowErrorsAndWarningsIfNeeded()
         {
-            if (m_WindowMode != WindowMode.ResolvedLog || m_ResolveResult == null || string.IsNullOrEmpty(m_ResolveResult.Errors))
+            if (m_WindowMode != WindowMode.ResolvedLog || m_ResolveResult == null || string.IsNullOrEmpty(m_ResolveResult.ErrorsAndWarnings))
                 return;
 
-            EditorGUILayout.LabelField("Errors", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Errors and Warnings", EditorStyles.boldLabel);
             m_ErrorsScrollPosition = EditorGUILayout.BeginScrollView(m_ErrorsScrollPosition, GUILayout.Height(150));
-            EditorGUILayout.TextArea(m_ResolveResult.Errors, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
+            EditorGUILayout.TextArea(m_ResolveResult.ErrorsAndWarnings, AndroidLogcatStyles.resolvedStacktraceStyle, GUILayout.ExpandHeight(true));
             EditorGUILayout.EndScrollView();
         }
 
@@ -372,7 +413,7 @@ namespace Unity.Android.Logcat
             }
 
             EditorGUILayout.EndScrollView();
-            ShowErrorsIfNeeded();
+            ShowErrorsAndWarningsIfNeeded();
             GUILayout.EndVertical();
             DoInfoGUI();
             GUILayout.EndHorizontal();
