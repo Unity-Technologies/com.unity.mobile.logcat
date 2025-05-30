@@ -572,22 +572,19 @@ namespace Unity.Android.Logcat
                     return string.Empty;
                 }
 
-                var buildId = string.Empty;
-
                 // Parsing content like
                 //Hex dump of section '.note.gnu.build-id':
                 //  0x00000200 04000000 14000000 03000000 474e5500............GNU.
                 //  0x00000210 4d911593 b4008c72 50197a60 a320d872 M......rP.z`. .r
                 //  0x00000220 575ecc1b W^..
-                for (int i = 2; i < contents.Length; i++)
-                {
-                    var splits = contents[i].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                    if (i == 2)
-                        buildId += splits[1] + splits[2] + splits[3] + splits[4];
-                    else
-                        buildId += splits[1];
-                }
+                if (contents.Length < 3)
+                    throw new Exception($"Invalid contents while getting buildId (Line Count: {contents.Length}):\n" + string.Join("\n", contents));
+
+                var splits = contents[2].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var buildId = splits[1] + splits[2] + splits[3] + splits[4];
+                splits = contents[3].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                buildId += splits[1];
 
                 return buildId.ToLowerInvariant();
             }
