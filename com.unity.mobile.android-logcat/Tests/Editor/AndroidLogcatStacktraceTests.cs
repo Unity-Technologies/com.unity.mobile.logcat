@@ -4,7 +4,7 @@ using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
-using Unity.Android.Types;
+using UnityEditor;
 
 class AndroidLogcatStacktraceTests
 {
@@ -185,8 +185,7 @@ class AndroidLogcatStacktraceTests
 
             foreach (var architecture in architectures)
             {
-                var deviceType = AndroidTargetDeviceType.GetTargetDeviceType(architecture);
-                var symbolPath = GetSymbolPath(deviceType.ABI, "libunity.so");
+                var symbolPath = GetSymbolPath(architecture.ToABI(), "libunity.so");
                 m_BuildId[architecture] = AndroidLogcatUtilities.GetBuildId(m_Tools, symbolPath);
 
                 var targetAddressJNI_OnLoad = GetSymbolAddressUsingNM(m_Tools, symbolPath, "JNI_OnLoad");
@@ -205,8 +204,7 @@ class AndroidLogcatStacktraceTests
         [TestCase(AndroidArchitecture.ARM64)]
         public void WithCorrectBuildId(AndroidArchitecture architecture)
         {
-            var deviceType = AndroidTargetDeviceType.GetTargetDeviceType(architecture);
-            var ndkArchitecture = deviceType.NDKArchitecture;
+            var ndkArchitecture = architecture.ToNdkArchitecture();
 
             var dummyStacktrace = new[]
             {
@@ -229,8 +227,7 @@ class AndroidLogcatStacktraceTests
         [TestCase(AndroidArchitecture.ARM64)]
         public void WithWrongBuildId(AndroidArchitecture architecture)
         {
-            var deviceType = AndroidTargetDeviceType.GetTargetDeviceType(architecture);
-            var ndkArchitecture = deviceType.NDKArchitecture;
+            var ndkArchitecture = architecture.ToNdkArchitecture();
             var wrongBuildId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
             var dummyStacktrace = new[]
             {
@@ -253,8 +250,7 @@ class AndroidLogcatStacktraceTests
         [TestCase(AndroidArchitecture.ARM64)]
         public void WithMissingBuildId(AndroidArchitecture architecture)
         {
-            var deviceType = AndroidTargetDeviceType.GetTargetDeviceType(architecture);
-            var ndkArchitecture = deviceType.NDKArchitecture;
+            var ndkArchitecture = architecture.ToNdkArchitecture();
             var dummyStacktrace = new[]
             {
                 $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #00 pc {m_AddressJNI_OnLoad[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so",
