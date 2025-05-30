@@ -252,7 +252,7 @@ namespace Unity.Android.Logcat
                 warnings = $"<color={m_YellowColor}>{warnings}</color>";
 
 
-            return new ResolveResult(output, string.Join("\n", new[] { errors, warnings }));
+            return new ResolveResult(output, string.Join("\n", new[] { errors, warnings }).TrimEnd());
         }
 
         static string ValidateRegexes(IReadOnlyList<ReordableListItem> regexes)
