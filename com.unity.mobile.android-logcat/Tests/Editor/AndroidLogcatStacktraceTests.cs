@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using UnityEditor;
 using Unity.Android.Logcat;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Linq;
+using UnityEditor;
 
 class AndroidLogcatStacktraceTests
 {
@@ -30,7 +31,7 @@ class AndroidLogcatStacktraceTests
         //     63: 000000000000083c   144 FUNC    GLOBAL DEFAULT   10 JNI_OnLoad
 
         var regex = new Regex(@".*:\s*(?<address>\S*).*");
-        var symbols = tools.RunReadElf(symbolFilePath);
+        var symbols = tools.RunReadElf($"-Ws \"{symbolFilePath}\"");
         foreach (var s in symbols)
         {
             if (s.Contains(symbolName))
@@ -44,11 +45,15 @@ class AndroidLogcatStacktraceTests
         return string.Empty;
     }
 
-    private static string GetSymbolPath(string abi, string libraryFile)
+    private static string GetSymbolsDirectory()
     {
         var playerPackage = AndroidLogcatUtilities.GetPlaybackEngineDirectory();
+        return Path.Combine(playerPackage, $"Variations/il2cpp/Release/Symbols");
+    }
 
-        var path = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols/{abi}");
+    private static string GetSymbolPath(string abi, string libraryFile)
+    {
+        var path = Path.Combine(GetSymbolsDirectory(), abi);
         var result = AndroidLogcatUtilities.GetSymbolFile(path, libraryFile, AndroidLogcatSettings.kDefaultSymbolExtensions);
 
         if (string.IsNullOrEmpty(result))
@@ -56,60 +61,32 @@ class AndroidLogcatStacktraceTests
         return result;
     }
 
-    private static string GetSymbolAddress(AndroidTools tools, string symbolPath, string symbolName)
+    internal static List<ReordableListItem> ToReordableList(string[] items)
     {
-        var targetAddress = GetSymbolAddressUsingNM(tools, symbolPath, symbolName);
-        return targetAddress;
+        return items.Select(i => new ReordableListItem() { Enabled = true, Name = i }).ToList();
     }
 
-    private void CanResolveStacktraces(string abi)
+    internal static List<ReordableListItem> ToReordableList(string item)
+    {
+        return ToReordableList(new[] { item });
+    }
+
+    [TestCase("armeabi-v7a")]
+    [TestCase("arm64-v8a")]
+    public void CanResolveBuildIdFromSymbol(string abi)
     {
         if (!AndroidBridge.AndroidExtensionsInstalled)
-        {
-            System.Console.WriteLine("Test ignored, because Android Support is not installed");
-            return;
-        }
+            Assert.Ignore("Test ignored, because Android Support is not installed.");
 
         if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
-        {
-            System.Console.WriteLine("Test ignored");
-            return;
-        }
+            Assert.Ignore("Test ignored, because SDK or NDK are not available.");
+
+        var symbolPath = GetSymbolPath(abi, "libunity.so");
         var tools = new AndroidTools();
-        const string symbolName = "JNI_OnLoad";
+        var buildId = AndroidLogcatUtilities.GetBuildId(tools, symbolPath);
 
-        var symbolPath = GetSymbolPath(abi, "libmain.so");
-        var targetAddress = GetSymbolAddress(tools, symbolPath, symbolName);
-
-        Assert.IsNotEmpty(targetAddress, "Failed to find address for " + symbolName);
-        var resolvedSymbols = tools.RunAddr2Line(symbolPath, new[] { targetAddress });
-        Assert.IsTrue(resolvedSymbols.Length == 1, "Expected to resolve one symbol");
-
-
-        if (tools.NDKVersion >= new System.Version(23, 1))
-        {
-            // With NDK 23, we get path and line number!
-            var regex = new Regex(symbolName + @"\s+at\s+\S+\:\d+");
-            Assert.IsTrue(regex.Match(resolvedSymbols[0]).Success,
-                $"Failed to properly resolve symbol '{symbolName}' for address '{targetAddress}', the resolved value was: '{resolvedSymbols[0]}'");
-        }
-        else
-        {
-            var expectedOutput = symbolName + " at ??:?";
-            Assert.AreEqual(expectedOutput, resolvedSymbols[0], $"Failed to resolve symbol '{symbolName}' for address '{targetAddress}'");
-        }
-    }
-
-    [Test]
-    public void CanResolveStacktracesARM64()
-    {
-        CanResolveStacktraces("arm64-v8a");
-    }
-
-    [Test]
-    public void CanResolveStacktracesARMv7()
-    {
-        CanResolveStacktraces("armeabi-v7a");
+        // BuildId looks like this 4d911593b4008c7250197a60a320d872575ecc1b
+        Assert.AreEqual(40, buildId.Length, $"Unexpected build id string length: {buildId} (Length = {buildId.Length})");
     }
 
     [Test]
@@ -123,7 +100,32 @@ class AndroidLogcatStacktraceTests
             "2020/07/15 15:31:30.887 23271 23292 Error AndroidRuntime    at libunity.0x1234567890123456(Native Method)",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/arm64/libunity.so",
             "2019-05-17 12:00:58.830 30759-30803/? E/CRASH: \t#00  pc 1234567890123456  /data/app/com.mygame==/lib/x86_64/libunity.so",
-            "  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so"
+            "  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so",
+            "2025/05/14 15:30:41.520 2672 2694 Error CRASH       #01 pc 1234567890123456  /data/app/com.DefaultCompany.ForceCrash-YCyru7yBnQrlx6Q4p4Am_w==/lib/arm64/libunity.so (Utils_CUSTOM_ForceCrash(DiagnosticsUtils_Bindings::ForcedCrashCategory)+60) (BuildId: 4d911593b4008c7250197a60a320d872575ecc1b)"
+        };
+
+        var expectedABIs = new[]
+        {
+            string.Empty,
+            AndroidLogcatUtilities.kAbiArmV7,
+            AndroidLogcatUtilities.kAbiX86,
+            string.Empty,
+            AndroidLogcatUtilities.kAbiArm64,
+            AndroidLogcatUtilities.kAbiX86_64,
+            AndroidLogcatUtilities.kAbiArm64,
+            AndroidLogcatUtilities.kAbiArm64
+        };
+
+        var expectedBuildIds = new[]
+{
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            "4d911593b4008c7250197a60a320d872575ecc1b"
         };
 
         var regexs = new List<ReordableListItem>();
@@ -135,25 +137,14 @@ class AndroidLogcatStacktraceTests
 
         for (int i = 0; i < logLines.Length; i++)
         {
-            string expectedABI = string.Empty;
-            switch (i)
-            {
-                case 1: expectedABI = AndroidLogcatUtilities.kAbiArmV7; break;
-                case 2: expectedABI = AndroidLogcatUtilities.kAbiX86; break;
-                case 6:
-                case 4: expectedABI = AndroidLogcatUtilities.kAbiArm64; break;
-                case 5: expectedABI = AndroidLogcatUtilities.kAbiX86_64; break;
-            }
-
+            UnityEngine.Debug.Log($"Validating: {logLines[i]}");
             var line = logLines[i];
-            string address;
-            string libName;
-            string abi;
-            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out abi, out address, out libName);
+            var result = AndroidLogcatUtilities.ParseCrashLine(regexs, line, out var abi, out var address, out var libName, out var buildId);
             Assert.IsTrue(result, "Failed to parse " + line);
             Assert.IsTrue(address.Equals("0041e340") || address.Equals("1234567890123456") || address.Equals("0x0000000000a0de84"), $"Invalid resolved address: {address}");
             StringAssert.AreEqualIgnoringCase("libunity.so", libName);
-            StringAssert.AreEqualIgnoringCase(expectedABI, abi);
+            StringAssert.AreEqualIgnoringCase(expectedABIs[i], abi);
+            StringAssert.AreEqualIgnoringCase(expectedBuildIds[i], buildId);
         }
     }
 
@@ -162,38 +153,143 @@ class AndroidLogcatStacktraceTests
         Assert.IsTrue(text.Contains(expected), $"Expected string '{expected}' to be present in '{text}'");
     }
 
-    [Test]
-    public void CanCorrectlyPickSymbol()
+
+    class CanResolveStacktraces
     {
-        if (!AndroidBridge.AndroidExtensionsInstalled)
+        AndroidTools m_Tools;
+        List<ReordableListItem> m_SymbolRegexes;
+        List<ReordableListItem> m_SymbolDirectories;
+        List<ReordableListItem> m_SymbolExtensions;
+        Dictionary<AndroidArchitecture, string> m_BuildId;
+        Dictionary<AndroidArchitecture, string> m_AddressJNI_OnLoad;
+        Dictionary<AndroidArchitecture, string> m_AddressUnitySendMessage;
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
         {
-            Assert.Ignore("Test ignored, because Android Support is not installed");
+            if (!AndroidBridge.AndroidExtensionsInstalled)
+                Assert.Ignore("Test ignored, because Android Support is not installed.");
+
+            if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
+                Assert.Ignore("Test ignored, because SDK or NDK are not available.");
+
+            m_Tools = new AndroidTools();
+            m_SymbolRegexes = ToReordableList(AndroidLogcatSettings.kAddressResolveRegex);
+            m_SymbolDirectories = ToReordableList(GetSymbolsDirectory());
+            m_SymbolExtensions = ToReordableList(AndroidLogcatSettings.kDefaultSymbolExtensions);
+
+            var architectures = new[] { AndroidArchitecture.ARMv7, AndroidArchitecture.ARM64 };
+            m_BuildId = new Dictionary<AndroidArchitecture, string>();
+            m_AddressJNI_OnLoad = new Dictionary<AndroidArchitecture, string>();
+            m_AddressUnitySendMessage = new Dictionary<AndroidArchitecture, string>();
+
+            foreach (var architecture in architectures)
+            {
+                var symbolPath = GetSymbolPath(architecture.ToABI(), "libunity.so");
+                m_BuildId[architecture] = AndroidLogcatUtilities.GetBuildId(m_Tools, symbolPath);
+
+                var targetAddressJNI_OnLoad = GetSymbolAddressUsingNM(m_Tools, symbolPath, "JNI_OnLoad");
+                Assert.IsNotEmpty(targetAddressJNI_OnLoad, "Failed to find address for JNI_OnLoad");
+                m_AddressJNI_OnLoad[architecture] = targetAddressJNI_OnLoad; ;
+
+                var targetAddressUnitySendMessage = GetSymbolAddressUsingNM(m_Tools, symbolPath, "UnitySendMessage");
+                Assert.IsNotEmpty(targetAddressUnitySendMessage, "Failed to find address for UnitySendMessage");
+                m_AddressUnitySendMessage[architecture] = targetAddressUnitySendMessage;
+
+            }
+
         }
 
-        if (!AndroidLogcatTestsSetup.AndroidSDKAndNDKAvailable())
+        [TestCase(AndroidArchitecture.ARMv7)]
+        [TestCase(AndroidArchitecture.ARM64)]
+        public void WithCorrectBuildId(AndroidArchitecture architecture)
         {
-            Assert.Ignore("Test ignored, SDK & NDK are not available.");
+            var ndkArchitecture = architecture.ToNdkArchitecture();
+
+            var dummyStacktrace = new[]
+            {
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #00 pc {m_AddressJNI_OnLoad[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so (BuildId: {m_BuildId[architecture]})",
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #01 pc {m_AddressUnitySendMessage[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so (BuildId: {m_BuildId[architecture]})",
+             };
+
+            var result = AndroidLogcatStacktraceWindow.ResolveAddresses(dummyStacktrace,
+                m_SymbolRegexes,
+                m_SymbolDirectories,
+                m_SymbolExtensions,
+                m_Tools);
+
+            Assert.IsTrue(string.IsNullOrEmpty(result.ErrorsAndWarnings), result.ErrorsAndWarnings);
+            StringAssert.Contains("JNI_OnLoad", result.Result);
+            StringAssert.Contains("UnitySendMessage", result.Result);
         }
 
-        var tools = new AndroidTools();
-        var playerPackage = AndroidLogcatUtilities.GetPlaybackEngineDirectory();
-        var symbolsDirectory = Path.Combine(playerPackage, $"Variations/il2cpp/Development/Symbols");
-        var symbolPaths = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = symbolsDirectory } });
-        var symbolPathsArmV7 = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArmV7) } });
-        var symbolPathsArm64 = new List<ReordableListItem>(new[] { new ReordableListItem() { Enabled = true, Name = Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArm64) } });
-        var libunity = "libunity";
+        [TestCase(AndroidArchitecture.ARMv7)]
+        [TestCase(AndroidArchitecture.ARM64)]
+        public void WithWrongBuildId(AndroidArchitecture architecture)
+        {
+            var ndkArchitecture = architecture.ToNdkArchitecture();
+            var wrongBuildId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+            var dummyStacktrace = new[]
+            {
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #00 pc {m_AddressJNI_OnLoad[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so (BuildId: {wrongBuildId})",
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #01 pc {m_AddressUnitySendMessage[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so (BuildId: {wrongBuildId})",
+             };
 
-        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArmV7, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
-        AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArm64, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
-        // Since ABI is empty, we cannot resolve symbol path, thus the result will be empty
-        Assert.AreEqual(string.Empty, AndroidLogcatUtilities.GetSymbolFile(symbolPaths, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
+            var result = AndroidLogcatStacktraceWindow.ResolveAddresses(dummyStacktrace,
+                m_SymbolRegexes,
+                m_SymbolDirectories,
+                m_SymbolExtensions,
+                m_Tools);
 
-        var armv7Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArmV7, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
-        AssertStringContains(libunity, armv7Result);
-        AssertStringContains(AndroidLogcatUtilities.kAbiArmV7, armv7Result);
+            StringAssert.Contains("Wrong symbol files?", result.ErrorsAndWarnings);
+            StringAssert.Contains("JNI_OnLoad", result.Result);
+            StringAssert.Contains("UnitySendMessage", result.Result);
+        }
 
-        var arm64Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArm64, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
-        AssertStringContains(libunity, arm64Result);
-        AssertStringContains(AndroidLogcatUtilities.kAbiArm64, arm64Result);
+        [TestCase(AndroidArchitecture.ARMv7)]
+        [TestCase(AndroidArchitecture.ARM64)]
+        public void WithMissingBuildId(AndroidArchitecture architecture)
+        {
+            var ndkArchitecture = architecture.ToNdkArchitecture();
+            var dummyStacktrace = new[]
+            {
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #00 pc {m_AddressJNI_OnLoad[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so",
+                $"2025/05/26 13:13:11.488 16541 16557 Error CRASH       #01 pc {m_AddressUnitySendMessage[architecture]}  /data/app/~~ZPEDQqIxu8AhClGhRR65CA==/com.DefaultCompany.ForceCrash-gYtNtB9HCft5sX98ZKtsTQ==/lib/{ndkArchitecture}/libunity.so",
+             };
+
+            var result = AndroidLogcatStacktraceWindow.ResolveAddresses(dummyStacktrace,
+                m_SymbolRegexes,
+                m_SymbolDirectories,
+                m_SymbolExtensions,
+                m_Tools);
+
+            Assert.IsTrue(string.IsNullOrEmpty(result.ErrorsAndWarnings), result.ErrorsAndWarnings);
+            StringAssert.Contains("JNI_OnLoad", result.Result);
+            StringAssert.Contains("UnitySendMessage", result.Result);
+        }
+
+
+        [Test]
+        public void CanCorrectlyPickSymbol()
+        {
+            var symbolsDirectory = GetSymbolsDirectory();
+            var symbolPaths = ToReordableList(symbolsDirectory);
+            var symbolPathsArmV7 = ToReordableList(Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArmV7));
+            var symbolPathsArm64 = ToReordableList(Path.Combine(symbolsDirectory, AndroidLogcatUtilities.kAbiArm64));
+            var libunity = "libunity";
+
+            AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArmV7, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
+            AssertStringContains(libunity, AndroidLogcatUtilities.GetSymbolFile(symbolPathsArm64, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
+            // Since ABI is empty, we cannot resolve symbol path, thus the result will be empty
+            Assert.AreEqual(string.Empty, AndroidLogcatUtilities.GetSymbolFile(symbolPaths, string.Empty, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions));
+
+            var armv7Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArmV7, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
+            AssertStringContains(libunity, armv7Result);
+            AssertStringContains(AndroidLogcatUtilities.kAbiArmV7, armv7Result);
+
+            var arm64Result = AndroidLogcatUtilities.GetSymbolFile(symbolPaths, AndroidLogcatUtilities.kAbiArm64, libunity + ".so", AndroidLogcatSettings.kDefaultSymbolExtensions);
+            AssertStringContains(libunity, arm64Result);
+            AssertStringContains(AndroidLogcatUtilities.kAbiArm64, arm64Result);
+        }
     }
 }
