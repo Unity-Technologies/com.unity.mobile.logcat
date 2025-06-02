@@ -238,10 +238,9 @@ namespace Unity.Android.Logcat
             {
                 var l = lines[i];
                 var f = frames[i];
-                output += f == null ?
+                output.AppendLine(f == null ?
                     l :
-                    l.Replace(f.Address, f.Address + " " + f.MethodName);
-                output += Environment.NewLine;
+                    l.Replace(f.Address, f.Address + " " + f.MethodName));
             }
 
             var errors = errorsMismatchingBuildIds.Count == 0 ?
