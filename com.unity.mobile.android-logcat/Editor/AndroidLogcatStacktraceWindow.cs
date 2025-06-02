@@ -151,7 +151,7 @@ namespace Unity.Android.Logcat
             IReadOnlyList<ReordableListItem> symbolExtensions,
             AndroidTools tools)
         {
-            var output = string.Empty;
+            var output = new StringBuilder();
             var errorsMismatchingBuildIds = new HashSet<string>();
             // Calling addr2line for every address is costly, that's why we need to do it in batch
             var unresolved = new UnresolvedAddresses();
@@ -251,7 +251,7 @@ namespace Unity.Android.Logcat
                 warnings = $"<color={m_YellowColor}>{warnings}</color>";
 
 
-            return new ResolveResult(output, string.Join("\n", new[] { errors, warnings }).TrimEnd());
+            return new ResolveResult(output.ToString(), string.Join("\n", new[] { errors, warnings }).TrimEnd());
         }
 
         static string ValidateRegexes(IReadOnlyList<ReordableListItem> regexes)
