@@ -446,7 +446,7 @@ namespace Unity.Android.Logcat
             return string.Empty;
         }
 
-        internal static bool ParseCrashLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string abi, out string address, out string libName)
+        internal static bool ParseCrashLine(IReadOnlyList<ReordableListItem> regexs, string msg, out string abi, out string address, out string libName, out string buildId)
         {
             abi = string.Empty;
             foreach (var regexItem in regexs)
@@ -472,12 +472,14 @@ namespace Unity.Android.Logcat
 
                     address = match.Groups["address"].Value;
                     libName = match.Groups["libName"].Value + ".so";
+                    buildId = match.Groups["buildId"].Value;
                     return true;
                 }
             }
 
             address = null;
             libName = null;
+            buildId = null;
             return false;
         }
 
@@ -548,6 +550,46 @@ namespace Unity.Android.Logcat
         internal static string GetPlaybackEngineDirectory()
         {
             return BuildPipeline.GetPlaybackEngineDirectory(BuildTarget.Android, BuildOptions.None);
+        }
+
+        internal static string GetBuildId(AndroidTools tools, string path)
+        {
+            try
+            {
+                var contents = tools.RunReadElf($"-W -x .note.gnu.build-id \"{path}\"");
+                var combined = string.Join("\n", contents);
+
+                if (contents.Length != 4)
+                {
+                    AndroidLogcatInternalLog.Log($"Failed to get build id for '{path}', expected 4 lines, but got\n{combined}");
+                    return string.Empty;
+                }
+
+                var tag = "Hex dump of section '.note.gnu.build-id':";
+                if (!contents[0].Contains(tag))
+                {
+                    AndroidLogcatInternalLog.Log($"Failed to get build id for '{path}', expected '{tag}' line, but got\n{combined}");
+                    return string.Empty;
+                }
+
+                // Parsing content like
+                //Hex dump of section '.note.gnu.build-id':
+                //  0x00000200 04000000 14000000 03000000 474e5500............GNU.
+                //  0x00000210 4d911593 b4008c72 50197a60 a320d872 M......rP.z`. .r
+                //  0x00000220 575ecc1b W^..
+
+                var splits = contents[2].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var buildId = splits[1] + splits[2] + splits[3] + splits[4];
+                splits = contents[3].Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                buildId += splits[1];
+
+                return buildId.ToLowerInvariant();
+            }
+            catch (Exception e)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to get build id for '{path}'\n{e.ToString()}");
+                return string.Empty;
+            }
         }
 
         internal static VisualTreeAsset LoadUXML(string uxmlFileName)

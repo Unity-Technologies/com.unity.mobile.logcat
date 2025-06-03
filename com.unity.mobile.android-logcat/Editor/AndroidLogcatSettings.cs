@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
 
         internal static readonly string[] kAddressResolveRegex =
         {
-            @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9x-x]+).*\/(?<abi>\S+)\/(?<libName>lib.*)\.so",
+            @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9xX]+).*\/(?<abi>\S+)\/(?<libName>lib.*)\.so(?:.*\(BuildId:\s*(?<buildId>\S+)\))?",
             @".*at (?<libName>lib.*)\.0x(?<address>[a-fA-F0-9]+)\(Native Method\)"
         };
 
