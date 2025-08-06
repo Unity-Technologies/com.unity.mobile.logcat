@@ -63,6 +63,11 @@ Includes various helper keys for Android:
 
 Incluse basic TV keys.
 
+## Media
+![](images/InputsWindow_Media.png)
+
+Incluse basic Media keys.
+
 
 ## Send text
 
