@@ -503,6 +503,91 @@ namespace Unity.Android.Logcat
             return result;
         }
 
+        private KeyResult DoMediaKeys(AndroidLogcatUserSettings.InputSettings settings)
+        {
+            var result = KeyResult.Empty;
+            GUILayout.Label("Media Keys", EditorStyles.boldLabel);
+
+            GUILayout.BeginHorizontal();
+            Margin();
+
+            if (Key(new GUIContent("Play/Pause")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_PLAY_PAUSE);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Rewind")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_REWIND);
+
+            if (Key(new GUIContent("Fast Forward")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_FAST_FORWARD);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+
+            if (Key(new GUIContent("Play")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_PLAY);
+
+            if (Key(new GUIContent("Pause")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_PAUSE);
+
+            if (Key(new GUIContent("Stop")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_STOP);
+
+            GUILayout.EndHorizontal();
+
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Previous")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_PREVIOUS);
+
+            if (Key(new GUIContent("Next")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_NEXT);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Skip Backward")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_SKIP_BACKWARD);
+
+            if (Key(new GUIContent("Skip Forward")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_SKIP_FORWARD);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Step Backward")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_STEP_BACKWARD);
+
+            if (Key(new GUIContent("Step Forward")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_STEP_FORWARD);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Record")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_RECORD);
+
+            if (Key(new GUIContent("Audio Track")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_AUDIO_TRACK);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("CD Keys", EditorStyles.boldLabel);
+            GUILayout.BeginHorizontal();
+            Margin();
+            if (Key(new GUIContent("Close")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_CLOSE);
+
+            if (Key(new GUIContent("Eject")))
+                result = new KeyResult(AndroidKeyCode.MEDIA_EJECT);
+            GUILayout.EndHorizontal();
+
+            return result;
+        }
+
         private void SendKeyEventIfNeeded(AndroidLogcatDispatcher dispatcher, IAndroidLogcatDevice device, KeyResult keyResult)
         {
             if (device == null)
@@ -633,6 +718,8 @@ namespace Unity.Android.Logcat
             DoSection(runtime, device, DoSystemKeys, GetOptions(200, extraWindowState.Height));
             GUILayout.Space(4);
             DoSection(runtime, device, DoTVKeys, GetOptions(200, extraWindowState.Height));
+            GUILayout.Space(4);
+            DoSection(runtime, device, DoMediaKeys, GetOptions(200, extraWindowState.Height));
             GUILayout.Space(4);
             DoSendText(runtime, device, GetOptions(extraWindowState.Height));
             GUILayout.Space(4);
