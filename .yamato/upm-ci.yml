@@ -18,13 +18,13 @@ test_platforms:
     image: package-ci/macos-13:v4
     flavor: m1.mac
     move_alias: mv
-    utr_cmd: ./UnifiedTestRunner
+    utr_cmd: UnifiedTestRunner
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu-22.04:v4
     flavor: b1.large
     move_alias: mv
-    utr_cmd: ./UnifiedTestRunner
+    utr_cmd: UnifiedTestRunner
 test_module_support:
   - name: android
     install_command: -c android
