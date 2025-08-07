@@ -49,7 +49,6 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     flavor: {{ platform.flavor}}
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
-    - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
     - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/Integration/csc.rsp
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
