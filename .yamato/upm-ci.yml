@@ -12,25 +12,19 @@ test_platforms:
     image: package-ci/win10:v4
     flavor: b1.large
     move_alias: move
-    utr_download: curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr.bat --output utr.bat
-    utr_chmod: echo nothing to see
-    utr_cmd: utr.bat
+    utr_cmd: UnifiedTestRunner
   - name: mac
     type: Unity::VM::osx
     image: package-ci/macos-13:v4
     flavor: m1.mac
     move_alias: mv
-    utr_download: curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr --output utr
-    utr_chmod: chmod +x ./utr
-    utr_cmd: ./utr
+    utr_cmd: UnifiedTestRunner
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu-22.04:v4
     flavor: b1.large
     move_alias: mv
-    utr_download: curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr --output utr
-    utr_chmod: chmod +x ./utr
-    utr_cmd: ./utr
+    utr_cmd: UnifiedTestRunner
 test_module_support:
   - name: android
     install_command: -c android
@@ -49,12 +43,9 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     flavor: {{ platform.flavor}}
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
-    - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
     - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/Integration/csc.rsp
     - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
-    - {{ platform.utr_download }} 
-    - {{ platform.utr_chmod }} 
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:

@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.4.6] - 2025-06-07
 ### Fixes & Improvements
  - Stacktrace window will validate buildId when resolving stacktrace, informing you if wrong symbol file is used. Reset symbol regexes if needed.
+ - Expose media keys in input window.
 
 ## [1.4.5] - 2025-04-11
 ### Fixes & Improvements
