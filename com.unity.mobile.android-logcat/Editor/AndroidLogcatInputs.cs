@@ -165,6 +165,8 @@ namespace Unity.Android.Logcat
                         result = new KeyResult(charResult);
                 }
             }
+            if (Key("Enter"))
+                result = new KeyResult(AndroidKeyCode.ENTER);
             Margin();
             GUILayout.EndHorizontal();
 
