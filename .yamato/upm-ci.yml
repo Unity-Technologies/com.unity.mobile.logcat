@@ -1,12 +1,5 @@
 {% metadata_file .yamato/config.metadata %}
 
-test_editors:
-  - version: 2022.3
-  - version: 6000.0
-  - version: 6000.2
-  - version: 6000.3
-  - version: trunk
-
 test_platforms:
   - name: win
     type: Unity::VM
@@ -82,7 +75,7 @@ test_all_trigger:
         - "upm-ci~/packages/**/*"
   dependencies:
     - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
-    {% for editor in test_editors_for_integration %}
+    {% for editor in test_editors %}
     - .yamato/upm-integration-ci.yml#test_integration_{{ editor.version }}
     {% endfor %}
     {% for editor in test_editors %}

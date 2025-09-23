@@ -1,4 +1,4 @@
-test_editors_for_integration:
+test_editors:
   - version: 2022.3
   - version: 6000.0
   - version: 6000.2
