@@ -1,7 +1,7 @@
 {% metadata_file .yamato/config.metadata %}
   
 ---
-{% for editor in test_editors_for_integration %}
+{% for editor in test_editors %}
 test_integration_{{ editor.version }}:
   name : Test Integration on {{ editor.version }}
   agent:

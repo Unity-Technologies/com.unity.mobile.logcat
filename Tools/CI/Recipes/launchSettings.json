@@ -1,0 +1,8 @@
+{  
+  "profiles": {
+    "UnityMobileLogcat": {
+      "commandName": "Project",
+      "workingDirectory": "$(SolutionDir)/../../"      
+    }
+  }
+}
