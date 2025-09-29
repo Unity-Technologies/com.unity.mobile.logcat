@@ -52,7 +52,7 @@ Depending on how you allocate memory in your application, Android creates memory
 
 For more information, see [meminfo](https://developer.android.com/studio/command-line/dumpsys#meminfo).
 
-To toggle which memory types appear in the [memory chart](#memory-chart), click the memory type in the [memory details panel](#memory-details-panel). 
+To toggle which memory types appear in the [memory chart](#memory-chart), click the memory type in the [memory details panel](#memory-details-panel).
 
 ### Memory requests
 
