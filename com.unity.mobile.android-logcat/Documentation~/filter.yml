@@ -5,6 +5,6 @@ apiRules:
   - exclude:
       uidRegex: ^Unity\.Android\.Logcat$
       type: Namespace
-   - exclude:
+  - exclude:
       uidRegex: ^Unity\.Android\.Logcat\..*$
       type: Namespace
