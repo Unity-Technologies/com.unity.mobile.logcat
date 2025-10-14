@@ -58,7 +58,7 @@ The message log contains functionality that helps you to navigate through and sh
 
 ### Process Manager
 
-You can access the **Process Manager** from the message log section when you right click on the selected message. The Process Manager helps you to manually invoke events related to a specific process, such as force an application to terminate or send memory trim events. 
+You can access the **Process Manager** from the message log section when you right click on the selected message. The Process Manager helps you to manually invoke events related to a specific process, such as force an application to terminate or send memory trim events.
 
 ![](images/android-logcat-process-manager.png)
 

@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixes & Improvements
  - Fix Screen Capture window not saving last image/video save location correctly between Unity domain reloads or launches, previously it would always reset to Unity project directory.
  - Fix compatability issues with future Unity versions.
- 
+
 ## [1.4.2] - 2024-05-13
 ### Fixes & Improvements
  - Fix issue, where logcat package would throw an error if there are multiple devices connected.
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fixed an issue where MemoryWindow would fail to query memory stats using package name. It now uses process id instead.
  - Added Process Manager control which you can use to terminate an application or send a trim memory event.
  - Fixed tag filtering, previously logcat would check if incoming_tag contains tag_in_filter, now it will perform incoming_tag equals tag_in_filter. That way it's easier to filter messages with tags which have the same begining.
- 
+
 ## [1.4.0] - 2023-11-21
 ### Fixes & Improvements
  - Fix stacktrace resolve regex for entry like '  #15  pc 0x0000000000a0de84  /data/app/com.DefaultCompany.NativeRuntimeException1-eStyrW-dxxC0QfRH6veLhA==/lib/arm64/libunity.so'. Reset regex to apply the fix
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Scroll option for messages which allows you to explicitly to always scroll to end without automatic logic.
  - Device selection dropdown will contain device name + id, if device name is not available, only id will be displayed.
  - You can now specify symbol file extensions in the new settings, Preferences->Android Logcat Settings> Symbol Extensions. Stacktrace Utility tool uses the symbol file extensions while looking for symbols to resolve stacktraces.
- 
+
 ## [1.3.2] - 2022-04-12
 ### Fixes & Improvements
  - Fix integration tests not able to run on a specific build server configuration like Katana.
@@ -147,7 +147,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Column seperators will be drawn correctly
 ### Android Logcat Settings 
  - Introducing settings, accessible from Preferences. For ex., on Windows Edit->Preferences
- 
+
 ## [1.0.0] - 2019-07-18
 
 ### Fixes & Improvements.
