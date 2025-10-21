@@ -178,7 +178,7 @@ namespace Unity.Android.Logcat
         {
             var deviceQuery = m_Runtime.DeviceQuery;
 
-            if (deviceQuery.FirstConnectedDevice == null)
+            if (deviceQuery.FirstConnectedDevice == null && hasFocus)
                 deviceQuery.UpdateConnectedDevicesList(false);
 
             var firstDevice = deviceQuery.FirstConnectedDevice;
