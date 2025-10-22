@@ -4,6 +4,10 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2025-12-12
+### Fixes & Improvements
+ - Don't periodically query for devices when none are connected and logcat window is unfocused.
+ 
 ## [1.4.6] - 2025-06-07
 ### Fixes & Improvements
  - Stacktrace window will validate buildId when resolving stacktrace, informing you if wrong symbol file is used. Reset symbol regexes if needed.
