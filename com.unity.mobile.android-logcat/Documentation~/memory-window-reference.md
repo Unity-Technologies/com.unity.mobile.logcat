@@ -9,19 +9,19 @@ To open the Memory window in the Unity Editor:
 
 If you select **Auto Capture**, Unity periodically captures memory snapshots for the selected application. If you deselect **Auto Capture**, the memory window provides a **Capture** button which you can use to manually capture a memory snapshot. This is useful if the automatic memory requests affect the application's performance.
 
-![](images/MemoryWindow.png)
+![The memory window](images/MemoryWindow.png)
 > The memory window.
 
 | **Label**               | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
-| ![](images/label-a.png) | [Memory details panel](#memory-details-panel): Displays the amount of allocated memory for each memory type. |
-| ![](images/label-b.png) | [Memory chart](#memory-chart): Contains a chart of the memory allocated for the connected application over time. |
+| ![Label A](images/label-a.png) | [Memory details panel](#memory-details-panel): Displays the amount of allocated memory for each memory type. |
+| ![Label B](images/label-b.png) | [Memory chart](#memory-chart): Contains a chart of the memory allocated for the connected application over time. |
 
 ## Memory details panel
 
 The memory details panel displays the amount of memory for each memory type. It can display different memory groups and.
 
-![](images/memory-window-details-panel.png)
+![The memory details panel](images/memory-window-details-panel.png)
 > The memory details panel.
 
 | **Property**         | **Description**                                              |
@@ -60,14 +60,14 @@ To make memory requests, the Memory window uses `adb shell dumpsys meminfo packa
 
 The following screenshot shows the memory dump that `dumpsys` produces:
 
-![](images/MemoryDump.png)
+![A raw dumpsys memory dump](images/MemoryDump.png)
 > A raw `dumpsys` memory dump.
 
 ## Memory chart
 
 The memory chart displays the memory allocated for the connected application over time.
 
- ![](images/MemoryWindowChart.png)
+ ![The memory chart](images/MemoryWindowChart.png)
 > The memory chart.
 
 To view a snapshot in the [memory details panel](#memory-details-panel), click on the chart at the part you want to view.

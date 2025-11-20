@@ -2,19 +2,19 @@
 
 This page introduces the different parts of the Android Logcat window's interface.
 
-![](images/android-logcat-window.png)
+![The Android Logcat window with toolbar and message log](images/android-logcat-window.png)
 > The Anrdoid Logcat window.
 
 | **Label**               | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
-| ![](images/label-a.png) | [Toolbar](#toolbar): Contains options and tools for the Android Logcat window. |
-| ![](images/label-b.png) | [Message log](#message-log): Lists the messages that Unity receives from Android Logcat. |
+| ![Label A](images/label-a.png) | [Toolbar](#toolbar): Contains options and tools for the Android Logcat window. |
+| ![Label B](images/label-b.png) | [Message log](#message-log): Lists the messages that Unity receives from Android Logcat. |
 
 ## Toolbar
 
 The toolbar contains options that customize the message log section and also additional tools that relate to Android Logcat and the connected Android device.
 
-![](images/android-logcat-window-toolbar.png)
+![The Android Logcat window toolbar](images/android-logcat-window-toolbar.png)
 > The Android Logcat window toolbar.
 
 | **Toolbar option**   | **Description**                                              |
@@ -33,7 +33,7 @@ The toolbar contains options that customize the message log section and also add
 
 The message log section displays the messages that Unity receives from Android Logcat. It displays information for each message in predefined columns.
 
-![](images/android-logcat-window-message-log.png)
+![Message log column names on Android Logcat window](images/android-logcat-window-message-log.png)
 > Message log column names.
 
 | **Column name** | **Description**                                              |
@@ -60,7 +60,8 @@ The message log contains functionality that helps you to navigate through and sh
 
 You can access the **Process Manager** from the message log section when you right click on the selected message. The Process Manager helps you to manually invoke events related to a specific process, such as force an application to terminate or send memory trim events.
 
-![](images/android-logcat-process-manager.png)
+![Process Manager on Android Logcat window](images/android-logcat-process-manager.png)
+> Process Manager.
 
 #### Terminate an application
 
