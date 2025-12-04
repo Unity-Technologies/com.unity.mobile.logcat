@@ -6,32 +6,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
- - Don't periodically query for devices when none are connected and logcat window is unfocused.
- - Replace deprecated Mono APIs with CoreCLR-compatible APIs.
+ - Fixed periodic device queries when no devices are connected and Logcat window is unfocused.
+ - Replaced deprecated Mono APIs with CoreCLR-compatible APIs.
 
 ## [1.4.6] - 2025-06-07
 ### Fixes & Improvements
- - Stacktrace window will validate buildId when resolving stacktrace, informing you if wrong symbol file is used. Reset symbol regexes if needed.
- - Expose media keys in input window.
- - Expose Enter key in input window.
+ - Stacktrace window now validates `buildId` when resolving stacktrace, informing you if wrong symbol file is used. Reset symbol regexes if needed.
+ - Added media keys in Input window.
+ - Added Enter key in Input window.
 
 ## [1.4.5] - 2025-04-11
 ### Fixes & Improvements
- - Fix "llvm-nm.exe: error: : unknown argument '-e'" when resolving stacktraces on Windows. Was happening with Unity version 6000.0.44f1
+ - Fixed `llvm-nm.exe: error: : unknown argument '-e'` error when resolving stacktraces on Windows with Unity version 6000.0.44f1.
  
 ## [1.4.4] - 2024-12-07
 ### Fixes & Improvements
- - Default AutoScroll to Auto when there's not logcat settings saved
- - Fix a bug, where logcat would sometimes connect to wrong device when you have two or more devices connected to host. The fix is only available for Unity 6.1 or higher, since that's the version where the required application launch callback was introduced.
+ - Set default AutoScroll to Auto when no logcat settings are saved.
+ - Fixed a bug where logcat would sometimes connect to the wrong device when multiple devices are connected to the host. This fix is only available in Unity 6.1 or later, where the required application launch callback was introduced.
 
 ## [1.4.3] - 2024-09-09
 ### Fixes & Improvements
- - Fix Screen Capture window not saving last image/video save location correctly between Unity domain reloads or launches, previously it would always reset to Unity project directory.
- - Fix compatability issues with future Unity versions.
+ - Fixed Screen Capture window not saving last image/video save location correctly between Unity domain reloads or launches, previously it would always reset to Unity project directory.
+ - Fixed compatability issues with future Unity versions.
 
 ## [1.4.2] - 2024-05-13
 ### Fixes & Improvements
- - Fix issue, where logcat package would throw an error if there are multiple devices connected.
+ - Fixed an issue where Android Logcat package would throw an error when multiple devices are connected.
 
 ## [1.4.1] - 2024-04-12
 ### Fixes & Improvements
