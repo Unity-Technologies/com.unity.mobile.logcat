@@ -20,14 +20,14 @@ To connect an Android device to the Android Logcat window:
 4. Select **Other connection options**.
 5. In window that opens, enter the device's IP address and select **Connect**.
 
-![](images/AndroidLogcatIPWindow.png)
+![The available devices window displaying connected devices](images/AndroidLogcatIPWindow.png)
 > The available devices window.
 
 ## Select a device
 
 You can only connect to one device at a time. To select which device to connect to, use the device list in the Android Logcat window. This list contains the device IDs of connnected devices.
 
-![](images/connect_via_wifi.png)
+![The device list drop-down displaying connected devices](images/connect_via_wifi.png)
 > The device list drop-down.
 
 > [!TIP]

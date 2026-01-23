@@ -6,7 +6,7 @@ To open the Inputs window in the Unity Editor:
 1. Open the [Android Logcat window](android-logcat-window.md).
 2. In the [Toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Window** > **Inputs**.
 
-![](images/inputswindow.png)
+![The inputs window](images/inputswindow.png)
 
 The inputs window is divided into five sections:
 * Keyboard keys
@@ -22,7 +22,7 @@ The inputs window is divided into five sections:
 
 ## Keyboard keys
 
-![](images/InputsWindow_Keyboard.png)
+![The inputs window keyboard](images/InputsWindow_Keyboard.png)
 
 Includes letter, number, punctuation, symbol, function, and control keys.
 
@@ -32,19 +32,19 @@ You can select **Shift** modifier to send keys as if while holding shift.
 
 ## Cursor keys
 
-![](images/InputsWindow_Cursor.png)
+![Cursor keys](images/InputsWindow_Cursor.png)
 
 Includes navigation keys.
 
 ## Numpad keys
 
-![](images/InputsWindow_Numpad.png)
+![Numpad keys](images/InputsWindow_Numpad.png)
 
 Includes numerical keys.
 
 ## Miscellaneous keys
 
-![](images/InputsWindow_Misc.png)
+![Miscellaneous keys](images/InputsWindow_Misc.png)
 
 Includes various helper keys for Android:
 * Volume keys
@@ -59,18 +59,18 @@ Includes various helper keys for Android:
    * Back/Home/Menu
 
 ## TV keys
-![](images/InputsWindow_TV.png)
+![TV keys](images/InputsWindow_TV.png)
 
 Incluse basic TV keys.
 
 ## Media
-![](images/InputsWindow_Media.png)
+![Media keys](images/InputsWindow_Media.png)
 
 Incluse basic Media keys.
 
 
 ## Send text
 
- ![](images/InputsWindow_SendText.png)
+ ![Send block of text](images/InputsWindow_SendText.png)
 
  Provides functionality for send block of text to Android device.

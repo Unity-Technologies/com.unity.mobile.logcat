@@ -13,11 +13,13 @@ To filter the message log by text, use **Filter Input** and **Filter Options** i
 
 ## Filter by priority
 
-To filter the message log by priority, right-click the **Priority** column header in the [message log](android-logcat-window-reference.md#message-log) and select the priorities you want to appear in the message log. For information about the types of priority, see [Filtering log output](https://developer.android.com/studio/command-line/logcat#filteringOutput).
+To filter the message log by priority, right-click the **Priority** column header in the [message log](android-logcat-window-reference.md#message-log) and select the priorities you want to appear in the message log. For information about the types of priority, refer to the Android documentation on [Filtering log output](https://developer.android.com/studio/command-line/logcat#filteringOutput).
+
+Verbose has the lowest priority and Fatal has the highest. When you filter the message log by priority, the messages corresponding to the selected level and up to the highest priority are displayed. For example, if you select Warning, the messages relevant to Warning, Error, and Fatal are displayed because Error and Fatal are at a higher priority than Warning.
 
 ## Filter by tag
 
-Tags indicate the origin of the log message. To filter messages by tag, right-click the **Tag** column header in the message log and select the tags you want to appear in the message log. If you aren't currently filtering messages by tag, you can also right-click a message and select **Add Tag** to filter by that message's tag.
+Tags indicate the origin of the log message. To filter messages by tag, right-click the **Tag** column header in the message log and select the tags you want to appear in the message log. If you're not currently filtering messages by tag, you can also right-click a message and select **Add Tag** to filter by that message's tag.
 
 ### Tag Control
 

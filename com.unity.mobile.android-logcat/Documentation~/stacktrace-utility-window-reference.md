@@ -7,13 +7,13 @@ To open the Stacktrace Utility window:
 1. Open the [Android Logcat window](android-logcat-window.md).
 2. From the [toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Stacktrace Utility**.
 
-![](images/stacktrace-utility-window.png)
+![The Stacktrace Utility window](images/stacktrace-utility-window.png)
 > The Stacktrace Utility window.
 
 | **Label**               | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
-| ![](images/label-a.png) | [Stacktrace display](#stacktrace-display): Contains a text area to enter a custom stacktrace, and a text area to display the resolved stacktrace. |
-| ![](images/label-b.png) | [Stacktrace Utility controls](#stacktrace-utility-controls): Contains controls for the Stacktrace Utility window. |
+| ![Label A](images/label-a.png) | [Stacktrace display](#stacktrace-display): Contains a text area to enter a custom stacktrace, and a text area to display the resolved stacktrace. |
+| ![Label B](images/label-b.png) | [Stacktrace Utility controls](#stacktrace-utility-controls): Contains controls for the Stacktrace Utility window. |
 
 ## Stacktrace display
 

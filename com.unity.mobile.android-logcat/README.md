@@ -1,6 +1,6 @@
 Android Logcat Package
 
-Android Logcat Package is a utility for displaying log messages coming from Android device in Unity Editor. 
+Android Logcat Package is a utility for displaying log messages coming from Android device in Unity Editor.
 
 # Feedback
 

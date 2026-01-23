@@ -12,15 +12,15 @@ To open the Device Screen Capture window:
 
 | **Label**               | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
-| ![](images/label-a.png) | [Toolbar](#toolbar): Contains options for the Device Screen Capture window. |
-| ![](images/label-b.png) | [Recorder settings](#recorder-settings): Contains settings for video recording. |
-| ![](images/label-c.png) | [Capture preview](#capture-preview): A preview of the screenshot or video captured from the device. |
+| ![Label A](images/label-a.png) | [Toolbar](#toolbar): Contains options for the Device Screen Capture window. |
+| ![Label B](images/label-b.png) | [Recorder settings](#recorder-settings): Contains settings for video recording. |
+| ![Label C](images/label-c.png) | [Capture preview](#capture-preview): A preview of the screenshot or video captured from the device. |
 
 ## Toolbar
 
 The toolbar contains options to control the Screen Capture tool.
 
-![](images/device-screen-capture-window-toolbar.png)
+![The Device Screen Capture window toolbar](images/device-screen-capture-window-toolbar.png)
 > The Device Screen Capture window toolbar.
 
 | **Toolbar option**      | **Description**                                              |
