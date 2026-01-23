@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Compilation;
-using Assembly = System.Reflection.Assembly;
+using Unity.Android.Logcat;
 
 class AndroidLogcatNetTests
 {
@@ -32,29 +32,27 @@ class AndroidLogcatNetTests
     [Test]
     public void ValidateAssemblyReferences()
     {
-        var logcatAssembly = GetLogcatAssembly();
-
         var expectedReferences = new List<string>(new[]
         {
             "mscorlib",
             "System",
             "System.Xml.Linq",
-            "UnityEngine.IMGUIModule",
-            "UnityEngine.CoreModule",
-            "UnityEngine.VideoModule",
-            "UnityEngine.TextRenderingModule",
-            "UnityEngine.UIElementsModule",
             "System.Core",
-            "UnityEngine.ImageConversionModule",
-            "UnityEngine.JSONSerializeModule",
-            "UnityEditor.CoreModule",
+            "Unity.Scripting",
         });
+
+        // Engine types move between modules, so any engine module reference is accepted.
+        var engineModuleRegex = new Regex(@"^Unity(Engine|Editor)\.\w+Module$");
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
 
-        var references = Assembly.ReflectionOnlyLoadFrom(logcatAssembly.outputPath).GetReferencedAssemblies().Select(a => a.Name);
+        // ReflectionOnlyLoadFrom is unsupported on CoreCLR; inspect the loaded assembly instead.
+        var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
         foreach (var r in references)
         {
+            if (engineModuleRegex.IsMatch(r))
+                continue;
+
             Assert.Contains(r, expectedReferences, $"Unexpected reference '{r}'");
             referencedCount[r]++;
         }
