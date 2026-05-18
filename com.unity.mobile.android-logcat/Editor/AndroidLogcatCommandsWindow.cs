@@ -132,6 +132,9 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button("Search Catalog", EditorStyles.toolbarButton))
                 OpenSearchWindow();
 
+            if (GUILayout.Button("Open Output", EditorStyles.toolbarButton))
+                AndroidLogcatCommandOutputWindow.Open(m_OutputLines);
+
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
         }
