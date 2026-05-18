@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -53,41 +54,47 @@ namespace Unity.Android.Logcat
             wnd.ShowUtility();
         }
 
-        void OnGUI()
+        void OnEnable()
         {
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Fill in the placeholder values:", EditorStyles.boldLabel);
-            EditorGUILayout.Space(4);
+            LoadUI();
+        }
 
-            EditorGUILayout.LabelField(m_OriginalCommand, EditorStyles.wordWrappedMiniLabel);
-            EditorGUILayout.Space(8);
+        void LoadUI()
+        {
+            var r = rootVisualElement;
+            var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatPlaceholder.uxml");
+            tree.CloneTree(r);
 
+            r.Q<Label>("CommandPreview").text = m_OriginalCommand ?? "";
+
+            var container = r.Q<VisualElement>("PlaceholderContainer");
             foreach (var placeholder in m_Placeholders)
             {
-                placeholder.value = EditorGUILayout.TextField($"<{placeholder.token}>", placeholder.value);
+                var ph = placeholder;
+                var tf = new TextField($"<{ph.token}>");
+                tf.value = ph.value;
+                tf.RegisterValueChangedCallback(evt => ph.value = evt.newValue);
+                container.Add(tf);
             }
 
-            EditorGUILayout.Space(8);
+            r.Q<Button>("CancelButton").clicked += () => Close();
+            r.Q<Button>("RunButton").clicked += OnRunClicked;
+        }
 
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
+        void OnRunClicked()
+        {
+            var placeholderValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var placeholder in m_Placeholders)
+                placeholderValues[placeholder.token] = placeholder.value;
 
-            if (GUILayout.Button("Cancel", GUILayout.Width(80)))
-                Close();
-
-            if (GUILayout.Button("Run", GUILayout.Width(80)))
+            var resolved = s_PlaceholderRegex.Replace(m_OriginalCommand, match =>
             {
-                var resolved = m_OriginalCommand;
-                foreach (var placeholder in m_Placeholders)
-                {
-                    resolved = resolved.Replace($"<{placeholder.token}>", placeholder.value);
-                }
+                var token = match.Groups[1].Value;
+                return placeholderValues.TryGetValue(token, out var value) ? value : match.Value;
+            });
 
-                m_OnConfirm?.Invoke(resolved);
-                Close();
-            }
-
-            EditorGUILayout.EndHorizontal();
+            m_OnConfirm?.Invoke(resolved);
+            Close();
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -10,7 +11,6 @@ namespace Unity.Android.Logcat
         string m_Command = "";
         Action<AndroidLogcatCommandEntry> m_OnSave;
         bool m_IsEdit;
-        Vector2 m_ScrollPos;
 
         internal static void Show(Action<AndroidLogcatCommandEntry> onSave, AndroidLogcatCommandEntry existing = null)
         {
@@ -30,42 +30,42 @@ namespace Unity.Android.Logcat
             wnd.ShowUtility();
         }
 
-        void OnGUI()
+        void OnEnable()
         {
-            EditorGUILayout.Space(8);
+            LoadUI();
+        }
 
-            m_Name = EditorGUILayout.TextField("Name", m_Name);
+        void LoadUI()
+        {
+            var r = rootVisualElement;
+            var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatAddCommand.uxml");
+            tree.CloneTree(r);
 
-            EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("Commands", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Enter one command per line. All commands run sequentially.",
-                EditorStyles.miniLabel);
+            var nameField = r.Q<TextField>("NameField");
+            nameField.value = m_Name;
+            nameField.RegisterValueChangedCallback(evt => m_Name = evt.newValue);
 
-            m_ScrollPos = EditorGUILayout.BeginScrollView(m_ScrollPos, GUILayout.MinHeight(80), GUILayout.MaxHeight(200));
-            m_Command = EditorGUILayout.TextArea(m_Command, GUILayout.ExpandHeight(true));
-            EditorGUILayout.EndScrollView();
+            var commandField = r.Q<TextField>("CommandField");
+            commandField.value = m_Command;
+            commandField.RegisterValueChangedCallback(evt => m_Command = evt.newValue);
 
-            EditorGUILayout.Space(8);
+            var saveButton = r.Q<Button>("SaveButton");
+            saveButton.text = m_IsEdit ? "Save" : "Add";
+            saveButton.clicked += OnSaveClicked;
 
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
+            r.Q<Button>("CancelButton").clicked += () => Close();
+        }
 
-            if (GUILayout.Button("Cancel", GUILayout.Width(80)))
-                Close();
-
-            if (GUILayout.Button(m_IsEdit ? "Save" : "Add", GUILayout.Width(80)))
+        void OnSaveClicked()
+        {
+            if (string.IsNullOrWhiteSpace(m_Name) || string.IsNullOrWhiteSpace(m_Command))
             {
-                if (string.IsNullOrWhiteSpace(m_Name) || string.IsNullOrWhiteSpace(m_Command))
-                {
-                    EditorUtility.DisplayDialog("Android Logcat", "Both name and command are required.", "OK");
-                    return;
-                }
-
-                m_OnSave?.Invoke(new AndroidLogcatCommandEntry(m_Name.Trim(), m_Command.Trim()));
-                Close();
+                EditorUtility.DisplayDialog("Android Logcat", "Both name and command are required.", "OK");
+                return;
             }
 
-            EditorGUILayout.EndHorizontal();
+            m_OnSave?.Invoke(new AndroidLogcatCommandEntry(m_Name.Trim(), m_Command.Trim()));
+            Close();
         }
     }
 }

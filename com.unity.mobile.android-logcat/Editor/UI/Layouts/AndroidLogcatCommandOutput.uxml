@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:VisualElement style="flex-grow: 1;">
+        <ui:VisualElement name="Toolbar" style="flex-direction: row; align-items: center; background-color: rgba(0, 0, 0, 0.1); padding-left: 4px; padding-right: 4px; height: 22px;">
+            <ui:Button name="ClearButton" text="Clear" style="height: 18px;" />
+            <ui:Button name="CopyAllButton" text="Copy All" style="height: 18px;" />
+            <ui:VisualElement style="flex-grow: 1;" />
+            <ui:Toggle name="AutoScrollToggle" label="Auto Scroll" value="true" />
+        </ui:VisualElement>
+        <ui:ScrollView name="OutputScroll" style="flex-grow: 1;">
+            <ui:VisualElement name="OutputContainer" />
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

@@ -1,0 +1,26 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:TwoPaneSplitView name="MainSplit" orientation="Vertical" fixed-pane-index="1" fixed-pane-initial-dimension="150">
+        <ui:VisualElement name="ListsPane" style="flex-grow: 1;">
+            <ui:Label name="FavoritesHeader" text="Favorites" style="-unity-font-style: bold; margin-left: 4px; margin-top: 4px;" />
+            <ui:ScrollView name="FavoritesScroll" style="min-height: 26px; max-height: 40%;">
+                <ui:VisualElement name="FavoritesContainer" />
+            </ui:ScrollView>
+            <ui:Label name="GeneralHeader" text="General Commands" style="-unity-font-style: bold; margin-left: 4px; margin-top: 4px;" />
+            <ui:ScrollView name="GeneralScroll" style="flex-grow: 1;">
+                <ui:VisualElement name="GeneralContainer" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+        <ui:VisualElement name="OutputPane">
+            <ui:VisualElement name="OutputToolbar" style="flex-direction: row; align-items: center; background-color: rgba(0, 0, 0, 0.1); padding-left: 4px; padding-right: 4px; height: 22px;">
+                <ui:Label text="Output" style="-unity-font-style: bold; width: 50px;" />
+                <ui:Button name="ClearButton" text="Clear" style="height: 18px;" />
+                <ui:Button name="PopOutButton" text="Pop Out" style="height: 18px;" />
+                <ui:VisualElement style="flex-grow: 1;" />
+                <ui:Label name="RunningLabel" text="Running..." style="font-size: 10px; display: none;" />
+            </ui:VisualElement>
+            <ui:ScrollView name="OutputScroll" style="flex-grow: 1;">
+                <ui:VisualElement name="OutputContainer" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:TwoPaneSplitView>
+</ui:UXML>

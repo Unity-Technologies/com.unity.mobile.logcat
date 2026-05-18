@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -16,10 +17,18 @@ namespace Unity.Android.Logcat
         Action<AndroidLogcatCommandEntry> m_OnRunCommand;
 
         string m_SearchQuery = "";
-        Vector2 m_ScrollPos;
+
+        TextField m_SearchTextField;
+        HelpBox m_EmptyMessage;
+        VisualElement m_ResultsContainer;
+        ScrollView m_ResultsScroll;
 
         static readonly string[] s_ChipTerms =
             { "devices", "packages", "logcat", "permissions", "input", "screen", "network", "dumpsys", "quest" };
+
+        static readonly Color kCommandColor = new Color(0.6f, 0.6f, 0.6f);
+        static readonly Color kSavedSourceColor = new Color(0.4f, 0.7f, 0.4f);
+        static readonly Color kCatalogSourceColor = new Color(0.5f, 0.6f, 0.9f);
 
         internal static void Open(
             List<AndroidLogcatCommandEntry> favorites,
@@ -35,35 +44,50 @@ namespace Unity.Android.Logcat
             wnd.m_GeneralCommands = generalCommands;
             wnd.m_OnAddCommand = onAdd;
             wnd.m_OnRunCommand = onRun;
+            wnd.RebuildResults();
         }
 
-        void OnGUI()
+        void OnEnable()
         {
-            EditorGUILayout.Space(4);
+            s_Instance = this;
+            LoadUI();
+        }
 
-            // Search field
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Search:", GUILayout.Width(50));
-            GUI.SetNextControlName("SearchField");
-            m_SearchQuery = EditorGUILayout.TextField(m_SearchQuery);
-            EditorGUILayout.EndHorizontal();
+        void LoadUI()
+        {
+            var r = rootVisualElement;
+            var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatCommandSearch.uxml");
+            tree.CloneTree(r);
 
-            // Quick-search chips
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Try:", GUILayout.Width(30));
+            m_SearchTextField = r.Q<TextField>("SearchField");
+            m_EmptyMessage = r.Q<HelpBox>("EmptyMessage");
+            m_ResultsContainer = r.Q<VisualElement>("ResultsContainer");
+            m_ResultsScroll = r.Q<ScrollView>("ResultsScroll");
+
+            m_SearchTextField.value = m_SearchQuery;
+            m_SearchTextField.RegisterValueChangedCallback(evt => { m_SearchQuery = evt.newValue; RebuildResults(); });
+
+            var chipsRow = r.Q<VisualElement>("ChipsRow");
             foreach (var term in s_ChipTerms)
             {
-                if (GUILayout.Button(term, EditorStyles.miniButton, GUILayout.ExpandWidth(false)))
-                    m_SearchQuery = term;
+                var chip = new Button(() => m_SearchTextField.value = term) { text = term };
+                chip.style.marginRight = 2;
+                chipsRow.Add(chip);
             }
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.Space(4);
+            RebuildResults();
+        }
+
+        void RebuildResults()
+        {
+            if (m_ResultsContainer == null)
+                return;
+
+            m_ResultsContainer.Clear();
 
             if (string.IsNullOrWhiteSpace(m_SearchQuery))
             {
-                EditorGUILayout.HelpBox("Type a search term or click a chip to find commands.", MessageType.Info);
+                SetEmptyState("Type a search term or click a chip to find commands.");
                 return;
             }
 
@@ -71,77 +95,77 @@ namespace Unity.Android.Logcat
             var favorites = m_Favorites ?? new List<AndroidLogcatCommandEntry>();
             var general = m_GeneralCommands ?? new List<AndroidLogcatCommandEntry>();
 
-            // Collect local results
-            var localResults = new List<(AndroidLogcatCommandEntry entry, string source)>();
             foreach (var e in favorites)
                 if (MatchesSearch(e, terms))
-                    localResults.Add((e, "Favorite"));
+                    m_ResultsContainer.Add(CreateResultRow(e, "Favorite", true));
             foreach (var e in general)
                 if (MatchesSearch(e, terms))
-                    localResults.Add((e, "General"));
+                    m_ResultsContainer.Add(CreateResultRow(e, "General", true));
 
-            // Collect catalog results (excluding already-saved commands)
             var savedCommands = new HashSet<string>(
-                favorites.Concat(general).Select(c => c.command),
-                StringComparer.OrdinalIgnoreCase);
-
-            var catalogResults = new List<AndroidLogcatCommandEntry>();
+                favorites.Concat(general).Select(c => c.command), StringComparer.OrdinalIgnoreCase);
             foreach (var e in AndroidLogcatAdbCommandCatalog.All)
                 if (MatchesSearch(e, terms) && !savedCommands.Contains(e.command))
-                    catalogResults.Add(e);
+                    m_ResultsContainer.Add(CreateResultRow(e, "Catalog", false));
 
-            if (localResults.Count == 0 && catalogResults.Count == 0)
+            if (m_ResultsContainer.childCount == 0)
+                SetEmptyState("No matching commands found.");
+            else
             {
-                EditorGUILayout.HelpBox("No matching commands found.", MessageType.Info);
-                return;
+                m_EmptyMessage.style.display = DisplayStyle.None;
+                m_ResultsScroll.style.display = DisplayStyle.Flex;
             }
-
-            // Results list
-            m_ScrollPos = EditorGUILayout.BeginScrollView(m_ScrollPos);
-
-            foreach (var (entry, source) in localResults)
-                DrawResultRow(entry, source, true);
-
-            if (localResults.Count > 0 && catalogResults.Count > 0)
-                EditorGUILayout.Space(4);
-
-            foreach (var entry in catalogResults)
-                DrawResultRow(entry, "Catalog", false);
-
-            EditorGUILayout.EndScrollView();
         }
 
-        void DrawResultRow(AndroidLogcatCommandEntry entry, string source, bool isSaved)
+        void SetEmptyState(string message)
         {
-            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+            m_EmptyMessage.text = message;
+            m_EmptyMessage.style.display = DisplayStyle.Flex;
+            m_ResultsScroll.style.display = DisplayStyle.None;
+        }
 
-            // Name
-            EditorGUILayout.LabelField(entry.name, EditorStyles.boldLabel, GUILayout.Width(180));
+        VisualElement CreateResultRow(AndroidLogcatCommandEntry entry, string source, bool isSaved)
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.paddingLeft = 4;
+            row.style.paddingRight = 4;
+            row.style.paddingTop = 2;
+            row.style.paddingBottom = 2;
+            row.style.borderBottomWidth = 1;
+            row.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
 
-            // Command preview
-            var style = new GUIStyle(EditorStyles.label) { wordWrap = false };
-            style.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
-            EditorGUILayout.LabelField(entry.command, style);
+            var nameLabel = new Label(entry.name);
+            nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            nameLabel.style.width = 180;
+            nameLabel.style.minWidth = 180;
+            row.Add(nameLabel);
 
-            // Source label
-            var sourceStyle = new GUIStyle(EditorStyles.miniLabel);
-            sourceStyle.normal.textColor = isSaved
-                ? new Color(0.4f, 0.7f, 0.4f)
-                : new Color(0.5f, 0.6f, 0.9f);
-            GUILayout.Label(source, sourceStyle, GUILayout.Width(55));
+            var cmdLabel = new Label(entry.command);
+            cmdLabel.style.color = new StyleColor(kCommandColor);
+            cmdLabel.style.flexGrow = 1;
+            cmdLabel.style.overflow = Overflow.Hidden;
+            row.Add(cmdLabel);
 
-            // Add button (only for catalog entries not yet saved)
+            var sourceLabel = new Label(source);
+            sourceLabel.style.width = 55;
+            sourceLabel.style.fontSize = 10;
+            sourceLabel.style.color = new StyleColor(isSaved ? kSavedSourceColor : kCatalogSourceColor);
+            row.Add(sourceLabel);
+
             if (!isSaved)
             {
-                if (GUILayout.Button("Add", EditorStyles.miniButton, GUILayout.Width(40)))
-                    m_OnAddCommand?.Invoke(new AndroidLogcatCommandEntry(entry.name, entry.command));
+                var addBtn = new Button(() => m_OnAddCommand?.Invoke(new AndroidLogcatCommandEntry(entry.name, entry.command))) { text = "Add" };
+                addBtn.style.width = 40;
+                row.Add(addBtn);
             }
 
-            // Run button
-            if (GUILayout.Button("Run", EditorStyles.miniButton, GUILayout.Width(40)))
-                m_OnRunCommand?.Invoke(entry);
+            var runBtn = new Button(() => m_OnRunCommand?.Invoke(entry)) { text = "Run" };
+            runBtn.style.width = 40;
+            row.Add(runBtn);
 
-            EditorGUILayout.EndHorizontal();
+            return row;
         }
 
         static bool MatchesSearch(AndroidLogcatCommandEntry entry, string terms)

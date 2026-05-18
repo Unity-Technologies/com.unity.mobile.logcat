@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
@@ -30,21 +31,23 @@ namespace Unity.Android.Logcat
         readonly List<OutputLine> m_OutputLines = new List<OutputLine>();
 
         bool m_EditMode;
-        bool m_Running;
-        int m_SelectedFavoriteIndex = -1;
-        int m_SelectedGeneralIndex = -1;
 
-        Vector2 m_FavoritesScrollPos;
-        Vector2 m_GeneralScrollPos;
-        Vector2 m_OutputScrollPos;
-        float m_OutputHeight = 150;
+        VisualElement m_FavoritesContainer;
+        VisualElement m_GeneralContainer;
+        VisualElement m_OutputContainer;
+        ScrollView m_OutputScroll;
+        Label m_RunningLabel;
 
-        const int kRowHeight = 22;
+        VisualElement m_SelectedFavRow;
+        VisualElement m_SelectedGenRow;
+
         const int kMaxOutputLines = 3000;
 
         static readonly Color kCommandColor = new Color(0.6f, 0.6f, 0.6f);
         static readonly Color kAccentColor = new Color(0.4f, 0.8f, 0.4f);
         static readonly Color kErrorColor = new Color(0.9f, 0.3f, 0.3f);
+        static readonly Color kSelectedRowColor = new Color(0.3f, 0.5f, 0.8f, 0.3f);
+        static readonly char[] kNewlineChars = { '\r', '\n' };
 
         internal static void ShowWindow()
         {
@@ -58,66 +61,67 @@ namespace Unity.Android.Logcat
                 return;
 
             m_Runtime = AndroidLogcatManager.instance.Runtime;
-            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, OnDeviceSelected, nameof(AndroidLogcatCommandsWindow) + "_DeviceId");
+            m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, _ => Repaint(), nameof(AndroidLogcatCommandsWindow) + "_DeviceId");
             m_Runtime.Closing += OnDisable;
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
 
             LoadCommands();
+            LoadUI();
         }
 
         void OnDisable()
         {
-            if (!AndroidBridge.AndroidExtensionsInstalled)
-                return;
-            if (m_Runtime == null)
+            if (!AndroidBridge.AndroidExtensionsInstalled || m_Runtime == null)
                 return;
 
             SaveCommands();
-
             m_Runtime.Closing -= OnDisable;
             m_DeviceSelection.Dispose();
             m_DeviceSelection = null;
             m_Runtime = null;
         }
 
-        void OnDeviceSelected(IAndroidLogcatDevice device)
+        // --- UI Setup ---
+
+        void LoadUI()
         {
-            Repaint();
+            var r = rootVisualElement;
+            r.Insert(0, new IMGUIContainer(DoToolbarGUI));
+
+            var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatCommands.uxml");
+            tree.CloneTree(r);
+
+            m_FavoritesContainer = r.Q<VisualElement>("FavoritesContainer");
+            m_GeneralContainer = r.Q<VisualElement>("GeneralContainer");
+            m_OutputContainer = r.Q<VisualElement>("OutputContainer");
+            m_OutputScroll = r.Q<ScrollView>("OutputScroll");
+            m_RunningLabel = r.Q<Label>("RunningLabel");
+
+            r.Q<Button>("ClearButton").clicked += () => { m_OutputLines.Clear(); m_OutputContainer.Clear(); };
+            r.Q<Button>("PopOutButton").clicked += () => AndroidLogcatCommandOutputWindow.Open(m_OutputLines);
+
+            RebuildCommandList(m_FavoritesContainer, m_Favorites, true, "No favorites. Use Edit Mode to move commands here.", ref m_SelectedFavRow);
+            RebuildCommandList(m_GeneralContainer, m_GeneralCommands, false, "No commands. Click 'Add Command' or 'Search Catalog'.", ref m_SelectedGenRow);
         }
 
-        void OnGUI()
-        {
-            if (!AndroidBridge.AndroidExtensionsInstalled)
-            {
-                AndroidLogcatUtilities.ShowAndroidIsNotInstalledMessage();
-                return;
-            }
+        // --- Toolbar (IMGUI - contains DeviceSelection which is IMGUI-only) ---
 
-            DoToolbar();
-
-            var outputAreaRect = new Rect(0, position.height - m_OutputHeight, position.width, m_OutputHeight);
-            var listsHeight = position.height - EditorGUIUtility.singleLineHeight - 4 - m_OutputHeight - 8;
-
-            DoCommandLists(listsHeight);
-            DoOutputSplitter(outputAreaRect.y - 4);
-            DoOutputArea();
-        }
-
-        // --- Toolbar ---
-
-        void DoToolbar()
+        void DoToolbarGUI()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
 
-            m_DeviceSelection.DoGUI();
+            if (m_DeviceSelection != null)
+                m_DeviceSelection.DoGUI();
             GUILayout.Space(3);
 
             if (GUILayout.Button("Add Command", EditorStyles.toolbarButton))
                 OnAddCommand();
 
-            var editLabel = m_EditMode ? "Edit Mode: ON" : "Edit Mode: OFF";
-            if (GUILayout.Button(editLabel, EditorStyles.toolbarButton))
+            if (GUILayout.Button(m_EditMode ? "Edit Mode: ON" : "Edit Mode: OFF", EditorStyles.toolbarButton))
+            {
                 m_EditMode = !m_EditMode;
+                RebuildLists();
+            }
 
             if (GUILayout.Button("Import", EditorStyles.toolbarButton))
                 OnImportCommands();
@@ -129,208 +133,191 @@ namespace Unity.Android.Logcat
                 OpenSearchWindow();
 
             GUILayout.FlexibleSpace();
-
-            if (m_Running)
-                GUILayout.Label("Running...", EditorStyles.miniLabel);
-
             EditorGUILayout.EndHorizontal();
         }
 
         // --- Command Lists ---
 
-        void DoCommandLists(float totalHeight)
+        void RebuildLists()
         {
-            var favHeight = Mathf.Min(m_Favorites.Count * kRowHeight + kRowHeight + 4, totalHeight * 0.4f);
-            if (m_Favorites.Count == 0)
-                favHeight = kRowHeight + 4;
-
-            // Favorites
-            EditorGUILayout.LabelField("Favorites", EditorStyles.boldLabel);
-            m_FavoritesScrollPos = EditorGUILayout.BeginScrollView(m_FavoritesScrollPos, GUILayout.Height(favHeight));
-            if (m_Favorites.Count == 0)
-            {
-                EditorGUILayout.LabelField("No favorites. Use Edit Mode to move commands here.", EditorStyles.centeredGreyMiniLabel);
-            }
-            else
-            {
-                for (int i = 0; i < m_Favorites.Count; i++)
-                    DoCommandRow(m_Favorites, i, true, ref m_SelectedFavoriteIndex);
-            }
-            EditorGUILayout.EndScrollView();
-
-            EditorGUILayout.Space(2);
-
-            // General Commands
-            EditorGUILayout.LabelField("General Commands", EditorStyles.boldLabel);
-            m_GeneralScrollPos = EditorGUILayout.BeginScrollView(m_GeneralScrollPos);
-            if (m_GeneralCommands.Count == 0)
-            {
-                EditorGUILayout.LabelField("No commands. Click 'Add Command' or 'Search Catalog'.", EditorStyles.centeredGreyMiniLabel);
-            }
-            else
-            {
-                for (int i = 0; i < m_GeneralCommands.Count; i++)
-                    DoCommandRow(m_GeneralCommands, i, false, ref m_SelectedGeneralIndex);
-            }
-            EditorGUILayout.EndScrollView();
+            RebuildCommandList(m_FavoritesContainer, m_Favorites, true, "No favorites. Use Edit Mode to move commands here.", ref m_SelectedFavRow);
+            RebuildCommandList(m_GeneralContainer, m_GeneralCommands, false, "No commands. Click 'Add Command' or 'Search Catalog'.", ref m_SelectedGenRow);
         }
 
-        void DoCommandRow(List<AndroidLogcatCommandEntry> list, int index, bool isFavorites, ref int selectedIndex)
+        void RebuildCommandList(VisualElement container, List<AndroidLogcatCommandEntry> list, bool isFavorites, string emptyMessage, ref VisualElement selectedRow)
         {
-            var entry = list[index];
-            var isSelected = selectedIndex == index;
+            if (container == null)
+                return;
 
-            if (isSelected)
-                GUI.backgroundColor = new Color(0.3f, 0.5f, 0.8f, 0.3f);
+            container.Clear();
+            selectedRow = null;
 
-            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox, GUILayout.Height(kRowHeight));
-
-            if (isSelected)
-                GUI.backgroundColor = Color.white;
-
-            // Click to select
-            if (Event.current.type == EventType.MouseDown && GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
+            if (list.Count == 0)
             {
-                selectedIndex = index;
-                Repaint();
+                var label = new Label(emptyMessage);
+                label.style.color = new StyleColor(new Color(0.5f, 0.5f, 0.5f));
+                label.style.fontSize = 10;
+                label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                label.style.paddingTop = 4;
+                label.style.paddingBottom = 4;
+                container.Add(label);
+                return;
             }
 
+            for (int i = 0; i < list.Count; i++)
+                container.Add(CreateCommandRow(list[i], list, i, isFavorites));
+        }
+
+        VisualElement CreateCommandRow(AndroidLogcatCommandEntry entry, List<AndroidLogcatCommandEntry> list, int index, bool isFavorites)
+        {
+            var row = CreateStyledRow(22);
+
+            // Click to select
+            row.RegisterCallback<MouseDownEvent>(_ =>
+            {
+                ref var selected = ref (isFavorites ? ref m_SelectedFavRow : ref m_SelectedGenRow);
+                if (selected != null)
+                    selected.style.backgroundColor = StyleKeyword.Null;
+                selected = row;
+                row.style.backgroundColor = new StyleColor(kSelectedRowColor);
+            });
+
             // Name
-            EditorGUILayout.LabelField(entry.name, EditorStyles.boldLabel, GUILayout.Width(180));
+            var nameLabel = new Label(entry.name);
+            nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            nameLabel.style.width = 180;
+            nameLabel.style.minWidth = 180;
+            row.Add(nameLabel);
 
             // Command preview
             var cmdDisplay = entry.command;
-            if (cmdDisplay.IndexOfAny(new[] { '\r', '\n' }) >= 0)
+            if (cmdDisplay.IndexOfAny(kNewlineChars) >= 0)
             {
-                var cmdLines = cmdDisplay.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                cmdDisplay = cmdLines.Length > 1
-                    ? $"{cmdLines[0].Trim()} (+{cmdLines.Length - 1} more)"
-                    : cmdLines[0].Trim();
+                var cmdLines = cmdDisplay.Split(kNewlineChars, StringSplitOptions.RemoveEmptyEntries);
+                if (cmdLines.Length > 1)
+                    cmdDisplay = $"{cmdLines[0].Trim()} (+{cmdLines.Length - 1} more)";
+                else
+                    cmdDisplay = cmdLines[0].Trim();
             }
-            var cmdStyle = new GUIStyle(EditorStyles.label);
-            cmdStyle.normal.textColor = kCommandColor;
-            EditorGUILayout.LabelField(cmdDisplay, cmdStyle);
+            var cmdLabel = new Label(cmdDisplay);
+            cmdLabel.style.color = new StyleColor(kCommandColor);
+            cmdLabel.style.flexGrow = 1;
+            cmdLabel.style.overflow = Overflow.Hidden;
+            row.Add(cmdLabel);
 
             // Edit mode buttons
             if (m_EditMode)
             {
-                // Move up
-                EditorGUI.BeginDisabledGroup(index == 0);
-                if (GUILayout.Button("\u25B2", EditorStyles.miniButton, GUILayout.Width(22)))
+                AddRowButton(row, "\u25B2", 22, () =>
                 {
                     list.RemoveAt(index);
                     list.Insert(index - 1, entry);
-                    if (selectedIndex == index) selectedIndex = index - 1;
-                    SaveCommands();
-                }
-                EditorGUI.EndDisabledGroup();
+                    SaveAndRebuild();
+                }, index > 0);
 
-                // Move down
-                EditorGUI.BeginDisabledGroup(index == list.Count - 1);
-                if (GUILayout.Button("\u25BC", EditorStyles.miniButton, GUILayout.Width(22)))
+                AddRowButton(row, "\u25BC", 22, () =>
                 {
                     list.RemoveAt(index);
                     list.Insert(index + 1, entry);
-                    if (selectedIndex == index) selectedIndex = index + 1;
-                    SaveCommands();
-                }
-                EditorGUI.EndDisabledGroup();
+                    SaveAndRebuild();
+                }, index < list.Count - 1);
 
-                // Fav / Unfav
-                var favLabel = isFavorites ? "Unfav" : "Fav";
-                if (GUILayout.Button(favLabel, EditorStyles.miniButton, GUILayout.Width(40)))
+                AddRowButton(row, isFavorites ? "Unfav" : "Fav", 40, () =>
                 {
-                    if (isFavorites)
-                    {
-                        m_Favorites.RemoveAt(index);
-                        m_GeneralCommands.Add(entry);
-                        selectedIndex = -1;
-                    }
-                    else
-                    {
-                        m_GeneralCommands.RemoveAt(index);
-                        m_Favorites.Add(entry);
-                        selectedIndex = -1;
-                    }
-                    SaveCommands();
-                }
+                    if (isFavorites) { m_Favorites.Remove(entry); m_GeneralCommands.Add(entry); }
+                    else { m_GeneralCommands.Remove(entry); m_Favorites.Add(entry); }
+                    SaveAndRebuild();
+                });
 
-                // Edit
-                if (GUILayout.Button("Edit", EditorStyles.miniButton, GUILayout.Width(35)))
+                AddRowButton(row, "Edit", 35, () =>
                 {
                     AndroidLogcatAddCommandDialog.Show(updated =>
                     {
+                        if (m_Runtime == null) return;
                         entry.name = updated.name;
                         entry.command = updated.command;
-                        SaveCommands();
-                        Repaint();
+                        SaveAndRebuild();
                     }, entry);
-                }
+                });
 
-                // Delete
-                if (GUILayout.Button("Del", EditorStyles.miniButton, GUILayout.Width(30)))
+                AddRowButton(row, "Del", 30, () =>
                 {
-                    if (EditorUtility.DisplayDialog("Delete Command",
-                        $"Delete \"{entry.name}\"?", "Delete", "Cancel"))
+                    if (EditorUtility.DisplayDialog("Delete Command", $"Delete \"{entry.name}\"?", "Delete", "Cancel"))
                     {
-                        list.RemoveAt(index);
-                        selectedIndex = -1;
-                        SaveCommands();
+                        list.Remove(entry);
+                        SaveAndRebuild();
                     }
+                });
+            }
+
+            AddRowButton(row, "Run", 35, () => RunCommand(entry));
+            return row;
+        }
+
+        void SaveAndRebuild()
+        {
+            SaveCommands();
+            RebuildLists();
+        }
+
+        // --- Row Helpers ---
+
+        static VisualElement CreateStyledRow(int height = 0)
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row;
+            row.style.alignItems = Align.Center;
+            row.style.paddingLeft = 4;
+            row.style.paddingRight = 4;
+            row.style.paddingTop = 2;
+            row.style.paddingBottom = 2;
+            row.style.borderBottomWidth = 1;
+            row.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            if (height > 0)
+                row.style.height = height;
+            return row;
+        }
+
+        static void AddRowButton(VisualElement row, string text, int width, Action action, bool enabled = true)
+        {
+            var btn = new Button(action) { text = text };
+            btn.style.width = width;
+            btn.SetEnabled(enabled);
+            row.Add(btn);
+        }
+
+        // --- Output ---
+
+        void AppendOutput(string text, Color color)
+        {
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            foreach (var line in text.Split('\n'))
+            {
+                m_OutputLines.Add(new OutputLine { text = line, color = color });
+                if (m_OutputContainer != null)
+                {
+                    var label = new Label(line);
+                    label.style.color = new StyleColor(color);
+                    label.style.whiteSpace = WhiteSpace.Normal;
+                    m_OutputContainer.Add(label);
                 }
             }
 
-            // Run button (always visible)
-            if (GUILayout.Button("Run", EditorStyles.miniButton, GUILayout.Width(35)))
-                RunCommand(entry);
-
-            EditorGUILayout.EndHorizontal();
-        }
-
-        // --- Output Area ---
-
-        void DoOutputSplitter(float y)
-        {
-            var splitterRect = new Rect(0, y, position.width, 4);
-            EditorGUIUtility.AddCursorRect(splitterRect, MouseCursor.ResizeVertical);
-
-            if (Event.current.type == EventType.MouseDown && splitterRect.Contains(Event.current.mousePosition))
-                GUIUtility.hotControl = GUIUtility.GetControlID(FocusType.Passive);
-
-            if (GUIUtility.hotControl != 0 && Event.current.type == EventType.MouseDrag)
+            if (m_OutputLines.Count > kMaxOutputLines)
             {
-                m_OutputHeight = Mathf.Clamp(position.height - Event.current.mousePosition.y, 50, position.height - 150);
-                Repaint();
+                var excess = m_OutputLines.Count - kMaxOutputLines;
+                m_OutputLines.RemoveRange(0, excess);
+                if (m_OutputContainer != null)
+                    for (int i = 0; i < excess && m_OutputContainer.childCount > 0; i++)
+                        m_OutputContainer.RemoveAt(0);
             }
 
-            if (Event.current.type == EventType.MouseUp)
-                GUIUtility.hotControl = 0;
-        }
+            if (m_OutputScroll != null && m_OutputContainer != null && m_OutputContainer.childCount > 0)
+                m_OutputScroll.schedule.Execute(() => m_OutputScroll.ScrollTo(m_OutputContainer[m_OutputContainer.childCount - 1])).StartingIn(10);
 
-        void DoOutputArea()
-        {
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            EditorGUILayout.LabelField("Output", EditorStyles.boldLabel, GUILayout.Width(50));
-            if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(45)))
-                m_OutputLines.Clear();
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
-
-            m_OutputScrollPos = EditorGUILayout.BeginScrollView(m_OutputScrollPos, GUILayout.Height(m_OutputHeight - 20));
-
-            for (int i = 0; i < m_OutputLines.Count; i++)
-            {
-                var line = m_OutputLines[i];
-                var style = new GUIStyle(EditorStyles.label)
-                {
-                    wordWrap = true,
-                    richText = false
-                };
-                style.normal.textColor = line.color;
-                EditorGUILayout.LabelField(line.text, style);
-            }
-
-            EditorGUILayout.EndScrollView();
+            AndroidLogcatCommandOutputWindow.AppendIfOpen(text, color);
         }
 
         // --- Command Execution ---
@@ -340,15 +327,16 @@ namespace Unity.Android.Logcat
             AndroidLogcatPlaceholderDialog.Show(entry.command, resolved => ExecuteCommand(resolved));
         }
 
+        // TODO: Make async using AndroidLogcatDispatcher to avoid blocking the main thread
         void ExecuteCommand(string resolvedCommand)
         {
-            var lines = resolvedCommand.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (m_Runtime == null) return;
 
-            m_Running = true;
-            Repaint();
+            var lines = resolvedCommand.Split(kNewlineChars, StringSplitOptions.RemoveEmptyEntries);
+            if (m_RunningLabel != null)
+                m_RunningLabel.style.display = DisplayStyle.Flex;
 
-            var device = m_DeviceSelection != null ? m_DeviceSelection.SelectedDevice : null;
-            var deviceId = device != null ? device.Id : null;
+            var deviceId = m_DeviceSelection?.SelectedDevice?.Id;
 
             foreach (var rawLine in lines)
             {
@@ -364,19 +352,14 @@ namespace Unity.Android.Logcat
                     if (cmd.StartsWith("adb ", StringComparison.OrdinalIgnoreCase))
                     {
                         var adbArgs = cmd.Substring(4);
-
-                        // Inject device serial if we have a selected device and the command doesn't already specify -s
                         if (!string.IsNullOrEmpty(deviceId) && !adbArgs.TrimStart().StartsWith("-s "))
                             adbArgs = $"-s {deviceId} {adbArgs}";
-
                         result = m_Runtime.Tools.ADB.Run(new[] { adbArgs }, "");
                     }
                     else
                     {
                         var parts = cmd.Split(new[] { ' ' }, 2);
-                        var fileName = parts[0];
-                        var arguments = parts.Length > 1 ? parts[1] : "";
-                        var shellResult = Shell.RunProcess(fileName, arguments);
+                        var shellResult = Shell.RunProcess(parts[0], parts.Length > 1 ? parts[1] : "");
                         result = shellResult.GetStandardOut();
                         var err = shellResult.GetStandardErr();
                         if (!string.IsNullOrEmpty(err))
@@ -391,24 +374,8 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            m_Running = false;
-            Repaint();
-        }
-
-        void AppendOutput(string text, Color color)
-        {
-            if (string.IsNullOrEmpty(text))
-                return;
-
-            foreach (var line in text.Split('\n'))
-                m_OutputLines.Add(new OutputLine { text = line, color = color });
-
-            while (m_OutputLines.Count > kMaxOutputLines)
-                m_OutputLines.RemoveAt(0);
-
-            m_OutputScrollPos.y = float.MaxValue;
-
-            AndroidLogcatCommandOutputWindow.AppendIfOpen(text, color);
+            if (m_RunningLabel != null)
+                m_RunningLabel.style.display = DisplayStyle.None;
         }
 
         // --- Add / Import / Export ---
@@ -417,9 +384,9 @@ namespace Unity.Android.Logcat
         {
             AndroidLogcatAddCommandDialog.Show(entry =>
             {
+                if (m_Runtime == null) return;
                 m_GeneralCommands.Add(entry);
-                SaveCommands();
-                Repaint();
+                SaveAndRebuild();
             });
         }
 
@@ -429,28 +396,31 @@ namespace Unity.Android.Logcat
                 m_Favorites, m_GeneralCommands,
                 entry =>
                 {
+                    if (m_Runtime == null) return;
                     m_GeneralCommands.Add(entry);
-                    SaveCommands();
-                    Repaint();
+                    SaveAndRebuild();
                 },
-                RunCommand);
+                entry =>
+                {
+                    if (m_Runtime == null) return;
+                    RunCommand(entry);
+                });
         }
 
         void OnExportCommands()
         {
-            var data = new AndroidLogcatCommandExportData
+            var json = JsonUtility.ToJson(new AndroidLogcatCommandExportData
             {
                 favorites = m_Favorites.ToArray(),
                 general = m_GeneralCommands.ToArray()
-            };
+            }, true);
 
-            var json = JsonUtility.ToJson(data, true);
             var path = EditorUtility.SaveFilePanel("Export Commands", "", "logcat-commands", "json");
-            if (string.IsNullOrEmpty(path))
-                return;
-
-            File.WriteAllText(path, json);
-            Debug.Log($"[Android Logcat] Commands exported to {path}");
+            if (!string.IsNullOrEmpty(path))
+            {
+                File.WriteAllText(path, json);
+                Debug.Log($"[Android Logcat] Commands exported to {path}");
+            }
         }
 
         void OnImportCommands()
@@ -460,39 +430,28 @@ namespace Unity.Android.Logcat
                 return;
 
             AndroidLogcatCommandExportData data;
-            try
-            {
-                var json = File.ReadAllText(path);
-                data = JsonUtility.FromJson<AndroidLogcatCommandExportData>(json);
-            }
+            try { data = JsonUtility.FromJson<AndroidLogcatCommandExportData>(File.ReadAllText(path)); }
             catch (Exception ex)
             {
-                EditorUtility.DisplayDialog("Import Failed",
-                    $"Could not parse the selected file:\n{ex.Message}", "OK");
+                EditorUtility.DisplayDialog("Import Failed", $"Could not parse the selected file:\n{ex.Message}", "OK");
                 return;
             }
 
-            if ((data.favorites == null || data.favorites.Length == 0) &&
-                (data.general == null || data.general.Length == 0))
+            if ((data.favorites == null || data.favorites.Length == 0) && (data.general == null || data.general.Length == 0))
             {
-                EditorUtility.DisplayDialog("Import Failed",
-                    "The file contains no commands.", "OK");
+                EditorUtility.DisplayDialog("Import Failed", "The file contains no commands.", "OK");
                 return;
             }
 
-            if (!EditorUtility.DisplayDialog("Import Commands",
-                "This will replace all your current commands. Continue?", "Import", "Cancel"))
+            if (!EditorUtility.DisplayDialog("Import Commands", "This will replace all your current commands. Continue?", "Import", "Cancel"))
                 return;
 
             m_Favorites.Clear();
-            if (data.favorites != null)
-                m_Favorites.AddRange(data.favorites);
-
+            if (data.favorites != null) m_Favorites.AddRange(data.favorites);
             m_GeneralCommands.Clear();
-            if (data.general != null)
-                m_GeneralCommands.AddRange(data.general);
+            if (data.general != null) m_GeneralCommands.AddRange(data.general);
 
-            SaveCommands();
+            SaveAndRebuild();
             Debug.Log($"[Android Logcat] Commands imported from {path}");
         }
 
@@ -504,10 +463,8 @@ namespace Unity.Android.Logcat
             m_Favorites.Clear();
             m_GeneralCommands.Clear();
 
-            if (settings.Favorites != null)
-                m_Favorites.AddRange(settings.Favorites);
-            if (settings.GeneralCommands != null)
-                m_GeneralCommands.AddRange(settings.GeneralCommands);
+            if (settings.Favorites != null) m_Favorites.AddRange(settings.Favorites);
+            if (settings.GeneralCommands != null) m_GeneralCommands.AddRange(settings.GeneralCommands);
 
             if (m_GeneralCommands.Count == 0 && m_Favorites.Count == 0)
                 m_GeneralCommands.AddRange(s_DefaultCommands);
