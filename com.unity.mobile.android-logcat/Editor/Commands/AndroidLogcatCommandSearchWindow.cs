@@ -9,26 +9,37 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatCommandSearchWindow : EditorWindow
     {
-        static AndroidLogcatCommandSearchWindow s_Instance;
-
         List<AndroidLogcatCommandEntry> m_Favorites;
         List<AndroidLogcatCommandEntry> m_GeneralCommands;
         Action<AndroidLogcatCommandEntry> m_OnAddCommand;
         Action<AndroidLogcatCommandEntry> m_OnRunCommand;
 
         string m_SearchQuery = "";
+        AndroidLogcatCommandCategory? m_CategoryFilter;
 
         TextField m_SearchTextField;
         HelpBox m_EmptyMessage;
         VisualElement m_ResultsContainer;
         ScrollView m_ResultsScroll;
+        VisualElement m_ChipsRow;
 
-        static readonly string[] s_ChipTerms =
-            { "devices", "packages", "logcat", "permissions", "input", "screen", "network", "dumpsys", "quest" };
+        /// <summary>
+        /// Categories offered as filter chips. Built from the catalog so a category can never appear
+        /// as an empty chip, which is what happened previously with the hardcoded term list.
+        /// </summary>
+        static AndroidLogcatCommandCategory[] GetPopulatedCategories()
+        {
+            return AndroidLogcatAdbCommandCatalog.All
+                .Select(e => e.category)
+                .Distinct()
+                .OrderBy(c => (int)c)
+                .ToArray();
+        }
 
         static readonly Color kCommandColor = new Color(0.6f, 0.6f, 0.6f);
         static readonly Color kSavedSourceColor = new Color(0.4f, 0.7f, 0.4f);
         static readonly Color kCatalogSourceColor = new Color(0.5f, 0.6f, 0.9f);
+        static readonly Color kActiveChipColor = new Color(0.3f, 0.5f, 0.8f, 0.6f);
 
         internal static void Open(
             List<AndroidLogcatCommandEntry> favorites,
@@ -39,7 +50,6 @@ namespace Unity.Android.Logcat
             var wnd = GetWindow<AndroidLogcatCommandSearchWindow>();
             wnd.titleContent = new GUIContent("Search Commands");
             wnd.minSize = new Vector2(500, 400);
-            s_Instance = wnd;
             wnd.m_Favorites = favorites;
             wnd.m_GeneralCommands = generalCommands;
             wnd.m_OnAddCommand = onAdd;
@@ -47,35 +57,63 @@ namespace Unity.Android.Logcat
             wnd.RebuildResults();
         }
 
-        void OnEnable()
-        {
-            s_Instance = this;
-            LoadUI();
-        }
-
-        void LoadUI()
+        void CreateGUI()
         {
             var r = rootVisualElement;
-            var tree = AndroidLogcatUtilities.LoadUXML("AndroidLogcatCommandSearch.uxml");
+            r.Clear();
+
+            var tree = AndroidLogcatUtilities.LoadUXML("Command/AndroidLogcatCommandSearch.uxml");
             tree.CloneTree(r);
 
             m_SearchTextField = r.Q<TextField>("SearchField");
             m_EmptyMessage = r.Q<HelpBox>("EmptyMessage");
             m_ResultsContainer = r.Q<VisualElement>("ResultsContainer");
             m_ResultsScroll = r.Q<ScrollView>("ResultsScroll");
+            m_ChipsRow = r.Q<VisualElement>("ChipsRow");
 
             m_SearchTextField.value = m_SearchQuery;
-            m_SearchTextField.RegisterValueChangedCallback(evt => { m_SearchQuery = evt.newValue; RebuildResults(); });
-
-            var chipsRow = r.Q<VisualElement>("ChipsRow");
-            foreach (var term in s_ChipTerms)
+            m_SearchTextField.RegisterValueChangedCallback(evt =>
             {
-                var chip = new Button(() => m_SearchTextField.value = term) { text = term };
-                chip.style.marginRight = 2;
-                chipsRow.Add(chip);
-            }
+                m_SearchQuery = evt.newValue;
+                RebuildResults();
+            });
 
+            RebuildChips();
             RebuildResults();
+        }
+
+        void RebuildChips()
+        {
+            if (m_ChipsRow == null)
+                return;
+
+            m_ChipsRow.Clear();
+            m_ChipsRow.style.flexWrap = Wrap.Wrap;
+
+            AddChip("All", null);
+            foreach (var category in GetPopulatedCategories())
+                AddChip(AndroidLogcatCommandMatcher.GetCategoryDisplayName(category), category);
+        }
+
+        void AddChip(string label, AndroidLogcatCommandCategory? category)
+        {
+            var chip = new Button(() =>
+            {
+                m_CategoryFilter = category;
+                RebuildChips();
+                RebuildResults();
+            })
+            { text = label };
+
+            chip.style.marginRight = 2;
+            chip.style.marginBottom = 2;
+
+            var isActive = m_CategoryFilter.HasValue == category.HasValue &&
+                (!category.HasValue || m_CategoryFilter.Value == category.Value);
+            if (isActive)
+                chip.style.backgroundColor = new StyleColor(kActiveChipColor);
+
+            m_ChipsRow.Add(chip);
         }
 
         void RebuildResults()
@@ -85,31 +123,41 @@ namespace Unity.Android.Logcat
 
             m_ResultsContainer.Clear();
 
-            if (string.IsNullOrWhiteSpace(m_SearchQuery))
-            {
-                SetEmptyState("Type a search term or click a chip to find commands.");
-                return;
-            }
-
-            var terms = m_SearchQuery.Trim().ToLowerInvariant();
             var favorites = m_Favorites ?? new List<AndroidLogcatCommandEntry>();
             var general = m_GeneralCommands ?? new List<AndroidLogcatCommandEntry>();
 
-            foreach (var e in favorites)
-                if (MatchesSearch(e, terms))
-                    m_ResultsContainer.Add(CreateResultRow(e, "Favorite", true));
-            foreach (var e in general)
-                if (MatchesSearch(e, terms))
-                    m_ResultsContainer.Add(CreateResultRow(e, "General", true));
+            // Saved commands are matched on the search term only; the category filter applies to the
+            // catalog, since user commands are frequently uncategorized.
+            if (!string.IsNullOrWhiteSpace(m_SearchQuery))
+            {
+                foreach (var e in favorites)
+                    if (AndroidLogcatCommandMatcher.Matches(e, m_SearchQuery))
+                        m_ResultsContainer.Add(CreateResultRow(e, "Favorite", true));
+
+                foreach (var e in general)
+                    if (AndroidLogcatCommandMatcher.Matches(e, m_SearchQuery))
+                        m_ResultsContainer.Add(CreateResultRow(e, "General", true));
+            }
 
             var savedCommands = new HashSet<string>(
-                favorites.Concat(general).Select(c => c.command), StringComparer.OrdinalIgnoreCase);
+                favorites.Concat(general).Where(c => c != null && !string.IsNullOrEmpty(c.command)).Select(c => c.command),
+                StringComparer.OrdinalIgnoreCase);
+
             foreach (var e in AndroidLogcatAdbCommandCatalog.All)
-                if (MatchesSearch(e, terms) && !savedCommands.Contains(e.command))
-                    m_ResultsContainer.Add(CreateResultRow(e, "Catalog", false));
+            {
+                if (!AndroidLogcatCommandMatcher.Matches(e, m_CategoryFilter, m_SearchQuery))
+                    continue;
+                if (savedCommands.Contains(e.command))
+                    continue;
+                m_ResultsContainer.Add(CreateResultRow(e, "Catalog", false));
+            }
 
             if (m_ResultsContainer.childCount == 0)
-                SetEmptyState("No matching commands found.");
+            {
+                SetEmptyState(string.IsNullOrWhiteSpace(m_SearchQuery)
+                    ? "No commands in this category."
+                    : "No matching commands found.");
+            }
             else
             {
                 m_EmptyMessage.style.display = DisplayStyle.None;
@@ -146,6 +194,7 @@ namespace Unity.Android.Logcat
             cmdLabel.style.color = new StyleColor(kCommandColor);
             cmdLabel.style.flexGrow = 1;
             cmdLabel.style.overflow = Overflow.Hidden;
+            cmdLabel.tooltip = entry.command;
             row.Add(cmdLabel);
 
             var sourceLabel = new Label(source);
@@ -156,7 +205,7 @@ namespace Unity.Android.Logcat
 
             if (!isSaved)
             {
-                var addBtn = new Button(() => m_OnAddCommand?.Invoke(new AndroidLogcatCommandEntry(entry.name, entry.command))) { text = "Add" };
+                var addBtn = new Button(() => m_OnAddCommand?.Invoke(entry.Clone())) { text = "Add" };
                 addBtn.style.width = 40;
                 row.Add(addBtn);
             }
@@ -166,18 +215,6 @@ namespace Unity.Android.Logcat
             row.Add(runBtn);
 
             return row;
-        }
-
-        static bool MatchesSearch(AndroidLogcatCommandEntry entry, string terms)
-        {
-            return entry.name.ToLowerInvariant().Contains(terms)
-                || entry.command.ToLowerInvariant().Contains(terms);
-        }
-
-        void OnDestroy()
-        {
-            if (s_Instance == this)
-                s_Instance = null;
         }
     }
 }

@@ -1,0 +1,142 @@
+namespace Unity.Android.Logcat
+{
+    /// <summary>
+    /// A catalog of ready made adb commands the user can search, save and run.
+    ///
+    /// Scope note: this catalog intentionally does NOT cover functionality the package already
+    /// implements as first class features. Specifically omitted:
+    ///   - logcat streaming/filtering  -> the main Android Logcat window
+    ///   - input simulation            -> AndroidLogcatInputs / Device Input window
+    ///   - screenshot & video capture  -> AndroidLogcatScreenCaptureWindow
+    ///   - process termination         -> the process list context menu
+    /// The catalog covers the remaining adb surface which has no dedicated UI, so it complements
+    /// the package rather than duplicating it.
+    /// </summary>
+    internal static class AndroidLogcatAdbCommandCatalog
+    {
+        internal static readonly AndroidLogcatCommandEntry[] All = new[]
+        {
+            // --- Device Management ---
+            new AndroidLogcatCommandEntry("List Devices", "adb devices", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("List Devices (Verbose)", "adb devices -l", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Start Server", "adb start-server", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Kill Server", "adb kill-server", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Reboot Device", "adb reboot", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Reboot to Bootloader", "adb reboot bootloader", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Reboot to Recovery", "adb reboot recovery", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Get Device State", "adb get-state", AndroidLogcatCommandCategory.DeviceManagement),
+            new AndroidLogcatCommandEntry("Get Serial Number", "adb get-serialno", AndroidLogcatCommandCategory.DeviceManagement),
+
+            // --- Packages ---
+            new AndroidLogcatCommandEntry("List All Packages", "adb shell pm list packages", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("List Third-Party Packages", "adb shell pm list packages -3", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("List System Packages", "adb shell pm list packages -s", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Clear App Data", "adb shell pm clear <package>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Force Stop App", "adb shell am force-stop <package>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Start Activity", "adb shell am start -n <package/activity>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Start App (Launcher)", "adb shell monkey -p <package> -c android.intent.category.LAUNCHER 1", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Start App (UnityPlayerActivity)", "adb shell am start -n <package>/com.unity3d.player.UnityPlayerActivity", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Start App (GameActivity)", "adb shell am start -n <package>/com.google.androidgamesdk.GameActivity", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Uninstall App", "adb uninstall <package>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Install APK", "adb install <path.apk>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Install APK (Replace)", "adb install -r <path.apk>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Install Multiple APKs (Split)", "adb install-multiple -r <path1.apk> <path2.apk>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Push OBB File", "adb push <local.obb> /sdcard/Android/obb/<package>/", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Create OBB Directory", "adb shell mkdir -p /sdcard/Android/obb/<package>", AndroidLogcatCommandCategory.Packages),
+            new AndroidLogcatCommandEntry("Dump App Info", "adb shell dumpsys package <package>", AndroidLogcatCommandCategory.Packages),
+
+            // --- Permissions ---
+            new AndroidLogcatCommandEntry("Grant Permission", "adb shell pm grant <package> <permission>", AndroidLogcatCommandCategory.Permissions),
+            new AndroidLogcatCommandEntry("Revoke Permission", "adb shell pm revoke <package> <permission>", AndroidLogcatCommandCategory.Permissions),
+            new AndroidLogcatCommandEntry("List Granted Permissions", "adb shell dumpsys package <package> | grep permission", AndroidLogcatCommandCategory.Permissions),
+            new AndroidLogcatCommandEntry("List All Permissions", "adb shell pm list permissions -g", AndroidLogcatCommandCategory.Permissions),
+            new AndroidLogcatCommandEntry("List Dangerous Permissions", "adb shell pm list permissions -d -g", AndroidLogcatCommandCategory.Permissions),
+            new AndroidLogcatCommandEntry("Reset All Permissions", "adb shell pm reset-permissions -p <package>", AndroidLogcatCommandCategory.Permissions),
+
+            // --- File Transfer ---
+            new AndroidLogcatCommandEntry("Push File to Device", "adb push <local> <remote>", AndroidLogcatCommandCategory.FileTransfer),
+            new AndroidLogcatCommandEntry("Pull File from Device", "adb pull <remote> <local>", AndroidLogcatCommandCategory.FileTransfer),
+            new AndroidLogcatCommandEntry("List Directory", "adb shell ls -la <path>", AndroidLogcatCommandCategory.FileTransfer),
+            new AndroidLogcatCommandEntry("Remove File", "adb shell rm <path>", AndroidLogcatCommandCategory.FileTransfer),
+            new AndroidLogcatCommandEntry("Make Directory", "adb shell mkdir -p <path>", AndroidLogcatCommandCategory.FileTransfer),
+
+            // --- System Info ---
+            new AndroidLogcatCommandEntry("Get Android Version", "adb shell getprop ro.build.version.release", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get SDK Version", "adb shell getprop ro.build.version.sdk", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Device Model", "adb shell getprop ro.product.model", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Device Manufacturer", "adb shell getprop ro.product.manufacturer", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get All Properties", "adb shell getprop", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Screen Resolution", "adb shell wm size", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Screen Density", "adb shell wm density", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Battery Info", "adb shell dumpsys battery", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get CPU Info", "adb shell cat /proc/cpuinfo", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Memory Info", "adb shell cat /proc/meminfo", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Disk Usage", "adb shell df", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Running Processes", "adb shell ps", AndroidLogcatCommandCategory.SystemInfo),
+            new AndroidLogcatCommandEntry("Get Build Properties", "adb shell cat /system/build.prop", AndroidLogcatCommandCategory.SystemInfo),
+
+            // --- Dumpsys ---
+            new AndroidLogcatCommandEntry("Dump Activity Stack", "adb shell dumpsys activity activities", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Memory Info", "adb shell dumpsys meminfo", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Window Info", "adb shell dumpsys window", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Display Info", "adb shell dumpsys display", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump CPU Info", "adb shell dumpsys cpuinfo", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Battery Stats", "adb shell dumpsys batterystats", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump SurfaceFlinger", "adb shell dumpsys SurfaceFlinger", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Graphics Stats", "adb shell dumpsys gfxinfo <package>", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Wifi Info", "adb shell dumpsys wifi", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Alarm Info", "adb shell dumpsys alarm", AndroidLogcatCommandCategory.Dumpsys),
+            new AndroidLogcatCommandEntry("Dump Notification Info", "adb shell dumpsys notification", AndroidLogcatCommandCategory.Dumpsys),
+
+            // --- Settings ---
+            new AndroidLogcatCommandEntry("Enable Stay Awake", "adb shell settings put global stay_on_while_plugged_in 3", AndroidLogcatCommandCategory.Settings),
+            new AndroidLogcatCommandEntry("Disable Stay Awake", "adb shell settings put global stay_on_while_plugged_in 0", AndroidLogcatCommandCategory.Settings),
+            new AndroidLogcatCommandEntry("Show Touches On", "adb shell settings put system show_touches 1", AndroidLogcatCommandCategory.Settings),
+            new AndroidLogcatCommandEntry("Show Touches Off", "adb shell settings put system show_touches 0", AndroidLogcatCommandCategory.Settings),
+            new AndroidLogcatCommandEntry("Enable USB Debugging", "adb shell settings put global adb_enabled 1", AndroidLogcatCommandCategory.Settings),
+            new AndroidLogcatCommandEntry("Set Screen Off Timeout", "adb shell settings put system screen_off_timeout <ms>", AndroidLogcatCommandCategory.Settings),
+
+            // --- Networking ---
+            new AndroidLogcatCommandEntry("Enable Network ADB", "adb tcpip 5555", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Connect via IP", "adb connect <ip>:5555", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Disconnect All", "adb disconnect", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Forward Port", "adb forward tcp:<local> tcp:<remote>", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Reverse Port", "adb reverse tcp:<remote> tcp:<local>", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("List Port Forwards", "adb forward --list", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Get Network IP Address", "adb shell ip addr show wlan0", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Get Network Interfaces", "adb shell ip link show", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Dump Network Stats", "adb shell dumpsys netstats", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Dump Network Connectivity", "adb shell dumpsys connectivity", AndroidLogcatCommandCategory.Networking),
+            new AndroidLogcatCommandEntry("Ping Host", "adb shell ping -c 4 <host>", AndroidLogcatCommandCategory.Networking),
+
+            // --- Advanced ---
+            new AndroidLogcatCommandEntry("Bug Report", "adb bugreport", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Remount System", "adb remount", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Root Shell", "adb root", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Unroot Shell", "adb unroot", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Disable Verity", "adb disable-verity", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Enable Verity", "adb enable-verity", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Check Boot Completed", "adb shell getprop sys.boot_completed", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("List Tombstones", "adb shell ls -lt /data/tombstones/", AndroidLogcatCommandCategory.Advanced),
+            new AndroidLogcatCommandEntry("Pull Tombstone", "adb pull /data/tombstones/<tombstone_XX> <local_path>", AndroidLogcatCommandCategory.Advanced),
+
+            // --- Meta Quest / XR ---
+            new AndroidLogcatCommandEntry("Quest: List OVR Packages", "adb shell pm list packages | grep oculus", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Get Guardian State", "adb shell dumpsys OVRGuardianService", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Get Compositor Stats", "adb shell dumpsys OVRCompositor", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Set GPU Level", "adb shell setprop debug.oculus.gpuLevel <0-4>", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Set CPU Level", "adb shell setprop debug.oculus.cpuLevel <0-4>", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Enable Perf Overlay", "adb shell setprop debug.oculus.enablePerfOverlay 1", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Disable Perf Overlay", "adb shell setprop debug.oculus.enablePerfOverlay 0", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Set Fixed Foveation", "adb shell setprop debug.oculus.foveation.level <0-4>", AndroidLogcatCommandCategory.Quest),
+            new AndroidLogcatCommandEntry("Quest: Set Refresh Rate", "adb shell setprop debug.oculus.refreshRate <72|90|120>", AndroidLogcatCommandCategory.Quest),
+
+            // --- AAB / Bundletool ---
+            // Note: non-adb commands resolve relative to the Editor's working directory, so
+            // bundletool.jar is a placeholder to be filled in with an absolute path.
+            new AndroidLogcatCommandEntry("bundletool: Build Split APKs", "java -jar <path-to-bundletool.jar> build-apks --bundle=<path.aab> --output=<output.apks> --connected-device", AndroidLogcatCommandCategory.Bundletool),
+            new AndroidLogcatCommandEntry("bundletool: Install APKs", "java -jar <path-to-bundletool.jar> install-apks --apks=<path.apks>", AndroidLogcatCommandCategory.Bundletool),
+            new AndroidLogcatCommandEntry("bundletool: Get Device Spec", "java -jar <path-to-bundletool.jar> get-device-spec --output=<device-spec.json>", AndroidLogcatCommandCategory.Bundletool),
+        };
+    }
+}

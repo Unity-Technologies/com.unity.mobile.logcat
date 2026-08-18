@@ -111,6 +111,16 @@ namespace Unity.Android.Logcat
         internal virtual void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
         internal virtual void KillProcess(string packageName, int processId, PosixSignal signal = PosixSignal.SIGNONE) { }
 
+        /// <summary>
+        /// Runs an arbitrary adb command against this device asynchronously.
+        /// The device is targeted with -s automatically unless the caller already specified one.
+        /// <paramref name="onComplete"/> is invoked on the main thread.
+        /// </summary>
+        internal virtual void RunAdbCommandAsync(AndroidLogcatDispatcher dispatcher, string arguments, Action<AndroidLogcatCommandResult> onComplete)
+        {
+            onComplete?.Invoke(AndroidLogcatCommandResult.CreateFailure(arguments, "No device selected."));
+        }
+
         internal bool SupportsFilteringByPid
         {
             get { return OSVersion >= kAndroidVersion70; }
@@ -469,6 +479,48 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args, $"Failed to uninstall package '{packageName}'");
+        }
+
+        /// <summary>
+        /// Runs an arbitrary adb command against this device on the dispatcher's worker thread, so a
+        /// slow or hanging command cannot block the Editor's main thread.
+        /// </summary>
+        internal override void RunAdbCommandAsync(AndroidLogcatDispatcher dispatcher, string arguments, Action<AndroidLogcatCommandResult> onComplete)
+        {
+            if (dispatcher == null)
+            {
+                onComplete?.Invoke(AndroidLogcatCommandResult.CreateFailure(arguments, "Dispatcher is not available."));
+                return;
+            }
+
+            // Target this device unless the caller already picked one explicitly.
+            var effectiveArgs = AndroidLogcatCommandParser.SpecifiesDevice(arguments)
+                ? arguments
+                : $"-s {Id} {arguments}";
+
+            dispatcher.Schedule(
+                new AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>()
+                {
+                    data1 = m_ADB,
+                    data2 = effectiveArgs,
+                    data3 = arguments
+                },
+                (input) =>
+                {
+                    var inputData = (AndroidLogcatTaskInput<AndroidBridge.ADB, string, string>)input;
+                    AndroidLogcatInternalLog.Log($"adb {inputData.data2}");
+                    try
+                    {
+                        var output = inputData.data1.Run(new[] { inputData.data2 }, $"Failed to run 'adb {inputData.data3}'");
+                        return AndroidLogcatCommandResult.CreateSuccess(inputData.data3, output);
+                    }
+                    catch (Exception ex)
+                    {
+                        return AndroidLogcatCommandResult.CreateFailure(inputData.data3, AndroidLogcatCommandResult.Unwrap(ex).Message);
+                    }
+                },
+                (result) => onComplete?.Invoke((AndroidLogcatCommandResult)result),
+                false);
         }
 
         internal override void KillProcess(int processId, PosixSignal signal = PosixSignal.SIGNONE)
