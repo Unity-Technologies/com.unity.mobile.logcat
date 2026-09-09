@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:VisualElement style="padding: 4px; flex-grow: 1;">
+        <ui:TextField name="SearchField" label="Search" />
+        <ui:VisualElement name="ChipsRow" style="flex-direction: row; flex-wrap: wrap; margin-top: 4px; margin-bottom: 4px;" />
+        <ui:HelpBox name="EmptyMessage" message-type="Info" text="Type a search term or click a chip to find commands." />
+        <ui:ScrollView name="ResultsScroll" style="flex-grow: 1;">
+            <ui:VisualElement name="ResultsContainer" />
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

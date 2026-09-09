@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:VisualElement style="padding: 8px; flex-grow: 1;">
+        <ui:TextField name="NameField" label="Name" style="margin-bottom: 4px;" />
+        <ui:VisualElement name="CategoryContainer" style="margin-bottom: 4px;" />
+        <ui:Label text="Commands" style="-unity-font-style: bold; margin-top: 4px;" />
+        <ui:Label text="Enter one command per line. All commands run sequentially." style="font-size: 10px; color: rgb(160, 160, 160);" />
+        <ui:TextField name="CommandField" multiline="true" style="flex-grow: 1; min-height: 80px; max-height: 200px; margin-top: 4px;" />
+        <ui:VisualElement style="flex-direction: row; justify-content: flex-end; margin-top: 8px;">
+            <ui:Button name="CancelButton" text="Cancel" style="width: 80px;" />
+            <ui:Button name="SaveButton" text="Add" style="width: 80px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
