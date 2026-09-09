@@ -2,7 +2,9 @@
     <ui:VisualElement style="padding: 8px; flex-grow: 1;">
         <ui:Label name="TitleLabel" text="Fill in the placeholder values:" style="-unity-font-style: bold;" />
         <ui:Label name="CommandPreview" style="white-space: normal; font-size: 10px; color: rgb(160, 160, 160); margin-top: 4px; margin-bottom: 8px;" />
-        <ui:VisualElement name="PlaceholderContainer" style="margin-top: 8px;" />
+        <ui:ScrollView name="PlaceholderScroll" style="flex-grow: 1; margin-top: 8px;">
+            <ui:VisualElement name="PlaceholderContainer" />
+        </ui:ScrollView>
         <ui:VisualElement style="flex-direction: row; justify-content: flex-end; margin-top: 8px;">
             <ui:Button name="CancelButton" text="Cancel" style="width: 80px;" />
             <ui:Button name="RunButton" text="Run" style="width: 80px;" />

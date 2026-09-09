@@ -4,12 +4,6 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
-    /// <summary>
-    /// Groups catalog commands so the search window can offer category filters.
-    /// Note: categories which duplicate functionality already provided by this package
-    /// (logcat streaming, input simulation, screen capture) are deliberately absent -
-    /// use the dedicated windows for those instead.
-    /// </summary>
     internal enum AndroidLogcatCommandCategory
     {
         Uncategorized = 0,
@@ -43,10 +37,6 @@ namespace Unity.Android.Logcat
             this.category = category;
         }
 
-        /// <summary>
-        /// An entry is only usable if it has both a name and a command. Entries deserialized from
-        /// user supplied JSON may be missing either, which would throw further down in the UI.
-        /// </summary>
         internal bool IsValid => !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(command);
 
         internal AndroidLogcatCommandEntry Clone() => new AndroidLogcatCommandEntry(name, command, category);
@@ -59,14 +49,8 @@ namespace Unity.Android.Logcat
         public AndroidLogcatCommandEntry[] general = Array.Empty<AndroidLogcatCommandEntry>();
     }
 
-    /// <summary>
-    /// Pure helpers for sanitizing imported command data. Kept free of UI so they can be unit tested.
-    /// </summary>
     internal static class AndroidLogcatCommandImport
     {
-        /// <summary>
-        /// Drops null and incomplete entries, trimming the survivors.
-        /// </summary>
         internal static List<AndroidLogcatCommandEntry> Sanitize(IEnumerable<AndroidLogcatCommandEntry> entries)
         {
             var result = new List<AndroidLogcatCommandEntry>();

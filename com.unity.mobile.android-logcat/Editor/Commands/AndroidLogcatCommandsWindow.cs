@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -24,12 +25,13 @@ namespace Unity.Android.Logcat
         List<AndroidLogcatCommandEntry> m_GeneralCommands = new List<AndroidLogcatCommandEntry>();
         readonly List<AndroidLogcatOutputLine> m_OutputLines = new List<AndroidLogcatOutputLine>();
 
-        // Commands from a single multiline entry run one after another; the queue holds what's left.
         readonly Queue<string> m_PendingCommands = new Queue<string>();
         bool m_IsRunning;
         bool m_CancelRequested;
 
         bool m_EditMode;
+
+        readonly HashSet<AndroidLogcatCommandEntry> m_Selected = new HashSet<AndroidLogcatCommandEntry>();
 
         VisualElement m_FavoritesContainer;
         VisualElement m_GeneralContainer;
@@ -38,15 +40,15 @@ namespace Unity.Android.Logcat
         Label m_RunningLabel;
         Button m_CancelButton;
 
-        VisualElement m_SelectedFavRow;
-        VisualElement m_SelectedGenRow;
+        VisualElement m_EditActionsBar;
+        Label m_SelectionCountLabel;
+        Button m_DeleteSelectedButton;
+        Button m_DeselectAllButton;
 
         const int kMaxOutputLines = 3000;
 
-        static readonly Color kCommandColor = new Color(0.6f, 0.6f, 0.6f);
         static readonly Color kAccentColor = new Color(0.4f, 0.8f, 0.4f);
         static readonly Color kErrorColor = new Color(0.9f, 0.3f, 0.3f);
-        static readonly Color kSelectedRowColor = new Color(0.3f, 0.5f, 0.8f, 0.3f);
 
         internal static void ShowWindow()
         {
@@ -76,7 +78,6 @@ namespace Unity.Android.Logcat
             if (!AndroidBridge.AndroidExtensionsInstalled || m_Runtime == null)
                 return;
 
-            // Don't leave the window latched in the running state if a command was still in flight.
             m_PendingCommands.Clear();
             m_CancelRequested = false;
             SetRunning(false);
@@ -88,12 +89,6 @@ namespace Unity.Android.Logcat
             m_Runtime = null;
         }
 
-        // --- UI Setup ---
-
-        /// <summary>
-        /// Shown instead of the normal UI when the Android module isn't available, so the window is
-        /// never just blank.
-        /// </summary>
         void LoadNotInstalledUI()
         {
             var r = rootVisualElement;
@@ -104,12 +99,8 @@ namespace Unity.Android.Logcat
         void LoadUI()
         {
             var r = rootVisualElement;
-            // Guard against OnEnable running twice on the same instance (e.g. re-docking), which
-            // would otherwise clone the tree a second time and leave Q() returning stale elements.
             r.Clear();
 
-            // The device selection popup is IMGUI-only, so the toolbar is hosted in an IMGUIContainer.
-            // Its height must be pinned, otherwise it claims flexible space and squashes the panes.
             var toolbar = new IMGUIContainer(DoToolbarGUI);
             toolbar.style.height = AndroidLogcatStyles.kFixedHeight;
             toolbar.style.flexShrink = 0;
@@ -126,11 +117,22 @@ namespace Unity.Android.Logcat
             m_RunningLabel = r.Q<Label>("RunningLabel");
             m_CancelButton = r.Q<Button>("CancelButton");
 
+            m_EditActionsBar = r.Q<VisualElement>("EditActionsBar");
+            m_SelectionCountLabel = r.Q<Label>("SelectionCountLabel");
+            m_DeleteSelectedButton = r.Q<Button>("DeleteSelectedButton");
+            m_DeselectAllButton = r.Q<Button>("DeselectAllButton");
+
+            m_DeleteSelectedButton.clicked += OnDeleteSelected;
+            m_DeselectAllButton.clicked += () =>
+            {
+                m_Selected.Clear();
+                RebuildLists();
+            };
+
             r.Q<Button>("ClearButton").clicked += ClearOutput;
             r.Q<Button>("CopyAllButton").clicked += CopyAllOutput;
             m_CancelButton.clicked += () => m_CancelRequested = true;
 
-            // Right click anywhere in the output for copy actions.
             m_OutputContainer.AddManipulator(new ContextualMenuManipulator(evt =>
             {
                 evt.menu.AppendAction("Copy All", _ => CopyAllOutput(),
@@ -142,12 +144,8 @@ namespace Unity.Android.Logcat
             RebuildLists();
         }
 
-        // --- Toolbar (IMGUI - contains DeviceSelection which is IMGUI-only) ---
-
         void DoToolbarGUI()
         {
-            // Use the package's own styles so the buttons line up with the device selection popup,
-            // which is drawn with AndroidLogcatStyles.
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
 
             if (m_DeviceSelection != null)
@@ -160,6 +158,7 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(m_EditMode ? "Edit Mode: ON" : "Edit Mode: OFF", AndroidLogcatStyles.toolbarButton))
             {
                 m_EditMode = !m_EditMode;
+                m_Selected.Clear();
                 RebuildLists();
             }
 
@@ -176,12 +175,29 @@ namespace Unity.Android.Logcat
             EditorGUILayout.EndHorizontal();
         }
 
-        // --- Command Lists ---
-
         void RebuildLists()
         {
+            m_Selected.RemoveWhere(e => !m_Favorites.Contains(e) && !m_GeneralCommands.Contains(e));
+
             RebuildCommandList(m_FavoritesContainer, m_Favorites, true, "No favorites. Use Edit Mode to move commands here.");
             RebuildCommandList(m_GeneralContainer, m_GeneralCommands, false, "No commands. Click 'Add Command' or 'Search Catalog'.");
+            UpdateEditActionsBar();
+        }
+
+        void UpdateEditActionsBar()
+        {
+            if (m_EditActionsBar == null)
+                return;
+
+            m_EditActionsBar.style.display = m_EditMode ? DisplayStyle.Flex : DisplayStyle.None;
+
+            var count = m_Selected.Count;
+            m_SelectionCountLabel.text = count == 0
+                ? "Select commands to delete several at once"
+                : count == 1 ? "1 selected" : $"{count} selected";
+
+            m_DeleteSelectedButton.SetEnabled(count > 0);
+            m_DeselectAllButton.SetEnabled(count > 0);
         }
 
         void RebuildCommandList(VisualElement container, List<AndroidLogcatCommandEntry> list, bool isFavorites, string emptyMessage)
@@ -190,10 +206,6 @@ namespace Unity.Android.Logcat
                 return;
 
             container.Clear();
-            if (isFavorites)
-                m_SelectedFavRow = null;
-            else
-                m_SelectedGenRow = null;
 
             if (list.Count == 0)
             {
@@ -211,69 +223,74 @@ namespace Unity.Android.Logcat
                 container.Add(CreateCommandRow(list[i], list, i, isFavorites));
         }
 
-        void SetSelectedRow(VisualElement row, bool isFavorites)
-        {
-            var previous = isFavorites ? m_SelectedFavRow : m_SelectedGenRow;
-            if (previous != null)
-                previous.style.backgroundColor = StyleKeyword.Null;
-
-            if (isFavorites)
-                m_SelectedFavRow = row;
-            else
-                m_SelectedGenRow = row;
-
-            row.style.backgroundColor = new StyleColor(kSelectedRowColor);
-        }
-
         VisualElement CreateCommandRow(AndroidLogcatCommandEntry entry, List<AndroidLogcatCommandEntry> list, int index, bool isFavorites)
         {
-            var row = CreateStyledRow(22);
+            var row = AndroidLogcatCommandUI.CreateRow();
 
-            row.RegisterCallback<MouseDownEvent>(_ => SetSelectedRow(row, isFavorites));
+            if (m_EditMode)
+            {
+                var toggle = new Toggle { value = m_Selected.Contains(entry) };
+                toggle.style.flexShrink = 0;
+                toggle.style.marginRight = 2;
+                toggle.style.marginTop = 0;
+                toggle.style.marginBottom = 0;
+                toggle.RegisterValueChangedCallback(evt => SetSelected(entry, evt.newValue, row));
+                row.Add(toggle);
 
-            var nameLabel = new Label(entry.name);
-            nameLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-            nameLabel.style.width = 180;
-            nameLabel.style.minWidth = 180;
-            row.Add(nameLabel);
+                row.RegisterCallback<MouseDownEvent>(evt =>
+                {
+                    if (evt.button != (int)MouseButton.LeftMouse)
+                        return;
 
-            // Collapse multiline commands into a single line preview.
+                    var target = evt.target as VisualElement;
+                    if (target == null)
+                        return;
+
+                    if (target == toggle || toggle.Contains(target) ||
+                        target is Button || target.GetFirstAncestorOfType<Button>() != null)
+                        return;
+
+                    toggle.value = !toggle.value;
+                });
+
+                ApplySelectionStyle(row, m_Selected.Contains(entry));
+            }
+
+            row.Add(AndroidLogcatCommandUI.CreateNameLabel(entry.name));
+
             var cmdLines = AndroidLogcatCommandParser.SplitLines(entry.command);
             var cmdDisplay = cmdLines.Count == 0
                 ? string.Empty
                 : cmdLines.Count > 1 ? $"{cmdLines[0]} (+{cmdLines.Count - 1} more)" : cmdLines[0];
 
-            var cmdLabel = new Label(cmdDisplay);
-            cmdLabel.style.color = new StyleColor(kCommandColor);
-            cmdLabel.style.flexGrow = 1;
-            cmdLabel.style.overflow = Overflow.Hidden;
-            cmdLabel.tooltip = entry.command;
+            var cmdLabel = AndroidLogcatCommandUI.CreateCommandLabel(cmdDisplay);
+            AndroidLogcatCommandUI.SetPointerTooltip(cmdLabel, entry.command);
             row.Add(cmdLabel);
 
             if (m_EditMode)
             {
-                AddRowButton(row, "▲", 22, () =>
+                AndroidLogcatCommandUI.AddRowButton(row, "▲", 22, () =>
                 {
                     list.RemoveAt(index);
                     list.Insert(index - 1, entry);
                     SaveAndRebuild();
-                }, index > 0);
+                }, index > 0, "Move up");
 
-                AddRowButton(row, "▼", 22, () =>
+                AndroidLogcatCommandUI.AddRowButton(row, "▼", 22, () =>
                 {
                     list.RemoveAt(index);
                     list.Insert(index + 1, entry);
                     SaveAndRebuild();
-                }, index < list.Count - 1);
+                }, index < list.Count - 1, "Move down");
 
-                AddRowButton(row, isFavorites ? "Unfav" : "Fav", 40, () =>
+                AndroidLogcatCommandUI.AddRowButton(row, isFavorites ? "Unfav" : "Fav", 40, () =>
                 {
                     if (isFavorites) { m_Favorites.Remove(entry); m_GeneralCommands.Add(entry); }
                     else { m_GeneralCommands.Remove(entry); m_Favorites.Add(entry); }
                     SaveAndRebuild();
                 });
 
-                AddRowButton(row, "Edit", 35, () =>
+                AndroidLogcatCommandUI.AddRowButton(row, "Edit", 35, () =>
                 {
                     AndroidLogcatAddCommandDialog.Show(updated =>
                     {
@@ -285,19 +302,56 @@ namespace Unity.Android.Logcat
                         SaveAndRebuild();
                     }, entry);
                 });
-
-                AddRowButton(row, "Del", 30, () =>
-                {
-                    if (EditorUtility.DisplayDialog("Delete Command", $"Delete \"{entry.name}\"?", "Delete", "Cancel"))
-                    {
-                        list.Remove(entry);
-                        SaveAndRebuild();
-                    }
-                });
+            }
+            else
+            {
+                AndroidLogcatCommandUI.AddRowButton(row, "Run", 35, () => RunCommand(entry));
             }
 
-            AddRowButton(row, "Run", 35, () => RunCommand(entry));
             return row;
+        }
+
+        void SetSelected(AndroidLogcatCommandEntry entry, bool selected, VisualElement row)
+        {
+            if (selected)
+                m_Selected.Add(entry);
+            else
+                m_Selected.Remove(entry);
+
+            ApplySelectionStyle(row, selected);
+            UpdateEditActionsBar();
+        }
+
+        static void ApplySelectionStyle(VisualElement row, bool selected)
+        {
+            row.style.backgroundColor = selected
+                ? new StyleColor(AndroidLogcatCommandUI.kSelectedRowColor)
+                : StyleKeyword.Null;
+        }
+
+        void OnDeleteSelected()
+        {
+            if (m_Selected.Count == 0)
+                return;
+
+            var names = m_Selected.Where(e => e != null).Select(e => e.name).ToList();
+            const int kMaxNamesShown = 10;
+            var preview = string.Join("\n", names.Take(kMaxNamesShown).Select(n => $"  • {n}"));
+            if (names.Count > kMaxNamesShown)
+                preview += $"\n  … and {names.Count - kMaxNamesShown} more";
+
+            var title = names.Count == 1 ? "Delete Command" : "Delete Commands";
+            var message = names.Count == 1
+                ? $"Delete \"{names[0]}\"?"
+                : $"Delete these {names.Count} commands?\n\n{preview}";
+
+            if (!EditorUtility.DisplayDialog(title, message, "Delete", "Cancel"))
+                return;
+
+            m_Favorites.RemoveAll(e => m_Selected.Contains(e));
+            m_GeneralCommands.RemoveAll(e => m_Selected.Contains(e));
+            m_Selected.Clear();
+            SaveAndRebuild();
         }
 
         void SaveAndRebuild()
@@ -305,34 +359,6 @@ namespace Unity.Android.Logcat
             SaveCommands();
             RebuildLists();
         }
-
-        // --- Row Helpers ---
-
-        static VisualElement CreateStyledRow(int height = 0)
-        {
-            var row = new VisualElement();
-            row.style.flexDirection = FlexDirection.Row;
-            row.style.alignItems = Align.Center;
-            row.style.paddingLeft = 4;
-            row.style.paddingRight = 4;
-            row.style.paddingTop = 2;
-            row.style.paddingBottom = 2;
-            row.style.borderBottomWidth = 1;
-            row.style.borderBottomColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
-            if (height > 0)
-                row.style.height = height;
-            return row;
-        }
-
-        static void AddRowButton(VisualElement row, string text, int width, Action action, bool enabled = true)
-        {
-            var btn = new Button(action) { text = text };
-            btn.style.width = width;
-            btn.SetEnabled(enabled);
-            row.Add(btn);
-        }
-
-        // --- Output ---
 
         void ClearOutput()
         {
@@ -353,7 +379,6 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(text))
                 return;
 
-            // Strips '\r' and splits on '\n' - see SplitOutputLines for why adb's "\r\r\n" matters.
             foreach (var line in AndroidLogcatCommandParser.SplitOutputLines(text))
             {
                 m_OutputLines.Add(new AndroidLogcatOutputLine(line, color));
@@ -379,13 +404,11 @@ namespace Unity.Android.Logcat
             label.style.color = new StyleColor(color);
             label.style.whiteSpace = WhiteSpace.Normal;
 
-            // Keep lines compact - the default Label margins would space the output out noticeably.
             label.style.marginTop = 0;
             label.style.marginBottom = 0;
             label.style.paddingTop = 0;
             label.style.paddingBottom = 0;
 
-            // Allow the user to select and copy output text.
             label.selection.isSelectable = true;
             label.selection.doubleClickSelectsWord = true;
             return label;
@@ -400,8 +423,6 @@ namespace Unity.Android.Logcat
                 .StartingIn(10);
         }
 
-        // --- Command Execution ---
-
         void RunCommand(AndroidLogcatCommandEntry entry)
         {
             if (m_IsRunning)
@@ -413,17 +434,11 @@ namespace Unity.Android.Logcat
             AndroidLogcatPlaceholderDialog.Show(entry.command, ExecuteCommand);
         }
 
-        /// <summary>
-        /// Queues each line of the command and starts draining the queue. Execution happens on the
-        /// dispatcher's worker thread so the Editor stays responsive.
-        /// </summary>
         void ExecuteCommand(string resolvedCommand)
         {
             if (m_Runtime == null)
                 return;
 
-            // Re-check here as well as in RunCommand: the placeholder dialog is modeless, so another
-            // batch may have started while it was open.
             if (m_IsRunning)
             {
                 AppendOutput("[Error] A command is already running.", kErrorColor);
@@ -446,7 +461,6 @@ namespace Unity.Android.Logcat
         {
             if (m_CancelRequested)
             {
-                // Only report a cancellation if something was actually skipped.
                 if (m_PendingCommands.Count > 0)
                 {
                     AppendOutput("[Cancelled] Remaining commands were skipped.", kErrorColor);
@@ -487,7 +501,6 @@ namespace Unity.Android.Logcat
 
         void OnCommandCompleted(AndroidLogcatCommandResult result)
         {
-            // The window may have been closed while the command was in flight.
             if (m_Runtime == null)
                 return;
 
@@ -515,8 +528,6 @@ namespace Unity.Android.Logcat
             if (m_CancelButton != null)
                 m_CancelButton.style.display = running ? DisplayStyle.Flex : DisplayStyle.None;
         }
-
-        // --- Add / Import / Export ---
 
         void OnAddCommand()
         {
@@ -594,7 +605,6 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            // Drop null/incomplete entries so they can't throw later in the UI.
             var favorites = AndroidLogcatCommandImport.Sanitize(data.favorites);
             var general = AndroidLogcatCommandImport.Sanitize(data.general);
 
@@ -608,18 +618,15 @@ namespace Unity.Android.Logcat
             if (!EditorUtility.DisplayDialog("Import Commands", "This will replace all your current commands. Continue?", "Import", "Cancel"))
                 return;
 
-            // Mutate in place rather than reassigning: an open Search window holds references to
-            // these lists, and would otherwise keep showing the pre-import contents.
             m_Favorites.Clear();
             m_Favorites.AddRange(favorites);
             m_GeneralCommands.Clear();
             m_GeneralCommands.AddRange(general);
+            m_Selected.Clear();
 
             SaveAndRebuild();
             AndroidLogcatInternalLog.Log($"Commands imported from {path}");
         }
-
-        // --- Persistence ---
 
         void LoadCommands()
         {

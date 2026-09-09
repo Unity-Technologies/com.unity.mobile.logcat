@@ -137,10 +137,6 @@ class AndroidLogcatCommandParserTests
         Assert.AreEqual(0, AndroidLogcatCommandParser.SplitLines("   ").Count);
     }
 
-    /// <summary>
-    /// adb on Windows emits "\r\r\n" for shell output. Splitting on '\r' would produce two empty
-    /// lines per real line, which rendered as visibly double spaced output in the Editor.
-    /// </summary>
     [Test]
     public void SplitOutputLines_HandlesAdbDoubleCarriageReturn()
     {
@@ -148,7 +144,6 @@ class AndroidLogcatCommandParserTests
 
         var result = AndroidLogcatCommandParser.SplitOutputLines(adbOutput);
 
-        // Trailing newline yields one final empty entry; the real lines must not be padded.
         Assert.AreEqual(3, result.Length);
         Assert.AreEqual("package:com.google.android.euicc", result[0]);
         Assert.AreEqual("package:com.android.dynsystem", result[1]);
@@ -168,7 +163,6 @@ class AndroidLogcatCommandParserTests
     [Test]
     public void SplitOutputLines_PreservesIntentionalBlankLines()
     {
-        // dumpsys and similar tools use blank lines as section separators.
         var result = AndroidLogcatCommandParser.SplitOutputLines("section one\n\nsection two");
 
         Assert.AreEqual(new[] { "section one", "", "section two" }, result);
@@ -177,7 +171,6 @@ class AndroidLogcatCommandParserTests
     [Test]
     public void SplitOutputLines_LoneCarriageReturnsDoNotCreateBlankLines()
     {
-        // Old Mac style endings are rare, but must not silently join or double up.
         Assert.AreEqual(new[] { "ab" }, AndroidLogcatCommandParser.SplitOutputLines("a\rb"));
     }
 
@@ -220,7 +213,6 @@ class AndroidLogcatCommandParserTests
     [Test]
     public void SpecifiesDevice_IgnoresSerialFlagAfterSubcommand()
     {
-        // Here '-s' is an argument to logcat, not adb's device selector.
         Assert.IsFalse(AndroidLogcatCommandParser.SpecifiesDevice("shell dumpsys -s foo"));
     }
 
@@ -348,6 +340,33 @@ class AndroidLogcatCommandMatcherTests
     }
 
     [Test]
+    public void MatchesUserCommand_AppliesCategoryFilterToCategorizedEntries()
+    {
+        var entry = new AndroidLogcatCommandEntry("Grant Permission", "adb shell pm grant", AndroidLogcatCommandCategory.Permissions);
+
+        Assert.IsTrue(AndroidLogcatCommandMatcher.MatchesUserCommand(entry, AndroidLogcatCommandCategory.Permissions, ""));
+        Assert.IsFalse(AndroidLogcatCommandMatcher.MatchesUserCommand(entry, AndroidLogcatCommandCategory.Quest, ""));
+    }
+
+    [Test]
+    public void MatchesUserCommand_UncategorizedEntryIsNeverHiddenByACategoryFilter()
+    {
+        var entry = new AndroidLogcatCommandEntry("My Command", "adb shell whoami");
+
+        Assert.AreEqual(AndroidLogcatCommandCategory.Uncategorized, entry.category);
+        Assert.IsTrue(AndroidLogcatCommandMatcher.MatchesUserCommand(entry, AndroidLogcatCommandCategory.Quest, ""));
+        Assert.IsTrue(AndroidLogcatCommandMatcher.MatchesUserCommand(entry, AndroidLogcatCommandCategory.Packages, "whoami"));
+        Assert.IsFalse(AndroidLogcatCommandMatcher.MatchesUserCommand(entry, AndroidLogcatCommandCategory.Packages, "logcat"),
+            "The search term still applies");
+    }
+
+    [Test]
+    public void MatchesUserCommand_NullEntryDoesNotThrow()
+    {
+        Assert.IsFalse(AndroidLogcatCommandMatcher.MatchesUserCommand(null, null, "anything"));
+    }
+
+    [Test]
     public void GetCategoryDisplayName_ReturnsNonEmptyForEveryCategory()
     {
         foreach (AndroidLogcatCommandCategory category in System.Enum.GetValues(typeof(AndroidLogcatCommandCategory)))
@@ -468,10 +487,6 @@ class AndroidLogcatCommandCatalogTests
                 $"Catalog entry '{entry.name}' is uncategorized, so it would not appear under any filter chip");
     }
 
-    /// <summary>
-    /// The catalog must not duplicate functionality the package already provides as a dedicated
-    /// feature. See the scope note on AndroidLogcatAdbCommandCatalog.
-    /// </summary>
     [Test]
     public void Catalog_DoesNotDuplicateExistingPackageFeatures()
     {
@@ -515,5 +530,104 @@ class AndroidLogcatCommandCatalogTests
             Assert.IsNotEmpty(
                 AndroidLogcatAdbCommandCatalog.All.Where(e => e.category == category).ToArray(),
                 $"Category {category} is offered as a chip but has no entries");
+    }
+}
+
+class AndroidLogcatCommandPlaceholderHintsTests
+{
+    [Test]
+    public void Get_ReturnsHintForKnownToken()
+    {
+        var hint = AndroidLogcatCommandPlaceholderHints.Get("permission");
+
+        Assert.IsNotNull(hint);
+        Assert.AreEqual("android.permission.CAMERA", hint.Example);
+        Assert.IsNotEmpty(hint.Description);
+    }
+
+    [Test]
+    public void Get_IsCaseInsensitive()
+    {
+        Assert.IsNotNull(AndroidLogcatCommandPlaceholderHints.Get("PERMISSION"));
+        Assert.AreEqual(
+            AndroidLogcatCommandPlaceholderHints.GetExample("package"),
+            AndroidLogcatCommandPlaceholderHints.GetExample("Package"));
+    }
+
+    [Test]
+    public void Get_UnknownOrEmptyTokenReturnsNull()
+    {
+        Assert.IsNull(AndroidLogcatCommandPlaceholderHints.Get("no-such-token"));
+        Assert.IsNull(AndroidLogcatCommandPlaceholderHints.Get(""));
+        Assert.IsNull(AndroidLogcatCommandPlaceholderHints.Get(null));
+    }
+
+    [Test]
+    public void Accessors_NeverReturnNull()
+    {
+        Assert.IsNotNull(AndroidLogcatCommandPlaceholderHints.GetExample("no-such-token"));
+        Assert.IsNotNull(AndroidLogcatCommandPlaceholderHints.GetDescription(null));
+        Assert.IsNotNull(AndroidLogcatCommandPlaceholderHints.GetSuggestions("no-such-token"));
+        Assert.IsEmpty(AndroidLogcatCommandPlaceholderHints.GetSuggestions("no-such-token"));
+    }
+
+    [Test]
+    public void Suggestions_AreOfferedForEnumerableTokens()
+    {
+        Assert.IsNotEmpty(AndroidLogcatCommandPlaceholderHints.GetSuggestions("permission"));
+        Assert.AreEqual(5, AndroidLogcatCommandPlaceholderHints.GetSuggestions("0-4").Length);
+        Assert.AreEqual(
+            new[] { "72", "90", "120" },
+            AndroidLogcatCommandPlaceholderHints.GetSuggestions("72|90|120"));
+    }
+
+    [Test]
+    public void Suggestions_AreNotOfferedForFreeFormTokens()
+    {
+        Assert.IsEmpty(AndroidLogcatCommandPlaceholderHints.GetSuggestions("package"));
+        Assert.IsEmpty(AndroidLogcatCommandPlaceholderHints.GetSuggestions("remote"));
+    }
+
+    [Test]
+    public void CommonPermissions_AreFullyQualified()
+    {
+        foreach (var permission in AndroidLogcatCommandPlaceholderHints.CommonPermissions)
+            Assert.IsTrue(permission.Contains("."),
+                $"'{permission}' is not a fully qualified permission name");
+    }
+
+    [Test]
+    public void EveryCatalogPlaceholderTokenHasAHint()
+    {
+        var missing = new List<string>();
+
+        foreach (var entry in AndroidLogcatAdbCommandCatalog.All)
+        {
+            foreach (var placeholder in AndroidLogcatCommandPlaceholders.Parse(entry.command))
+            {
+                if (AndroidLogcatCommandPlaceholderHints.Get(placeholder.Token) == null)
+                    missing.Add($"<{placeholder.Token}> (in '{entry.name}')");
+            }
+        }
+
+        Assert.IsEmpty(missing,
+            "Catalog placeholders without a hint: " + string.Join(", ", missing.Distinct()));
+    }
+
+    [Test]
+    public void EveryCatalogHintHasAnExampleAndADescription()
+    {
+        foreach (var entry in AndroidLogcatAdbCommandCatalog.All)
+        {
+            foreach (var placeholder in AndroidLogcatCommandPlaceholders.Parse(entry.command))
+            {
+                var hint = AndroidLogcatCommandPlaceholderHints.Get(placeholder.Token);
+                if (hint == null)
+                    continue;
+
+                Assert.IsNotEmpty(hint.Example, $"<{placeholder.Token}> has no example value");
+                Assert.IsNotEmpty(hint.Description, $"<{placeholder.Token}> has no description");
+            }
+        }
     }
 }

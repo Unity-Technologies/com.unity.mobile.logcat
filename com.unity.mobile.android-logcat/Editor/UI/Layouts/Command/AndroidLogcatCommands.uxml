@@ -1,6 +1,11 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
     <ui:TwoPaneSplitView name="MainSplit" orientation="Vertical" fixed-pane-index="1" fixed-pane-initial-dimension="150" style="flex-grow: 1;">
         <ui:VisualElement name="ListsPane" style="flex-grow: 1;">
+            <ui:VisualElement name="EditActionsBar" style="flex-direction: row; align-items: center; flex-shrink: 0; height: 22px; padding-left: 4px; padding-right: 4px; background-color: rgba(0, 0, 0, 0.1); display: none;">
+                <ui:Label name="SelectionCountLabel" text="Nothing selected" style="font-size: 10px; height: 18px; margin: 0; -unity-text-align: middle-left; flex-grow: 1;" />
+                <ui:Button name="DeleteSelectedButton" text="Delete Selected" style="height: 18px; margin-top: 0; margin-bottom: 0; flex-shrink: 0;" />
+                <ui:Button name="DeselectAllButton" text="Deselect All" style="height: 18px; margin-top: 0; margin-bottom: 0; flex-shrink: 0;" />
+            </ui:VisualElement>
             <ui:Label name="FavoritesHeader" text="Favorites" style="-unity-font-style: bold; margin-left: 4px; margin-top: 4px;" />
             <ui:ScrollView name="FavoritesScroll" style="min-height: 26px; max-height: 40%;">
                 <ui:VisualElement name="FavoritesContainer" />

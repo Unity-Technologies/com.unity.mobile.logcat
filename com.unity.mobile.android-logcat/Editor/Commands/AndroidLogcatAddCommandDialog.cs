@@ -8,13 +8,11 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatAddCommandDialog : EditorWindow
     {
-        // Serialized so the dialog survives a domain reload with its contents intact.
         [SerializeField] string m_Name = "";
         [SerializeField] string m_Command = "";
         [SerializeField] AndroidLogcatCommandCategory m_Category = AndroidLogcatCommandCategory.Uncategorized;
         [SerializeField] bool m_IsEdit;
 
-        // The callback cannot be serialized, so close rather than present a dialog whose Save does nothing.
         Action<AndroidLogcatCommandEntry> m_OnSave;
 
         void OnEnable()
@@ -27,10 +25,6 @@ namespace Unity.Android.Logcat
             AssemblyReloadEvents.beforeAssemblyReload -= Close;
         }
 
-        /// <summary>
-        /// Opens the dialog. When <paramref name="existing"/> is supplied the fields are prefilled with
-        /// its values and the dialog acts as an editor for that entry.
-        /// </summary>
         internal static void Show(Action<AndroidLogcatCommandEntry> onSave, AndroidLogcatCommandEntry existing = null)
         {
             var wnd = CreateInstance<AndroidLogcatAddCommandDialog>();
@@ -47,9 +41,6 @@ namespace Unity.Android.Logcat
                 wnd.m_IsEdit = true;
             }
 
-            // Note: the UI is built in CreateGUI, which runs after this point, so the assignments
-            // above are guaranteed to be visible to it. Building the UI in OnEnable would run before
-            // CreateInstance returns and leave the fields blank.
             wnd.ShowUtility();
         }
 
@@ -69,7 +60,6 @@ namespace Unity.Android.Logcat
             commandField.value = m_Command;
             commandField.RegisterValueChangedCallback(evt => m_Command = evt.newValue);
 
-            // A category lets the command show up under the matching filter chip in the search window.
             var categoryField = new EnumField("Category", m_Category);
             categoryField.RegisterValueChangedCallback(evt => m_Category = (AndroidLogcatCommandCategory)evt.newValue);
             r.Q<VisualElement>("CategoryContainer").Add(categoryField);
@@ -80,8 +70,6 @@ namespace Unity.Android.Logcat
 
             r.Q<Button>("CancelButton").clicked += Close;
 
-            // Focus the first field so the dialog is usable straight from the keyboard.
-            // Scheduled because focusing before the first layout pass is unreliable.
             nameField.schedule.Execute(() => nameField.Focus());
         }
 

@@ -2,16 +2,8 @@ using System;
 
 namespace Unity.Android.Logcat
 {
-    /// <summary>
-    /// Search matching for command entries. Deliberately free of any UI dependency so the behaviour
-    /// can be unit tested, and null safe because entries may originate from user supplied JSON.
-    /// </summary>
     internal static class AndroidLogcatCommandMatcher
     {
-        /// <summary>
-        /// Case insensitive substring match against the entry name and command.
-        /// An empty search term matches everything; a null entry matches nothing.
-        /// </summary>
         internal static bool Matches(AndroidLogcatCommandEntry entry, string searchTerm)
         {
             if (entry == null)
@@ -24,16 +16,25 @@ namespace Unity.Android.Logcat
             return Contains(entry.name, term) || Contains(entry.command, term);
         }
 
-        /// <summary>
-        /// Matches an entry against both a category filter and a search term.
-        /// Pass null for <paramref name="category"/> to skip category filtering.
-        /// </summary>
         internal static bool Matches(AndroidLogcatCommandEntry entry, AndroidLogcatCommandCategory? category, string searchTerm)
         {
             if (entry == null)
                 return false;
 
             if (category.HasValue && entry.category != category.Value)
+                return false;
+
+            return Matches(entry, searchTerm);
+        }
+
+        internal static bool MatchesUserCommand(AndroidLogcatCommandEntry entry, AndroidLogcatCommandCategory? category, string searchTerm)
+        {
+            if (entry == null)
+                return false;
+
+            if (category.HasValue &&
+                entry.category != AndroidLogcatCommandCategory.Uncategorized &&
+                entry.category != category.Value)
                 return false;
 
             return Matches(entry, searchTerm);
@@ -46,9 +47,6 @@ namespace Unity.Android.Logcat
             return haystack.IndexOf(needle, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        /// <summary>
-        /// Human readable label for a category, used for the filter chips.
-        /// </summary>
         internal static string GetCategoryDisplayName(AndroidLogcatCommandCategory category)
         {
             switch (category)

@@ -3,9 +3,6 @@ using System.Reflection;
 
 namespace Unity.Android.Logcat
 {
-    /// <summary>
-    /// Outcome of running a single command, passed back to the main thread by the dispatcher.
-    /// </summary>
     internal class AndroidLogcatCommandResult : IAndroidLogcatTaskResult
     {
         internal string Command { get; private set; }
@@ -31,10 +28,6 @@ namespace Unity.Android.Logcat
             return new AndroidLogcatCommandResult(command, null, string.IsNullOrEmpty(error) ? "Unknown error." : error);
         }
 
-        /// <summary>
-        /// ADB is invoked through reflection, so a failure surfaces as a TargetInvocationException
-        /// whose message says nothing useful. Unwrap it to recover adb's actual error.
-        /// </summary>
         internal static Exception Unwrap(Exception ex)
         {
             while (ex is TargetInvocationException && ex.InnerException != null)
@@ -43,15 +36,8 @@ namespace Unity.Android.Logcat
         }
     }
 
-    /// <summary>
-    /// Runs non-adb commands (for example bundletool) on the dispatcher's worker thread.
-    /// adb commands go through <see cref="IAndroidLogcatDevice.RunAdbCommandAsync"/> instead.
-    /// </summary>
     internal static class AndroidLogcatHostCommand
     {
-        /// <summary>
-        /// Commands entered by the user may never exit on their own, so they are always bounded.
-        /// </summary>
         internal const int kTimeoutMs = 60 * 1000;
 
         internal static void RunAsync(AndroidLogcatDispatcher dispatcher, string command, Action<AndroidLogcatCommandResult> onComplete)
@@ -94,7 +80,6 @@ namespace Unity.Android.Logcat
                         if (!string.IsNullOrEmpty(error) && shellResult.GetExitCode() != 0)
                             return AndroidLogcatCommandResult.CreateFailure(inputData.data3, error);
 
-                        // Non-zero stderr with a zero exit code is usually warnings, keep it in the output.
                         if (!string.IsNullOrEmpty(error))
                             output = string.IsNullOrEmpty(output) ? error : output + "\n" + error;
 

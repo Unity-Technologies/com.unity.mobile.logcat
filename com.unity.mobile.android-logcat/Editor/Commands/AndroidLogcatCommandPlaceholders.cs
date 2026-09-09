@@ -4,10 +4,6 @@ using System.Text.RegularExpressions;
 
 namespace Unity.Android.Logcat
 {
-    /// <summary>
-    /// Parsing and substitution of &lt;placeholder&gt; tokens inside command strings.
-    /// Deliberately free of any UI dependency so the behaviour can be unit tested.
-    /// </summary>
     internal static class AndroidLogcatCommandPlaceholders
     {
         internal static readonly Regex PlaceholderRegex = new Regex(@"<([^<>]+)>", RegexOptions.Compiled);
@@ -29,10 +25,6 @@ namespace Unity.Android.Logcat
             return !string.IsNullOrEmpty(command) && PlaceholderRegex.IsMatch(command);
         }
 
-        /// <summary>
-        /// Returns the distinct placeholder tokens in the order they appear.
-        /// Tokens are compared case insensitively, so "&lt;Package&gt;" and "&lt;package&gt;" collapse into one entry.
-        /// </summary>
         internal static List<Placeholder> Parse(string command, Func<string, string> defaultValueProvider = null)
         {
             var result = new List<Placeholder>();
@@ -52,10 +44,6 @@ namespace Unity.Android.Logcat
             return result;
         }
 
-        /// <summary>
-        /// Replaces every occurrence of each token with its value. Tokens with no supplied value are
-        /// left untouched so the user can still see what was unresolved.
-        /// </summary>
         internal static string Resolve(string command, IEnumerable<Placeholder> placeholders)
         {
             if (string.IsNullOrEmpty(command))

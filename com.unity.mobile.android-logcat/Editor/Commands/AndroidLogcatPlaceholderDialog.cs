@@ -6,18 +6,12 @@ using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
-    /// <summary>
-    /// Prompts the user to fill in &lt;placeholder&gt; tokens before a command is run.
-    /// The parsing and substitution logic lives in <see cref="AndroidLogcatCommandPlaceholders"/>.
-    /// </summary>
     internal class AndroidLogcatPlaceholderDialog : EditorWindow
     {
         string m_OriginalCommand;
         Action<string> m_OnConfirm;
         List<AndroidLogcatCommandPlaceholders.Placeholder> m_Placeholders = new List<AndroidLogcatCommandPlaceholders.Placeholder>();
 
-        // Neither the callback nor the placeholder list survive a domain reload, so rather than
-        // leave a dialog whose Run button silently does nothing, close it.
         void OnEnable()
         {
             AssemblyReloadEvents.beforeAssemblyReload += Close;
@@ -28,10 +22,6 @@ namespace Unity.Android.Logcat
             AssemblyReloadEvents.beforeAssemblyReload -= Close;
         }
 
-        /// <summary>
-        /// Shows the dialog if <paramref name="command"/> contains placeholders, otherwise invokes
-        /// <paramref name="onConfirm"/> immediately with the unchanged command.
-        /// </summary>
         internal static void Show(string command, Action<string> onConfirm)
         {
             if (!AndroidLogcatCommandPlaceholders.HasPlaceholders(command))
@@ -45,22 +35,18 @@ namespace Unity.Android.Logcat
             wnd.m_OriginalCommand = command;
             wnd.m_OnConfirm = onConfirm;
             wnd.m_Placeholders = AndroidLogcatCommandPlaceholders.Parse(command, GetDefaultValue);
-            wnd.minSize = new Vector2(400, 150);
-            wnd.maxSize = new Vector2(600, 400);
+            wnd.minSize = new Vector2(440, 200);
+            wnd.maxSize = new Vector2(700, 520);
 
-            // Note: the UI is built in CreateGUI, which runs after this point, so the assignments
-            // above are guaranteed to be visible to it. Building the UI in OnEnable would run before
-            // CreateInstance returns and render an empty dialog.
             wnd.ShowUtility();
         }
 
-        /// <summary>
-        /// Prefills tokens we can infer from the project.
-        /// </summary>
         static string GetDefaultValue(string token)
         {
             if (token.Equals("package", StringComparison.OrdinalIgnoreCase))
                 return PlayerSettings.applicationIdentifier;
+            if (token.Equals("package/activity", StringComparison.OrdinalIgnoreCase))
+                return $"{PlayerSettings.applicationIdentifier}/com.unity3d.player.UnityPlayerActivity";
             return string.Empty;
         }
 
@@ -80,10 +66,30 @@ namespace Unity.Android.Logcat
             foreach (var placeholder in m_Placeholders)
             {
                 var ph = placeholder;
+                var description = AndroidLogcatCommandPlaceholderHints.GetDescription(ph.Token);
+                var example = AndroidLogcatCommandPlaceholderHints.GetExample(ph.Token);
+                var suggestions = AndroidLogcatCommandPlaceholderHints.GetSuggestions(ph.Token);
+
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center;
+
                 var tf = new TextField($"<{ph.Token}>");
                 tf.value = ph.Value;
+                tf.style.flexGrow = 1;
+                tf.style.minWidth = 0;
                 tf.RegisterValueChangedCallback(evt => ph.Value = evt.newValue);
-                container.Add(tf);
+                if (!string.IsNullOrEmpty(description))
+                    tf.tooltip = description;
+                row.Add(tf);
+
+                if (suggestions.Length > 0)
+                    row.Add(CreateSuggestionsButton(tf, suggestions));
+
+                container.Add(row);
+
+                if (!string.IsNullOrEmpty(example))
+                    container.Add(CreateExampleLabel(example));
 
                 if (firstField == null)
                     firstField = tf;
@@ -92,9 +98,43 @@ namespace Unity.Android.Logcat
             r.Q<Button>("CancelButton").clicked += Close;
             r.Q<Button>("RunButton").clicked += OnRunClicked;
 
-            // Scheduled because focusing before the first layout pass is unreliable.
             if (firstField != null)
                 firstField.schedule.Execute(() => firstField.Focus());
+        }
+
+        static Button CreateSuggestionsButton(TextField field, string[] suggestions)
+        {
+            Button button = null;
+            button = new Button(() =>
+            {
+                var menu = new GenericDropdownMenu();
+                foreach (var suggestion in suggestions)
+                {
+                    var value = suggestion;
+                    menu.AddItem(value, string.Equals(field.value, value, StringComparison.Ordinal),
+                        () => field.value = value);
+                }
+
+                menu.DropDown(field.worldBound, button, true);
+            })
+            { text = "▾" };
+
+            button.style.width = 22;
+            button.style.minWidth = 22;
+            button.style.flexShrink = 0;
+            button.tooltip = "Common values";
+            return button;
+        }
+
+        static Label CreateExampleLabel(string example)
+        {
+            var label = new Label($"e.g. {example}");
+            label.style.fontSize = 10;
+            label.style.color = new StyleColor(AndroidLogcatCommandUI.kHintColor);
+            label.style.marginLeft = 4;
+            label.style.marginBottom = 4;
+            label.style.whiteSpace = WhiteSpace.Normal;
+            return label;
         }
 
         void OnRunClicked()
