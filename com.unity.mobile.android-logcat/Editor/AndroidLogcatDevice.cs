@@ -152,7 +152,6 @@ namespace Unity.Android.Logcat
     internal class AndroidLogcatDevice : IAndroidLogcatDevice
     {
         private string m_Id;
-        private AndroidBridge.ADB m_ADB;
         private AndroidBridge.AndroidDevice m_Device;
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;

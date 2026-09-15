@@ -154,23 +154,6 @@ namespace Unity.Android.Logcat
             //    m_VideoPlayer.Play(videoPath);
         }
 
-        private void DoSelectedDeviceGUI()
-        {
-            var deviceNames = m_Devices.Select(m => new GUIContent(m.Id)).ToArray();
-            if (deviceNames.Length == 0)
-            {
-                m_SelectedDeviceIdx = 0;
-                deviceNames = new[] { new GUIContent("No Device") };
-            }
-            EditorGUI.BeginChangeCheck();
-            m_SelectedDeviceIdx = EditorGUILayout.Popup(m_SelectedDeviceIdx,
-                deviceNames,
-                AndroidLogcatStyles.toolbarPopup,
-                GUILayout.MaxWidth(300));
-            if (EditorGUI.EndChangeCheck())
-                ReloadCaptureAssetsIfNeeded(SelectedDevice);
-        }
-
         void DoModeGUI()
         {
             m_Runtime.UserSettings.CaptureSettings.Mode = (Mode)EditorGUILayout.EnumPopup(m_Runtime.UserSettings.CaptureSettings.Mode, AndroidLogcatStyles.toolbarPopup);
@@ -282,7 +265,7 @@ namespace Unity.Android.Logcat
                         if (GUILayout.Button("Start", AndroidLogcatStyles.toolbarButton))
                         {
 
-                            m_LiveStream.StartStreaming(SelectedDevice, OnLiveStreamCompleted);
+                            m_LiveStream.StartStreaming(m_DeviceSelection.SelectedDevice, OnLiveStreamCompleted);
                         }
                     }
                     break;
