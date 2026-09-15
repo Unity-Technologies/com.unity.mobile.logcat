@@ -73,6 +73,17 @@ public final class ScreenStreamer implements Closeable {
 
     private volatile boolean stopped;
     private volatile IOException streamError;
+    /** Read by TouchInjector from the control thread, hence volatile. */
+    private volatile Size displaySize;
+
+    /**
+     * Logical size of the display being captured, or null before capture starts. This
+     * is the display's own size, not the streamed size: touch positions scale to the
+     * former.
+     */
+    public Size getDisplaySize() {
+        return displaySize;
+    }
 
     public ScreenStreamer(Options options, Protocol protocol, DisplayManagerWrapper displayManager) {
         this.options = options;
@@ -141,6 +152,7 @@ public final class ScreenStreamer implements Closeable {
 
     private void startSession(DisplayInfo info) throws IOException {
         synchronized (sessionLock) {
+            displaySize = info.getSize();
             videoSize = info.getSize().limit(options.getMaxSize());
             int width = videoSize.getWidth();
             int height = videoSize.getHeight();

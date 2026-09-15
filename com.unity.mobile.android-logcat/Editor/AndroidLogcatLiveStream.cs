@@ -38,15 +38,37 @@ namespace Unity.Android.Logcat
             Failure
         }
 
+        /// <summary>Values match the action byte in ControlReader.java.</summary>
+        internal enum TouchAction : byte
+        {
+            Down = 0,
+            Up = 1,
+            Move = 2,
+            /// <summary>Abandons the gesture without a tap, e.g. the mouse left the window.</summary>
+            Cancel = 3
+        }
+
         // Must stay in step with External/UnityLogcatServer: Protocol.java and the
         // serverProtocolVersion / serverSocketName / serverDevicePath entries in
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 1;
+        const int kProtocolVersion = 2;
         const int kCodecMjpeg = 1;
-        const int kStreamHeaderSize = 12; // magic + version + codec
+        const int kStreamHeaderSize = 16; // magic + version + codec + flags
         const int kFrameHeaderSize = 20;  // ptsUs + width + height + payloadSize
+
+        // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
+        // injection, so touch messages will actually do something.
+        const int kFlagControlSupported = 1;
+
+        // Editor -> server control messages, see ControlReader.java.
+        const byte kControlTouch = 1;
+        const int kTouchMessageSize = 9;
+        // Positions go over the wire normalized, so the server can scale them against
+        // the display size it is currently capturing rather than trusting ours, which
+        // is always at least a frame - and possibly a whole rotation - out of date.
+        const float kNormalizedMax = 65535.0f;
 
         const string kServerJarName = "unity-logcat-server.jar";
         const string kServerDevicePath = "/data/local/tmp/unity-logcat-server.jar";
@@ -99,6 +121,11 @@ namespace Unity.Android.Logcat
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
+        volatile bool m_ControlSupported;
+        readonly byte[] m_ControlMessage = new byte[kTouchMessageSize];
+        bool m_TouchDown;
+        bool m_ControlWriteFailed;
+
         Texture2D m_Texture;
         int m_FrameWidth;
         int m_FrameHeight;
@@ -111,6 +138,21 @@ namespace Unity.Android.Logcat
         internal bool IsStreaming => m_ReaderThread != null;
         internal string Errors => m_Errors.ToString();
         internal Texture2D Texture => m_Texture;
+
+        /// <summary>
+        /// Whether the server can inject input. False means the device refused to set it
+        /// up, in which case the view is read only and says so - better than accepting
+        /// clicks that quietly go nowhere.
+        /// </summary>
+        internal bool ControlSupported => m_ControlSupported;
+
+        /// <summary>
+        /// Touch is always on when the device supports it. There is no toggle: sending a
+        /// touch costs 9 bytes on a mouse event and nothing at all when idle, so the
+        /// only argument for one would be avoiding stray clicks, and a window does not
+        /// click itself.
+        /// </summary>
+        bool CanSendTouch => IsStreaming && m_ControlSupported;
 
         /// <summary>Frames read off the socket since streaming started.</summary>
         internal int FramesReceived
@@ -161,6 +203,9 @@ namespace Unity.Android.Logcat
             m_Stop = false;
             m_ReaderError = null;
             m_StreamEnded = false;
+            m_ControlSupported = false;
+            m_ControlWriteFailed = false;
+            m_TouchDown = false;
             m_FrameWidth = 0;
             m_FrameHeight = 0;
             m_Fps = 0;
@@ -552,6 +597,11 @@ namespace Unity.Android.Logcat
             var codec = ReadInt32BE(header, 8);
             if (codec != kCodecMjpeg)
                 throw new ProtocolMismatchException($"The server is sending codec {codec}, which this Editor cannot decode");
+
+            var flags = ReadInt32BE(header, 12);
+            m_ControlSupported = (flags & kFlagControlSupported) != 0;
+            if (!m_ControlSupported)
+                AndroidLogcatInternalLog.Log("The server cannot inject input, the live stream will be view only");
         }
 
         static void ReadExactly(Stream stream, byte[] buffer, int count)
@@ -701,6 +751,11 @@ namespace Unity.Android.Logcat
 
         internal void DoGUI(Rect rc)
         {
+            // Allocated on every pass, before any early return: skipping it on some
+            // frames would shift control ids between the Layout and Repaint passes and
+            // trip "GUI id mismatch" warnings.
+            var controlId = GUIUtility.GetControlID(FocusType.Passive);
+
             if (m_Errors.Length > 0)
             {
                 EditorGUI.HelpBox(rc, m_Errors.ToString(), MessageType.Error);
@@ -716,12 +771,183 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            GUI.DrawTexture(rc, m_Texture, ScaleMode.ScaleToFit);
+            // Fitted explicitly rather than letting ScaleMode.ScaleToFit do it, because
+            // the letterboxed rect is also what mouse positions are mapped through.
+            var videoRect = FitRect(rc, (float)m_Texture.width / m_Texture.height);
+
+            HandleTouchInput(controlId, videoRect);
+
+            GUI.DrawTexture(videoRect, m_Texture);
 
             if (IsStreaming)
+                DoStatsGUI(rc);
+        }
+
+        void DoStatsGUI(Rect rc)
+        {
+            const float kLabelWidth = 90;
+            var y = rc.y + 2;
+
+            DoStatsRow(rc, kLabelWidth, ref y, "Stream size", $"{m_FrameWidth}x{m_FrameHeight}");
+            DoStatsRow(rc, kLabelWidth, ref y, "Frame rate", $"{m_Fps:0.0} fps");
+            DoStatsRow(rc, kLabelWidth, ref y, "Bandwidth", $"{m_Mbps:0.00} Mbps");
+            // Touch is listed whether or not it works: without it there is nothing in
+            // the window to say the view is interactive at all.
+            DoStatsRow(rc, kLabelWidth, ref y, "Touch", m_ControlSupported
+                ? "click or drag to control the device"
+                : "unavailable on this device");
+        }
+
+        static void DoStatsRow(Rect rc, float labelWidth, ref float y, string name, string value)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            GUI.Label(new Rect(rc.x + 4, y, labelWidth, height), name);
+            GUI.Label(new Rect(rc.x + 4 + labelWidth, y, Mathf.Max(0, rc.width - labelWidth - 8), height), value);
+            y += height;
+        }
+
+        /// <summary>Largest rect of the given aspect ratio that fits inside the container.</summary>
+        static Rect FitRect(Rect container, float aspect)
+        {
+            if (container.width <= 0 || container.height <= 0 || aspect <= 0)
+                return container;
+
+            if (aspect > container.width / container.height)
             {
-                var label = $"{m_FrameWidth}x{m_FrameHeight}   {m_Fps:0.0} fps   {m_Mbps:0.00} Mbps";
-                GUI.Label(new Rect(rc.x + 4, rc.y + 2, rc.width - 8, EditorGUIUtility.singleLineHeight), label);
+                var height = container.width / aspect;
+                return new Rect(container.x, container.y + (container.height - height) * 0.5f, container.width, height);
+            }
+
+            var width = container.height * aspect;
+            return new Rect(container.x + (container.width - width) * 0.5f, container.y, width, container.height);
+        }
+
+        // ------------------------------------------------------------------
+        // Touch forwarding
+        // ------------------------------------------------------------------
+
+        void HandleTouchInput(int controlId, Rect videoRect)
+        {
+            var e = Event.current;
+
+            if (!CanSendTouch)
+            {
+                // Control switched off, or the stream dropped, in the middle of a drag.
+                // The device still believes a finger is down, so let go of it - which
+                // deliberately bypasses the CanSendTouch gate that just failed.
+                if (m_TouchDown)
+                {
+                    SendTouchAt(TouchAction.Cancel, videoRect, e.mousePosition);
+                    ReleaseTouch(controlId);
+                }
+                return;
+            }
+
+            switch (e.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (e.button != 0 || !videoRect.Contains(e.mousePosition))
+                        break;
+                    // Taking the hot control is what routes the rest of the drag here,
+                    // including the part that happens outside the rect.
+                    GUIUtility.hotControl = controlId;
+                    m_TouchDown = true;
+                    SendTouchAt(TouchAction.Down, videoRect, e.mousePosition);
+                    e.Use();
+                    break;
+
+                case EventType.MouseDrag:
+                    if (!m_TouchDown)
+                        break;
+                    SendTouchAt(TouchAction.Move, videoRect, e.mousePosition);
+                    e.Use();
+                    break;
+
+                case EventType.MouseUp:
+                    if (!m_TouchDown)
+                        break;
+                    SendTouchAt(TouchAction.Up, videoRect, e.mousePosition);
+                    ReleaseTouch(controlId);
+                    e.Use();
+                    break;
+            }
+
+            // Losing the mouse mid-drag would otherwise leave the finger down for good.
+            if (m_TouchDown && e.type == EventType.MouseLeaveWindow)
+            {
+                SendTouchAt(TouchAction.Cancel, videoRect, e.mousePosition);
+                ReleaseTouch(controlId);
+            }
+        }
+
+        void ReleaseTouch(int controlId)
+        {
+            m_TouchDown = false;
+            if (GUIUtility.hotControl == controlId)
+                GUIUtility.hotControl = 0;
+        }
+
+        /// <summary>
+        /// Sends a touch at a position in normalized display coordinates, (0,0) being the
+        /// top left of the device screen. Does nothing unless the stream is up, the server
+        /// supports injection and control is enabled.
+        /// </summary>
+        internal void SendTouch(TouchAction action, float normalizedX, float normalizedY)
+        {
+            if (!CanSendTouch)
+                return;
+            SendTouchMessage(action, normalizedX, normalizedY);
+        }
+
+        void SendTouchAt(TouchAction action, Rect videoRect, Vector2 mousePosition)
+        {
+            // Clamped, not rejected: a swipe that overshoots the edge of the view should
+            // still read as a swipe to the edge of the screen. GUI y grows downward and
+            // so does the device y, so there is nothing to flip.
+            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
+            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
+            SendTouchMessage(action, x, y);
+        }
+
+        void SendTouchMessage(TouchAction action, float x, float y)
+        {
+            NetworkStream stream;
+            lock (m_ConnectionLock)
+                stream = m_Stream;
+            if (stream == null)
+                return;
+
+            var nx = (int)Mathf.Round(x * kNormalizedMax);
+            var ny = (int)Mathf.Round(y * kNormalizedMax);
+            // Full pressure. The server drops it to 0 for an Up by itself.
+            var pressure = (int)kNormalizedMax;
+
+            var message = m_ControlMessage;
+            message[0] = kControlTouch;
+            message[1] = (byte)action;
+            message[2] = 0; // pointer id - a mouse is a single finger
+            message[3] = (byte)(nx >> 8);
+            message[4] = (byte)nx;
+            message[5] = (byte)(ny >> 8);
+            message[6] = (byte)ny;
+            message[7] = (byte)(pressure >> 8);
+            message[8] = (byte)pressure;
+
+            try
+            {
+                stream.Write(message, 0, message.Length);
+                stream.Flush();
+            }
+            catch (Exception ex)
+            {
+                // The reader thread watches the same connection and will report the
+                // failure properly, so this only needs to avoid throwing out of OnGUI -
+                // and to not log the same thing once per mouse move.
+                if (!m_ControlWriteFailed)
+                {
+                    m_ControlWriteFailed = true;
+                    AndroidLogcatInternalLog.Log($"Failed to send a touch event: {ex.Message}");
+                }
             }
         }
 
@@ -731,6 +957,8 @@ namespace Unity.Android.Logcat
             EditorGUILayout.LabelField("Socket", string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName);
             EditorGUILayout.LabelField("Forwarded port", m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
             EditorGUILayout.LabelField("Server on device", kServerDevicePath);
+            EditorGUILayout.LabelField("Touch injection",
+                !IsStreaming ? "-" : m_ControlSupported ? "supported" : "unavailable on this device");
 
             EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
             if (GUILayout.Button("Log server output", AndroidLogcatStyles.toolbarButton))

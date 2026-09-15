@@ -2,12 +2,13 @@
 
 On-device server for the Android Logcat package's live screen streaming. It
 mirrors a device display, encodes each frame as JPEG and writes the frames to a
-socket that the Unity Editor reads.
+socket that the Unity Editor reads. The same socket carries touch events back the
+other way, so the live view is interactive.
 
 This is not an Android application. It has no manifest, no resources and no
 activity - it is a dexed jar started by `app_process`, running as the `shell`
-user, which is what lets it call the hidden display-mirroring APIs that a normal
-app cannot.
+user, which is what lets it call the hidden display-mirroring APIs, and hold the
+`INJECT_EVENTS` permission, that a normal app cannot.
 
 ## Building
 
@@ -116,13 +117,15 @@ process.
    `adb forward` only succeeds once the socket exists, so the Editor may have to
    retry: the server is spawned first, but there is no ordering guarantee between
    two separate adb invocations.
-6. On `accept()`, the 12-byte stream header is written straight away. That header
+6. Input injection is set up. A failure here is not fatal: it is reported in the
+   header flags and the session continues as view-only.
+7. On `accept()`, the 16-byte stream header is written straight away. That header
    is what tells the Editor it has reached a real server of a protocol version it
    understands, rather than a forwarded port that merely happens to connect.
-7. The capture session starts: a `HandlerThread`, an `ImageReader`, and a mirrored
-   display pointed at the reader's surface. Frames flow from the capture thread;
-   the main thread re-reads the display geometry every 500 ms and restarts the
-   session if it changed.
+8. The control reader thread starts, and the capture session with it: a
+   `HandlerThread`, an `ImageReader`, and a mirrored display pointed at the
+   reader's surface. Frames flow from the capture thread; the main thread re-reads
+   the display geometry every 500 ms and restarts the session if it changed.
 
 ### Shutdown
 
@@ -132,7 +135,7 @@ for its `adb shell` to return.
 
 | Trigger | How it is noticed | Exit code |
 | --- | --- | --- |
-| Editor closes the connection, its process dies, or the forward is removed | the capture thread's write fails, or the disconnect-watch thread reads EOF | 0 |
+| Editor closes the connection, its process dies, or the forward is removed | the capture thread's write fails, or the control reader reads EOF | 0 |
 | No client connects within `connect_timeout_ms` (default 10 s) | a watchdog thread exits the process out from under the blocked `accept()` | 1 |
 | The captured display disappears | the geometry poll gets no `DisplayInfo` | 0 |
 | Neither mirroring API works | `startSession` throws | 1 |
@@ -148,11 +151,11 @@ Three details matter for a clean stop:
   exact orphan the timeout exists to prevent. At that point nothing has been claimed
   that needs unwinding, so exiting is both simpler and the only thing that works.
 
-* **The disconnect-watch thread exists because writes alone are not enough.** On a
-  screen that has stopped changing, no frames are produced, so a departed client
-  would go unnoticed and the server would sit there mirroring a display nobody is
-  reading. The watch thread reads the socket and treats EOF as the end of the
-  session. It is also where a control channel would be read from later.
+* **The control reader doubles as the disconnect detector, because writes alone are
+  not enough.** On a screen that has stopped changing no frames are produced, so
+  there is no write to fail: a departed client would go unnoticed and the server
+  would sit there mirroring a display nobody is reading. The reader treats EOF as
+  the end of the session.
 * **The socket is closed before the streamer.** Closing it first unblocks a capture
   thread parked in a write, so teardown does not have to wait for it. Teardown then
   releases the mirrored display, closes the `ImageReader`, joins the capture thread
@@ -174,11 +177,14 @@ long an orphan can linger before it gives up on its own.
 
 All integers big endian. See `Protocol.java`.
 
+Server to Editor:
+
 ```
-Stream header, once, 12 bytes:
+Stream header, once, 16 bytes:
   u32  magic            'U' 'L' 'S' '1' (0x554C5331)
   u32  protocolVersion  see serverProtocolVersion in gradle.properties
   u32  codec            1 = MJPEG
+  u32  flags            bit 0: the server can inject input
 
 Frame, repeated, 20 byte header + payload:
   u64  ptsUs            microseconds since the first frame
@@ -187,6 +193,31 @@ Frame, repeated, 20 byte header + payload:
   u32  payloadSize      bytes of encoded frame that follow
   u8[] payload          JPEG
 ```
+
+Editor to server, on the same socket (see `ControlReader.java`):
+
+```
+Touch, 9 bytes:
+  u8   type             1 = touch
+  u8   action           0 down, 1 up, 2 move, 3 cancel
+  u8   pointerId        0 based, one finger per id
+  u16  x                position across the display, 0..65535
+  u16  y                position down the display, 0..65535
+  u16  pressure         0..65535
+```
+
+Touch positions are normalized rather than in pixels, so the Editor does not have
+to know the device's current resolution - and cannot get it wrong, since its idea
+of the screen is always at least a frame and possibly a whole rotation out of
+date. The server scales them against the display it is capturing at that moment.
+
+`flags` exists so the Editor can tell "the user turned control off" from "this
+device will not allow injection" and say so, rather than dropping every touch in
+silence.
+
+Every message is a fixed size, so an unknown type means the reader no longer knows
+where the next one starts. It stops reading control input at that point and leaves
+the video stream running, which is the half worth keeping.
 
 Width and height travel with every frame instead of only in the stream header,
 because they change when the device is rotated or the display is resized. The
@@ -210,12 +241,15 @@ Pixel 2 at `max_size=512 quality=70`: ~30 KB per frame, ~3.6 Mbps at 15 fps.
 | --- | --- |
 | `Server.java` | entry point, socket setup, client lifetime |
 | `ScreenStreamer.java` | display mirroring, JPEG encoding, frame pacing |
+| `ControlReader.java` | control messages from the Editor, and EOF detection |
+| `TouchInjector.java` | normalized positions to injected MotionEvents |
 | `Protocol.java` | wire format |
 | `Options.java` | `key=value` command line |
 | `DisplayInfo.java`, `Size.java` | value types |
 | `Logger.java` | logging to logcat and stderr |
 | `wrappers/DisplayManagerWrapper.java` | reflection over `DisplayManagerGlobal` |
 | `wrappers/SurfaceControlWrapper.java` | reflection over `SurfaceControl` |
+| `wrappers/InputManagerWrapper.java` | reflection over the hidden input injection API |
 
 Two mirroring paths are attempted in order: `DisplayManagerGlobal
 .createVirtualDisplay`, then `SurfaceControl.createDisplay`. Neither works

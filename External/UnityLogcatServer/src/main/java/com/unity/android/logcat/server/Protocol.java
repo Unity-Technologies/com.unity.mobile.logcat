@@ -10,10 +10,11 @@ import java.io.OutputStream;
  * {@link DataOutputStream}.
  *
  * <pre>
- * Stream header, once, 12 bytes:
+ * Stream header, once, 16 bytes:
  *   u32  magic            'U' 'L' 'S' '1' (0x554C5331)
  *   u32  protocolVersion  BuildConfig.PROTOCOL_VERSION
  *   u32  codec            CODEC_MJPEG
+ *   u32  flags            FLAG_CONTROL_SUPPORTED if touch can be injected
  *
  * Frame, repeated, 20 byte header + payload:
  *   u64  ptsUs            microseconds since the first frame
@@ -31,6 +32,13 @@ public final class Protocol {
     public static final int MAGIC = 0x554C5331;
     public static final int CODEC_MJPEG = 1;
 
+    /**
+     * Set when the server can inject input, so the Editor can tell "control is off"
+     * from "control is impossible on this device" and say so instead of quietly
+     * dropping every touch.
+     */
+    public static final int FLAG_CONTROL_SUPPORTED = 1;
+
     private final DataOutputStream out;
     private long firstFrameNs = -1;
 
@@ -38,10 +46,11 @@ public final class Protocol {
         this.out = new DataOutputStream(new BufferedOutputStream(stream, 64 * 1024));
     }
 
-    public void writeStreamHeader(int codec) throws IOException {
+    public void writeStreamHeader(int codec, int flags) throws IOException {
         out.writeInt(MAGIC);
         out.writeInt(BuildConfig.PROTOCOL_VERSION);
         out.writeInt(codec);
+        out.writeInt(flags);
         out.flush();
     }
 
