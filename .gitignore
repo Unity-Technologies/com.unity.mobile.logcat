@@ -5,6 +5,7 @@
 [Tt]emp/
 [Ss]treaming[Aa]ssets/
 [Ll]ogs/
+LocalTestResults/
 **/UserSettings/**
 .utmp
 .vs
