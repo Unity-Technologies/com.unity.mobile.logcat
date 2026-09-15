@@ -153,7 +153,8 @@ jar {
 // `project.exec {}` method that an ad-hoc task would otherwise have used.
 // ---------------------------------------------------------------------------
 
-def outputJar = layout.buildDirectory.file('outputs/unity-logcat-server.jar')
+def serverJarName = 'unity-logcat-server.jar'
+def outputJar = layout.buildDirectory.file("outputs/${serverJarName}")
 
 def dexJar = tasks.register('dexJar', Exec) {
     group = 'build'
@@ -181,6 +182,54 @@ def dexJar = tasks.register('dexJar', Exec) {
         def out = outputJar.get().asFile
         logger.lifecycle("Server jar: " + out + " (" + out.length() + " bytes)")
     }
+}
+
+// ---------------------------------------------------------------------------
+// Post-build: place the jar where the package can ship it
+//
+// A folder whose name ends in "~" is included in the published package but not
+// imported as an asset, so the jar needs no .meta file and never enters the
+// AssetDatabase. The Editor reads it straight off disk to push it to a device.
+// ---------------------------------------------------------------------------
+
+def packageExternalDir = file('../../com.unity.mobile.android-logcat/External~')
+
+// Copies by hand rather than with a Copy task: Gradle creates a Copy task's
+// destination directory before any task action runs, so a guard against writing
+// to the wrong place can never see it missing.
+def copyJarToPackage = tasks.register('copyJarToPackage') {
+    group = 'build'
+    description = "Copies the server jar into the package's External~ folder"
+    dependsOn dexJar
+    def destination = new File(packageExternalDir, serverJarName)
+    inputs.file(outputJar)
+    outputs.file(destination)
+    doLast {
+        // package.json is the marker: it says the destination really is the logcat
+        // package, and unlike a directory it is not something Gradle can create on
+        // our behalf. Catches this project being moved relative to the package
+        // instead of scattering an External~ folder somewhere unrelated.
+        def packageDir = packageExternalDir.parentFile
+        if (!new File(packageDir, 'package.json').isFile()) {
+            throw new GradleException("No Unity package found at " + packageDir
+                + "\nExpected this project to sit at <repo>/External/UnityLogcatServer,"
+                + " alongside <repo>/com.unity.mobile.android-logcat.")
+        }
+
+        packageExternalDir.mkdirs()
+        java.nio.file.Files.copy(
+            outputJar.get().asFile.toPath(),
+            destination.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        logger.lifecycle("Copied to: " + destination)
+    }
+}
+
+// Attached to dexJar rather than to assemble, so that every route which produces
+// the jar - dexJar, assemble, pushJar, runJar - also refreshes the copy the
+// package ships. Otherwise the two silently drift apart.
+dexJar.configure {
+    finalizedBy copyJarToPackage
 }
 
 tasks.named('assemble') {

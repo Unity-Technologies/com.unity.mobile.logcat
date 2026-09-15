@@ -26,7 +26,33 @@ Then:
 ./gradlew dexJar
 ```
 
-which produces `build/outputs/unity-logcat-server.jar`.
+which produces `build/outputs/unity-logcat-server.jar` and then copies it to
+`com.unity.mobile.android-logcat/External~/unity-logcat-server.jar`, which is the
+copy the package ships and the Editor pushes to the device.
+
+That copy step (`copyJarToPackage`) hangs off `dexJar`, so every route that
+produces the jar - `dexJar`, `assemble`, `pushJar`, `runJar` - refreshes it, and
+the two cannot silently drift apart. Deleting the copy is enough to make the next
+build put it back, even when nothing else needs rebuilding.
+
+It copies the file itself instead of using a `Copy` task, because Gradle creates a
+`Copy` task's destination directory before any task action runs - so a guard
+against writing to the wrong place could never see it missing. The step instead
+checks for the package's `package.json`, which is both a stronger check (it
+confirms the destination really is this package) and something Gradle cannot
+create on our behalf. If the project is ever moved relative to the package the
+build fails naming the expected layout, though Gradle will already have created an
+empty `External~` on its way to that failure.
+
+`External~` is named with a trailing `~` so that Unity ships the folder in the
+package but does not import its contents as assets: the jar needs no `.meta` file
+and never enters the AssetDatabase. The Editor reads it straight off disk.
+
+**The copy is a build output and is not committed.** The root `.gitignore` excludes
+`com.unity.mobile.android-logcat/External~/unity-logcat-server.jar`; CI builds it
+on demand before the package is published. The `External~` folder therefore does
+not exist in a fresh checkout - the copy step creates it. Only the jar itself is
+ignored, not the folder, so anything else put there later stays visible to git.
 
 The build uses the plain `java-library` plugin plus an explicit `d8` step rather
 than the Android Gradle Plugin. AGP would produce an APK that then has to be
