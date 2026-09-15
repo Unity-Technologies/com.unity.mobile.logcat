@@ -92,16 +92,23 @@ public final class Server {
 
             // Input injection is optional: a device that will not allow it still
             // streams fine, so a failure here is reported in the header rather than
-            // taken as fatal.
-            TouchInjector touchInjector = createTouchInjector(streamer, options.getDisplayId());
-            int flags = touchInjector != null ? Protocol.FLAG_CONTROL_SUPPORTED : 0;
+            // taken as fatal. Touch and keys share one input manager, so they are
+            // available together or not at all.
+            InputManagerWrapper inputManager = createInputManager();
+            TouchInjector touchInjector = inputManager == null
+                ? null
+                : new TouchInjector(inputManager, streamer::getDisplaySize, options.getDisplayId());
+            KeyInjector keyInjector = inputManager == null
+                ? null
+                : new KeyInjector(inputManager, options.getDisplayId());
+            int flags = inputManager != null ? Protocol.FLAG_CONTROL_SUPPORTED : 0;
 
             // Sent before anything else: `adb forward` succeeds as soon as the
             // socket exists, so the header is what tells the Editor it is really
             // talking to a server of a version it understands.
             protocol.writeStreamHeader(Protocol.CODEC_MJPEG, flags);
 
-            startControlReader(socket, streamer, touchInjector);
+            startControlReader(socket, streamer, touchInjector, keyInjector);
             streamer.stream();
         } finally {
             // Socket first: it unblocks a capture thread parked in a write, so
@@ -162,10 +169,9 @@ public final class Server {
         }
     }
 
-    private static TouchInjector createTouchInjector(ScreenStreamer streamer, int displayId) {
+    private static InputManagerWrapper createInputManager() {
         try {
-            InputManagerWrapper inputManager = InputManagerWrapper.create();
-            return new TouchInjector(inputManager, streamer::getDisplaySize, displayId);
+            return InputManagerWrapper.create();
         } catch (ReflectiveOperationException | RuntimeException e) {
             Logger.w("Input injection is unavailable, the stream will be view-only", e);
             return null;
@@ -178,10 +184,10 @@ public final class Server {
      * Reading is also what detects a disconnect while the screen is static: with no
      * frames being produced there is no write to fail, so EOF here is the only signal.
      */
-    private static void startControlReader(LocalSocket socket, ScreenStreamer streamer, TouchInjector touchInjector)
-            throws IOException {
+    private static void startControlReader(LocalSocket socket, ScreenStreamer streamer,
+            TouchInjector touchInjector, KeyInjector keyInjector) throws IOException {
         InputStream input = socket.getInputStream();
-        Thread thread = new Thread(new ControlReader(input, touchInjector, streamer::close),
+        Thread thread = new Thread(new ControlReader(input, touchInjector, keyInjector, streamer::close),
             "unity-logcat-control");
         thread.setDaemon(true);
         thread.start();

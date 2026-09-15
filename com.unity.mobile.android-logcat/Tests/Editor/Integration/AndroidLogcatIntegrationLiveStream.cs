@@ -131,6 +131,110 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
     }
 
+    /// <summary>
+    /// Injected touch is verified by its effect: a swipe up from the bottom of the
+    /// screen changes what is displayed, and nothing else is touching the device, so
+    /// frames arriving afterwards can only be the result of our own gesture.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator CanSendTouchToDevice()
+    {
+        // Start from the home screen so the swipe has something to act on.
+        SendKeyEvent("KEYCODE_HOME");
+
+        Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
+
+        yield return WaitForCondition("Waiting for the first frame",
+            () => Runtime.LiveStream.FramesReceived > 0,
+            30,
+            () => Runtime.LiveStream.Errors);
+
+        Assert.IsTrue(Runtime.LiveStream.ControlSupported,
+            "Expected the server to report that it can inject input");
+
+        // Let the home screen settle, so the frames counted below are the swipe's.
+        var settle = DateTime.Now;
+        yield return WaitForCondition("Letting the screen settle", () => (DateTime.Now - settle).TotalSeconds > 1.5);
+
+        var framesBefore = Runtime.LiveStream.FramesReceived;
+        Runtime.LiveStream.SendTouch(AndroidLogcatLiveStream.TouchAction.Down, 0.5f, 0.85f);
+        for (var step = 1; step <= 10; step++)
+        {
+            Runtime.LiveStream.SendTouch(AndroidLogcatLiveStream.TouchAction.Move,
+                0.5f, 0.85f - 0.55f * step / 10.0f);
+            yield return Waiting();
+        }
+        Runtime.LiveStream.SendTouch(AndroidLogcatLiveStream.TouchAction.Up, 0.5f, 0.30f);
+
+        yield return WaitForCondition("Waiting for the screen to react to the injected swipe",
+            () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
+            20,
+            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+
+        Log($"Injected swipe produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
+        Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
+
+        var texture = Runtime.LiveStream.Texture;
+        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-swipe.png"), texture.EncodeToPNG());
+
+        Assert.IsTrue(Runtime.LiveStream.StopStreaming());
+        SendKeyEvent("KEYCODE_HOME");
+    }
+
+    /// <summary>
+    /// Same reasoning as the touch test: an injected key changes what is on screen, and
+    /// nothing else is touching the device, so the frames that follow are its effect.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator CanSendKeysToDevice()
+    {
+        SendKeyEvent("KEYCODE_HOME");
+
+        Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
+
+        yield return WaitForCondition("Waiting for the first frame",
+            () => Runtime.LiveStream.FramesReceived > 0,
+            30,
+            () => Runtime.LiveStream.Errors);
+
+        Assert.IsTrue(Runtime.LiveStream.ControlSupported,
+            "Expected the server to report that it can inject input");
+
+        var settle = DateTime.Now;
+        yield return WaitForCondition("Letting the screen settle", () => (DateTime.Now - settle).TotalSeconds > 1.5);
+
+        // Recents animates in, so it is a visible effect that needs no app installed.
+        var framesBefore = Runtime.LiveStream.FramesReceived;
+        // SendKeyPress is what the toolbar's Back / Home / Recents buttons call.
+        Runtime.LiveStream.SendKeyPress(AndroidKeyCode.APP_SWITCH);
+
+        yield return WaitForCondition("Waiting for the screen to react to the injected key",
+            () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
+            20,
+            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+
+        Log($"Injected key produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
+
+        // Text goes through a different path on the device - KeyCharacterMap rather than
+        // a keycode - so it is worth exercising separately.
+        framesBefore = Runtime.LiveStream.FramesReceived;
+        Runtime.LiveStream.SendText("unity");
+
+        yield return WaitForCondition("Waiting for the screen to react to injected text",
+            () => Runtime.LiveStream.FramesReceived > framesBefore + 2,
+            20,
+            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+
+        Log($"Injected text produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
+        Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
+
+        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-keys.png"),
+            Runtime.LiveStream.Texture.EncodeToPNG());
+
+        Assert.IsTrue(Runtime.LiveStream.StopStreaming());
+        SendKeyEvent("KEYCODE_HOME");
+    }
+
     private void SendKeyEvent(string keyCode)
     {
         Runtime.Tools.ADB.Run(new[]

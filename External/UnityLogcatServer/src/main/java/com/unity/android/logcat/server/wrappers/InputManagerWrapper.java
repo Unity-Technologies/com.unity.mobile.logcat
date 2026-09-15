@@ -49,6 +49,32 @@ public final class InputManagerWrapper {
         return new InputManagerWrapper(manager, method);
     }
 
+    private static Method setDisplayIdMethod;
+    private static boolean setDisplayIdUnavailable;
+
+    /**
+     * Targets an event at a specific display. Without this an event goes to the default
+     * display, which is wrong when capturing any other one. The setter is hidden API, so
+     * a device without it means input on secondary displays does not work - the video
+     * stream is unaffected, hence a warning rather than a failure.
+     */
+    public static void setDisplayId(InputEvent event, int displayId) {
+        if (setDisplayIdUnavailable) {
+            return;
+        }
+        try {
+            if (setDisplayIdMethod == null) {
+                // Resolved on the concrete class: KeyEvent and MotionEvent each declare
+                // their own, and which one exists on InputEvent varies by version.
+                setDisplayIdMethod = event.getClass().getMethod("setDisplayId", int.class);
+            }
+            setDisplayIdMethod.invoke(event, displayId);
+        } catch (ReflectiveOperationException e) {
+            setDisplayIdUnavailable = true;
+            Logger.w("setDisplayId is unavailable, input will go to the default display", e);
+        }
+    }
+
     /** @return false when the event was rejected, which the caller should not treat as fatal. */
     public boolean injectInputEvent(InputEvent event) {
         try {

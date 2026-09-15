@@ -2,8 +2,8 @@
 
 On-device server for the Android Logcat package's live screen streaming. It
 mirrors a device display, encodes each frame as JPEG and writes the frames to a
-socket that the Unity Editor reads. The same socket carries touch events back the
-other way, so the live view is interactive.
+socket that the Unity Editor reads. The same socket carries touch and key events back
+the other way, so the live view is interactive.
 
 This is not an Android application. It has no manifest, no resources and no
 activity - it is a dexed jar started by `app_process`, running as the `shell`
@@ -117,8 +117,9 @@ process.
    `adb forward` only succeeds once the socket exists, so the Editor may have to
    retry: the server is spawned first, but there is no ordering guarantee between
    two separate adb invocations.
-6. Input injection is set up. A failure here is not fatal: it is reported in the
-   header flags and the session continues as view-only.
+6. Input injection is set up. Touch and keys share one input manager, so they are
+   available together or not at all. A failure here is not fatal: it is reported in
+   the header flags and the session continues as view-only.
 7. On `accept()`, the 16-byte stream header is written straight away. That header
    is what tells the Editor it has reached a real server of a protocol version it
    understands, rather than a forwarded port that merely happens to connect.
@@ -204,7 +205,25 @@ Touch, 9 bytes:
   u16  x                position across the display, 0..65535
   u16  y                position down the display, 0..65535
   u16  pressure         0..65535
+
+Key, 10 bytes:
+  u8   type             2 = key
+  u8   action           0 down, 1 up
+  u32  keyCode          Android KeyEvent.KEYCODE_*
+  u32  metaState        Android KeyEvent.META_*
+
+Text, 3 bytes + payload:
+  u8   type             3 = text
+  u16  length           bytes of UTF-8 that follow, max 4096
+  u8[] text
 ```
+
+Keys and text are separate on purpose. A named key - Back, Enter, an arrow - has no
+character to type and goes as a keycode. Typed characters go as text and are turned
+into key events on the device by `KeyCharacterMap`, which is what makes punctuation,
+shifted characters and non-US layouts work: the Editor sends the character the user
+actually produced and the device works out which keystrokes would produce it, rather
+than the Editor trying to model every layout.
 
 Touch positions are normalized rather than in pixels, so the Editor does not have
 to know the device's current resolution - and cannot get it wrong, since its idea
@@ -215,9 +234,11 @@ date. The server scales them against the display it is capturing at that moment.
 device will not allow injection" and say so, rather than dropping every touch in
 silence.
 
-Every message is a fixed size, so an unknown type means the reader no longer knows
-where the next one starts. It stops reading control input at that point and leaves
-the video stream running, which is the half worth keeping.
+Message sizes are known per type, so an unknown type means the reader no longer knows
+where the next one starts. It stops reading control input at that point and leaves the
+video stream running, which is the half worth keeping. A text message whose length
+exceeds the cap is skipped by consuming its payload, so that one bad message does not
+desynchronize the rest.
 
 Width and height travel with every frame instead of only in the stream header,
 because they change when the device is rotated or the display is resized. The
@@ -243,6 +264,7 @@ Pixel 2 at `max_size=512 quality=70`: ~30 KB per frame, ~3.6 Mbps at 15 fps.
 | `ScreenStreamer.java` | display mirroring, JPEG encoding, frame pacing |
 | `ControlReader.java` | control messages from the Editor, and EOF detection |
 | `TouchInjector.java` | normalized positions to injected MotionEvents |
+| `KeyInjector.java` | keycodes and text to injected KeyEvents |
 | `Protocol.java` | wire format |
 | `Options.java` | `key=value` command line |
 | `DisplayInfo.java`, `Size.java` | value types |

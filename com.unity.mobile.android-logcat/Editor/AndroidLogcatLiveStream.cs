@@ -48,12 +48,24 @@ namespace Unity.Android.Logcat
             Cancel = 3
         }
 
+        /// <summary>Values match the action byte in ControlReader.java.</summary>
+        internal enum KeyAction : byte
+        {
+            Down = 0,
+            Up = 1
+        }
+
+        // Android KeyEvent.META_* flags.
+        const int kMetaShiftOn = 0x1;
+        const int kMetaAltOn = 0x2;
+        const int kMetaCtrlOn = 0x1000;
+
         // Must stay in step with External/UnityLogcatServer: Protocol.java and the
         // serverProtocolVersion / serverSocketName / serverDevicePath entries in
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 2;
+        const int kProtocolVersion = 3;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 16; // magic + version + codec + flags
         const int kFrameHeaderSize = 20;  // ptsUs + width + height + payloadSize
@@ -64,7 +76,11 @@ namespace Unity.Android.Logcat
 
         // Editor -> server control messages, see ControlReader.java.
         const byte kControlTouch = 1;
-        const int kTouchMessageSize = 9;
+        const byte kControlKey = 2;
+        const byte kControlText = 3;
+        // Largest fixed-size message: the key one, at type + action + keyCode + metaState.
+        const int kControlMessageSize = 10;
+        const int kMaxTextBytes = 4096;
         // Positions go over the wire normalized, so the server can scale them against
         // the display size it is currently capturing rather than trusting ours, which
         // is always at least a frame - and possibly a whole rotation - out of date.
@@ -122,7 +138,7 @@ namespace Unity.Android.Logcat
         int m_ReceivedFrames;
 
         volatile bool m_ControlSupported;
-        readonly byte[] m_ControlMessage = new byte[kTouchMessageSize];
+        readonly byte[] m_ControlMessage = new byte[kControlMessageSize];
         bool m_TouchDown;
         bool m_ControlWriteFailed;
 
@@ -147,12 +163,12 @@ namespace Unity.Android.Logcat
         internal bool ControlSupported => m_ControlSupported;
 
         /// <summary>
-        /// Touch is always on when the device supports it. There is no toggle: sending a
-        /// touch costs 9 bytes on a mouse event and nothing at all when idle, so the
-        /// only argument for one would be avoiding stray clicks, and a window does not
-        /// click itself.
+        /// Input is always on when the device supports it. There is no toggle: sending an
+        /// event costs a handful of bytes and nothing at all when idle, so the only
+        /// argument for one would be avoiding stray input, and a window does not click or
+        /// type by itself.
         /// </summary>
-        bool CanSendTouch => IsStreaming && m_ControlSupported;
+        bool CanSendInput => IsStreaming && m_ControlSupported;
 
         /// <summary>Frames read off the socket since streaming started.</summary>
         internal int FramesReceived
@@ -754,7 +770,7 @@ namespace Unity.Android.Logcat
             // Allocated on every pass, before any early return: skipping it on some
             // frames would shift control ids between the Layout and Repaint passes and
             // trip "GUI id mismatch" warnings.
-            var controlId = GUIUtility.GetControlID(FocusType.Passive);
+            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
             if (m_Errors.Length > 0)
             {
@@ -776,14 +792,15 @@ namespace Unity.Android.Logcat
             var videoRect = FitRect(rc, (float)m_Texture.width / m_Texture.height);
 
             HandleTouchInput(controlId, videoRect);
+            HandleKeyboardInput(controlId);
 
             GUI.DrawTexture(videoRect, m_Texture);
 
             if (IsStreaming)
-                DoStatsGUI(rc);
+                DoStatsGUI(rc, controlId);
         }
 
-        void DoStatsGUI(Rect rc)
+        void DoStatsGUI(Rect rc, int controlId)
         {
             const float kLabelWidth = 90;
             var y = rc.y + 2;
@@ -796,6 +813,16 @@ namespace Unity.Android.Logcat
             DoStatsRow(rc, kLabelWidth, ref y, "Touch", m_ControlSupported
                 ? "click or drag to control the device"
                 : "unavailable on this device");
+            DoStatsRow(rc, kLabelWidth, ref y, "Keyboard", KeyboardStatus(controlId));
+        }
+
+        string KeyboardStatus(int controlId)
+        {
+            if (!m_ControlSupported)
+                return "unavailable on this device";
+            return GUIUtility.keyboardControl == controlId
+                ? "focused, keys go to the device (Ctrl combinations stay in the Editor)"
+                : "click the view to send keys";
         }
 
         static void DoStatsRow(Rect rc, float labelWidth, ref float y, string name, string value)
@@ -830,7 +857,7 @@ namespace Unity.Android.Logcat
         {
             var e = Event.current;
 
-            if (!CanSendTouch)
+            if (!CanSendInput)
             {
                 // Control switched off, or the stream dropped, in the middle of a drag.
                 // The device still believes a finger is down, so let go of it - which
@@ -851,6 +878,8 @@ namespace Unity.Android.Logcat
                     // Taking the hot control is what routes the rest of the drag here,
                     // including the part that happens outside the rect.
                     GUIUtility.hotControl = controlId;
+                    // Also takes keyboard focus, so a click is all it takes before typing.
+                    GUIUtility.keyboardControl = controlId;
                     m_TouchDown = true;
                     SendTouchAt(TouchAction.Down, videoRect, e.mousePosition);
                     e.Use();
@@ -894,9 +923,38 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void SendTouch(TouchAction action, float normalizedX, float normalizedY)
         {
-            if (!CanSendTouch)
+            if (!CanSendInput)
                 return;
             SendTouchMessage(action, normalizedX, normalizedY);
+        }
+
+        /// <summary>
+        /// Sends a named key, e.g. <see cref="AndroidKeyCode.Back"/>. For typed
+        /// characters use <see cref="SendText"/> instead, which handles layouts.
+        /// </summary>
+        internal void SendKey(KeyAction action, AndroidKeyCode keyCode, int metaState = 0)
+        {
+            if (!CanSendInput)
+                return;
+            SendKeyMessage(action, keyCode, metaState);
+        }
+
+        /// <summary>
+        /// Presses and releases a key, for callers that have no press and release of
+        /// their own to mirror - a toolbar button, say.
+        /// </summary>
+        internal void SendKeyPress(AndroidKeyCode keyCode, int metaState = 0)
+        {
+            SendKey(KeyAction.Down, keyCode, metaState);
+            SendKey(KeyAction.Up, keyCode, metaState);
+        }
+
+        /// <summary>Types text on the device.</summary>
+        internal void SendText(string text)
+        {
+            if (!CanSendInput || string.IsNullOrEmpty(text))
+                return;
+            SendTextMessage(text);
         }
 
         void SendTouchAt(TouchAction action, Rect videoRect, Vector2 mousePosition)
@@ -911,12 +969,6 @@ namespace Unity.Android.Logcat
 
         void SendTouchMessage(TouchAction action, float x, float y)
         {
-            NetworkStream stream;
-            lock (m_ConnectionLock)
-                stream = m_Stream;
-            if (stream == null)
-                return;
-
             var nx = (int)Mathf.Round(x * kNormalizedMax);
             var ny = (int)Mathf.Round(y * kNormalizedMax);
             // Full pressure. The server drops it to 0 for an Up by itself.
@@ -933,9 +985,52 @@ namespace Unity.Android.Logcat
             message[7] = (byte)(pressure >> 8);
             message[8] = (byte)pressure;
 
+            SendControlMessage(message, 9, "touch");
+        }
+
+        void SendKeyMessage(KeyAction action, AndroidKeyCode keyCode, int metaState)
+        {
+            var message = m_ControlMessage;
+            message[0] = kControlKey;
+            message[1] = (byte)action;
+            WriteInt32BE(message, 2, (int)keyCode);
+            WriteInt32BE(message, 6, metaState);
+
+            SendControlMessage(message, 10, "key");
+        }
+
+        void SendTextMessage(string text)
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            if (bytes.Length > kMaxTextBytes)
+            {
+                AndroidLogcatInternalLog.Log($"Not sending {bytes.Length} bytes of text, the limit is {kMaxTextBytes}");
+                return;
+            }
+
+            // Length prefixed, so the server stays in sync even on a message it decides
+            // to ignore. Allocated per message rather than reusing a buffer: this only
+            // happens on a keystroke or a paste.
+            var message = new byte[3 + bytes.Length];
+            message[0] = kControlText;
+            message[1] = (byte)(bytes.Length >> 8);
+            message[2] = (byte)bytes.Length;
+            Array.Copy(bytes, 0, message, 3, bytes.Length);
+
+            SendControlMessage(message, message.Length, "text");
+        }
+
+        void SendControlMessage(byte[] message, int length, string what)
+        {
+            NetworkStream stream;
+            lock (m_ConnectionLock)
+                stream = m_Stream;
+            if (stream == null)
+                return;
+
             try
             {
-                stream.Write(message, 0, message.Length);
+                stream.Write(message, 0, length);
                 stream.Flush();
             }
             catch (Exception ex)
@@ -946,9 +1041,95 @@ namespace Unity.Android.Logcat
                 if (!m_ControlWriteFailed)
                 {
                     m_ControlWriteFailed = true;
-                    AndroidLogcatInternalLog.Log($"Failed to send a touch event: {ex.Message}");
+                    AndroidLogcatInternalLog.Log($"Failed to send a {what} event: {ex.Message}");
                 }
             }
+        }
+
+        static void WriteInt32BE(byte[] buffer, int offset, int value)
+        {
+            buffer[offset] = (byte)(value >> 24);
+            buffer[offset + 1] = (byte)(value >> 16);
+            buffer[offset + 2] = (byte)(value >> 8);
+            buffer[offset + 3] = (byte)value;
+        }
+
+        // ------------------------------------------------------------------
+        // Keyboard forwarding
+        // ------------------------------------------------------------------
+
+        void HandleKeyboardInput(int controlId)
+        {
+            if (!CanSendInput || GUIUtility.keyboardControl != controlId)
+                return;
+
+            var e = Event.current;
+            if (e.type != EventType.KeyDown && e.type != EventType.KeyUp)
+                return;
+
+            // Editor shortcuts keep working: Ctrl/Cmd combinations are never forwarded,
+            // so Ctrl+S still saves rather than going to the device.
+            if ((e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0)
+                return;
+
+            if (TryMapKeyCode(e.keyCode, out var androidKeyCode))
+            {
+                SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
+                    androidKeyCode, MetaState(e.modifiers));
+                e.Use();
+                return;
+            }
+
+            // Anything printable goes as text rather than as a keycode. Unity reports a
+            // printable key twice - once with a keyCode and once with a character - and
+            // only the character knows about the keyboard layout, so letting the device
+            // work out the keystrokes from the character is what makes punctuation and
+            // non-US layouts come out right.
+            if (e.type == EventType.KeyDown && e.character != '\0' && !char.IsControl(e.character))
+            {
+                SendTextMessage(e.character.ToString());
+                e.Use();
+            }
+        }
+
+        /// <summary>
+        /// Named keys that have no character to type. Everything else - letters, digits,
+        /// punctuation - is left to the text path.
+        /// </summary>
+        static bool TryMapKeyCode(KeyCode keyCode, out AndroidKeyCode androidKeyCode)
+        {
+            switch (keyCode)
+            {
+                // Escape is the device's BACK rather than Android's ESCAPE: on a phone
+                // that is what "go back" means, and it is the reason to press it.
+                case KeyCode.Escape: androidKeyCode = AndroidKeyCode.BACK; return true;
+                case KeyCode.Return:
+                case KeyCode.KeypadEnter: androidKeyCode = AndroidKeyCode.ENTER; return true;
+                case KeyCode.Backspace: androidKeyCode = AndroidKeyCode.DEL; return true;
+                case KeyCode.Delete: androidKeyCode = AndroidKeyCode.FORWARD_DEL; return true;
+                case KeyCode.Tab: androidKeyCode = AndroidKeyCode.TAB; return true;
+                case KeyCode.UpArrow: androidKeyCode = AndroidKeyCode.DPAD_UP; return true;
+                case KeyCode.DownArrow: androidKeyCode = AndroidKeyCode.DPAD_DOWN; return true;
+                case KeyCode.LeftArrow: androidKeyCode = AndroidKeyCode.DPAD_LEFT; return true;
+                case KeyCode.RightArrow: androidKeyCode = AndroidKeyCode.DPAD_RIGHT; return true;
+                case KeyCode.Home: androidKeyCode = AndroidKeyCode.MOVE_HOME; return true;
+                case KeyCode.End: androidKeyCode = AndroidKeyCode.MOVE_END; return true;
+                case KeyCode.PageUp: androidKeyCode = AndroidKeyCode.PAGE_UP; return true;
+                case KeyCode.PageDown: androidKeyCode = AndroidKeyCode.PAGE_DOWN; return true;
+                default: androidKeyCode = default; return false;
+            }
+        }
+
+        static int MetaState(EventModifiers modifiers)
+        {
+            var meta = 0;
+            if ((modifiers & EventModifiers.Shift) != 0)
+                meta |= kMetaShiftOn;
+            if ((modifiers & EventModifiers.Alt) != 0)
+                meta |= kMetaAltOn;
+            if ((modifiers & EventModifiers.Control) != 0)
+                meta |= kMetaCtrlOn;
+            return meta;
         }
 
         internal void DoDebuggingGUI()

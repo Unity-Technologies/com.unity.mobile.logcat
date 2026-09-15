@@ -6,7 +6,6 @@ import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 
-import java.lang.reflect.Method;
 import java.util.function.Supplier;
 
 /**
@@ -35,9 +34,6 @@ public final class TouchInjector {
     // gesture on every later event, so it is remembered here rather than sent over the
     // wire: 0 means "this pointer is not down".
     private final long[] downTimes = new long[MAX_POINTERS];
-
-    private Method setDisplayIdMethod;
-    private boolean setDisplayIdUnavailable;
 
     public TouchInjector(InputManagerWrapper inputManager, Supplier<Size> displaySize, int displayId) {
         this.inputManager = inputManager;
@@ -136,31 +132,11 @@ public final class TouchInjector {
 
         try {
             if (displayId != 0) {
-                setDisplayId(event, displayId);
+                InputManagerWrapper.setDisplayId(event, displayId);
             }
             inputManager.injectInputEvent(event);
         } finally {
             event.recycle();
-        }
-    }
-
-    /**
-     * Without this, an event is dispatched to the default display, which is wrong when
-     * capturing any other one. The setter is hidden API, so a device without it means
-     * touch on secondary displays does not work - the stream itself is unaffected.
-     */
-    private void setDisplayId(MotionEvent event, int id) {
-        if (setDisplayIdUnavailable) {
-            return;
-        }
-        try {
-            if (setDisplayIdMethod == null) {
-                setDisplayIdMethod = MotionEvent.class.getMethod("setDisplayId", int.class);
-            }
-            setDisplayIdMethod.invoke(event, id);
-        } catch (ReflectiveOperationException e) {
-            setDisplayIdUnavailable = true;
-            Logger.w("MotionEvent.setDisplayId is unavailable, touch will go to the default display", e);
         }
     }
 

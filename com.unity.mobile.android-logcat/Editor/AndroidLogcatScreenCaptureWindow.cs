@@ -22,6 +22,10 @@ namespace Unity.Android.Logcat
             public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
+            // Same glyphs and wording as the navigation row in the Inputs window.
+            public static GUIContent LiveStreamBack = new GUIContent("◄", "Send Back key event. The Escape key does the same once the view has focus.");
+            public static GUIContent LiveStreamHome = new GUIContent("●", "Send Home key event");
+            public static GUIContent LiveStreamRecents = new GUIContent("■", "Send Overview key event");
         }
         internal enum Mode
         {
@@ -148,6 +152,28 @@ namespace Unity.Android.Logcat
                 m_VideoPlayer.Play(videoPath);
         }
 
+        /// <summary>
+        /// Android's Back / Home / Recents buttons.
+        /// <para>
+        /// On a device with the three-button navigation bar these are also just tappable
+        /// in the mirrored image, but on one using gesture navigation there is no bar to
+        /// tap - so without these there is no way to leave an app from the live view.
+        /// </para>
+        /// </summary>
+        private void DoLiveStreamNavigationGUI()
+        {
+            EditorGUI.BeginDisabledGroup(!m_LiveStream.IsStreaming || !m_LiveStream.ControlSupported);
+
+            if (GUILayout.Button(Styles.LiveStreamBack, AndroidLogcatStyles.toolbarButton))
+                m_LiveStream.SendKeyPress(AndroidKeyCode.BACK);
+            if (GUILayout.Button(Styles.LiveStreamHome, AndroidLogcatStyles.toolbarButton))
+                m_LiveStream.SendKeyPress(AndroidKeyCode.HOME);
+            if (GUILayout.Button(Styles.LiveStreamRecents, AndroidLogcatStyles.toolbarButton))
+                m_LiveStream.SendKeyPress(AndroidKeyCode.APP_SWITCH);
+
+            EditorGUI.EndDisabledGroup();
+        }
+
         void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
         {
             // Nothing to collect - a live stream leaves no file behind. On failure the
@@ -269,6 +295,7 @@ namespace Unity.Android.Logcat
                             m_LiveStream.StartStreaming(m_DeviceSelection.SelectedDevice, OnLiveStreamCompleted);
                         }
                     }
+                    DoLiveStreamNavigationGUI();
                     break;
             }
             EditorGUI.EndDisabledGroup();
