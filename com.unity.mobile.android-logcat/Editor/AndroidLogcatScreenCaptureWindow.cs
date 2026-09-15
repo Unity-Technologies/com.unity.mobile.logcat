@@ -150,8 +150,9 @@ namespace Unity.Android.Logcat
 
         void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
         {
-            //if (result == AndroidLogcatLiveStream.Result.Success)
-            //    m_VideoPlayer.Play(videoPath);
+            // Nothing to collect - a live stream leaves no file behind. On failure the
+            // reason is in AndroidLogcatLiveStream.Errors, which DoGUI shows.
+            Repaint();
         }
 
         void DoModeGUI()
@@ -352,9 +353,15 @@ namespace Unity.Android.Logcat
                     }
                     break;
                 case Mode.LiveStream:
+                    if (Unsupported.IsDeveloperMode())
+                        m_LiveStream.DoDebuggingGUI();
                     {
                         var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
                         m_LiveStream.DoGUI(rc);
+                        // Frames arrive on the runtime's update, not on GUI events, so
+                        // the window has to keep repainting to show them.
+                        if (m_LiveStream.IsStreaming)
+                            Repaint();
                     }
                     break;
                 default:
