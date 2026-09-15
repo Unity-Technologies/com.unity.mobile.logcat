@@ -1,0 +1,23 @@
+build_server_jar:
+  name: Build live stream server jar
+  agent:
+    type: Unity::VM
+    image: package-ci/ubuntu-22.04:v4
+    flavor: b1.large
+  commands:
+    # The Android module ships everything the build needs: platforms/android-36,
+    # build-tools/36.0.0 and OpenJDK 17. Nothing else has to be provisioned.
+    - unity-downloader-cli -u 6000.0 -c editor -c android --wait
+    # One command on purpose: Yamato runs each entry in its own shell, so an `export`
+    # here would not survive to the next one. The SDK is located rather than
+    # hardcoded because the editor layout differs between platforms.
+    - ANDROID_HOME="$(find .Editor -type d -path '*AndroidPlayer/SDK' | head -1)" JAVA_HOME="$(find .Editor -type d -path '*AndroidPlayer/OpenJDK' | head -1)" ./External/UnityLogcatServer/gradlew -p External/UnityLogcatServer dexJar
+  artifacts:
+    # The build copies the jar into the package; this is the path the pack job needs
+    # it at, and Yamato restores a dependency's artifacts into the same relative
+    # location in the dependent job's workspace.
+    server_jar:
+      paths:
+        - "com.unity.mobile.android-logcat/External~/unity-logcat-server.jar"
+  # No triggers: this runs as a dependency of the package pack job. Giving it its own
+  # branch trigger would just build the same jar twice per push.

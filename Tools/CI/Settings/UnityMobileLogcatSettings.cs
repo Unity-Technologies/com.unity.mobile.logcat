@@ -21,10 +21,13 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
                     IsReleasing = true 
                 },
                 PackJobOptions = new PackJobOptions()
-                { 
+                {
                     Dependencies = new List<Dependency>()
                     {
-                        new("format", "check_formatting") 
+                        new("format", "check_formatting"),
+                        // External~/unity-logcat-server.jar is a build output and is not
+                        // committed, so it has to be built before the package is packed.
+                        new("build-server-jar", "build_server_jar")
                     }
                 },
                 CustomChecks = new HashSet<Dependency>() 
