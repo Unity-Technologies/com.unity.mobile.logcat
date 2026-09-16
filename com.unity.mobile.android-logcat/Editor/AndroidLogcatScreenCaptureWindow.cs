@@ -31,7 +31,6 @@ namespace Unity.Android.Logcat
         private AndroidLogcatRuntimeBase m_Runtime;
 
         private const int kButtonAreaHeight = 30;
-        private const int kBottomAreaHeight = 8;
 
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
@@ -174,7 +173,7 @@ namespace Unity.Android.Logcat
 
             DoToolbarGUI();
 
-            GUILayout.Space(10);
+            GUILayout.Space(5);
             if (m_DeviceSelection.SelectedDevice == null)
                 EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
             else
@@ -314,7 +313,10 @@ namespace Unity.Android.Logcat
             {
                 case Mode.Screenshot:
                     {
-                        var rc = new Rect(0, kButtonAreaHeight * 2, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
+                        // Claimed from the layout rather than offset by a hardcoded
+                        // toolbar height, which left a gap when the two disagreed.
+                        var rc = GUILayoutUtility.GetRect(0, 0,
+                            GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
                         DoScreenshotGUI(rc);
                     }
                     break;
