@@ -6,7 +6,6 @@ import com.unity.android.logcat.server.wrappers.InputManagerWrapper;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -193,12 +192,31 @@ public final class Server {
         thread.start();
     }
 
-    private static void closeQuietly(Closeable closeable) {
-        if (closeable == null) {
+    private static void closeQuietly(LocalSocket socket) {
+        if (socket == null) {
             return;
         }
         try {
-            closeable.close();
+            socket.close();
+        } catch (IOException e) {
+            Logger.v("Ignoring close failure: " + e);
+        }
+    }
+
+    /**
+     * Deliberately typed to the class rather than to {@link java.io.Closeable}:
+     * {@code LocalServerSocket} only declares that interface from API 29, so on an older
+     * device closing it through the interface throws {@code IncompatibleClassChangeError}
+     * - an Error, which escaped the shutdown path and made every stop report a failure.
+     * Calling the class's own {@code close()} compiles to a virtual call that works on
+     * every API level we support.
+     */
+    private static void closeQuietly(LocalServerSocket serverSocket) {
+        if (serverSocket == null) {
+            return;
+        }
+        try {
+            serverSocket.close();
         } catch (IOException e) {
             Logger.v("Ignoring close failure: " + e);
         }
