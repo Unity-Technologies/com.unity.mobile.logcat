@@ -154,8 +154,6 @@ namespace Unity.Android.Logcat
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
-        private Vector2? m_DisplaySize;
-
 
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
             : base(new AndroidLogcatActivityManager(adb, deviceId))
