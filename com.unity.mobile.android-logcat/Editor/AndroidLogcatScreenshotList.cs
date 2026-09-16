@@ -430,7 +430,22 @@ namespace Unity.Android.Logcat
                 && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
         }
 
-        /// <summary>Up and Down cycle through the list once it has focus, F2 renames.</summary>
+        /// <summary>
+        /// Delete everywhere, and Command+Backspace on macOS, where compact keyboards
+        /// have no forward delete key - again what the Project window takes.
+        /// </summary>
+        static bool IsDeleteShortcut(Event e)
+        {
+            if (e.keyCode == KeyCode.Delete)
+                return true;
+            return Application.platform == RuntimePlatform.OSXEditor
+                && e.keyCode == KeyCode.Backspace && e.command;
+        }
+
+        /// <summary>
+        /// Up and Down cycle through the list once it has focus, F2 renames and Delete
+        /// deletes.
+        /// </summary>
         void HandleKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
             int rowCount, int selectedRow, float rowHeight, float viewHeight)
         {
@@ -444,6 +459,18 @@ namespace Unity.Android.Logcat
                 if (selectedRow > 0)
                     BeginRename(screenshots[selectedRow - 1].Path);
                 Event.current.Use();
+                return;
+            }
+
+            if (IsDeleteShortcut(Event.current))
+            {
+                // Used before the dialog, which pumps its own events.
+                Event.current.Use();
+                // Row 0 is the live stream, which has no file to delete. Same
+                // confirmation as the row's own button, and it runs from the same place
+                // in the frame - after the scroll view has closed.
+                if (selectedRow > 0)
+                    ConfirmAndDelete(screenshots[selectedRow - 1].Path, selectedRow);
                 return;
             }
 
