@@ -104,7 +104,9 @@ namespace Unity.Android.Logcat
         const float kUnityScrollLinesPerNotch = 3.0f;
 
         const string kServerJarName = "unity-logcat-server.jar";
-        const string kServerDevicePath = "/data/local/tmp/unity-logcat-server.jar";
+        // The jar is pushed under a name of its own per session - see StartStreaming.
+        const string kServerDeviceFolder = "/data/local/tmp";
+        const string kServerDeviceNamePrefix = "unity-logcat-server";
         const string kServerMainClass = "com.unity.android.logcat.server.Server";
         const string kServerExternalFolder = "External~";
 
@@ -174,6 +176,9 @@ namespace Unity.Android.Logcat
         readonly StringBuilder m_ServerLog = new StringBuilder();
         readonly StringBuilder m_Errors = new StringBuilder();
         string m_SocketName;
+        // Where this session's jar lives on the device, unique per session - see
+        // StartStreaming for why it cannot be a shared path.
+        string m_ServerDevicePath;
         int m_ForwardedPort = -1;
 
         Thread m_ReaderThread;
@@ -314,12 +319,25 @@ namespace Unity.Android.Logcat
 
             try
             {
+                // One id for the session, used for both the socket and the jar, and
+                // settled before anything is pushed - the push needs the path.
+                //
+                // The socket name has to be unique so that a server left over from a
+                // previous run cannot own the name we are about to listen on. The jar
+                // path has to be unique because `adb push` rewrites its destination in
+                // place rather than replacing it: with a shared name, a second Editor
+                // starting a stream would truncate and rewrite the very file another
+                // Editor's running server is executing from, and a class it had not
+                // loaded yet would fail to load.
+                var sessionId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                m_SocketName = "unity_logcat_server_" + sessionId;
+                m_ServerDevicePath = $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}-{sessionId}.jar";
+
+                // Before pushing ours, so it cannot sweep away what it is about to push.
+                RemoveStaleServerJars(device);
+
                 var jarPath = GetServerJarPath();
                 PushServer(device, jarPath);
-
-                // Unique per session, so that a server left over from a previous run
-                // cannot own the name we are about to listen on.
-                m_SocketName = "unity_logcat_server_" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
                 var settings = m_Runtime.Settings;
                 StartServerProcess(device,
@@ -385,6 +403,7 @@ namespace Unity.Android.Logcat
 
             KillServerProcess();
             RemovePortForward();
+            RemoveServerJar();
 
             if (result == Result.Failure)
                 AppendServerLog();
@@ -497,22 +516,22 @@ namespace Unity.Android.Logcat
 
         void PushServer(IAndroidLogcatDevice device, string jarPath)
         {
-            AndroidLogcatInternalLog.Log($"Pushing {jarPath} to {kServerDevicePath}");
-            // Pushed on every start rather than only when missing: it is 13 KB, and it
-            // rules out a stale jar from an older Editor being left on the device.
+            AndroidLogcatInternalLog.Log($"Pushing {jarPath} to {m_ServerDevicePath}");
+            // Pushed on every start: the destination name is new each time, so there is
+            // never a stale jar to reuse and never one in use to overwrite.
             m_Runtime.Tools.ADB.Run(new[]
             {
                 $"-s {device.Id}",
                 "push",
                 $"\"{jarPath}\"",
-                kServerDevicePath
+                m_ServerDevicePath
             }, $"Failed to push {kServerJarName} to the device");
         }
 
         void StartServerProcess(IAndroidLogcatDevice device, int maxSize, int quality, int maxFps, string displayId)
         {
             var args = new StringBuilder();
-            args.Append($"-s {device.Id} shell CLASSPATH={kServerDevicePath} app_process / {kServerMainClass}");
+            args.Append($"-s {device.Id} shell CLASSPATH={m_ServerDevicePath} app_process / {kServerMainClass}");
             args.Append($" socket_name={m_SocketName}");
             args.Append($" max_size={maxSize}");
             args.Append($" quality={quality}");
@@ -807,6 +826,62 @@ namespace Unity.Android.Logcat
             finally
             {
                 process.Close();
+            }
+        }
+
+        /// <summary>
+        /// Deletes jars left behind by sessions that never got to clean up after
+        /// themselves - an Editor killed mid-stream - and the fixed name that versions
+        /// before the per-session path used.
+        /// <para>
+        /// Safe even when another Editor is streaming from one of them: unlinking a jar
+        /// does not disturb a server already running from it, because the runtime keeps
+        /// the file it opened. That was verified on device rather than assumed, on both
+        /// Android 16 and Android 8.1.
+        /// </para>
+        /// </summary>
+        void RemoveStaleServerJars(IAndroidLogcatDevice device)
+        {
+            DeleteOnDevice(device, $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}*.jar");
+        }
+
+        /// <summary>
+        /// Deletes this session's jar from the device. Unlinking it is safe even if the
+        /// server somehow outlived us - the file stays alive for whoever has it open -
+        /// and skipping it would leave 17 KB behind on the device per stream.
+        /// </summary>
+        void RemoveServerJar()
+        {
+            var path = m_ServerDevicePath;
+            m_ServerDevicePath = null;
+            DeleteOnDevice(m_Device, path);
+        }
+
+        /// <summary>
+        /// Deletes files on the device, one path or a glob, and never fails: tidying up
+        /// is not worth losing a stream over, and what is left behind if it does fail is
+        /// a small file in a temporary folder.
+        /// </summary>
+        void DeleteOnDevice(IAndroidLogcatDevice device, string target)
+        {
+            if (device == null || string.IsNullOrEmpty(target))
+                return;
+
+            try
+            {
+                m_Runtime.Tools.ADB.Run(new[]
+                {
+                    $"-s {device.Id}",
+                    "shell",
+                    // Quoted so the target reaches the device's shell whole, glob and
+                    // all, rather than anything on this side of adb taking an interest
+                    // in it. rm -f is silent when nothing matches.
+                    $"\"rm -f {target}\""
+                }, $"Failed to delete {target} from the device");
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
             }
         }
 
@@ -1475,7 +1550,8 @@ namespace Unity.Android.Logcat
                 string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName, m_SocketName);
             DoStatsRow(rc, labelWidth, ref y, Styles.ForwardedPort,
                 m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
-            DoStatsRow(rc, labelWidth, ref y, Styles.ServerOnDevice, kServerDevicePath, kServerDevicePath);
+            DoStatsRow(rc, labelWidth, ref y, Styles.ServerOnDevice,
+                string.IsNullOrEmpty(m_ServerDevicePath) ? "-" : m_ServerDevicePath, m_ServerDevicePath);
             DoStatsRow(rc, labelWidth, ref y, Styles.ServerPid,
                 m_ServerPid > 0 ? m_ServerPid.ToString() : "-");
 

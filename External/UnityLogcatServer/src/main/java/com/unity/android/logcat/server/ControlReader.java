@@ -104,13 +104,31 @@ public final class ControlReader implements Runnable {
                     break;
                 default:
                     // Message sizes are known per type, so an unknown type means we no
-                    // longer know where the next one starts. Reading on would inject
-                    // garbage; stopping leaves the video stream running, the useful half.
+                    // longer know where the next one starts, and reading on would
+                    // inject garbage. Draining rather than returning keeps the other
+                    // thing this thread is for: noticing EOF, which on a screen that
+                    // has stopped changing is the only sign the client has gone. Return
+                    // here instead and the video stream would be left running with
+                    // nobody watching it - and with nothing left to notice that.
                     Logger.w("Unknown control message type " + type
                         + ", ignoring the rest of the control channel");
+                    drainUntilClientGoes(in);
                     return;
             }
         }
+    }
+
+    /**
+     * Reads and discards everything the client sends until it goes away, which is
+     * reported as {@link EOFException} exactly as a clean end of stream would be.
+     */
+    private void drainUntilClientGoes(DataInputStream in) throws IOException {
+        byte[] scratch = new byte[256];
+        while (in.read(scratch) != -1) {
+            // Discarded on purpose: the stream cannot be resynchronized, but the
+            // connection is still worth watching.
+        }
+        throw new EOFException();
     }
 
     private void readTouch(DataInputStream in) throws IOException {
