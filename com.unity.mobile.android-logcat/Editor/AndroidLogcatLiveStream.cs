@@ -131,8 +131,9 @@ namespace Unity.Android.Logcat
         const float kStatsMargin = 8;
         const float kNavigationSpacing = 6;
         const float kNavigationButtonWidth = 60;
-        const float kLogButtonWidth = 110;
-        const float kLogcatButtonWidth = 55;
+        // A row each: both labels are too wide for the two of them to share the stats
+        // column without being clipped.
+        const float kDebugButtonWidth = 150;
 
         static class Styles
         {
@@ -162,9 +163,12 @@ namespace Unity.Android.Logcat
                 "Where the server jar was pushed on the device.");
             internal static readonly GUIContent ServerPid = new GUIContent("Server pid",
                 "Process id of the server on the device, for adb shell kill or ps.");
-            internal static readonly GUIContent LogServerOutput = new GUIContent("Log server output",
-                "Print everything the on-device server has written to the Console.");
-            internal static readonly GUIContent ShowServerLogcat = new GUIContent("Logcat",
+            internal static readonly GUIContent RebuildJar = new GUIContent("Rebuild server",
+                "Run 'gradlew dexJar' on External/UnityLogcatServer, which also copies the jar into the " +
+                "package, then restart the stream so the device picks the new one up and point the " +
+                "Logcat window at the server that comes back. Only available in the package's own " +
+                "repository, where that Gradle project sits next to the package.");
+            internal static readonly GUIContent ShowServerLogcat = new GUIContent("Show server logs",
                 "Open the Android Logcat window filtered to this server's process.");
         }
 
@@ -217,6 +221,11 @@ namespace Unity.Android.Logcat
         // Reported by the server in the stream header, so it is exact rather than
         // guessed from the process table, where several app_process entries can exist.
         volatile int m_ServerPid;
+        // Set by the Rebuild jar button, cleared once the Logcat window has been
+        // pointed at the server that came up. The pid is not known when the stream is
+        // started - it arrives in the stream header, on the reader thread - so this
+        // waits for it rather than guessing.
+        bool m_ShowLogcatWhenServerStarts;
         readonly byte[] m_ControlMessage = new byte[kControlMessageSize];
         bool m_TouchDown;
         bool m_ControlWriteFailed;
@@ -381,6 +390,8 @@ namespace Unity.Android.Logcat
         void Shutdown(Result result)
         {
             m_Stop = true;
+            // Whatever was waiting for a pid is not getting one now.
+            m_ShowLogcatWhenServerStarts = false;
 
             // The connection goes first: closing it is what unblocks a reader thread
             // parked in a read, so the join below does not have to wait it out.
@@ -418,6 +429,15 @@ namespace Unity.Android.Logcat
         {
             if (!IsStreaming)
                 return;
+
+            // The header has landed, so the new server can be named. Done here rather
+            // than where the pid is parsed, because that is the reader thread and this
+            // opens an EditorWindow.
+            if (m_ShowLogcatWhenServerStarts && m_ServerPid > 0)
+            {
+                m_ShowLogcatWhenServerStarts = false;
+                ShowServerLogcat();
+            }
 
             ApplyPendingFrame();
 
@@ -1565,28 +1585,95 @@ namespace Unity.Android.Logcat
             if (y + height > rc.yMax)
                 return;
 
-            // Two buttons side by side: what the Editor captured from the adb shell, and
-            // everything the process logged on the device.
-            var logWidth = Mathf.Min(kLogButtonWidth, rc.width);
-            if (GUI.Button(new Rect(rc.x, y, logWidth, height),
-                Styles.LogServerOutput, EditorStyles.miniButtonLeft))
-            {
-                string log;
-                lock (m_ServerLog)
-                    log = m_ServerLog.ToString();
-                UnityEngine.Debug.Log(string.IsNullOrEmpty(log) ? "No server output captured" : log);
-            }
+            // Everything the server logs goes to logcat as well, so there is no button
+            // for the copy the Editor captures from the adb shell - that copy is kept
+            // only because a server that dies before it has a pid leaves nothing for
+            // the Logcat window to filter on, and it ends up in Errors instead.
+            var buttonWidth = Mathf.Min(kDebugButtonWidth, rc.width);
 
-            var logcatWidth = Mathf.Max(0, Mathf.Min(kLogcatButtonWidth, rc.width - logWidth));
             EditorGUI.BeginDisabledGroup(m_ServerPid <= 0 || m_Device == null);
-            if (logcatWidth > 0 && GUI.Button(new Rect(rc.x + logWidth, y, logcatWidth, height),
-                Styles.ShowServerLogcat, EditorStyles.miniButtonRight))
+            if (GUI.Button(new Rect(rc.x, y, buttonWidth, height),
+                Styles.ShowServerLogcat, EditorStyles.miniButton))
             {
                 ShowServerLogcat();
             }
             EditorGUI.EndDisabledGroup();
 
             y += height;
+
+            if (y + height > rc.yMax)
+                return;
+
+            var gradleProject = GetServerGradleProjectPath();
+            EditorGUI.BeginDisabledGroup(gradleProject == null);
+            if (GUI.Button(new Rect(rc.x, y, buttonWidth, height),
+                Styles.RebuildJar, EditorStyles.miniButton))
+            {
+                RebuildServerJar(gradleProject);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            y += height;
+        }
+
+        /// <summary>
+        /// The Gradle project that builds the server, which lives beside the package in
+        /// its own repository - <c>&lt;repo&gt;/External/UnityLogcatServer</c> - and not
+        /// at all in a package installed from a registry. Null when it is not there.
+        /// </summary>
+        static string GetServerGradleProjectPath()
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                typeof(AndroidLogcatLiveStream).Assembly);
+            if (package == null)
+                return null;
+
+            var path = Path.GetFullPath(Path.Combine(package.resolvedPath, "..",
+                "External", "UnityLogcatServer"));
+            return File.Exists(Path.Combine(path, "build.gradle")) ? path : null;
+        }
+
+        /// <summary>
+        /// Builds the server jar and, if a stream is up, restarts it so the device runs
+        /// the new one and the Logcat window follows it. Developer-mode only: it is the
+        /// edit-build-run loop for the server, which is otherwise a trip to a terminal.
+        /// </summary>
+        void RebuildServerJar(string gradleProject)
+        {
+            if (gradleProject == null)
+                return;
+
+            if (!AndroidLogcatUtilities.RunGradle(gradleProject, "dexJar"))
+                return;
+
+            var wasStreaming = IsStreaming;
+            UnityEngine.Debug.Log("Live stream server jar rebuilt" +
+                (wasStreaming ? ", restarting the stream" : ""));
+
+            if (!wasStreaming)
+                return;
+
+            RestartStreaming();
+            // Armed after the restart, so that the state reset inside StartStreaming
+            // does not clear it, and only if that restart actually took: a stream that
+            // failed to start has no server to show, and Shutdown disarms this anyway.
+            m_ShowLogcatWhenServerStarts = IsStreaming;
+        }
+
+        /// <summary>
+        /// Stops and starts the stream against the same device, keeping the caller's
+        /// completion callback. Does nothing when no stream is running.
+        /// </summary>
+        internal void RestartStreaming()
+        {
+            if (!IsStreaming)
+                return;
+
+            var device = m_Device;
+            var onStopped = m_OnStopLiveStream;
+            StopStreaming();
+            if (device != null)
+                StartStreaming(device, onStopped);
         }
     }
 }

@@ -223,6 +223,111 @@ namespace Unity.Android.Logcat
             return s_ProjectDirectory;
         }
 
+        // Long enough for a first run, which downloads Gradle itself.
+        const int kGradleTimeoutMs = 5 * 60 * 1000;
+
+        /// <summary>
+        /// Runs a Gradle task in a project directory and says whether it succeeded,
+        /// logging its output either way.
+        /// <para>
+        /// The JDK and SDK come from Unity's own External Tools settings rather than
+        /// from the environment: the Editor may not have inherited a shell environment
+        /// at all, the one it did inherit is not necessarily the one this build wants,
+        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
+        /// is run through <c>sh</c> off Windows, so that this does not depend on its
+        /// executable bit, which is invisible to anyone working from Windows.
+        /// </para>
+        /// <para>
+        /// Blocking, behind a progress bar. This is a developer action - there is no
+        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
+        /// </para>
+        /// </summary>
+        internal static bool RunGradle(string projectDirectory, string task)
+        {
+            if (string.IsNullOrEmpty(projectDirectory) || !Directory.Exists(projectDirectory))
+            {
+                Debug.LogError($"No Gradle project at '{projectDirectory}'.");
+                return false;
+            }
+
+            string androidHome;
+            string javaHome;
+            try
+            {
+                androidHome = AndroidBridge.AndroidExternalToolsSettings.sdkRootPath;
+                javaHome = AndroidBridge.AndroidExternalToolsSettings.jdkRootPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Could not read the Android SDK and JDK locations from " +
+                    $"Preferences > External Tools.\n{ex.Message}");
+                return false;
+            }
+
+            var windows = Application.platform == RuntimePlatform.WindowsEditor;
+
+            var process = new System.Diagnostics.Process();
+            var si = process.StartInfo;
+            si.WorkingDirectory = projectDirectory;
+            si.FileName = windows ? Path.Combine(projectDirectory, "gradlew.bat") : "sh";
+            si.Arguments = windows ? task : $"gradlew {task}";
+            // Left unset when a path is not configured, rather than pointed at nothing:
+            // Gradle then falls back to local.properties or an inherited variable, which
+            // is a better answer than a directory that does not exist.
+            if (!string.IsNullOrEmpty(javaHome) && Directory.Exists(javaHome))
+                si.EnvironmentVariables["JAVA_HOME"] = javaHome;
+            if (!string.IsNullOrEmpty(androidHome) && Directory.Exists(androidHome))
+                si.EnvironmentVariables["ANDROID_HOME"] = androidHome;
+            si.UseShellExecute = false;
+            si.CreateNoWindow = true;
+            si.RedirectStandardOutput = true;
+            si.RedirectStandardError = true;
+
+            var output = new System.Text.StringBuilder();
+
+            try
+            {
+                EditorUtility.DisplayProgressBar($"Running Gradle in {Path.GetFileName(projectDirectory)}",
+                    $"{si.FileName} {si.Arguments}", 0.5f);
+
+                process.OutputDataReceived += (s, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
+                process.ErrorDataReceived += (s, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                if (!process.WaitForExit(kGradleTimeoutMs))
+                {
+                    process.Kill();
+                    Debug.LogError($"Gradle did not finish within {kGradleTimeoutMs / 1000} s.");
+                    return false;
+                }
+
+                string log;
+                lock (output)
+                    log = output.ToString();
+                AndroidLogcatInternalLog.Log(log);
+
+                if (process.ExitCode != 0)
+                {
+                    Debug.LogError($"'gradlew {task}' failed with exit code {process.ExitCode}.\n{log}");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to run Gradle in '{projectDirectory}'.\n{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                process.Dispose();
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
