@@ -54,7 +54,18 @@ def resolveSdkDir = {
     for (name in ['ANDROID_HOME', 'ANDROID_SDK_ROOT']) {
         def dir = System.getenv(name)
         if (dir) {
-            return file(dir)
+            // Gradle resolves a relative path against the project directory, not
+            // against wherever the build was invoked from, and with a daemon there is
+            // no useful "invoked from" anyway. A relative value is therefore almost
+            // certainly not the directory the caller meant, so say that rather than
+            // reporting a missing SDK at some path they never typed.
+            def f = new File(dir)
+            if (!f.isAbsolute()) {
+                throw new GradleException("$name is set to a relative path, '$dir'.\n"
+                    + "It has to be absolute: Gradle would resolve it against "
+                    + project.projectDir + ", not against the directory you ran from.")
+            }
+            return f
         }
     }
     return null
