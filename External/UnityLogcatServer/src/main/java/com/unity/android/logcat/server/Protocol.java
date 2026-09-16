@@ -10,11 +10,12 @@ import java.io.OutputStream;
  * {@link DataOutputStream}.
  *
  * <pre>
- * Stream header, once, 16 bytes:
+ * Stream header, once, 20 bytes:
  *   u32  magic            'U' 'L' 'S' '1' (0x554C5331)
  *   u32  protocolVersion  BuildConfig.PROTOCOL_VERSION
  *   u32  codec            CODEC_MJPEG
  *   u32  flags            FLAG_CONTROL_SUPPORTED if touch can be injected
+ *   u32  serverPid        this process on the device, so the Editor can name it
  *
  * Frame, repeated, 20 byte header + payload:
  *   u64  ptsUs            microseconds since the first frame
@@ -46,11 +47,12 @@ public final class Protocol {
         this.out = new DataOutputStream(new BufferedOutputStream(stream, 64 * 1024));
     }
 
-    public void writeStreamHeader(int codec, int flags) throws IOException {
+    public void writeStreamHeader(int codec, int flags, int serverPid) throws IOException {
         out.writeInt(MAGIC);
         out.writeInt(BuildConfig.PROTOCOL_VERSION);
         out.writeInt(codec);
         out.writeInt(flags);
+        out.writeInt(serverPid);
         out.flush();
     }
 

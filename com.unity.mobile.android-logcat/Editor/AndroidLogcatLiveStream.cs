@@ -65,9 +65,9 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 3;
+        const int kProtocolVersion = 4;
         const int kCodecMjpeg = 1;
-        const int kStreamHeaderSize = 16; // magic + version + codec + flags
+        const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
         const int kFrameHeaderSize = 20;  // ptsUs + width + height + payloadSize
 
         // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
@@ -114,7 +114,8 @@ namespace Unity.Android.Logcat
         const float kStatsMargin = 8;
         const float kNavigationSpacing = 6;
         const float kNavigationButtonWidth = 30;
-        const float kLogButtonWidth = 120;
+        const float kLogButtonWidth = 110;
+        const float kLogcatButtonWidth = 55;
 
         static class Styles
         {
@@ -142,8 +143,12 @@ namespace Unity.Android.Logcat
                 "Local TCP port adb forwards to that socket.");
             internal static readonly GUIContent ServerOnDevice = new GUIContent("Server",
                 "Where the server jar was pushed on the device.");
+            internal static readonly GUIContent ServerPid = new GUIContent("Server pid",
+                "Process id of the server on the device, for adb shell kill or ps.");
             internal static readonly GUIContent LogServerOutput = new GUIContent("Log server output",
                 "Print everything the on-device server has written to the Console.");
+            internal static readonly GUIContent ShowServerLogcat = new GUIContent("Logcat",
+                "Open the Android Logcat window filtered to this server's process.");
         }
 
         AndroidLogcatRuntimeBase m_Runtime;
@@ -176,6 +181,9 @@ namespace Unity.Android.Logcat
         int m_ReceivedFrames;
 
         volatile bool m_ControlSupported;
+        // Reported by the server in the stream header, so it is exact rather than
+        // guessed from the process table, where several app_process entries can exist.
+        volatile int m_ServerPid;
         readonly byte[] m_ControlMessage = new byte[kControlMessageSize];
         bool m_TouchDown;
         bool m_ControlWriteFailed;
@@ -258,6 +266,7 @@ namespace Unity.Android.Logcat
             m_ReaderError = null;
             m_StreamEnded = false;
             m_ControlSupported = false;
+            m_ServerPid = 0;
             m_ControlWriteFailed = false;
             m_TouchDown = false;
             m_FrameWidth = 0;
@@ -656,6 +665,8 @@ namespace Unity.Android.Logcat
             m_ControlSupported = (flags & kFlagControlSupported) != 0;
             if (!m_ControlSupported)
                 AndroidLogcatInternalLog.Log("The server cannot inject input, the live stream will be view only");
+
+            m_ServerPid = ReadInt32BE(header, 16);
         }
 
         static void ReadExactly(Stream stream, byte[] buffer, int count)
@@ -1221,6 +1232,25 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// Opens the Android Logcat window showing only this server's process, the
+        /// equivalent of <c>adb logcat --pid=&lt;server pid&gt;</c>. Tag filtering is left
+        /// as the user set it.
+        /// </summary>
+        void ShowServerLogcat()
+        {
+            var window = AndroidLogcatConsoleWindow.ShowNewOrExisting();
+            if (window == null)
+                return;
+
+            // Logcat follows the runtime-wide device selection, so filtering by a process
+            // id means nothing without selecting the device that process is on first.
+            if (m_Device != null)
+                m_Runtime.DeviceQuery.SelectDevice(m_Device);
+
+            window.FilterByProcessId(m_ServerPid);
+        }
+
+        /// <summary>
         /// Extra detail for diagnosing the stream, below the navigation buttons. Touch
         /// support is not repeated here - the rows above already report it.
         /// </summary>
@@ -1242,18 +1272,33 @@ namespace Unity.Android.Logcat
             DoStatsRow(rc, labelWidth, ref y, Styles.ForwardedPort,
                 m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
             DoStatsRow(rc, labelWidth, ref y, Styles.ServerOnDevice, kServerDevicePath, kServerDevicePath);
+            DoStatsRow(rc, labelWidth, ref y, Styles.ServerPid,
+                m_ServerPid > 0 ? m_ServerPid.ToString() : "-");
 
             if (y + height > rc.yMax)
                 return;
 
-            if (GUI.Button(new Rect(rc.x, y, Mathf.Min(kLogButtonWidth, rc.width), height),
-                Styles.LogServerOutput, EditorStyles.miniButton))
+            // Two buttons side by side: what the Editor captured from the adb shell, and
+            // everything the process logged on the device.
+            var logWidth = Mathf.Min(kLogButtonWidth, rc.width);
+            if (GUI.Button(new Rect(rc.x, y, logWidth, height),
+                Styles.LogServerOutput, EditorStyles.miniButtonLeft))
             {
                 string log;
                 lock (m_ServerLog)
                     log = m_ServerLog.ToString();
                 UnityEngine.Debug.Log(string.IsNullOrEmpty(log) ? "No server output captured" : log);
             }
+
+            var logcatWidth = Mathf.Max(0, Mathf.Min(kLogcatButtonWidth, rc.width - logWidth));
+            EditorGUI.BeginDisabledGroup(m_ServerPid <= 0 || m_Device == null);
+            if (logcatWidth > 0 && GUI.Button(new Rect(rc.x + logWidth, y, logcatWidth, height),
+                Styles.ShowServerLogcat, EditorStyles.miniButtonRight))
+            {
+                ShowServerLogcat();
+            }
+            EditorGUI.EndDisabledGroup();
+
             y += height;
         }
     }

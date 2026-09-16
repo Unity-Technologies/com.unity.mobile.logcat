@@ -106,7 +106,7 @@ public final class Server {
             // Sent before anything else: `adb forward` succeeds as soon as the
             // socket exists, so the header is what tells the Editor it is really
             // talking to a server of a version it understands.
-            protocol.writeStreamHeader(Protocol.CODEC_MJPEG, flags);
+            protocol.writeStreamHeader(Protocol.CODEC_MJPEG, flags, android.os.Process.myPid());
 
             startControlReader(socket, streamer, touchInjector, keyInjector);
             streamer.stream();
