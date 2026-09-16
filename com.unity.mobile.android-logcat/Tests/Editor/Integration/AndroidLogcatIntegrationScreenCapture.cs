@@ -5,6 +5,8 @@ using Unity.Android.Logcat;
 using UnityEngine;
 using UnityEngine.TestTools;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 [TestFixture]
 [RequiresAndroidDevice]
@@ -125,6 +127,60 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
 
         // Deleting the same path again is not an error, it is just already gone.
         Assert.IsTrue(Runtime.CaptureScreenshot.DeleteScreenshot(path));
+    }
+
+    /// <summary>
+    /// A renamed screenshot no longer matches &lt;device&gt;_&lt;number&gt;, so this also
+    /// covers the scan listing files that do not match the pattern - without that, a
+    /// rename would make the file disappear from the list.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator CanRenameScreenshot()
+    {
+        var completed = false;
+        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
+        yield return WaitForCondition("Waiting for screenshot", () => completed);
+
+        var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
+        var prefix = AndroidLogcatUtilities.SanitizeFileName(Device.Id);
+        var countBefore = Runtime.CaptureScreenshot.GetScreenshots().Count;
+        var ofDeviceBefore = CountScreenshotsOf(prefix);
+        var newName = "renamed-by-test";
+
+        Assert.IsTrue(Runtime.CaptureScreenshot.RenameScreenshot(path, newName), "Rename should have succeeded");
+
+        var renamed = Path.Combine(Path.GetDirectoryName(path), newName + ".png").Replace("\\", "/");
+        Assert.IsFalse(File.Exists(path), "The old name should be gone");
+        Assert.IsTrue(File.Exists(renamed), "The new name should exist");
+
+        // Still listed, still the displayed image, but no longer attributed to a device.
+        var screenshots = Runtime.CaptureScreenshot.GetScreenshots();
+        Assert.AreEqual(countBefore, screenshots.Count, "The list should still hold it");
+        Assert.AreEqual(ofDeviceBefore - 1, CountScreenshotsOf(prefix),
+            "A renamed file no longer counts towards its device");
+        Assert.AreEqual(renamed, Runtime.CaptureScreenshot.SelectedImagePath,
+            "The displayed image should follow the rename");
+
+        var entry = screenshots.First(s => s.Path == renamed);
+        Assert.AreEqual(newName, entry.Name);
+        Assert.AreEqual(string.Empty, entry.DevicePrefix);
+        Assert.AreEqual(0, entry.Number);
+
+        // Renaming onto a name that already exists must refuse rather than overwrite.
+        var second = false;
+        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => second = true);
+        yield return WaitForCondition("Waiting for a second screenshot", () => second);
+        var other = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
+
+        LogAssert.Expect(LogType.Error, new Regex("already exists"));
+        Assert.IsFalse(Runtime.CaptureScreenshot.RenameScreenshot(other, newName));
+        Assert.IsTrue(File.Exists(other), "The file should be untouched after a refused rename");
+
+        LogAssert.Expect(LogType.Error, new Regex("not a usable file name"));
+        Assert.IsFalse(Runtime.CaptureScreenshot.RenameScreenshot(other, "bad/name"));
+
+        // Cleanup, so the next run does not trip over the fixed name.
+        Runtime.CaptureScreenshot.DeleteScreenshot(renamed);
     }
 
     private int CountScreenshotsOf(string devicePrefix)

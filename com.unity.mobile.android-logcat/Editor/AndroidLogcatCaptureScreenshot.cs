@@ -144,19 +144,24 @@ namespace Unity.Android.Logcat
             foreach (var file in Directory.GetFiles(directory, $"*{GetImageExtension()}"))
             {
                 var name = Path.GetFileNameWithoutExtension(file);
+
                 // Split at the last underscore: a device id can contain one itself once
                 // sanitized, e.g. an ip:port becomes 192.168.1.5_5555, so only the part
                 // after the final underscore is the number.
+                //
+                // A name that does not match is still listed, with no device and no
+                // number. Renaming is allowed, and a file dropped in here by hand should
+                // show up too - being unable to see a file that is plainly in the folder
+                // would be worse than not knowing which device it came from.
+                var devicePrefix = string.Empty;
+                var number = 0;
                 var separator = name.LastIndexOf('_');
-                if (separator <= 0)
-                    continue;
-                if (!int.TryParse(name.Substring(separator + 1), out var number))
-                    continue;
+                if (separator > 0 && int.TryParse(name.Substring(separator + 1), out number))
+                    devicePrefix = name.Substring(0, separator);
+                else
+                    number = 0;
 
-                screenshots.Add(new Screenshot(
-                    file.Replace("\\", "/"),
-                    name.Substring(0, separator),
-                    number));
+                screenshots.Add(new Screenshot(file.Replace("\\", "/"), devicePrefix, number));
             }
 
             screenshots.Sort(CompareScreenshots);
@@ -165,12 +170,73 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Groups by device, then orders by number. GetFiles order is filesystem
-        /// dependent, and sorting the names as strings would put #10 before #2.
+        /// dependent, and sorting the names as strings would put #10 before #2. Renamed
+        /// files have no device or number, so they sort last, by name.
         /// </summary>
         private static int CompareScreenshots(Screenshot a, Screenshot b)
         {
+            var aNamed = string.IsNullOrEmpty(a.DevicePrefix);
+            var bNamed = string.IsNullOrEmpty(b.DevicePrefix);
+            if (aNamed != bNamed)
+                return aNamed ? 1 : -1;
+            if (aNamed)
+                return string.Compare(a.Name, b.Name, StringComparison.Ordinal);
+
             var byDevice = string.Compare(a.DevicePrefix, b.DevicePrefix, StringComparison.Ordinal);
             return byDevice != 0 ? byDevice : a.Number.CompareTo(b.Number);
+        }
+
+        /// <summary>
+        /// Renames a saved screenshot, keeping it in the same directory and keeping its
+        /// extension. A name that no longer matches
+        /// <c>&lt;device_id&gt;_&lt;number&gt;</c> is fine: it stays in the list, just
+        /// without a device or a number, and is never picked as "the latest" for a device.
+        /// </summary>
+        /// <returns>False if the name is unusable or the move failed, which is logged.</returns>
+        public bool RenameScreenshot(string path, string newName)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return false;
+
+            newName = newName == null ? string.Empty : newName.Trim();
+            if (newName.Length == 0)
+                return false;
+
+            if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                UnityEngine.Debug.LogError($"'{newName}' is not a usable file name.");
+                return false;
+            }
+
+            var directory = Path.GetDirectoryName(path);
+            var target = Path.Combine(directory, newName + GetImageExtension()).Replace("\\", "/");
+            if (target == path)
+                return true;
+
+            if (File.Exists(target))
+            {
+                UnityEngine.Debug.LogError($"'{newName}{GetImageExtension()}' already exists.");
+                return false;
+            }
+
+            try
+            {
+                File.Move(path, target);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Failed to rename '{path}' to '{target}'.\n{ex.Message}");
+                return false;
+            }
+
+            // Rescan, so the list picks up the new name and reorders.
+            m_Screenshots = null;
+
+            // Keep showing the same image, now under its new path.
+            if (m_SelectedImagePath == path)
+                m_SelectedImagePath = target;
+
+            return true;
         }
 
         /// <summary>

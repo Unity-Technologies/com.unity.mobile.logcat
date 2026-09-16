@@ -57,9 +57,20 @@ namespace Unity.Android.Logcat
         readonly Func<IAndroidLogcatDevice> m_SelectedDevice;
         readonly Action m_Repaint;
 
+        const string kRenameControlName = "ScreenshotRenameField";
+
         readonly Splitter m_Splitter = new Splitter(Splitter.SplitterType.Horizontal, kMinWidth, kMaxWidth);
         Vector2 m_Scroll;
         bool m_LiveSelected;
+
+        // Which row is being renamed, and the text so far. The field is focused once,
+        // the frame after it first appears.
+        string m_RenamingPath;
+        string m_RenameText;
+        bool m_RenameNeedsFocus;
+        // The list's own control id, remembered so that focus can go back to it once a
+        // rename ends - otherwise the keys would need another click to work again.
+        int m_ListControlId;
 
         /// <summary>
         /// Whether the Live row is the selected one, so the caller knows to show the
@@ -129,6 +140,7 @@ namespace Unity.Android.Logcat
             // Allocated on every pass, before any early return, so control ids do not
             // shift between the Layout and Repaint passes.
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
+            m_ListControlId = controlId;
 
             GUI.Box(rc, GUIContent.none, EditorStyles.helpBox);
 
@@ -190,11 +202,18 @@ namespace Unity.Android.Logcat
                 var labelRect = new Rect(rowRect.x + 4, rowRect.y,
                     Mathf.Max(0, rowRect.width - 4 - deleteWidth), rowRect.height);
 
-                var label = row == 0
-                    ? Styles.LiveRow
-                    : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
-                var style = isSelected ? Styles.SelectedRow : EditorStyles.label;
-                GUI.Label(labelRect, label, style);
+                if (row > 0 && screenshots[row - 1].Path == m_RenamingPath)
+                {
+                    DoRenameFieldGUI(labelRect);
+                }
+                else
+                {
+                    var label = row == 0
+                        ? Styles.LiveRow
+                        : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
+                    var style = isSelected ? Styles.SelectedRow : EditorStyles.label;
+                    GUI.Label(labelRect, label, style);
+                }
 
                 if (deleteWidth > 0)
                 {
@@ -213,9 +232,12 @@ namespace Unity.Android.Logcat
                 }
 
                 // Hit tested against the label rather than the whole row, so that the
-                // delete button does not also change the selection.
+                // delete button does not also change the selection. Skipped while this
+                // row is being renamed, so clicking into the text field does not count
+                // as selecting the row.
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && labelRect.Contains(Event.current.mousePosition))
+                    && labelRect.Contains(Event.current.mousePosition)
+                    && (row == 0 || screenshots[row - 1].Path != m_RenamingPath))
                 {
                     GUIUtility.keyboardControl = controlId;
                     SelectRow(screenshots, row);
@@ -259,7 +281,79 @@ namespace Unity.Android.Logcat
                 AndroidLogcatUtilities.RevealInFileBrowserLabel, userData: path);
             menu.Add(ScreenshotContextMenu.Open, "Open", userData: path);
             menu.Add(ScreenshotContextMenu.SaveAs, "Save As...", userData: path);
+            menu.Add(ScreenshotContextMenu.Rename, "Rename", userData: path);
             menu.Show(position, OnContextMenuSelection);
+        }
+
+        /// <summary>
+        /// The row's label replaced by a text field. Enter commits, Escape cancels, and
+        /// losing focus commits as well - clicking away is not a reason to throw the name
+        /// the user typed away.
+        /// </summary>
+        void DoRenameFieldGUI(Rect rc)
+        {
+            var e = Event.current;
+            if (e.type == EventType.KeyDown)
+            {
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
+                {
+                    CommitRename();
+                    e.Use();
+                    return;
+                }
+                if (e.keyCode == KeyCode.Escape)
+                {
+                    CancelRename();
+                    e.Use();
+                    return;
+                }
+            }
+
+            GUI.SetNextControlName(kRenameControlName);
+            m_RenameText = EditorGUI.TextField(rc, m_RenameText);
+
+            if (m_RenameNeedsFocus)
+            {
+                // Has to happen after the field exists, so a frame later than the menu.
+                GUI.FocusControl(kRenameControlName);
+                m_RenameNeedsFocus = false;
+            }
+            else if (GUI.GetNameOfFocusedControl() != kRenameControlName)
+            {
+                CommitRename();
+            }
+        }
+
+        void BeginRename(string path)
+        {
+            m_RenamingPath = path;
+            m_RenameText = Path.GetFileNameWithoutExtension(path);
+            m_RenameNeedsFocus = true;
+            m_Repaint();
+        }
+
+        void CommitRename()
+        {
+            var path = m_RenamingPath;
+            var name = m_RenameText;
+            CancelRename();
+
+            if (path == null)
+                return;
+
+            // An unchanged or unusable name is not an error; the row just goes back to
+            // showing what it showed before.
+            m_CaptureScreenshot.RenameScreenshot(path, name);
+            m_Repaint();
+        }
+
+        void CancelRename()
+        {
+            m_RenamingPath = null;
+            m_RenameText = null;
+            m_RenameNeedsFocus = false;
+            if (GUI.GetNameOfFocusedControl() == kRenameControlName)
+                GUIUtility.keyboardControl = m_ListControlId;
         }
 
         void OnContextMenuSelection(object userData, string[] options, int selected)
@@ -281,6 +375,9 @@ namespace Unity.Android.Logcat
                 case ScreenshotContextMenu.SaveAs:
                     SaveAs(path);
                     break;
+                case ScreenshotContextMenu.Rename:
+                    BeginRename(path);
+                    break;
             }
         }
 
@@ -297,12 +394,34 @@ namespace Unity.Android.Logcat
                 settings.SetLastSaveLocation(mode, directory);
         }
 
-        /// <summary>Up and Down cycle through the list once it has focus.</summary>
+        /// <summary>
+        /// F2 everywhere, and Enter as well on macOS - the same bindings the Project
+        /// window uses, so whichever one the user reaches for works.
+        /// </summary>
+        static bool IsRenameShortcut(Event e)
+        {
+            if (e.keyCode == KeyCode.F2)
+                return true;
+            return Application.platform == RuntimePlatform.OSXEditor
+                && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+        }
+
+        /// <summary>Up and Down cycle through the list once it has focus, F2 renames.</summary>
         void HandleKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
             int rowCount, int selectedRow, float rowHeight, float viewHeight)
         {
+            // While the rename field has focus it owns the keyboard, so none of this runs.
             if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
                 return;
+
+            if (IsRenameShortcut(Event.current))
+            {
+                // Row 0 is the live stream, which has no file to rename.
+                if (selectedRow > 0)
+                    BeginRename(screenshots[selectedRow - 1].Path);
+                Event.current.Use();
+                return;
+            }
 
             var delta = 0;
             switch (Event.current.keyCode)
