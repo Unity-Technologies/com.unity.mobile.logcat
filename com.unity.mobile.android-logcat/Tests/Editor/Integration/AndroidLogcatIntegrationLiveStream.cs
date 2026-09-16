@@ -19,6 +19,12 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     protected void Init()
     {
         Cleanup();
+
+        // A device that has dozed off composes nothing, so a mirrored display hands
+        // over no buffers and every test here times out waiting for its first frame -
+        // which says nothing about the code under test. Waking it is part of putting
+        // the device in a known state, like stopping a stream left over from before.
+        SendKeyEvent("KEYCODE_WAKEUP");
     }
 
     [TearDown]
