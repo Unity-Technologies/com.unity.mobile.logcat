@@ -431,8 +431,15 @@ namespace Unity.Android.Logcat
 
             if (m_StreamEnded)
             {
-                // The server closed the connection on its own - a display that went
-                // away, or the process being killed from outside.
+                // A reader that ended without recording an error, which today can only
+                // mean Stop was asked for - the loop has no other way out.
+                //
+                // The connection closing on its own does not arrive here: reading hits
+                // end of stream, which is an exception, so it goes through the branch
+                // above. That is deliberate. A stream that ends without the user asking
+                // is worth reporting, and reporting it as a failure is what appends the
+                // server's own log, which is where the reason lives - the captured
+                // display went away, the process was killed, and so on.
                 Shutdown(Result.Success);
             }
         }

@@ -346,7 +346,9 @@ namespace Unity.Android.Logcat
                 if (m_LiveStream.IsStreaming)
                     Repaint();
             }
-            else if (!m_CaptureScreenshot.DoGUI(imageRect))
+            // The list draws the image, not AndroidLogcatCaptureScreenshot: its texture
+            // belongs to the Layout Viewer as much as to this window.
+            else if (!m_ScreenshotList.DoPreviewGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null
                     ? "No screenshot to show."

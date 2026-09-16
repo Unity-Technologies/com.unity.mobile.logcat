@@ -356,6 +356,28 @@ namespace Unity.Android.Logcat
             captureResult.onCompleted();
         }
 
+        /// <summary>
+        /// Records which screenshot is selected without touching
+        /// <see cref="ImageTexture"/>, for a window that shows the image itself.
+        /// <para>
+        /// The texture here is shared with the Layout Viewer, which draws its node
+        /// bounds over it while holding a hierarchy queried against a particular
+        /// screenshot. Loading a historical screenshot into it from the capture list
+        /// would leave that overlay drawn over an unrelated image, so the list keeps
+        /// its own texture and only the path is shared.
+        /// </para>
+        /// </summary>
+        public void SelectImage(string imagePath)
+        {
+            m_SelectedImagePath = string.IsNullOrEmpty(imagePath)
+                ? string.Empty
+                : imagePath.Replace("\\", "/");
+
+            // As in LoadImage: an image to show supersedes the last capture's error.
+            if (!string.IsNullOrEmpty(m_SelectedImagePath))
+                m_Error = string.Empty;
+        }
+
         public void LoadImage(string imagePath)
         {
             m_ImageTexture = null;

@@ -75,6 +75,14 @@ namespace Unity.Android.Logcat
         // rename ends - otherwise the keys would need another click to work again.
         int m_ListControlId;
 
+        // The selected screenshot, drawn by this window and nothing else. It is
+        // deliberately not AndroidLogcatCaptureScreenshot's texture: that one is shared
+        // with the Layout Viewer, which draws node bounds over it, and swapping it for
+        // a screenshot picked out of this list would put that overlay on an unrelated
+        // image. Only the selected path is shared.
+        Texture2D m_PreviewTexture;
+        string m_PreviewPath;
+
         /// <summary>
         /// Whether the Live row is the selected one, so the caller knows to show the
         /// stream rather than an image, and that there is no file to open or save.
@@ -108,6 +116,60 @@ namespace Unity.Android.Logcat
                 m_LiveStream.StopStreaming();
             m_LiveSelected = false;
             m_InitialSelectionDone = false;
+            DestroyPreview();
+        }
+
+        /// <summary>
+        /// Draws the selected screenshot, or the last capture's error if there is one.
+        /// Returns false when there is nothing to show, so the caller can say so.
+        /// </summary>
+        internal bool DoPreviewGUI(Rect rc)
+        {
+            var error = m_CaptureScreenshot.Error;
+            if (!string.IsNullOrEmpty(error))
+            {
+                EditorGUI.HelpBox(rc, error, MessageType.Error);
+                return true;
+            }
+
+            if (m_PreviewTexture == null)
+                return false;
+
+            GUI.DrawTexture(rc, m_PreviewTexture, ScaleMode.ScaleToFit);
+            return true;
+        }
+
+        /// <summary>
+        /// Loads whatever the selection points at, if it is not already loaded. Called
+        /// every pass rather than from each place that can change the selection - a
+        /// capture landing, a delete, a rename - so there is one path to get wrong
+        /// instead of four.
+        /// </summary>
+        void SyncPreview()
+        {
+            var path = m_CaptureScreenshot.SelectedImagePath;
+            if (path == m_PreviewPath)
+                return;
+
+            DestroyPreview();
+            m_PreviewPath = path;
+
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            var texture = new Texture2D(2, 2);
+            if (texture.LoadImage(File.ReadAllBytes(path)))
+                m_PreviewTexture = texture;
+            else
+                UnityEngine.Object.DestroyImmediate(texture);
+        }
+
+        void DestroyPreview()
+        {
+            if (m_PreviewTexture != null)
+                UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
+            m_PreviewTexture = null;
+            m_PreviewPath = null;
         }
 
         /// <summary>
@@ -155,6 +217,8 @@ namespace Unity.Android.Logcat
             // Every device, not just the selected one: a screenshot is worth looking at
             // whichever device it came from, and the file name says which that was.
             var screenshots = m_CaptureScreenshot.GetScreenshots();
+
+            SyncPreview();
 
             // Row 0 is the live stream, the rest are saved screenshots.
             var rowCount = screenshots.Count + 1;
@@ -543,7 +607,7 @@ namespace Unity.Android.Logcat
                     m_LiveSelected = false;
                     m_LiveStream.StopStreaming();
                 }
-                m_CaptureScreenshot.LoadImage(screenshots[row - 1].Path);
+                m_CaptureScreenshot.SelectImage(screenshots[row - 1].Path);
             }
             m_Repaint();
         }
