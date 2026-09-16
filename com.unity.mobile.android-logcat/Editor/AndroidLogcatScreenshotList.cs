@@ -63,6 +63,8 @@ namespace Unity.Android.Logcat
         readonly Splitter m_Splitter = new Splitter(Splitter.SplitterType.Horizontal, kMinWidth, kMaxWidth);
         Vector2 m_Scroll;
         bool m_LiveSelected;
+        // Whether the one-off "what should this window open on" decision has been made.
+        bool m_InitialSelectionDone;
 
         // Which row is being renamed, and the text so far. The field is focused once,
         // the frame after it first appears.
@@ -162,6 +164,20 @@ namespace Unity.Android.Logcat
                         selectedRow = i + 1;
                         break;
                     }
+                }
+            }
+
+            // With no screenshots to look at, open on the live view rather than on an
+            // empty pane. Once per window, and only when the list is empty: deleting the
+            // last screenshot deliberately leaves nothing selected rather than starting a
+            // stream, and that has to stay true.
+            if (!m_InitialSelectionDone)
+            {
+                m_InitialSelectionDone = true;
+                if (screenshots.Count == 0 && !m_LiveSelected)
+                {
+                    SelectRow(screenshots, 0);
+                    selectedRow = 0;
                 }
             }
 
