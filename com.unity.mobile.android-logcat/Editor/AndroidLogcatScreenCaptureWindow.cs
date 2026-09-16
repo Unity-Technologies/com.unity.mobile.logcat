@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 using UnityEditor.IMGUI.Controls;
+using UnityEditor.ShortcutManagement;
 
 namespace Unity.Android.Logcat
 {
@@ -19,7 +20,8 @@ namespace Unity.Android.Logcat
             public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
             public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
             public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
-            public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
+            public static GUIContent CaptureScreenshot = new GUIContent("Capture",
+                "Capture screenshot from the android device. Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
@@ -139,6 +141,40 @@ namespace Unity.Android.Logcat
         private void QueueScreenCapture()
         {
             m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, OnScreenshotCompleted);
+        }
+
+        /// <summary>
+        /// Ctrl+Shift+S, and Cmd+Shift+S on macOS - <see cref="ShortcutModifiers.Action"/>
+        /// is whichever of the two the platform uses.
+        /// <para>
+        /// Scoped to this window rather than registered globally: the Editor's own
+        /// File > Save As sits on the same chord, and a window scoped shortcut takes
+        /// precedence over a global one only while its window has focus. It shows up in
+        /// Edit > Shortcuts under "Android Logcat", so it can be rebound there.
+        /// </para>
+        /// </summary>
+        [Shortcut("Android Logcat/Capture Screenshot", typeof(AndroidLogcatScreenCaptureWindow),
+            KeyCode.S, ShortcutModifiers.Action | ShortcutModifiers.Shift)]
+        static void CaptureScreenshotShortcut(ShortcutArguments args)
+        {
+            var window = args.context as AndroidLogcatScreenCaptureWindow;
+            if (window != null)
+                window.CaptureScreenshotFromShortcut();
+        }
+
+        void CaptureScreenshotFromShortcut()
+        {
+            // The same conditions the Capture button draws itself with: it is disabled
+            // without a device and while a capture is in flight, and in Video mode it
+            // records video instead, which this shortcut is not for.
+            if (m_Runtime == null || m_DeviceSelection == null)
+                return;
+            if (m_Runtime.UserSettings.CaptureSettings.Mode != Mode.Screenshot)
+                return;
+            if (m_DeviceSelection.SelectedDevice == null || m_CaptureScreenshot.IsCapturing)
+                return;
+
+            QueueScreenCapture();
         }
 
         void OnScreenshotCompleted()
