@@ -73,8 +73,6 @@ namespace Unity.Android.Logcat
                 overridenDisplaySize = v;
             }
         }
-        internal abstract Vector2 DisplaySize { get; }
-
 
         internal abstract string ShortDisplayName { get; }
 
@@ -274,45 +272,6 @@ namespace Unity.Android.Logcat
             var output = m_ADB.Run(new[] { args }, $"Failed to get display size");
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}\n{output}");
             ParseDisplaySize(output, out displaySize, out overridenDisplaySize);
-        }
-
-        internal override Vector2 DisplaySize
-        {
-            get
-            {
-                if (m_DisplaySize != null)
-                    return (Vector2)m_DisplaySize;
-                if (m_ADB == null)
-                {
-                    m_DisplaySize = Vector2.zero;
-                    return (Vector2)m_DisplaySize;
-                }
-
-                var args = new[]
-                {
-                    $"-s {Id}",
-                    "shell",
-                    "wm",
-                    "size"
-                };
-
-                var combinedCommand = $"'adb {string.Join(" ", args)}'";
-
-                var output = m_ADB.Run(args, $"Failed to execute {combinedCommand}");
-                var result = Regex.Match(output, "Physical size:\\s+(?<x>\\d+)x(?<y>\\d+)");
-                if (result.Success)
-                {
-                    m_DisplaySize = new Vector2(
-                        int.Parse(result.Groups["x"].Value),
-                        int.Parse(result.Groups["y"].Value));
-                }
-                else
-                {
-                    m_DisplaySize = Vector2.zero;
-                    AndroidLogcatInternalLog.Log($"Couldn't parse output from '{combinedCommand}'\n{output}");
-                }
-                return (Vector2)m_DisplaySize;
-            }
         }
 
         internal override string ShortDisplayName

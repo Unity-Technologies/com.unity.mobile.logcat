@@ -40,7 +40,6 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     }
 
     internal override string DisplayName => throw new NotImplementedException(nameof(DisplayName));
-    internal override Vector2 DisplaySize => throw new NotImplementedException(nameof(DisplaySize));
 
     internal override string ShortDisplayName => throw new NotImplementedException(nameof(ShortDisplayName));
 
