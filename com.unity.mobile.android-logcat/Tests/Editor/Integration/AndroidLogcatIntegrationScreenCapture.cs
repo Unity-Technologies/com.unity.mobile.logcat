@@ -102,6 +102,31 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
             "The newest capture should be the selected one");
     }
 
+    [UnityTest]
+    public IEnumerator CanDeleteScreenshot()
+    {
+        var completed = false;
+        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
+        yield return WaitForCondition("Waiting for screenshot", () => completed);
+
+        var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
+        Assert.IsTrue(File.Exists(path));
+        var before = Runtime.CaptureScreenshot.GetScreenshots().Count;
+
+        Assert.IsTrue(Runtime.CaptureScreenshot.DeleteScreenshot(path), "Delete should have succeeded");
+
+        Assert.IsFalse(File.Exists(path), "The file should be gone from disk");
+        Assert.AreEqual(before - 1, Runtime.CaptureScreenshot.GetScreenshots().Count,
+            "The list should have lost the row");
+        // It was the displayed one, so the image is cleared rather than left pointing at
+        // a file that no longer exists.
+        Assert.AreEqual(string.Empty, Runtime.CaptureScreenshot.SelectedImagePath);
+        Assert.IsNull(Runtime.CaptureScreenshot.ImageTexture);
+
+        // Deleting the same path again is not an error, it is just already gone.
+        Assert.IsTrue(Runtime.CaptureScreenshot.DeleteScreenshot(path));
+    }
+
     private int CountScreenshotsOf(string devicePrefix)
     {
         var count = 0;

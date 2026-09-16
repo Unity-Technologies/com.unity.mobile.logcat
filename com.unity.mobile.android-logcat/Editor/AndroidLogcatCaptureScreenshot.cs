@@ -173,6 +173,33 @@ namespace Unity.Android.Logcat
             return byDevice != 0 ? byDevice : a.Number.CompareTo(b.Number);
         }
 
+        /// <summary>
+        /// Removes a saved screenshot from disk. If it was the one on screen, the image
+        /// is cleared too - the caller decides what to show instead.
+        /// </summary>
+        /// <returns>False if the file could not be removed, which is already logged.</returns>
+        public bool DeleteScreenshot(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Failed to delete '{path}'.\n{ex.Message}");
+                return false;
+            }
+
+            // Rescan, so the list loses the row.
+            m_Screenshots = null;
+
+            if (m_SelectedImagePath == path)
+                LoadImage(string.Empty);
+
+            return true;
+        }
+
         public string GetImageExtension()
         {
             return ".png";

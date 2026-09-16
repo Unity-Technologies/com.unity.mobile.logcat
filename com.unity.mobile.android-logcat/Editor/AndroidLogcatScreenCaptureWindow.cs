@@ -23,6 +23,7 @@ namespace Unity.Android.Logcat
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
             public static GUIContent LiveStreamRow = new GUIContent("Live", "Show the device screen live. Streaming stops when another row is selected.");
+            public static GUIContent DeleteScreenshot = new GUIContent("×", "Delete this screenshot from disk");
 
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
@@ -54,6 +55,9 @@ namespace Unity.Android.Logcat
         private const float kScreenshotListMinWidth = 150;
         private const float kScreenshotListMaxWidth = 400;
         private const float kSplitterWidth = 5;
+        private const float kScrollbarWidth = 16;
+        private const float kDeleteButtonWidth = 18;
+        private const float kDeleteButtonMargin = 2;
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
         private AndroidLogcatVideoPlayer m_VideoPlayer;
@@ -431,8 +435,19 @@ namespace Unity.Android.Logcat
 
             var rowHeight = EditorGUIUtility.singleLineHeight;
             var inner = new Rect(rc.x + 1, rc.y + 1, rc.width - 2, rc.height - 2);
-            var content = new Rect(0, 0, inner.width - 16, rowCount * rowHeight);
+
+            // Room for the scrollbar is reserved only when there will be one. Reserving
+            // it unconditionally leaves a dead strip that pushes the delete buttons away
+            // from the right edge.
+            var contentHeight = rowCount * rowHeight;
+            var scrollbarWidth = contentHeight > inner.height ? kScrollbarWidth : 0;
+            var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
             var hasFocus = GUIUtility.keyboardControl == controlId;
+
+            // Acted on after the loop: deleting invalidates the cached list that is being
+            // iterated here.
+            string deletePath = null;
+            var deleteRow = -1;
 
             m_ScreenshotListScroll = GUI.BeginScrollView(inner, m_ScreenshotListScroll, content);
             for (var row = 0; row < rowCount; row++)
@@ -448,14 +463,37 @@ namespace Unity.Android.Logcat
                         : new Color(0.30f, 0.30f, 0.30f, 0.85f));
                 }
 
+                // The Live row has no file behind it, so nothing to delete.
+                var deleteWidth = row == 0 ? 0 : kDeleteButtonWidth + kDeleteButtonMargin * 2;
+                var labelRect = new Rect(rowRect.x + 4, rowRect.y,
+                    Mathf.Max(0, rowRect.width - 4 - deleteWidth), rowRect.height);
+
                 var label = row == 0
                     ? Styles.LiveStreamRow
                     : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
                 var style = isSelected ? Styles.SelectedScreenshotRow : EditorStyles.label;
-                GUI.Label(new Rect(rowRect.x + 4, rowRect.y, rowRect.width - 4, rowRect.height), label, style);
+                GUI.Label(labelRect, label, style);
 
+                if (deleteWidth > 0)
+                {
+                    // Inset by a pixel top and bottom so the button does not touch the
+                    // rows above and below it.
+                    var deleteRect = new Rect(
+                        rowRect.xMax - kDeleteButtonWidth - kDeleteButtonMargin,
+                        rowRect.y + 1,
+                        kDeleteButtonWidth,
+                        rowRect.height - 2);
+                    if (GUI.Button(deleteRect, Styles.DeleteScreenshot, EditorStyles.miniButton))
+                    {
+                        deletePath = screenshots[row - 1].Path;
+                        deleteRow = row;
+                    }
+                }
+
+                // Hit tested against the label rather than the whole row, so that the
+                // delete button does not also change the selection.
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && rowRect.Contains(Event.current.mousePosition))
+                    && labelRect.Contains(Event.current.mousePosition))
                 {
                     GUIUtility.keyboardControl = controlId;
                     SelectRow(screenshots, row);
@@ -465,6 +503,36 @@ namespace Unity.Android.Logcat
             GUI.EndScrollView();
 
             HandleScreenshotListKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
+
+            if (deletePath != null)
+                DeleteScreenshot(deletePath, deleteRow);
+        }
+
+        /// <summary>
+        /// Deleting is confirmed first: the button sits next to the row one clicks to
+        /// select it, and the file is gone for good afterwards.
+        /// </summary>
+        private void DeleteScreenshot(string path, int row)
+        {
+            var name = Path.GetFileNameWithoutExtension(path);
+            if (!EditorUtility.DisplayDialog("Delete Screenshot",
+                $"Delete {name}?\n\nThe file is removed from disk and this cannot be undone.",
+                "Delete", "Cancel"))
+                return;
+
+            var wasSelected = m_CaptureScreenshot.SelectedImagePath == path;
+            if (!m_CaptureScreenshot.DeleteScreenshot(path))
+                return;
+
+            if (wasSelected)
+            {
+                // Whatever took its place, else the one before it. Deliberately not the
+                // Live row, which would start streaming because a file was deleted.
+                var remaining = m_CaptureScreenshot.GetScreenshots();
+                if (remaining.Count > 0)
+                    SelectRow(remaining, Mathf.Clamp(row - 1, 0, remaining.Count - 1) + 1);
+            }
+            Repaint();
         }
 
         /// <summary>Up and Down cycle through the list once it has focus.</summary>
