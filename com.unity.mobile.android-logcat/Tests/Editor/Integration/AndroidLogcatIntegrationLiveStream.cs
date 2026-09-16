@@ -235,6 +235,68 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         SendKeyEvent("KEYCODE_HOME");
     }
 
+    /// <summary>
+    /// Scroll goes in as <c>ACTION_SCROLL</c> from a mouse source, which is a different
+    /// path on the device again - and one that needs a hover in front of it, see
+    /// `ScrollInjector`. Settings stands in for "something long enough to scroll",
+    /// since it is on every device.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator CanScrollDeviceScreen()
+    {
+        StartActivity("android.settings.SETTINGS");
+
+        Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
+
+        yield return WaitForCondition("Waiting for the first frame",
+            () => Runtime.LiveStream.FramesReceived > 0,
+            30,
+            () => Runtime.LiveStream.Errors);
+
+        Assert.IsTrue(Runtime.LiveStream.ControlSupported,
+            "Expected the server to report that it can inject input");
+
+        var settle = DateTime.Now;
+        yield return WaitForCondition("Letting Settings settle", () => (DateTime.Now - settle).TotalSeconds > 2.0);
+
+        var framesBefore = Runtime.LiveStream.FramesReceived;
+
+        // Left of centre and low down, which is inside the list on every device tried -
+        // the middle of the screen can be covered by a picture-in-picture window, which
+        // reacts to the hover and then has nothing to scroll.
+        for (var i = 0; i < 5; i++)
+            Runtime.LiveStream.SendScroll(0.3f, 0.7f, 0f, -3f);
+
+        yield return WaitForCondition("Waiting for the screen to react to the injected scroll",
+            () => Runtime.LiveStream.FramesReceived > framesBefore + 3,
+            20,
+            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+
+        Log($"Injected scroll produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
+        Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
+
+        // Written out because a frame count only says the screen changed, not that it
+        // scrolled - the artifact is what shows the list moved.
+        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-scroll.png"),
+            Runtime.LiveStream.Texture.EncodeToPNG());
+
+        Assert.IsTrue(Runtime.LiveStream.StopStreaming());
+        SendKeyEvent("KEYCODE_HOME");
+    }
+
+    private void StartActivity(string action)
+    {
+        Runtime.Tools.ADB.Run(new[]
+        {
+            $"-s {Device.Id}",
+            "shell",
+            "am",
+            "start",
+            "-a",
+            action
+        }, $"Failed to start {action} on the device");
+    }
+
     private void SendKeyEvent(string keyCode)
     {
         Runtime.Tools.ADB.Run(new[]

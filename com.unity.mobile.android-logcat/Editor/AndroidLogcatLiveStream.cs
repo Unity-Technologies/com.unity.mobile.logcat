@@ -39,6 +39,20 @@ namespace Unity.Android.Logcat
             Failure
         }
 
+        /// <summary>
+        /// The type byte that starts every Editor to server control message. Values match
+        /// the TYPE_* constants in ControlReader.java, and the server stops reading
+        /// control input on one it does not recognize, since it would no longer know
+        /// where the next message begins.
+        /// </summary>
+        internal enum ControlMessage : byte
+        {
+            Touch = 1,
+            Key = 2,
+            Text = 3,
+            Scroll = 4
+        }
+
         /// <summary>Values match the action byte in ControlReader.java.</summary>
         internal enum TouchAction : byte
         {
@@ -66,7 +80,7 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 4;
+        const int kProtocolVersion = 5;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
         const int kFrameHeaderSize = 20;  // ptsUs + width + height + payloadSize
@@ -75,10 +89,6 @@ namespace Unity.Android.Logcat
         // injection, so touch messages will actually do something.
         const int kFlagControlSupported = 1;
 
-        // Editor -> server control messages, see ControlReader.java.
-        const byte kControlTouch = 1;
-        const byte kControlKey = 2;
-        const byte kControlText = 3;
         // Largest fixed-size message: the key one, at type + action + keyCode + metaState.
         const int kControlMessageSize = 10;
         const int kMaxTextBytes = 4096;
@@ -86,6 +96,12 @@ namespace Unity.Android.Logcat
         // the display size it is currently capturing rather than trusting ours, which
         // is always at least a frame - and possibly a whole rotation - out of date.
         const float kNormalizedMax = 65535.0f;
+        // Scroll notches go over as fixed point, so a trackpad's fractions survive
+        // without putting a float on the wire. Must match SCROLL_SCALE in ControlReader.
+        const float kScrollScale = 256.0f;
+        // Unity reports roughly three lines per wheel notch, where Android counts
+        // notches, so the delta is divided by this on the way out.
+        const float kUnityScrollLinesPerNotch = 3.0f;
 
         const string kServerJarName = "unity-logcat-server.jar";
         const string kServerDevicePath = "/data/local/tmp/unity-logcat-server.jar";
@@ -125,9 +141,9 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Bandwidth = new GUIContent("Bandwidth",
                 "Megabits per second arriving over adb.");
             internal static readonly GUIContent Input = new GUIContent("Input",
-                "Click or drag the image to send touch events to the device, and click it then type to send keys. " +
-                "Select all, copy and paste go to the device and use its clipboard; other Ctrl and Cmd " +
-                "combinations stay in the Editor.");
+                "Click or drag the image to send touch events to the device, scroll the wheel over it to " +
+                "scroll on the device, and click it then type to send keys. Select all, copy and paste go " +
+                "to the device and use its clipboard; other Ctrl and Cmd combinations stay in the Editor.");
 
             // Same glyphs and wording as the navigation row in the Inputs window.
             internal static readonly GUIContent Back = new GUIContent("◄",
@@ -1082,6 +1098,15 @@ namespace Unity.Android.Logcat
                     ReleaseTouch(controlId);
                     e.Use();
                     break;
+
+                case EventType.ScrollWheel:
+                    // No focus or hot control needed: a wheel acts on whatever the
+                    // pointer is over, on the device as much as in the Editor.
+                    if (!videoRect.Contains(e.mousePosition))
+                        break;
+                    SendScrollAt(videoRect, e.mousePosition, e.delta);
+                    e.Use();
+                    break;
             }
 
             // Losing the mouse mid-drag would otherwise leave the finger down for good.
@@ -1132,6 +1157,19 @@ namespace Unity.Android.Logcat
             SendKey(KeyAction.Up, keyCode, metaState);
         }
 
+        /// <summary>
+        /// Sends a scroll at a position in normalized display coordinates. Magnitudes are
+        /// in wheel notches: positive vertical scrolls away from the user, positive
+        /// horizontal to the right.
+        /// </summary>
+        internal void SendScroll(float normalizedX, float normalizedY,
+            float horizontalNotches, float verticalNotches)
+        {
+            if (!CanSendInput)
+                return;
+            SendScrollMessage(normalizedX, normalizedY, horizontalNotches, verticalNotches);
+        }
+
         /// <summary>Types text on the device.</summary>
         internal void SendText(string text)
         {
@@ -1150,6 +1188,19 @@ namespace Unity.Android.Logcat
             SendTouchMessage(action, x, y);
         }
 
+        void SendScrollAt(Rect videoRect, Vector2 mousePosition, Vector2 delta)
+        {
+            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
+            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
+
+            // Unity's scroll delta grows downward, where Android's VSCROLL is notches
+            // away from the user, so the vertical sign flips. Horizontal is passed
+            // through: both count rightward as positive.
+            SendScrollMessage(x, y,
+                delta.x / kUnityScrollLinesPerNotch,
+                -delta.y / kUnityScrollLinesPerNotch);
+        }
+
         void SendTouchMessage(TouchAction action, float x, float y)
         {
             var nx = (int)Mathf.Round(x * kNormalizedMax);
@@ -1158,7 +1209,7 @@ namespace Unity.Android.Logcat
             var pressure = (int)kNormalizedMax;
 
             var message = m_ControlMessage;
-            message[0] = kControlTouch;
+            message[0] = (byte)ControlMessage.Touch;
             message[1] = (byte)action;
             message[2] = 0; // pointer id - a mouse is a single finger
             message[3] = (byte)(nx >> 8);
@@ -1171,10 +1222,42 @@ namespace Unity.Android.Logcat
             SendControlMessage(message, 9, "touch");
         }
 
+        void SendScrollMessage(float x, float y, float hScroll, float vScroll)
+        {
+            var h = ToScrollFixedPoint(hScroll);
+            var v = ToScrollFixedPoint(vScroll);
+            // Rounded away to nothing - a trackpad twitch, or a delta of zero on an axis
+            // the mouse does not have. The server would ignore it anyway.
+            if (h == 0 && v == 0)
+                return;
+
+            var nx = (int)Mathf.Round(x * kNormalizedMax);
+            var ny = (int)Mathf.Round(y * kNormalizedMax);
+
+            var message = m_ControlMessage;
+            message[0] = (byte)ControlMessage.Scroll;
+            message[1] = (byte)(nx >> 8);
+            message[2] = (byte)nx;
+            message[3] = (byte)(ny >> 8);
+            message[4] = (byte)ny;
+            message[5] = (byte)(h >> 8);
+            message[6] = (byte)h;
+            message[7] = (byte)(v >> 8);
+            message[8] = (byte)v;
+
+            SendControlMessage(message, 9, "scroll");
+        }
+
+        static short ToScrollFixedPoint(float notches)
+        {
+            return (short)Mathf.Clamp(Mathf.Round(notches * kScrollScale),
+                short.MinValue, short.MaxValue);
+        }
+
         void SendKeyMessage(KeyAction action, AndroidKeyCode keyCode, int metaState)
         {
             var message = m_ControlMessage;
-            message[0] = kControlKey;
+            message[0] = (byte)ControlMessage.Key;
             message[1] = (byte)action;
             WriteInt32BE(message, 2, (int)keyCode);
             WriteInt32BE(message, 6, metaState);
@@ -1195,7 +1278,7 @@ namespace Unity.Android.Logcat
             // to ignore. Allocated per message rather than reusing a buffer: this only
             // happens on a keystroke or a paste.
             var message = new byte[3 + bytes.Length];
-            message[0] = kControlText;
+            message[0] = (byte)ControlMessage.Text;
             message[1] = (byte)(bytes.Length >> 8);
             message[2] = (byte)bytes.Length;
             Array.Copy(bytes, 0, message, 3, bytes.Length);

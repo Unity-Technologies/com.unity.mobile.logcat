@@ -100,6 +100,9 @@ public final class Server {
             KeyInjector keyInjector = inputManager == null
                 ? null
                 : new KeyInjector(inputManager, options.getDisplayId());
+            ScrollInjector scrollInjector = inputManager == null
+                ? null
+                : new ScrollInjector(inputManager, streamer::getDisplaySize, options.getDisplayId());
             int flags = inputManager != null ? Protocol.FLAG_CONTROL_SUPPORTED : 0;
 
             // Sent before anything else: `adb forward` succeeds as soon as the
@@ -107,7 +110,7 @@ public final class Server {
             // talking to a server of a version it understands.
             protocol.writeStreamHeader(Protocol.CODEC_MJPEG, flags, android.os.Process.myPid());
 
-            startControlReader(socket, streamer, touchInjector, keyInjector);
+            startControlReader(socket, streamer, touchInjector, keyInjector, scrollInjector);
             streamer.stream();
         } finally {
             // Socket first: it unblocks a capture thread parked in a write, so
@@ -184,9 +187,11 @@ public final class Server {
      * frames being produced there is no write to fail, so EOF here is the only signal.
      */
     private static void startControlReader(LocalSocket socket, ScreenStreamer streamer,
-            TouchInjector touchInjector, KeyInjector keyInjector) throws IOException {
+            TouchInjector touchInjector, KeyInjector keyInjector, ScrollInjector scrollInjector)
+            throws IOException {
         InputStream input = socket.getInputStream();
-        Thread thread = new Thread(new ControlReader(input, touchInjector, keyInjector, streamer::close),
+        Thread thread = new Thread(
+            new ControlReader(input, touchInjector, keyInjector, scrollInjector, streamer::close),
             "unity-logcat-control");
         thread.setDaemon(true);
         thread.start();
