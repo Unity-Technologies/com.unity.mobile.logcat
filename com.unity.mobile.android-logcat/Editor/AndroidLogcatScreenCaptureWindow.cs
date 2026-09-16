@@ -75,18 +75,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private string ExtensionForDialog
-        {
-            get
-            {
-                // Empty before the first capture, and while the Live row is selected. The
-                // Save As button is disabled then, but this must not throw if it is ever
-                // read outside that guard.
-                var extension = Path.GetExtension(TemporaryPath);
-                return string.IsNullOrEmpty(extension) ? string.Empty : extension.Substring(1);
-            }
-        }
-
         public static void ShowWindow()
         {
             GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");
@@ -274,18 +262,7 @@ namespace Unity.Android.Logcat
         {
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
             if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
-            {
-                switch (Application.platform)
-                {
-                    case RuntimePlatform.OSXEditor:
-                        System.Diagnostics.Process.Start("open", TemporaryPath);
-                        break;
-                    default:
-                        Application.OpenURL(TemporaryPath);
-                        break;
-                }
-            }
-
+                AndroidLogcatUtilities.OpenFile(TemporaryPath);
             EditorGUI.EndDisabledGroup();
         }
 
@@ -294,24 +271,12 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
             if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
             {
-                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
-                var path = EditorUtility.SaveFilePanel(
-                    "Save Screen Capture",
-                    m_Runtime.UserSettings.CaptureSettings.GetLastSaveLocation(mode),
-                    Path.GetFileName(TemporaryPath),
-                    ExtensionForDialog);
-                if (!string.IsNullOrEmpty(path))
-                {
-                    try
-                    {
-                        m_Runtime.UserSettings.CaptureSettings.SetLastSaveLocation(mode, Path.GetFullPath(Path.GetDirectoryName(path)));
-                        File.Copy(TemporaryPath, path, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        UnityEngine.Debug.LogErrorFormat("Failed to save to '{0}' as '{1}'.", path, ex.Message);
-                    }
-                }
+                var settings = m_Runtime.UserSettings.CaptureSettings;
+                var mode = settings.Mode;
+                var directory = AndroidLogcatUtilities.SaveFileAs(TemporaryPath, "Save Screen Capture",
+                    settings.GetLastSaveLocation(mode));
+                if (directory != null)
+                    settings.SetLastSaveLocation(mode, directory);
             }
             EditorGUI.EndDisabledGroup();
         }

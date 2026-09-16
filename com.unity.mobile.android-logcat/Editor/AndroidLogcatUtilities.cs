@@ -89,6 +89,83 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// What the OS calls its file browser, for menu items that reveal a file in it.
+        /// </summary>
+        public static string RevealInFileBrowserLabel
+        {
+            get
+            {
+                switch (Application.platform)
+                {
+                    case RuntimePlatform.OSXEditor: return "Show In Finder";
+                    case RuntimePlatform.LinuxEditor: return "Show In File Manager";
+                    default: return "Show In Explorer";
+                }
+            }
+        }
+
+        /// <summary>Selects a file in the OS file browser, rather than opening it.</summary>
+        public static void RevealInFileBrowser(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            UnityEditor.EditorUtility.RevealInFinder(path);
+        }
+
+        /// <summary>Opens a file with whatever the OS uses for its type.</summary>
+        public static void OpenFile(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            switch (Application.platform)
+            {
+                case RuntimePlatform.OSXEditor:
+                    // Application.OpenURL on a plain path does nothing useful on macOS.
+                    System.Diagnostics.Process.Start("open", path);
+                    break;
+                default:
+                    Application.OpenURL(path);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Asks where to put a copy of <paramref name="sourcePath"/> and copies it there.
+        /// The extension offered in the dialog comes from the source file, so callers do
+        /// not have to know it.
+        /// </summary>
+        /// <returns>
+        /// The directory saved into, so the caller can remember it, or null if the dialog
+        /// was cancelled or the copy failed. A failure is logged.
+        /// </returns>
+        public static string SaveFileAs(string sourcePath, string title, string startDirectory)
+        {
+            if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath))
+                return null;
+
+            var extension = Path.GetExtension(sourcePath);
+            var path = UnityEditor.EditorUtility.SaveFilePanel(title, startDirectory,
+                Path.GetFileName(sourcePath),
+                string.IsNullOrEmpty(extension) ? string.Empty : extension.Substring(1));
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            try
+            {
+                File.Copy(sourcePath, path, true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogErrorFormat("Failed to save '{0}' as '{1}'.\n{2}", sourcePath, path, ex.Message);
+                return null;
+            }
+
+            return Path.GetFullPath(Path.GetDirectoryName(path));
+        }
+
+        /// <summary>
         /// Where captured screenshots are kept. UserSettings is per-developer and
         /// already gitignored, and being outside Assets means Unity never imports the
         /// images as assets.

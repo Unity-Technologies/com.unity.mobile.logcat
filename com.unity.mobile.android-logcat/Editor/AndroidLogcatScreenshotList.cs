@@ -164,9 +164,12 @@ namespace Unity.Android.Logcat
             var hasFocus = GUIUtility.keyboardControl == controlId;
 
             // Acted on after the loop: deleting invalidates the cached list that is being
-            // iterated here.
+            // iterated here, and a menu has to be positioned in window coordinates rather
+            // than the scroll view's.
             string deletePath = null;
             var deleteRow = -1;
+            string menuPath = null;
+            var menuScreenPosition = Vector2.zero;
 
             m_Scroll = GUI.BeginScrollView(inner, m_Scroll, content);
             for (var row = 0; row < rowCount; row++)
@@ -216,6 +219,25 @@ namespace Unity.Android.Logcat
                 {
                     GUIUtility.keyboardControl = controlId;
                     SelectRow(screenshots, row);
+
+                    // The Live row has no file to open.
+                    if (Event.current.clickCount == 2 && row > 0)
+                        AndroidLogcatUtilities.OpenFile(screenshots[row - 1].Path);
+
+                    Event.current.Use();
+                }
+
+                if (Event.current.type == EventType.ContextClick && row > 0
+                    && rowRect.Contains(Event.current.mousePosition))
+                {
+                    // Selected as well, so the menu acts on what is now on screen.
+                    GUIUtility.keyboardControl = controlId;
+                    SelectRow(screenshots, row);
+
+                    menuPath = screenshots[row - 1].Path;
+                    // Captured in screen space: inside the scroll view the mouse position
+                    // is in content coordinates, which the menu would misplace.
+                    menuScreenPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
                     Event.current.Use();
                 }
             }
@@ -223,8 +245,56 @@ namespace Unity.Android.Logcat
 
             HandleKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
 
+            if (menuPath != null)
+                ShowRowContextMenu(menuPath, GUIUtility.ScreenToGUIPoint(menuScreenPosition));
+
             if (deletePath != null)
                 ConfirmAndDelete(deletePath, deleteRow);
+        }
+
+        void ShowRowContextMenu(string path, Vector2 position)
+        {
+            var menu = new AndroidContextMenu<ScreenshotContextMenu>();
+            menu.Add(ScreenshotContextMenu.ShowInFileBrowser,
+                AndroidLogcatUtilities.RevealInFileBrowserLabel, userData: path);
+            menu.Add(ScreenshotContextMenu.Open, "Open", userData: path);
+            menu.Add(ScreenshotContextMenu.SaveAs, "Save As...", userData: path);
+            menu.Show(position, OnContextMenuSelection);
+        }
+
+        void OnContextMenuSelection(object userData, string[] options, int selected)
+        {
+            var menu = (AndroidContextMenu<ScreenshotContextMenu>)userData;
+            var item = menu.GetItemAt(selected);
+            if (item == null)
+                return;
+
+            var path = (string)item.UserData;
+            switch (item.Item)
+            {
+                case ScreenshotContextMenu.ShowInFileBrowser:
+                    AndroidLogcatUtilities.RevealInFileBrowser(path);
+                    break;
+                case ScreenshotContextMenu.Open:
+                    AndroidLogcatUtilities.OpenFile(path);
+                    break;
+                case ScreenshotContextMenu.SaveAs:
+                    SaveAs(path);
+                    break;
+            }
+        }
+
+        void SaveAs(string path)
+        {
+            // Screenshots are always saved under the Screenshot mode's remembered
+            // location, whatever mode the window happens to be in.
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            const AndroidLogcatScreenCaptureWindow.Mode mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot;
+
+            var directory = AndroidLogcatUtilities.SaveFileAs(path, "Save Screenshot",
+                settings.GetLastSaveLocation(mode));
+            if (directory != null)
+                settings.SetLastSaveLocation(mode, directory);
         }
 
         /// <summary>Up and Down cycle through the list once it has focus.</summary>
