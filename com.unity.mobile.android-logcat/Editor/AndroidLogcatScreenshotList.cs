@@ -97,12 +97,17 @@ namespace Unity.Android.Logcat
                 settings.ScreenshotListWidth = kDefaultWidth;
         }
 
-        /// <summary>Stops the stream, for a window that is going away.</summary>
+        /// <summary>
+        /// Stops the stream and drops the selection, for a window that is going away or
+        /// has switched to a mode that does not show this list. The initial selection is
+        /// forgotten with it, so coming back decides what to open on again.
+        /// </summary>
         internal void Deselect()
         {
             if (m_LiveSelected)
                 m_LiveStream.StopStreaming();
             m_LiveSelected = false;
+            m_InitialSelectionDone = false;
         }
 
         /// <summary>

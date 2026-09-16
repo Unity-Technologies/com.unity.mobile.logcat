@@ -193,7 +193,19 @@ namespace Unity.Android.Logcat
 
         void DoModeGUI()
         {
-            m_Runtime.UserSettings.CaptureSettings.Mode = (Mode)EditorGUILayout.EnumPopup(m_Runtime.UserSettings.CaptureSettings.Mode, AndroidLogcatStyles.toolbarPopup);
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            var mode = (Mode)EditorGUILayout.EnumPopup(settings.Mode, AndroidLogcatStyles.toolbarPopup);
+            if (mode == settings.Mode)
+                return;
+
+            settings.Mode = mode;
+
+            // The list, and with it the Live row, is only drawn in Screenshot mode.
+            // Leaving that mode has to stop the stream, or the server carries on
+            // mirroring the device's display for a window that no longer shows it -
+            // and Video mode would happily start a recording alongside it.
+            if (mode != Mode.Screenshot)
+                m_ScreenshotList.Deselect();
         }
 
         void OnGUI()

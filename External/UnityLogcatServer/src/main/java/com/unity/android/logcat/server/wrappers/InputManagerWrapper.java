@@ -6,6 +6,8 @@ import android.annotation.SuppressLint;
 import android.view.InputEvent;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Reflection over the hidden input injection API.
@@ -49,7 +51,15 @@ public final class InputManagerWrapper {
         return new InputManagerWrapper(manager, method);
     }
 
-    private static Method setDisplayIdMethod;
+    /**
+     * Cached per concrete event class, not once for all of them: {@code KeyEvent} and
+     * {@code MotionEvent} each declare their own {@code setDisplayId}, so a method
+     * resolved from one and invoked on the other throws
+     * {@code IllegalArgumentException} - which is not a
+     * {@code ReflectiveOperationException}, so it would escape the catch below, take
+     * out the control reader thread and stop the stream with it.
+     */
+    private static final Map<Class<?>, Method> setDisplayIdMethods = new HashMap<>();
     private static boolean setDisplayIdUnavailable;
 
     /**
@@ -62,14 +72,17 @@ public final class InputManagerWrapper {
         if (setDisplayIdUnavailable) {
             return;
         }
+        Class<?> eventClass = event.getClass();
         try {
-            if (setDisplayIdMethod == null) {
-                // Resolved on the concrete class: KeyEvent and MotionEvent each declare
-                // their own, and which one exists on InputEvent varies by version.
-                setDisplayIdMethod = event.getClass().getMethod("setDisplayId", int.class);
+            // Resolved on the concrete class: KeyEvent and MotionEvent each declare
+            // their own, and which one exists on InputEvent varies by version.
+            Method method = setDisplayIdMethods.get(eventClass);
+            if (method == null) {
+                method = eventClass.getMethod("setDisplayId", int.class);
+                setDisplayIdMethods.put(eventClass, method);
             }
-            setDisplayIdMethod.invoke(event, displayId);
-        } catch (ReflectiveOperationException e) {
+            method.invoke(event, displayId);
+        } catch (ReflectiveOperationException | IllegalArgumentException e) {
             setDisplayIdUnavailable = true;
             Logger.w("setDisplayId is unavailable, input will go to the default display", e);
         }

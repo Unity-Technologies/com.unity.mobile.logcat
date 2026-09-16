@@ -19,6 +19,9 @@ namespace Unity.Android.Logcat
         internal class AndroidLogcatCaptureScreenCaptureResult : IAndroidLogcatTaskResult
         {
             internal string imagePath;
+            // The path AllocateImagePath handed out, which is imagePath on success and
+            // still needed on failure - that is the reservation to release.
+            internal string reservedPath;
             internal string deviceId;
             internal string error;
             internal Action onCompleted;
@@ -56,6 +59,12 @@ namespace Unity.Android.Logcat
         // this from OnGUI, and scanning the directory every repaint would be disk I/O
         // per frame. Rescanned when a capture lands.
         private List<Screenshot> m_Screenshots;
+
+        // Paths handed out for captures that have not produced a file yet. Held apart
+        // from the cache above, because dropping that cache must not lose them: a
+        // capture still in flight has to keep its number reserved or the next capture
+        // takes the same one and overwrites it. A rescan puts them back.
+        private readonly HashSet<string> m_ReservedPaths = new HashSet<string>();
 
         // What LoadImage last put on screen, which is what Open and Save As act on.
         private string m_SelectedImagePath;
@@ -123,12 +132,13 @@ namespace Unity.Android.Logcat
 
             var path = Path.Combine(directory, $"{prefix}_{number}{GetImageExtension()}").Replace("\\", "/");
 
-            // The reservation goes straight into the list, which is what stops a second
-            // capture queued before this file exists from picking the same number - the
-            // list is counted from, not the directory. The completion handler rescans,
-            // which both picks up the real file and drops this entry if the capture
-            // failed. The Layout Viewer can queue captures without waiting for the
-            // previous one, so this is reachable.
+            // The reservation is what stops a second capture queued before this file
+            // exists from picking the same number - the list is counted from, not the
+            // directory. It is both recorded and added to the live list, so it survives
+            // a rescan and is visible to the next allocation either way. The completion
+            // handler releases it. The Layout Viewer can queue captures without waiting
+            // for the previous one, so this is reachable.
+            m_ReservedPaths.Add(path);
             m_Screenshots.Add(new Screenshot(path, prefix, number));
             m_Screenshots.Sort(CompareScreenshots);
             return path;
@@ -162,6 +172,19 @@ namespace Unity.Android.Logcat
                     number = 0;
 
                 screenshots.Add(new Screenshot(file.Replace("\\", "/"), devicePrefix, number));
+            }
+
+            // Captures that are still in flight have no file yet, so a scan would not
+            // see them - and the number they reserved would be handed out twice.
+            foreach (var reserved in m_ReservedPaths)
+            {
+                if (File.Exists(reserved))
+                    continue;
+
+                var name = Path.GetFileNameWithoutExtension(reserved);
+                var separator = name.LastIndexOf('_');
+                if (separator > 0 && int.TryParse(name.Substring(separator + 1), out var reservedNumber))
+                    screenshots.Add(new Screenshot(reserved, name.Substring(0, separator), reservedNumber));
             }
 
             screenshots.Sort(CompareScreenshots);
@@ -304,6 +327,7 @@ namespace Unity.Android.Logcat
             return new AndroidLogcatCaptureScreenCaptureResult()
             {
                 imagePath = result ? i.imagePath : null,
+                reservedPath = i.imagePath,
                 deviceId = i.deviceId,
                 error = error,
                 onCompleted = i.onCompleted
@@ -317,10 +341,14 @@ namespace Unity.Android.Logcat
             var captureResult = (AndroidLogcatCaptureScreenCaptureResult)result;
             m_Error = captureResult.error;
 
-            // Drop the cache so the new file appears in the list, and so a reservation
-            // made by AllocateImagePath disappears again if the capture failed. One
-            // rescan per capture, rather than per repaint, which is what the cache is
-            // there for.
+            // This capture's reservation is done with: the file either exists now or
+            // never will. Only this one is released - reservations for captures still
+            // in flight have to stand, which is why they do not live in the cache.
+            m_ReservedPaths.Remove(captureResult.reservedPath);
+
+            // Drop the cache so the new file appears in the list, and so a failed
+            // capture's entry disappears again. One rescan per capture, rather than per
+            // repaint, which is what the cache is there for.
             m_Screenshots = null;
 
             LoadImage(captureResult.imagePath);
@@ -337,6 +365,12 @@ namespace Unity.Android.Logcat
                 return;
             if (!File.Exists(imagePath))
                 return;
+
+            // An image to show supersedes the last capture's error, which DoGUI draws
+            // in preference to the texture and nothing else would ever clear - leaving
+            // every saved screenshot hidden behind it until a capture succeeded. Done
+            // after the returns above, so a failed capture keeps the error it just set.
+            m_Error = string.Empty;
 
             // Normalized so it compares equal to the paths in the screenshot list,
             // which the list view uses to mark the selected row.
