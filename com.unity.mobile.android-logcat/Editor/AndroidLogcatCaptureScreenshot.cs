@@ -78,6 +78,16 @@ namespace Unity.Android.Logcat
         public string SelectedImagePath => m_SelectedImagePath;
 
         /// <summary>
+        /// Drops the cached listing so the next <see cref="GetScreenshots"/> reads the
+        /// directory again. For changes this class did not make - a file added, removed
+        /// or replaced from outside the Editor - which nothing else can notice.
+        /// </summary>
+        public void InvalidateScreenshots()
+        {
+            m_Screenshots = null;
+        }
+
+        /// <summary>
         /// Every saved screenshot, of every device, grouped by device and numbered
         /// ascending within each.
         /// </summary>
@@ -253,7 +263,7 @@ namespace Unity.Android.Logcat
             }
 
             // Rescan, so the list picks up the new name and reorders.
-            m_Screenshots = null;
+            InvalidateScreenshots();
 
             // Keep showing the same image, now under its new path.
             if (m_SelectedImagePath == path)
@@ -281,7 +291,7 @@ namespace Unity.Android.Logcat
             }
 
             // Rescan, so the list loses the row.
-            m_Screenshots = null;
+            InvalidateScreenshots();
 
             if (m_SelectedImagePath == path)
                 LoadImage(string.Empty);
@@ -349,7 +359,7 @@ namespace Unity.Android.Logcat
             // Drop the cache so the new file appears in the list, and so a failed
             // capture's entry disappears again. One rescan per capture, rather than per
             // repaint, which is what the cache is there for.
-            m_Screenshots = null;
+            InvalidateScreenshots();
 
             LoadImage(captureResult.imagePath);
 

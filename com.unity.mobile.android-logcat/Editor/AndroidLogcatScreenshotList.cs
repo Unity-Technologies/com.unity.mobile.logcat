@@ -120,6 +120,16 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// Forgets the loaded preview, so the next pass reads it from disk again even
+        /// though the selected path has not changed. The file behind that path can have
+        /// been replaced while the Editor was not looking.
+        /// </summary>
+        internal void InvalidatePreview()
+        {
+            DestroyPreview();
+        }
+
+        /// <summary>
         /// Draws the selected screenshot, or the last capture's error if there is one.
         /// Returns false when there is nothing to show, so the caller can say so.
         /// </summary>

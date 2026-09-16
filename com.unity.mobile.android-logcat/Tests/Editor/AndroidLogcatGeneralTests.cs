@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.TestTools;
 using NUnit.Framework;
@@ -8,6 +9,76 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatGeneralTests
 {
+    /// <summary>
+    /// The screenshots folder is an ordinary directory, so files can appear in it or
+    /// change without the Editor having done anything, and a cached listing cannot
+    /// notice by itself. This is the API underneath the Screen Capture window's
+    /// refresh when it regains focus.
+    /// <para>
+    /// No device needed: the listing is a directory scan, so the files can simply be
+    /// written here.
+    /// </para>
+    /// </summary>
+    [Test]
+    public void InvalidateScreenshotsPicksUpExternalChanges()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        try
+        {
+            // Built directly rather than taken from the runtime: the test runtime has
+            // no screen capture service, and the two calls used here only read the
+            // directory - nothing is queued, so nothing needs a device or a dispatcher.
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime);
+
+            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            System.IO.Directory.CreateDirectory(directory);
+
+            var first = System.IO.Path.Combine(directory, "unittest-device_1.png").Replace("\\", "/");
+            var second = System.IO.Path.Combine(directory, "unittest-device_2.png").Replace("\\", "/");
+            System.IO.File.WriteAllBytes(first, new byte[] { 1, 2, 3 });
+
+            try
+            {
+                var screenshots = captureScreenshot.GetScreenshots();
+                Assert.IsTrue(screenshots.Any(s => s.Path == first), "The first file should be listed");
+                Assert.IsFalse(screenshots.Any(s => s.Path == second), "The second one does not exist yet");
+
+                // Written behind the cache's back, as a file browser would.
+                System.IO.File.WriteAllBytes(second, new byte[] { 4, 5, 6 });
+
+                Assert.IsFalse(captureScreenshot.GetScreenshots().Any(s => s.Path == second),
+                    "A cached listing cannot know about a file the Editor did not write");
+
+                captureScreenshot.InvalidateScreenshots();
+
+                Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == second),
+                    "After invalidating, the rescan should pick the file up");
+
+                // And the same for one that disappears.
+                System.IO.File.Delete(first);
+                Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == first),
+                    "Still cached, so still listed");
+
+                captureScreenshot.InvalidateScreenshots();
+                Assert.IsFalse(captureScreenshot.GetScreenshots().Any(s => s.Path == first),
+                    "After invalidating, a file that is gone should be gone from the list");
+            }
+            finally
+            {
+                foreach (var path in new[] { first, second })
+                {
+                    if (System.IO.File.Exists(path))
+                        System.IO.File.Delete(path);
+                }
+            }
+        }
+        finally
+        {
+            runtime.Shutdown();
+        }
+    }
+
     [Test]
     public void SettingsRangeTests()
     {

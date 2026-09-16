@@ -213,6 +213,23 @@ namespace Unity.Android.Logcat
                 m_ScreenshotList.Deselect();
         }
 
+        /// <summary>
+        /// The screenshots folder is an ordinary directory that the user can add to,
+        /// delete from or overwrite behind the Editor's back. Nothing inside the Editor
+        /// can notice that, so the listing and the loaded image are both dropped when
+        /// this window comes back to the front - the moment someone is most likely to
+        /// have just been doing exactly that in a file browser.
+        /// </summary>
+        void OnFocus()
+        {
+            if (!AndroidBridge.AndroidExtensionsInstalled || m_Runtime == null)
+                return;
+
+            m_CaptureScreenshot.InvalidateScreenshots();
+            m_ScreenshotList?.InvalidatePreview();
+            Repaint();
+        }
+
         void OnGUI()
         {
             if (!AndroidBridge.AndroidExtensionsInstalled)
