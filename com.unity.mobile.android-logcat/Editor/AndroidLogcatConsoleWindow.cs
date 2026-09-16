@@ -154,7 +154,7 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
-        private void FilterByProcessId(int processId)
+        internal void FilterByProcessId(int processId)
         {
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
             var processes = m_Runtime.UserSettings.GetKnownProcesses(selectedDevice);
