@@ -173,11 +173,19 @@ def dexJar = tasks.register('dexJar', Exec) {
     // Declaring the jar as an input is also what makes this run after it.
     inputs.file(classesJar)
     outputs.file(outputJar)
-    // d8 is a launcher script that resolves java through JAVA_HOME, so it breaks
-    // on an unset JAVA_HOME and on the POSIX-style one a Git Bash shell carries.
-    // Point it at the JVM Gradle is already running on, which is always a path
-    // the platform's own shell understands.
-    environment 'JAVA_HOME', System.getProperty('java.home')
+    // d8 is a launcher script, and both of its forms have to be pointed at a JVM:
+    // the Windows .bat resolves java through JAVA_HOME, while the shell script on
+    // macOS and Linux simply runs `java`. Neither is a given - a CI agent whose only
+    // JDK lives inside a Unity installation has no JAVA_HOME set and no java on PATH -
+    // so both are handed the JVM Gradle is already running on, which is also always a
+    // path the platform's own shell understands.
+    def javaHome = System.getProperty('java.home')
+    // Matched to however the inherited variable is spelled, so Windows does not end up
+    // carrying both Path and PATH.
+    def pathName = System.getenv().keySet().find { it.equalsIgnoreCase('PATH') } ?: 'PATH'
+    environment 'JAVA_HOME', javaHome
+    environment pathName, new File(javaHome, 'bin').absolutePath +
+        File.pathSeparator + (System.getenv(pathName) ?: '')
     doFirst {
         def out = outputJar.get().asFile
         out.parentFile.mkdirs()
