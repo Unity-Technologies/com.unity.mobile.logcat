@@ -9,6 +9,92 @@ using Unity.Android.Logcat;
 class AndroidLogcatGeneralTests
 {
     [Test]
+    public void SettingsRangeTests()
+    {
+        var range = new SettingsRange(70, 1, 100);
+        Assert.AreEqual(70, range.Default);
+        Assert.AreEqual(1, range.Min);
+        Assert.AreEqual(100, range.Max);
+
+        // A value the user chose is brought inside the bounds.
+        Assert.AreEqual(1, range.Clamp(-5));
+        Assert.AreEqual(1, range.Clamp(0));
+        Assert.AreEqual(100, range.Clamp(1000));
+        Assert.AreEqual(55, range.Clamp(55));
+        Assert.AreEqual(1, range.Clamp(1));
+        Assert.AreEqual(100, range.Clamp(100));
+
+        // A value read back from an older settings blob falls back to the default
+        // instead, since 0 there means nobody ever chose one.
+        Assert.AreEqual(70, range.OrDefault(0));
+        Assert.AreEqual(70, range.OrDefault(-5));
+        Assert.AreEqual(70, range.OrDefault(1000));
+        Assert.AreEqual(55, range.OrDefault(55));
+        Assert.AreEqual(1, range.OrDefault(1));
+        Assert.AreEqual(100, range.OrDefault(100));
+
+        // A range that cannot hold its own default is a mistake at the declaration, so
+        // it is refused rather than silently clamped.
+        Assert.Throws(typeof(ArgumentException), () => new SettingsRange(0, 1, 100));
+        Assert.Throws(typeof(ArgumentException), () => new SettingsRange(500, 1, 100));
+        Assert.Throws(typeof(ArgumentException), () => new SettingsRange(5, 100, 1));
+    }
+
+    [Test]
+    public void LiveStreamSettingsTests()
+    {
+        var settings = new AndroidLogcatSettings();
+
+        // The defaults are what the live stream used to hold as constants.
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);
+
+        // Clamped on the way in, so a hand edited settings file cannot hand the server
+        // something it will refuse or choke on.
+        settings.LiveStreamMaxSize = 1;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Min, settings.LiveStreamMaxSize);
+        settings.LiveStreamMaxSize = 100000;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Max, settings.LiveStreamMaxSize);
+
+        settings.LiveStreamQuality = 0;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Min, settings.LiveStreamQuality);
+        settings.LiveStreamQuality = 1000;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Max, settings.LiveStreamQuality);
+
+        settings.LiveStreamMaxFps = 0;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Min, settings.LiveStreamMaxFps);
+        settings.LiveStreamMaxFps = 1000;
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Max, settings.LiveStreamMaxFps);
+
+        // A value inside the range is kept as it is.
+        settings.LiveStreamMaxSize = 512;
+        settings.LiveStreamQuality = 55;
+        settings.LiveStreamMaxFps = 15;
+        Assert.AreEqual(512, settings.LiveStreamMaxSize);
+        Assert.AreEqual(55, settings.LiveStreamQuality);
+        Assert.AreEqual(15, settings.LiveStreamMaxFps);
+
+        // The section's own Reset button puts the three back without disturbing
+        // anything else on the page.
+        settings.MessageFontSize = 17;
+        settings.MaxCachedMessageCount = 1234;
+        settings.ResetLiveStreamSettings();
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);
+        Assert.AreEqual(17, settings.MessageFontSize, "A live stream reset should not touch the font size");
+        Assert.AreEqual(1234, settings.MaxCachedMessageCount, "A live stream reset should not touch the message cap");
+
+        // And the whole page Reset takes them with everything else.
+        settings.LiveStreamMaxSize = 512;
+        settings.Reset();
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
+        Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);
+    }
+
+    [Test]
     public void LiveStreamEditingShortcutTests()
     {
         AndroidKeyCode mapped;

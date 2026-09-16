@@ -20,6 +20,15 @@ namespace Unity.Android.Logcat
             public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
             public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
+
+            public static GUIContent liveStreamMaxSize = new GUIContent("Max Size",
+                "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
+            public static GUIContent liveStreamQuality = new GUIContent("JPEG Quality",
+                "Quality of each streamed frame. Lower means a smaller frame and less bandwidth.");
+            public static GUIContent liveStreamReset = new GUIContent("Reset",
+                $"Put Max Size, JPEG Quality and Max Frame Rate back to {AndroidLogcatSettings.kLiveStreamMaxSize.Default}, {AndroidLogcatSettings.kLiveStreamQuality.Default} and {AndroidLogcatSettings.kLiveStreamMaxFps.Default}, leaving every other setting alone.");
+            public static GUIContent liveStreamMaxFps = new GUIContent("Max Frame Rate",
+                "Ceiling on frames per second. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
@@ -66,6 +75,31 @@ namespace Unity.Android.Logcat
             settings.MaxExitedPackagesToShow = EditorGUILayout.IntSlider(Styles.maxExitedPackageToShow, settings.MaxExitedPackagesToShow, 1, 100);
 
             GUILayout.Space(20);
+            EditorGUILayout.LabelField("Live Stream", EditorStyles.boldLabel);
+            // Applied when a stream starts, so a stream that is already running keeps the
+            // settings it started with until it is reconnected.
+            settings.LiveStreamMaxSize = LiveStreamSlider(Styles.liveStreamMaxSize,
+                settings.LiveStreamMaxSize, AndroidLogcatSettings.kLiveStreamMaxSize);
+            settings.LiveStreamQuality = LiveStreamSlider(Styles.liveStreamQuality,
+                settings.LiveStreamQuality, AndroidLogcatSettings.kLiveStreamQuality);
+            settings.LiveStreamMaxFps = LiveStreamSlider(Styles.liveStreamMaxFps,
+                settings.LiveStreamMaxFps, AndroidLogcatSettings.kLiveStreamMaxFps);
+
+            EditorGUILayout.HelpBox(
+                "Applied when a stream starts. To apply them to a stream that is already running, " +
+                "right click the Live row in the Device Screen Capture window and choose Reconnect.",
+                MessageType.None);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            // Resets this section only - the button at the bottom of the page is the one
+            // that resets everything.
+            if (GUILayout.Button(Styles.liveStreamReset, GUILayout.Width(60)))
+                settings.ResetLiveStreamSettings();
+            GUILayout.Space(5);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(20);
             EditorGUILayout.LabelField(Styles.stactraceRegex, EditorStyles.boldLabel);
             m_RegexList.OnGUI(150.0f);
 
@@ -80,6 +114,15 @@ namespace Unity.Android.Logcat
                 settings.Reset();
             GUILayout.Space(5);
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>
+        /// A slider whose ends come from the setting's own range, so the UI cannot offer
+        /// what the setter would clamp away.
+        /// </summary>
+        static int LiveStreamSlider(GUIContent label, int value, SettingsRange range)
+        {
+            return EditorGUILayout.IntSlider(label, value, range.Min, range.Max);
         }
 
         [SettingsProvider]

@@ -92,10 +92,8 @@ namespace Unity.Android.Logcat
         const string kServerMainClass = "com.unity.android.logcat.server.Server";
         const string kServerExternalFolder = "External~";
 
-        // Stream defaults. Not exposed in the UI yet.
-        const int kMaxSize = 1024;
-        const int kQuality = 70;
-        const int kMaxFps = 30;
+        // Stream settings live in AndroidLogcatSettings, under Preferences. The
+        // arguments of StartStreaming override them, which is what the tests use.
 
         // How long the server waits for us, and how long we spend trying to reach it.
         // The server's own timeout is the longer of the two, so that it is always us
@@ -307,7 +305,12 @@ namespace Unity.Android.Logcat
                 // cannot own the name we are about to listen on.
                 m_SocketName = "unity_logcat_server_" + Guid.NewGuid().ToString("N").Substring(0, 8);
 
-                StartServerProcess(device, maxSize ?? kMaxSize, quality ?? kQuality, maxFps ?? kMaxFps, displayId);
+                var settings = m_Runtime.Settings;
+                StartServerProcess(device,
+                    maxSize ?? settings.LiveStreamMaxSize,
+                    quality ?? settings.LiveStreamQuality,
+                    maxFps ?? settings.LiveStreamMaxFps,
+                    displayId);
                 m_ForwardedPort = SetupPortForward(device, m_SocketName);
 
                 // Connecting is retried until the server has created its socket, so it
