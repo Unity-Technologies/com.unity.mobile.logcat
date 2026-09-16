@@ -325,10 +325,10 @@ namespace Unity.Android.Logcat
                 // The socket name has to be unique so that a server left over from a
                 // previous run cannot own the name we are about to listen on. The jar
                 // path has to be unique because `adb push` rewrites its destination in
-                // place rather than replacing it: with a shared name, a second Editor
-                // starting a stream would truncate and rewrite the very file another
-                // Editor's running server is executing from, and a class it had not
-                // loaded yet would fail to load.
+                // place rather than replacing it: with a shared name, starting a stream
+                // while the previous server is still on its way out would truncate the
+                // file that one is executing from, and a class it had not loaded yet
+                // would fail to load.
                 var sessionId = Guid.NewGuid().ToString("N").Substring(0, 8);
                 m_SocketName = "unity_logcat_server_" + sessionId;
                 m_ServerDevicePath = $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}-{sessionId}.jar";
@@ -841,9 +841,9 @@ namespace Unity.Android.Logcat
         /// themselves - an Editor killed mid-stream - and the fixed name that versions
         /// before the per-session path used.
         /// <para>
-        /// Safe even when another Editor is streaming from one of them: unlinking a jar
-        /// does not disturb a server already running from it, because the runtime keeps
-        /// the file it opened. That was verified on device rather than assumed, on both
+        /// Safe even if a server is still running from one of them: unlinking a jar does
+        /// not disturb a process already executing it, because the runtime keeps the
+        /// file it opened. That was verified on device rather than assumed, on both
         /// Android 16 and Android 8.1.
         /// </para>
         /// </summary>
