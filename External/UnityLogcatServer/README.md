@@ -120,7 +120,7 @@ process.
 6. Input injection is set up. Touch and keys share one input manager, so they are
    available together or not at all. A failure here is not fatal: it is reported in
    the header flags and the session continues as view-only.
-7. On `accept()`, the 16-byte stream header is written straight away. That header
+7. On `accept()`, the 20-byte stream header is written straight away. That header
    is what tells the Editor it has reached a real server of a protocol version it
    understands, rather than a forwarded port that merely happens to connect.
 8. The control reader thread starts, and the capture session with it: a
@@ -167,12 +167,18 @@ Three details matter for a clean stop:
 Killing the `adb shell`, or the process on the device, skips all of the above and
 leaks nothing that survives: the mirrored display and the `ImageReader` belong to
 the process, and the abstract socket name disappears with it. Only the pushed jar
-remains on disk, which is inert and overwritten by the next push.
+remains on disk, which is inert. The Editor pushes each session's jar under a name
+of its own and deletes it when the stream stops, so what a kill leaves behind is
+one file that the next stream sweeps up.
 
 A stale server from a previous session is therefore only a problem if it is still
 *running* - it would own the socket name. Passing a per-session unique
 `socket_name` avoids the collision entirely, and `connect_timeout_ms` bounds how
 long an orphan can linger before it gives up on its own.
+
+Deleting a jar out from under a server that is still running it is safe, which is
+what lets the Editor sweep: the runtime keeps the file it opened, so an unlink only
+removes the name. That was measured on Android 16 and Android 8.1, not assumed.
 
 ## Wire protocol
 
@@ -181,11 +187,12 @@ All integers big endian. See `Protocol.java`.
 Server to Editor:
 
 ```
-Stream header, once, 16 bytes:
+Stream header, once, 20 bytes:
   u32  magic            'U' 'L' 'S' '1' (0x554C5331)
   u32  protocolVersion  see serverProtocolVersion in gradle.properties
   u32  codec            1 = MJPEG
   u32  flags            bit 0: the server can inject input
+  u32  serverPid        this process on the device, so the Editor can name it
 
 Frame, repeated, 20 byte header + payload:
   u64  ptsUs            microseconds since the first frame
@@ -216,6 +223,13 @@ Text, 3 bytes + payload:
   u8   type             3 = text
   u16  length           bytes of UTF-8 that follow, max 4096
   u8[] text
+
+Scroll, 9 bytes:
+  u8   type             4 = scroll
+  u16  x                position across the display, 0..65535
+  u16  y                position down the display, 0..65535
+  i16  hScroll          notches right, times 256
+  i16  vScroll          notches away from the user, times 256
 ```
 
 Keys and text are separate on purpose. A named key - Back, Enter, an arrow - has no
@@ -224,6 +238,12 @@ into key events on the device by `KeyCharacterMap`, which is what makes punctuat
 shifted characters and non-US layouts work: the Editor sends the character the user
 actually produced and the device works out which keystrokes would produce it, rather
 than the Editor trying to model every layout.
+
+A scroll carries a position because that is what decides which view receives it,
+and its magnitude is fixed point so that a trackpad's fractions survive without
+putting a float on the wire. The server turns each one into a hover followed by an
+`ACTION_SCROLL`: without the hover in front of it, the scroll is accepted and then
+ignored, because Android delivers it to whatever the mouse is over.
 
 Touch positions are normalized rather than in pixels, so the Editor does not have
 to know the device's current resolution - and cannot get it wrong, since its idea
