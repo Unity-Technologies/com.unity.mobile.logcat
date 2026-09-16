@@ -125,10 +125,9 @@ namespace Unity.Android.Logcat
                 "Frames arriving per second. A mirrored display only produces a frame when the screen changes, so an idle device sends almost none.");
             internal static readonly GUIContent Bandwidth = new GUIContent("Bandwidth",
                 "Megabits per second arriving over adb.");
-            internal static readonly GUIContent Touch = new GUIContent("Touch",
-                "Click or drag the image to send touch events to the device.");
-            internal static readonly GUIContent Keyboard = new GUIContent("Keyboard",
-                "Click the image, then type, to send keys to the device. Ctrl and Cmd combinations stay in the Editor.");
+            internal static readonly GUIContent Input = new GUIContent("Input",
+                "Click or drag the image to send touch events to the device, and click it then type to send keys. " +
+                "Ctrl and Cmd combinations stay in the Editor.");
 
             // Same glyphs and wording as the navigation row in the Inputs window.
             internal static readonly GUIContent Back = new GUIContent("◄",
@@ -873,12 +872,13 @@ namespace Unity.Android.Logcat
             DoStatsRow(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
             DoStatsRow(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
             DoStatsRow(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
-            // Touch and Keyboard are listed whether or not they work: without them there
-            // is nothing in the window to say the view is interactive at all. The column
-            // is too narrow for how to use them, so that lives in the tooltips.
-            var supported = m_ControlSupported ? "Supported" : "Unsupported";
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.Touch, supported);
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.Keyboard, supported);
+            // Listed whether or not it works: without the row there is nothing in the
+            // window to say the view is interactive at all. One row rather than separate
+            // Touch and Keyboard ones because the server reports a single capability
+            // covering both, so the two could never disagree. The column is too narrow
+            // for how to use them, so that lives in the tooltip.
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.Input,
+                m_ControlSupported ? "Supported" : "Unsupported");
 
             y += kNavigationSpacing;
             DoNavigationGUI(rc, ref y);
