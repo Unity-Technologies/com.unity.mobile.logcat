@@ -387,7 +387,7 @@ namespace Unity.Android.Logcat
             m_ScreenCaptureSettings = new ScreenCaptureSettings
             {
                 Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot,
-                ScreenshotListWidth = AndroidLogcatScreenCaptureWindow.kDefaultScreenshotListWidth
+                ScreenshotListWidth = AndroidLogcatScreenshotList.kDefaultWidth
             };
             m_ScreenCaptureSettings.ResetLastSaveLocation();
         }

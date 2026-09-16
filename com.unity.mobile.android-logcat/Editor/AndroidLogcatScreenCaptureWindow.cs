@@ -22,24 +22,6 @@ namespace Unity.Android.Logcat
             public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
-            public static GUIContent LiveStreamRow = new GUIContent("Live", "Show the device screen live. Streaming stops when another row is selected.");
-            public static GUIContent DeleteScreenshot = new GUIContent("×", "Delete this screenshot from disk");
-
-            // The selected row draws on a coloured background, where the default label
-            // colour is hard to read.
-            private static GUIStyle s_SelectedScreenshotRow;
-            public static GUIStyle SelectedScreenshotRow
-            {
-                get
-                {
-                    if (s_SelectedScreenshotRow == null)
-                    {
-                        s_SelectedScreenshotRow = new GUIStyle(EditorStyles.label);
-                        s_SelectedScreenshotRow.normal.textColor = Color.white;
-                    }
-                    return s_SelectedScreenshotRow;
-                }
-            }
         }
         internal enum Mode
         {
@@ -51,13 +33,6 @@ namespace Unity.Android.Logcat
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
 
-        internal const float kDefaultScreenshotListWidth = 220;
-        private const float kScreenshotListMinWidth = 150;
-        private const float kScreenshotListMaxWidth = 400;
-        private const float kSplitterWidth = 5;
-        private const float kScrollbarWidth = 16;
-        private const float kDeleteButtonWidth = 18;
-        private const float kDeleteButtonMargin = 2;
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
         private AndroidLogcatVideoPlayer m_VideoPlayer;
@@ -66,15 +41,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatDeviceSelection m_DeviceSelection;
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
 
-        private Splitter m_ScreenshotListSplitter;
-        private Vector2 m_ScreenshotListScroll;
-
-        /// <summary>
-        /// Whether the "Live" row of the screenshot list is the selected one, in which
-        /// case the preview shows the live stream instead of a saved image. Not
-        /// persisted: reopening the window should not start streaming on its own.
-        /// </summary>
-        private bool m_LiveSelected;
+        private AndroidLogcatScreenshotList m_ScreenshotList;
 
         private bool IsCapturing
         {
@@ -100,7 +67,7 @@ namespace Unity.Android.Logcat
                 {
                     // A live stream leaves no file behind, so there is nothing to open or
                     // save while its row is selected.
-                    case Mode.Screenshot: return m_LiveSelected ? string.Empty : m_CaptureScreenshot.SelectedImagePath;
+                    case Mode.Screenshot: return m_ScreenshotList.LiveSelected ? string.Empty : m_CaptureScreenshot.SelectedImagePath;
                     case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
                     default:
                         throw new NotImplementedException(mode.ToString());
@@ -137,17 +104,12 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
-            m_ScreenshotListSplitter = new Splitter(Splitter.SplitterType.Horizontal,
-                kScreenshotListMinWidth, kScreenshotListMaxWidth);
-
-            // Settings saved before this field existed deserialize it as 0, which would
-            // collapse the list to nothing.
-            var captureSettings = m_Runtime.UserSettings.CaptureSettings;
-            if (captureSettings.ScreenshotListWidth < kScreenshotListMinWidth)
-                captureSettings.ScreenshotListWidth = kDefaultScreenshotListWidth;
+            m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime,
+                () => m_DeviceSelection.SelectedDevice, Repaint);
 
             // Settings saved while the removed LiveStream mode was selected still hold
             // its value, which is now out of range and would throw in the switches above.
+            var captureSettings = m_Runtime.UserSettings.CaptureSettings;
             if (!Enum.IsDefined(typeof(Mode), captureSettings.Mode))
                 captureSettings.Mode = Mode.Screenshot;
 
@@ -163,19 +125,14 @@ namespace Unity.Android.Logcat
             m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
             m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
 
-            // A stream belongs to the device it was started on, so it has to be restarted
-            // against the new one.
-            if (m_LiveSelected)
-                RestartLiveStream();
+            m_ScreenshotList.OnDeviceChanged();
         }
 
         private void OnDisable()
         {
             // The live stream is owned by the runtime, so it would otherwise keep
             // mirroring the device after the window that was showing it is gone.
-            if (m_LiveStream != null)
-                m_LiveStream.StopStreaming();
-            m_LiveSelected = false;
+            m_ScreenshotList?.Deselect();
 
             if (m_VideoPlayer != null)
             {
@@ -209,13 +166,6 @@ namespace Unity.Android.Logcat
         {
             if (result == AndroidLogcatCaptureVideo.Result.Success)
                 m_VideoPlayer.Play(videoPath);
-        }
-
-        void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
-        {
-            // Nothing to collect - a live stream leaves no file behind. On failure the
-            // reason is in AndroidLogcatLiveStream.Errors, which DoGUI shows.
-            Repaint();
         }
 
         void DoModeGUI()
@@ -372,22 +322,10 @@ namespace Unity.Android.Logcat
         /// </summary>
         private void DoScreenshotGUI(Rect rc)
         {
-            var settings = m_Runtime.UserSettings.CaptureSettings;
-            var listWidth = settings.ScreenshotListWidth;
+            // The list draws itself and the splitter, and hands back what is left.
+            var imageRect = m_ScreenshotList.DoGUI(rc);
 
-            var listRect = new Rect(rc.x, rc.y, listWidth, rc.height);
-            var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
-            var imageRect = new Rect(splitterRect.xMax, rc.y, Mathf.Max(0, rc.width - splitterRect.xMax), rc.height);
-
-            DoScreenshotListGUI(listRect);
-
-            if (m_ScreenshotListSplitter.DoGUI(splitterRect, ref listWidth))
-            {
-                settings.ScreenshotListWidth = listWidth;
-                Repaint();
-            }
-
-            if (m_LiveSelected)
+            if (m_ScreenshotList.LiveSelected)
             {
                 // The developer-mode details are drawn by DoGUI, in the info column.
                 m_LiveStream.DoGUI(imageRect);
@@ -403,209 +341,6 @@ namespace Unity.Android.Logcat
                     : "No screenshot to show, click Capture button.";
                 EditorGUI.HelpBox(imageRect, message, MessageType.Info);
             }
-        }
-
-        private void DoScreenshotListGUI(Rect rc)
-        {
-            // Allocated on every pass, before any early return, so control ids do not
-            // shift between the Layout and Repaint passes.
-            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
-
-            GUI.Box(rc, GUIContent.none, EditorStyles.helpBox);
-
-            // Every device, not just the selected one: a screenshot is worth looking at
-            // whichever device it came from, and the file name says which that was.
-            var screenshots = m_CaptureScreenshot.GetScreenshots();
-
-            // Row 0 is the live stream, the rest are saved screenshots.
-            var rowCount = screenshots.Count + 1;
-            var selectedRow = m_LiveSelected ? 0 : -1;
-            if (!m_LiveSelected)
-            {
-                var selectedPath = m_CaptureScreenshot.SelectedImagePath;
-                for (var i = 0; i < screenshots.Count; i++)
-                {
-                    if (screenshots[i].Path == selectedPath)
-                    {
-                        selectedRow = i + 1;
-                        break;
-                    }
-                }
-            }
-
-            var rowHeight = EditorGUIUtility.singleLineHeight;
-            var inner = new Rect(rc.x + 1, rc.y + 1, rc.width - 2, rc.height - 2);
-
-            // Room for the scrollbar is reserved only when there will be one. Reserving
-            // it unconditionally leaves a dead strip that pushes the delete buttons away
-            // from the right edge.
-            var contentHeight = rowCount * rowHeight;
-            var scrollbarWidth = contentHeight > inner.height ? kScrollbarWidth : 0;
-            var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
-            var hasFocus = GUIUtility.keyboardControl == controlId;
-
-            // Acted on after the loop: deleting invalidates the cached list that is being
-            // iterated here.
-            string deletePath = null;
-            var deleteRow = -1;
-
-            m_ScreenshotListScroll = GUI.BeginScrollView(inner, m_ScreenshotListScroll, content);
-            for (var row = 0; row < rowCount; row++)
-            {
-                var rowRect = new Rect(0, row * rowHeight, content.width, rowHeight);
-                var isSelected = row == selectedRow;
-
-                if (Event.current.type == EventType.Repaint && isSelected)
-                {
-                    // Dimmer when the list is not focused, the way editor lists behave.
-                    EditorGUI.DrawRect(rowRect, hasFocus
-                        ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
-                        : new Color(0.30f, 0.30f, 0.30f, 0.85f));
-                }
-
-                // The Live row has no file behind it, so nothing to delete.
-                var deleteWidth = row == 0 ? 0 : kDeleteButtonWidth + kDeleteButtonMargin * 2;
-                var labelRect = new Rect(rowRect.x + 4, rowRect.y,
-                    Mathf.Max(0, rowRect.width - 4 - deleteWidth), rowRect.height);
-
-                var label = row == 0
-                    ? Styles.LiveStreamRow
-                    : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
-                var style = isSelected ? Styles.SelectedScreenshotRow : EditorStyles.label;
-                GUI.Label(labelRect, label, style);
-
-                if (deleteWidth > 0)
-                {
-                    // Inset by a pixel top and bottom so the button does not touch the
-                    // rows above and below it.
-                    var deleteRect = new Rect(
-                        rowRect.xMax - kDeleteButtonWidth - kDeleteButtonMargin,
-                        rowRect.y + 1,
-                        kDeleteButtonWidth,
-                        rowRect.height - 2);
-                    if (GUI.Button(deleteRect, Styles.DeleteScreenshot, EditorStyles.miniButton))
-                    {
-                        deletePath = screenshots[row - 1].Path;
-                        deleteRow = row;
-                    }
-                }
-
-                // Hit tested against the label rather than the whole row, so that the
-                // delete button does not also change the selection.
-                if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && labelRect.Contains(Event.current.mousePosition))
-                {
-                    GUIUtility.keyboardControl = controlId;
-                    SelectRow(screenshots, row);
-                    Event.current.Use();
-                }
-            }
-            GUI.EndScrollView();
-
-            HandleScreenshotListKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
-
-            if (deletePath != null)
-                DeleteScreenshot(deletePath, deleteRow);
-        }
-
-        /// <summary>
-        /// Deleting is confirmed first: the button sits next to the row one clicks to
-        /// select it, and the file is gone for good afterwards.
-        /// </summary>
-        private void DeleteScreenshot(string path, int row)
-        {
-            var name = Path.GetFileNameWithoutExtension(path);
-            if (!EditorUtility.DisplayDialog("Delete Screenshot",
-                $"Delete {name}?\n\nThe file is removed from disk and this cannot be undone.",
-                "Delete", "Cancel"))
-                return;
-
-            var wasSelected = m_CaptureScreenshot.SelectedImagePath == path;
-            if (!m_CaptureScreenshot.DeleteScreenshot(path))
-                return;
-
-            if (wasSelected)
-            {
-                // Whatever took its place, else the one before it. Deliberately not the
-                // Live row, which would start streaming because a file was deleted.
-                var remaining = m_CaptureScreenshot.GetScreenshots();
-                if (remaining.Count > 0)
-                    SelectRow(remaining, Mathf.Clamp(row - 1, 0, remaining.Count - 1) + 1);
-            }
-            Repaint();
-        }
-
-        /// <summary>Up and Down cycle through the list once it has focus.</summary>
-        private void HandleScreenshotListKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
-            int rowCount, int selectedRow, float rowHeight, float viewHeight)
-        {
-            if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
-                return;
-
-            var delta = 0;
-            switch (Event.current.keyCode)
-            {
-                case KeyCode.UpArrow: delta = -1; break;
-                case KeyCode.DownArrow: delta = 1; break;
-                case KeyCode.Home: delta = -rowCount; break;
-                case KeyCode.End: delta = rowCount; break;
-                default: return;
-            }
-
-            // No selection yet: Down starts at the top, Up at the bottom.
-            var next = selectedRow < 0
-                ? (delta > 0 ? 0 : rowCount - 1)
-                : Mathf.Clamp(selectedRow + delta, 0, rowCount - 1);
-
-            if (next != selectedRow)
-            {
-                SelectRow(screenshots, next);
-                ScrollScreenshotIntoView(next, rowHeight, viewHeight);
-            }
-            Event.current.Use();
-        }
-
-        /// <summary>
-        /// Row 0 shows the live stream, the rest a saved screenshot. Streaming starts and
-        /// stops with the selection rather than needing its own button, so leaving the
-        /// Live row does not leave the device mirroring for nothing.
-        /// </summary>
-        private void SelectRow(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int row)
-        {
-            if (row == 0)
-            {
-                if (!m_LiveSelected)
-                {
-                    m_LiveSelected = true;
-                    RestartLiveStream();
-                }
-            }
-            else
-            {
-                if (m_LiveSelected)
-                {
-                    m_LiveSelected = false;
-                    m_LiveStream.StopStreaming();
-                }
-                m_CaptureScreenshot.LoadImage(screenshots[row - 1].Path);
-            }
-            Repaint();
-        }
-
-        private void RestartLiveStream()
-        {
-            m_LiveStream.StopStreaming();
-            if (m_DeviceSelection.SelectedDevice != null)
-                m_LiveStream.StartStreaming(m_DeviceSelection.SelectedDevice, OnLiveStreamCompleted);
-        }
-
-        private void ScrollScreenshotIntoView(int index, float rowHeight, float viewHeight)
-        {
-            var top = index * rowHeight;
-            if (top < m_ScreenshotListScroll.y)
-                m_ScreenshotListScroll.y = top;
-            else if (top + rowHeight > m_ScreenshotListScroll.y + viewHeight)
-                m_ScreenshotListScroll.y = top + rowHeight - viewHeight;
         }
 
         private void DoPreviewGUI()
