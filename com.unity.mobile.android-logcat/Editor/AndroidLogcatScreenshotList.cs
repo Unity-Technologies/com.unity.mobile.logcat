@@ -22,7 +22,8 @@ namespace Unity.Android.Logcat
         static class Styles
         {
             internal static readonly GUIContent LiveRow = new GUIContent("Live",
-                "Show the device screen live. Streaming stops when another row is selected.");
+                "Show the device screen live. Streaming stops when another row is selected. " +
+                "Right click to reconnect.");
             internal static readonly GUIContent Delete = new GUIContent("×",
                 "Delete this screenshot from disk");
 
@@ -180,6 +181,7 @@ namespace Unity.Android.Logcat
             // than the scroll view's.
             string deletePath = null;
             var deleteRow = -1;
+            var menuRow = -1;
             string menuPath = null;
             var menuScreenPosition = Vector2.zero;
 
@@ -249,14 +251,15 @@ namespace Unity.Android.Logcat
                     Event.current.Use();
                 }
 
-                if (Event.current.type == EventType.ContextClick && row > 0
+                if (Event.current.type == EventType.ContextClick
                     && rowRect.Contains(Event.current.mousePosition))
                 {
                     // Selected as well, so the menu acts on what is now on screen.
                     GUIUtility.keyboardControl = controlId;
                     SelectRow(screenshots, row);
 
-                    menuPath = screenshots[row - 1].Path;
+                    menuRow = row;
+                    menuPath = row == 0 ? null : screenshots[row - 1].Path;
                     // Captured in screen space: inside the scroll view the mouse position
                     // is in content coordinates, which the menu would misplace.
                     menuScreenPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
@@ -267,11 +270,26 @@ namespace Unity.Android.Logcat
 
             HandleKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
 
-            if (menuPath != null)
+            if (menuRow == 0)
+                ShowLiveRowContextMenu(GUIUtility.ScreenToGUIPoint(menuScreenPosition));
+            else if (menuRow > 0)
                 ShowRowContextMenu(menuPath, GUIUtility.ScreenToGUIPoint(menuScreenPosition));
 
             if (deletePath != null)
                 ConfirmAndDelete(deletePath, deleteRow);
+        }
+
+        /// <summary>
+        /// The Live row has no file behind it, so all it offers is starting the stream
+        /// over - a server that died, or a device that went away and came back, otherwise
+        /// needs the selection moved off the row and back onto it.
+        /// </summary>
+        void ShowLiveRowContextMenu(Vector2 position)
+        {
+            var menu = new AndroidContextMenu<ScreenshotContextMenu>();
+            menu.Add(ScreenshotContextMenu.Reconnect, "Reconnect",
+                enabled: m_SelectedDevice() != null);
+            menu.Show(position, OnContextMenuSelection);
         }
 
         void ShowRowContextMenu(string path, Vector2 position)
@@ -377,6 +395,12 @@ namespace Unity.Android.Logcat
                     break;
                 case ScreenshotContextMenu.Rename:
                     BeginRename(path);
+                    break;
+                case ScreenshotContextMenu.Reconnect:
+                    // The context click selected the row, so the stream is this window's
+                    // to restart by the time this runs.
+                    RestartLiveStream();
+                    m_Repaint();
                     break;
             }
         }

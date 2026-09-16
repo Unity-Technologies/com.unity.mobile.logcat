@@ -45,7 +45,8 @@ namespace Unity.Android.Logcat
         ShowInFileBrowser,
         Open,
         SaveAs,
-        Rename
+        Rename,
+        Reconnect
     }
 
     class AndroidContextMenu<T>
