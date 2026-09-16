@@ -47,8 +47,7 @@ class AndroidLogcatNetTests
             "System.Core",
             "UnityEngine.ImageConversionModule",
             "UnityEngine.JSONSerializeModule",
-            "UnityEditor.CoreModule",
-            "Unity.Scripting",
+            "UnityEditor.CoreModule"
         });
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
