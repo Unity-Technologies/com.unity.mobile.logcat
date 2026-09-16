@@ -38,7 +38,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     type: {{ platform.type }}
     image: {{ platform.image }}
     flavor: {{ platform.flavor}}
-    model: {{ platform.model}}
+    {% if platform.model %}model: {{ platform.model }}{% endif %}
   commands:
     - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
     - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
