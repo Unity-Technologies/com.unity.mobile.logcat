@@ -212,6 +212,7 @@ namespace Unity.Android.Logcat
             private static Type s_AndroidExternalToolsSettingsType;
             private static PropertyInfo s_NdkRootPathProperty;
             private static PropertyInfo s_SdkRootPathProperty;
+            private static PropertyInfo s_JdkRootPathProperty;
 
             private static Type UnderlyingType
             {
@@ -251,6 +252,17 @@ namespace Unity.Android.Logcat
                 }
             }
 
+            private static PropertyInfo JdkRootPathProperty
+            {
+                get
+                {
+                    if (s_JdkRootPathProperty != null)
+                        return s_JdkRootPathProperty;
+                    s_JdkRootPathProperty = UnderlyingType.GetProperty("jdkRootPath");
+                    return s_JdkRootPathProperty;
+                }
+            }
+
             /// <summary>
             /// Matches to UnityEditor.Android.AndroidExternalToolsSettings.ndkRootPath
             /// </summary>
@@ -267,6 +279,15 @@ namespace Unity.Android.Logcat
             {
                 get => (string)SdkRootPathProperty.GetValue(null);
                 set => SdkRootPathProperty.SetValue(null, value);
+            }
+
+            /// <summary>
+            /// Matches to UnityEditor.Android.AndroidExternalToolsSettings.jdkRootPath
+            /// </summary>
+            public static string jdkRootPath
+            {
+                get => (string)JdkRootPathProperty.GetValue(null);
+                set => JdkRootPathProperty.SetValue(null, value);
             }
         }
     }
