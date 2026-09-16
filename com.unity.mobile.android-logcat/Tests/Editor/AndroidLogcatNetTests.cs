@@ -1,9 +1,10 @@
+using NUnit.Framework;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using NUnit.Framework;
+using Unity.Android.Logcat;
 using UnityEditor;
 using UnityEditor.Compilation;
 using Assembly = System.Reflection.Assembly;
@@ -52,7 +53,9 @@ class AndroidLogcatNetTests
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
 
-        var references = Assembly.ReflectionOnlyLoadFrom(logcatAssembly.outputPath).GetReferencedAssemblies().Select(a => a.Name);
+        // ReflectionOnlyLoadFrom is unsupported on CoreCLR; inspect the loaded assembly instead.
+
+        var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
         foreach (var r in references)
         {
             Assert.Contains(r, expectedReferences, $"Unexpected reference '{r}'");
