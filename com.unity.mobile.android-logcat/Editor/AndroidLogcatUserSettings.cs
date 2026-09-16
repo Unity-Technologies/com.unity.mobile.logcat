@@ -52,6 +52,9 @@ namespace Unity.Android.Logcat
         {
             [SerializeField]
             internal AndroidLogcatScreenCaptureWindow.Mode Mode;
+            /// <summary>Width of the saved screenshot list, left of the splitter.</summary>
+            [SerializeField]
+            internal float ScreenshotListWidth;
             [SerializeField]
             private string[] m_LastSaveLocation;
 
@@ -383,7 +386,8 @@ namespace Unity.Android.Logcat
         {
             m_ScreenCaptureSettings = new ScreenCaptureSettings
             {
-                Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot
+                Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot,
+                ScreenshotListWidth = AndroidLogcatScreenCaptureWindow.kDefaultScreenshotListWidth
             };
             m_ScreenCaptureSettings.ResetLastSaveLocation();
         }

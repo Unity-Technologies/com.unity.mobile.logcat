@@ -258,7 +258,7 @@ namespace Unity.Android.Logcat
         }
         private void DoScreenshotSaveAsGUI()
         {
-            var srcPath = m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
+            var srcPath = m_CaptureScreenshot.GetLatestImagePath(m_DeviceSelection.SelectedDevice);
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
             if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
             {

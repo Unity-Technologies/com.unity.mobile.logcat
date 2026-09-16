@@ -72,14 +72,31 @@ namespace Unity.Android.Logcat
 
         public static string GetTemporaryPath(IAndroidLogcatDevice device, string name, string extension)
         {
-            string fileName = device != null ? device.Id : "NoDevice";
-            if (device != null)
-            {
-                foreach (var p in Path.GetInvalidFileNameChars())
-                    fileName = fileName.Replace(p, '_');
-            }
+            string fileName = device != null ? SanitizeFileName(device.Id) : "NoDevice";
             fileName = $"{name}_{fileName}{extension}";
             return Path.Combine(Application.dataPath, "..", "Temp", fileName).Replace("\\", "/");
+        }
+
+        /// <summary>
+        /// Replaces anything the filesystem will not accept in a file name. A device id
+        /// can be an ip:port, and ':' is not allowed on Windows.
+        /// </summary>
+        public static string SanitizeFileName(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name;
+        }
+
+        /// <summary>
+        /// Where captured screenshots are kept. UserSettings is per-developer and
+        /// already gitignored, and being outside Assets means Unity never imports the
+        /// images as assets.
+        /// </summary>
+        public static string GetScreenshotsDirectory()
+        {
+            var path = Path.Combine(Application.dataPath, "..", "UserSettings", "AndroidLogcat", "Screenshots");
+            return Path.GetFullPath(path).Replace("\\", "/");
         }
 
         /// <summary>

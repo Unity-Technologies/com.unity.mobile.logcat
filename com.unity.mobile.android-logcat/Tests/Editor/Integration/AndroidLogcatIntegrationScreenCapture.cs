@@ -49,7 +49,68 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.Greater(texture.width, 10);
         Assert.Greater(texture.height, 10);
 
-        File.Copy(Runtime.CaptureScreenshot.GetImagePath(Device), Path.Combine(GetOrCreateArtifactsPath(), "screenshot.png"), true);
+        File.Copy(Runtime.CaptureScreenshot.GetLatestImagePath(Device), Path.Combine(GetOrCreateArtifactsPath(), "screenshot.png"), true);
+    }
+
+    /// <summary>
+    /// The screenshot list view depends on three things this checks: that a capture
+    /// shows up in the list at all (the cache has to be dropped, or the list never
+    /// grows), that the list is ordered by number, and that the newest capture becomes
+    /// the selected one.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator ScreenshotsAreListedInOrder()
+    {
+        var prefix = AndroidLogcatUtilities.SanitizeFileName(Device.Id);
+        var before = CountScreenshotsOf(prefix);
+
+        for (var i = 0; i < 2; i++)
+        {
+            var completed = false;
+            Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
+            yield return WaitForCondition($"Waiting for screenshot {i + 1}", () => completed);
+        }
+
+        var screenshots = Runtime.CaptureScreenshot.GetScreenshots();
+        Assert.AreEqual(before + 2, CountScreenshotsOf(prefix),
+            "Both captures should have appeared in the list");
+
+        // Grouped by device, ascending by number within each group.
+        for (var i = 1; i < screenshots.Count; i++)
+        {
+            if (screenshots[i - 1].DevicePrefix == screenshots[i].DevicePrefix)
+            {
+                Assert.Less(screenshots[i - 1].Number, screenshots[i].Number,
+                    "Numbering within a device should ascend");
+            }
+            else
+            {
+                Assert.Less(string.Compare(screenshots[i - 1].DevicePrefix, screenshots[i].DevicePrefix, StringComparison.Ordinal), 0,
+                    "Devices should be grouped together");
+            }
+        }
+
+        foreach (var screenshot in screenshots)
+        {
+            Assert.IsTrue(File.Exists(screenshot.Path), $"{screenshot.Path} should exist");
+            Assert.AreEqual(Path.GetFileNameWithoutExtension(screenshot.Path), screenshot.Name,
+                "The list label should be the file name without its extension");
+        }
+
+        var latest = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
+        Assert.AreEqual(latest, Runtime.CaptureScreenshot.SelectedImagePath,
+            "The newest capture should be the selected one");
+    }
+
+    private int CountScreenshotsOf(string devicePrefix)
+    {
+        var count = 0;
+        foreach (var screenshot in Runtime.CaptureScreenshot.GetScreenshots())
+        {
+            if (screenshot.DevicePrefix == devicePrefix)
+                count++;
+        }
+        return count;
     }
 
     [UnityTest]

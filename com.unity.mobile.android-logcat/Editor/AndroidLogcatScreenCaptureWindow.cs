@@ -26,6 +26,22 @@ namespace Unity.Android.Logcat
             public static GUIContent LiveStreamBack = new GUIContent("◄", "Send Back key event. The Escape key does the same once the view has focus.");
             public static GUIContent LiveStreamHome = new GUIContent("●", "Send Home key event");
             public static GUIContent LiveStreamRecents = new GUIContent("■", "Send Overview key event");
+
+            // The selected row draws on a coloured background, where the default label
+            // colour is hard to read.
+            private static GUIStyle s_SelectedScreenshotRow;
+            public static GUIStyle SelectedScreenshotRow
+            {
+                get
+                {
+                    if (s_SelectedScreenshotRow == null)
+                    {
+                        s_SelectedScreenshotRow = new GUIStyle(EditorStyles.label);
+                        s_SelectedScreenshotRow.normal.textColor = Color.white;
+                    }
+                    return s_SelectedScreenshotRow;
+                }
+            }
         }
         internal enum Mode
         {
@@ -37,6 +53,11 @@ namespace Unity.Android.Logcat
 
         private const int kButtonAreaHeight = 30;
         private const int kBottomAreaHeight = 8;
+
+        internal const float kDefaultScreenshotListWidth = 220;
+        private const float kScreenshotListMinWidth = 150;
+        private const float kScreenshotListMaxWidth = 400;
+        private const float kSplitterWidth = 5;
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
         private AndroidLogcatVideoPlayer m_VideoPlayer;
@@ -44,6 +65,9 @@ namespace Unity.Android.Logcat
 
         private AndroidLogcatDeviceSelection m_DeviceSelection;
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
+
+        private Splitter m_ScreenshotListSplitter;
+        private Vector2 m_ScreenshotListScroll;
 
         private bool IsCapturing
         {
@@ -68,7 +92,7 @@ namespace Unity.Android.Logcat
                 var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
                 switch (mode)
                 {
-                    case Mode.Screenshot: return m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
+                    case Mode.Screenshot: return m_CaptureScreenshot.SelectedImagePath;
                     case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
                     case Mode.LiveStream: return string.Empty;
                     default:
@@ -81,7 +105,11 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                return Path.GetExtension(TemporaryPath).Substring(1);
+                // Empty before the first capture, and always empty in LiveStream mode.
+                // The Save As button is disabled then, but this must not throw if it is
+                // ever read outside that guard.
+                var extension = Path.GetExtension(TemporaryPath);
+                return string.IsNullOrEmpty(extension) ? string.Empty : extension.Substring(1);
             }
         }
 
@@ -102,6 +130,14 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
+            m_ScreenshotListSplitter = new Splitter(Splitter.SplitterType.Horizontal,
+                kScreenshotListMinWidth, kScreenshotListMaxWidth);
+
+            // Settings saved before this field existed deserialize it as 0, which would
+            // collapse the list to nothing.
+            var captureSettings = m_Runtime.UserSettings.CaptureSettings;
+            if (captureSettings.ScreenshotListWidth < kScreenshotListMinWidth)
+                captureSettings.ScreenshotListWidth = kDefaultScreenshotListWidth;
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
@@ -113,7 +149,7 @@ namespace Unity.Android.Logcat
             m_LastDeviceUsedForAssets = device;
 
             m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
-            m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetImagePath(device));
+            m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
         }
 
         private void OnDisable()
@@ -347,6 +383,147 @@ namespace Unity.Android.Logcat
             EditorGUI.EndDisabledGroup();
         }
 
+        /// <summary>
+        /// The list of saved screenshots on the left, the selected one on the right, a
+        /// draggable splitter between them.
+        /// </summary>
+        private void DoScreenshotGUI(Rect rc)
+        {
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            var listWidth = settings.ScreenshotListWidth;
+
+            var listRect = new Rect(rc.x, rc.y, listWidth, rc.height);
+            var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
+            var imageRect = new Rect(splitterRect.xMax, rc.y, Mathf.Max(0, rc.width - splitterRect.xMax), rc.height);
+
+            DoScreenshotListGUI(listRect);
+
+            if (m_ScreenshotListSplitter.DoGUI(splitterRect, ref listWidth))
+            {
+                settings.ScreenshotListWidth = listWidth;
+                Repaint();
+            }
+
+            if (!m_CaptureScreenshot.DoGUI(imageRect))
+            {
+                var message = m_DeviceSelection.SelectedDevice == null
+                    ? "No screenshot to show."
+                    : "No screenshot to show, click Capture button.";
+                EditorGUI.HelpBox(imageRect, message, MessageType.Info);
+            }
+        }
+
+        private void DoScreenshotListGUI(Rect rc)
+        {
+            // Allocated on every pass, before any early return, so control ids do not
+            // shift between the Layout and Repaint passes.
+            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
+
+            GUI.Box(rc, GUIContent.none, EditorStyles.helpBox);
+
+            // Every device, not just the selected one: a screenshot is worth looking at
+            // whichever device it came from, and the file name says which that was.
+            var screenshots = m_CaptureScreenshot.GetScreenshots();
+            if (screenshots.Count == 0)
+            {
+                var label = new Rect(rc.x + 4, rc.y + 4, rc.width - 8, EditorGUIUtility.singleLineHeight);
+                GUI.Label(label, "No screenshots", EditorStyles.miniLabel);
+                return;
+            }
+
+            var selectedPath = m_CaptureScreenshot.SelectedImagePath;
+            var selectedIndex = -1;
+            for (var i = 0; i < screenshots.Count; i++)
+            {
+                if (screenshots[i].Path == selectedPath)
+                {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+
+            var rowHeight = EditorGUIUtility.singleLineHeight;
+            var inner = new Rect(rc.x + 1, rc.y + 1, rc.width - 2, rc.height - 2);
+            var content = new Rect(0, 0, inner.width - 16, screenshots.Count * rowHeight);
+            var hasFocus = GUIUtility.keyboardControl == controlId;
+
+            m_ScreenshotListScroll = GUI.BeginScrollView(inner, m_ScreenshotListScroll, content);
+            for (var i = 0; i < screenshots.Count; i++)
+            {
+                var row = new Rect(0, i * rowHeight, content.width, rowHeight);
+                var isSelected = i == selectedIndex;
+
+                if (Event.current.type == EventType.Repaint && isSelected)
+                {
+                    // Dimmer when the list is not focused, the way editor lists behave.
+                    EditorGUI.DrawRect(row, hasFocus
+                        ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
+                        : new Color(0.30f, 0.30f, 0.30f, 0.85f));
+                }
+
+                var screenshot = screenshots[i];
+                var label = new GUIContent(screenshot.Name, screenshot.Path);
+                var style = isSelected ? Styles.SelectedScreenshotRow : EditorStyles.label;
+                GUI.Label(new Rect(row.x + 4, row.y, row.width - 4, row.height), label, style);
+
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 0
+                    && row.Contains(Event.current.mousePosition))
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    SelectScreenshot(screenshots, i);
+                    Event.current.Use();
+                }
+            }
+            GUI.EndScrollView();
+
+            HandleScreenshotListKeys(controlId, screenshots, selectedIndex, rowHeight, inner.height);
+        }
+
+        /// <summary>Up and Down cycle through the list once it has focus.</summary>
+        private void HandleScreenshotListKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
+            int selectedIndex, float rowHeight, float viewHeight)
+        {
+            if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
+                return;
+
+            var delta = 0;
+            switch (Event.current.keyCode)
+            {
+                case KeyCode.UpArrow: delta = -1; break;
+                case KeyCode.DownArrow: delta = 1; break;
+                case KeyCode.Home: delta = -screenshots.Count; break;
+                case KeyCode.End: delta = screenshots.Count; break;
+                default: return;
+            }
+
+            // No selection yet: Down starts at the top, Up at the bottom.
+            var next = selectedIndex < 0
+                ? (delta > 0 ? 0 : screenshots.Count - 1)
+                : Mathf.Clamp(selectedIndex + delta, 0, screenshots.Count - 1);
+
+            if (next != selectedIndex)
+            {
+                SelectScreenshot(screenshots, next);
+                ScrollScreenshotIntoView(next, rowHeight, viewHeight);
+            }
+            Event.current.Use();
+        }
+
+        private void SelectScreenshot(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int index)
+        {
+            m_CaptureScreenshot.LoadImage(screenshots[index].Path);
+            Repaint();
+        }
+
+        private void ScrollScreenshotIntoView(int index, float rowHeight, float viewHeight)
+        {
+            var top = index * rowHeight;
+            if (top < m_ScreenshotListScroll.y)
+                m_ScreenshotListScroll.y = top;
+            else if (top + rowHeight > m_ScreenshotListScroll.y + viewHeight)
+                m_ScreenshotListScroll.y = top + rowHeight - viewHeight;
+        }
+
         private void DoPreviewGUI()
         {
             switch (m_Runtime.UserSettings.CaptureSettings.Mode)
@@ -354,8 +531,7 @@ namespace Unity.Android.Logcat
                 case Mode.Screenshot:
                     {
                         var rc = new Rect(0, kButtonAreaHeight * 2, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        if (!m_CaptureScreenshot.DoGUI(rc))
-                            EditorGUILayout.HelpBox("No screenshot to show, click Capture button.", MessageType.Info);
+                        DoScreenshotGUI(rc);
                     }
                     break;
                 case Mode.Video:
