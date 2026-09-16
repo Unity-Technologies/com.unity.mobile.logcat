@@ -177,6 +177,53 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// The path with the project folder stripped off, for showing in the UI. A
+        /// screenshot's absolute path is mostly project folder, which in a tooltip is
+        /// wide enough to cover the rows around it.
+        /// </summary>
+        public static string ProjectRelativePath(string path)
+        {
+            return ProjectRelativePath(path, GetProjectDirectory());
+        }
+
+        /// <summary>
+        /// The same, against a given project folder rather than this project's, so that
+        /// it can be exercised with paths from a platform other than the one running.
+        /// </summary>
+        internal static string ProjectRelativePath(string path, string projectDirectory)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+
+            // Trailing slash trimmed so that the separator check below has a separator
+            // to find, whatever shape the folder was handed over in.
+            var project = projectDirectory.Replace("\\", "/").TrimEnd('/');
+            var normalized = path.Replace("\\", "/");
+
+            if (normalized.Length > project.Length + 1
+                && normalized[project.Length] == '/'
+                && normalized.StartsWith(project, StringComparison.OrdinalIgnoreCase))
+                return normalized.Substring(project.Length + 1);
+
+            // Not under the project - a screenshot opened from elsewhere, say - so there
+            // is nothing to strip and the whole path is the most useful thing to show.
+            return normalized;
+        }
+
+        static string s_ProjectDirectory;
+
+        /// <summary>
+        /// The folder that holds Assets, cached: tooltips are built per row per repaint,
+        /// and the project does not move while the Editor is running.
+        /// </summary>
+        static string GetProjectDirectory()
+        {
+            if (s_ProjectDirectory == null)
+                s_ProjectDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, "..")).Replace("\\", "/");
+            return s_ProjectDirectory;
+        }
+
+        /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
         public static bool GetTopActivityInfo(AndroidBridge.ADB adb, IAndroidLogcatDevice device, ref string packageName, ref int packagePid)

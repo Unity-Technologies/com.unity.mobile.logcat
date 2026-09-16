@@ -8,6 +8,64 @@ using Unity.Android.Logcat;
 class AndroidLogcatGeneralTests
 {
     [Test]
+    public void ProjectRelativePathTests()
+    {
+        const string screenshot = "UserSettings/AndroidLogcat/Screenshots/device_1.png";
+
+        // Windows, where paths come in with backslashes and in whatever case the caller
+        // happened to use - hence the case insensitive comparison in the function.
+        var windows = "C:/Users/tomas/Projects/MyProject";
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(windows + "/" + screenshot, windows));
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(
+                @"C:\Users\tomas\Projects\MyProject\UserSettings\AndroidLogcat\Screenshots\device_1.png", windows));
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(
+                @"c:\users\tomas\projects\myproject\UserSettings\AndroidLogcat\Screenshots\device_1.png", windows));
+
+        // macOS, and Linux with it: rooted at / with no drive, and project folders with
+        // spaces in them are the norm rather than the exception.
+        var osx = "/Users/tomas/Projects/MyProject";
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(osx + "/" + screenshot, osx));
+
+        var osxWithSpaces = "/Users/tomas/Unity Projects/My Project";
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(osxWithSpaces + "/" + screenshot, osxWithSpaces));
+
+        // A trailing slash on the project folder must not eat the first character of
+        // what is left.
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(osx + "/" + screenshot, osx + "/"));
+
+        // Outside the project there is nothing to strip.
+        StringAssert.AreEqualIgnoringCase("/Users/tomas/Desktop/shot.png",
+            AndroidLogcatUtilities.ProjectRelativePath("/Users/tomas/Desktop/shot.png", osx));
+        StringAssert.AreEqualIgnoringCase("D:/elsewhere/shot.png",
+            AndroidLogcatUtilities.ProjectRelativePath("D:/elsewhere/shot.png", windows));
+
+        // A folder whose name merely starts with the project folder's must not be taken
+        // for something inside it.
+        StringAssert.AreEqualIgnoringCase(osx + "2/shot.png",
+            AndroidLogcatUtilities.ProjectRelativePath(osx + "2/shot.png", osx));
+
+        // The project folder itself is not a file in the project, so it is left alone
+        // rather than turned into an empty string.
+        StringAssert.AreEqualIgnoringCase(osx, AndroidLogcatUtilities.ProjectRelativePath(osx, osx));
+
+        // And through the public entry point, which is what the screenshot list calls,
+        // to prove it is wired to this project's folder.
+        var project = System.IO.Path.GetFullPath(
+            System.IO.Path.Combine(UnityEngine.Application.dataPath, "..")).Replace("\\", "/");
+        StringAssert.AreEqualIgnoringCase(screenshot,
+            AndroidLogcatUtilities.ProjectRelativePath(project + "/" + screenshot));
+
+        Assert.AreEqual(string.Empty, AndroidLogcatUtilities.ProjectRelativePath(string.Empty));
+        Assert.IsNull(AndroidLogcatUtilities.ProjectRelativePath(null));
+    }
+
+    [Test]
     public void ParseVersionTests()
     {
         var values = new KeyValuePair<Version, string>[]

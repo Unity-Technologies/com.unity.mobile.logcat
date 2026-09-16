@@ -210,9 +210,12 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
+                    // Tooltip relative to the project, because the absolute path is
+                    // mostly project folder and covers the rows around it.
                     var label = row == 0
                         ? Styles.LiveRow
-                        : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
+                        : new GUIContent(screenshots[row - 1].Name,
+                            AndroidLogcatUtilities.ProjectRelativePath(screenshots[row - 1].Path));
                     var style = isSelected ? Styles.SelectedRow : EditorStyles.label;
                     GUI.Label(labelRect, label, style);
                 }
