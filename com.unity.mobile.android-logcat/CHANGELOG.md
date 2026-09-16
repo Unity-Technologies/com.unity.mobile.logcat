@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Unity 6.0 or later is required.
  - Screenshots are now saved to `UserSettings/AndroidLogcat/Screenshots` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
  - The Screen Capture window lists every saved screenshot by file name, next to the image and separated by a draggable splitter. Click a row or use the Up and Down keys to cycle through them.
+ - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags and typing are sent to the device as touch and key events, and Back / Home / Overview buttons appear in the toolbar. Streaming stops when another row is selected or the window is closed.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements

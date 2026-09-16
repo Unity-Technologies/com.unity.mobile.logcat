@@ -108,6 +108,44 @@ namespace Unity.Android.Logcat
         // has desynchronized and we should fail instead of allocating wildly.
         const int kMaxFrameSize = 32 * 1024 * 1024;
 
+        // The info column beside the image. Capped to a fraction of the available width
+        // as well, so a narrow window does not lose the image entirely to it.
+        const float kStatsWidth = 190;
+        const float kStatsMargin = 8;
+        const float kNavigationSpacing = 6;
+        const float kNavigationButtonWidth = 30;
+        const float kLogButtonWidth = 120;
+
+        static class Styles
+        {
+            internal static readonly GUIContent StreamSize = new GUIContent("Stream size",
+                "Size of the streamed image, which is the device display scaled down to fit max_size.");
+            internal static readonly GUIContent FrameRate = new GUIContent("Frame rate",
+                "Frames arriving per second. A mirrored display only produces a frame when the screen changes, so an idle device sends almost none.");
+            internal static readonly GUIContent Bandwidth = new GUIContent("Bandwidth",
+                "Megabits per second arriving over adb.");
+            internal static readonly GUIContent Touch = new GUIContent("Touch",
+                "Click or drag the image to send touch events to the device.");
+            internal static readonly GUIContent Keyboard = new GUIContent("Keyboard",
+                "Click the image, then type, to send keys to the device. Ctrl and Cmd combinations stay in the Editor.");
+
+            // Same glyphs and wording as the navigation row in the Inputs window.
+            internal static readonly GUIContent Back = new GUIContent("◄",
+                "Send Back key event. The Escape key does the same once the image has focus.");
+            internal static readonly GUIContent Home = new GUIContent("●", "Send Home key event");
+            internal static readonly GUIContent Recents = new GUIContent("■", "Send Overview key event");
+
+            internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
+            internal static readonly GUIContent Socket = new GUIContent("Socket",
+                "Abstract unix socket the on-device server is listening on.");
+            internal static readonly GUIContent ForwardedPort = new GUIContent("Port",
+                "Local TCP port adb forwards to that socket.");
+            internal static readonly GUIContent ServerOnDevice = new GUIContent("Server",
+                "Where the server jar was pushed on the device.");
+            internal static readonly GUIContent LogServerOutput = new GUIContent("Log server output",
+                "Print everything the on-device server has written to the Console.");
+        }
+
         AndroidLogcatRuntimeBase m_Runtime;
         IAndroidLogcatDevice m_Device;
         Action<Result> m_OnStopLiveStream;
@@ -782,54 +820,104 @@ namespace Unity.Android.Logcat
             {
                 var message = IsStreaming
                     ? "Starting the stream on the device..."
-                    : "Not streaming, click Start.";
+                    // Selecting the Live row is what starts a stream, so reselecting it
+                    // is how one is restarted after it has stopped.
+                    : "The live stream is not running. Select another row, then Live, to start it again.";
                 EditorGUI.HelpBox(rc, message, MessageType.Info);
                 return;
             }
 
+            // The info column is reserved before the image is fitted, so that the image
+            // is never drawn underneath it.
+            var statsWidth = IsStreaming ? Mathf.Min(kStatsWidth, rc.width * 0.4f) : 0;
+            var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
+
             // Fitted explicitly rather than letting ScaleMode.ScaleToFit do it, because
             // the letterboxed rect is also what mouse positions are mapped through.
-            var videoRect = FitRect(rc, (float)m_Texture.width / m_Texture.height);
+            var videoRect = FitRect(imageArea, (float)m_Texture.width / m_Texture.height);
 
             HandleTouchInput(controlId, videoRect);
             HandleKeyboardInput(controlId);
 
             GUI.DrawTexture(videoRect, m_Texture);
 
-            if (IsStreaming)
-                DoStatsGUI(rc, controlId);
+            if (statsWidth > 0)
+            {
+                // Attached to the image rather than to the right edge of the area: the
+                // image is centred in what is left over, so the gap beside it varies.
+                var statsRect = new Rect(
+                    videoRect.xMax + kStatsMargin,
+                    videoRect.y,
+                    Mathf.Max(0, rc.xMax - videoRect.xMax - kStatsMargin),
+                    videoRect.height);
+                DoStatsGUI(statsRect);
+            }
         }
 
-        void DoStatsGUI(Rect rc, int controlId)
+        void DoStatsGUI(Rect rc)
         {
-            const float kLabelWidth = 90;
-            var y = rc.y + 2;
+            const float kLabelWidth = 80;
+            var y = rc.y;
 
-            DoStatsRow(rc, kLabelWidth, ref y, "Stream size", $"{m_FrameWidth}x{m_FrameHeight}");
-            DoStatsRow(rc, kLabelWidth, ref y, "Frame rate", $"{m_Fps:0.0} fps");
-            DoStatsRow(rc, kLabelWidth, ref y, "Bandwidth", $"{m_Mbps:0.00} Mbps");
-            // Touch is listed whether or not it works: without it there is nothing in
-            // the window to say the view is interactive at all.
-            DoStatsRow(rc, kLabelWidth, ref y, "Touch", m_ControlSupported
-                ? "click or drag to control the device"
-                : "unavailable on this device");
-            DoStatsRow(rc, kLabelWidth, ref y, "Keyboard", KeyboardStatus(controlId));
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
+            // Touch and Keyboard are listed whether or not they work: without them there
+            // is nothing in the window to say the view is interactive at all. The column
+            // is too narrow for how to use them, so that lives in the tooltips.
+            var supported = m_ControlSupported ? "Supported" : "Unsupported";
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.Touch, supported);
+            DoStatsRow(rc, kLabelWidth, ref y, Styles.Keyboard, supported);
+
+            y += kNavigationSpacing;
+            DoNavigationGUI(rc, ref y);
+            DoDebuggingGUI(rc, kLabelWidth, ref y);
         }
 
-        string KeyboardStatus(int controlId)
-        {
-            if (!m_ControlSupported)
-                return "unavailable on this device";
-            return GUIUtility.keyboardControl == controlId
-                ? "focused, keys go to the device (Ctrl combinations stay in the Editor)"
-                : "click the view to send keys";
-        }
-
-        static void DoStatsRow(Rect rc, float labelWidth, ref float y, string name, string value)
+        /// <summary>
+        /// Android's Back / Home / Overview buttons.
+        /// <para>
+        /// On a device with the three-button navigation bar these are also just tappable
+        /// in the mirrored image, but on one using gesture navigation there is no bar to
+        /// tap - so without these there is no way to leave an app from the live view.
+        /// </para>
+        /// </summary>
+        void DoNavigationGUI(Rect rc, ref float y)
         {
             var height = EditorGUIUtility.singleLineHeight;
-            GUI.Label(new Rect(rc.x + 4, y, labelWidth, height), name);
-            GUI.Label(new Rect(rc.x + 4 + labelWidth, y, Mathf.Max(0, rc.width - labelWidth - 8), height), value);
+            if (y + height > rc.yMax)
+                return;
+
+            EditorGUI.BeginDisabledGroup(!CanSendInput);
+
+            // Fixed width, rather than a third of the column each: these hold a single
+            // glyph, so stretching them to fill the column just looks wrong. Narrowed
+            // only if the column itself cannot fit three of them. Joined into one group,
+            // as the same row is in the Inputs window.
+            var width = Mathf.Min(kNavigationButtonWidth, Mathf.Floor(rc.width / 3));
+            if (GUI.Button(new Rect(rc.x, y, width, height), Styles.Back, EditorStyles.miniButtonLeft))
+                SendKeyPress(AndroidKeyCode.BACK);
+            if (GUI.Button(new Rect(rc.x + width, y, width, height), Styles.Home, EditorStyles.miniButtonMid))
+                SendKeyPress(AndroidKeyCode.HOME);
+            if (GUI.Button(new Rect(rc.x + width * 2, y, width, height), Styles.Recents, EditorStyles.miniButtonRight))
+                SendKeyPress(AndroidKeyCode.APP_SWITCH);
+
+            EditorGUI.EndDisabledGroup();
+            y += height;
+        }
+
+        static void DoStatsRow(Rect rc, float labelWidth, ref float y, GUIContent name, string value,
+            string valueTooltip = null)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + height > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, labelWidth, height), name, EditorStyles.miniLabel);
+            // The column is narrow enough that long values clip, so the tooltip carries
+            // the full text where that matters.
+            GUI.Label(new Rect(rc.x + labelWidth, y, Mathf.Max(0, rc.width - labelWidth), height),
+                new GUIContent(value, valueTooltip ?? name.tooltip), EditorStyles.miniLabel);
             y += height;
         }
 
@@ -1132,24 +1220,41 @@ namespace Unity.Android.Logcat
             return meta;
         }
 
-        internal void DoDebuggingGUI()
+        /// <summary>
+        /// Extra detail for diagnosing the stream, below the navigation buttons. Touch
+        /// support is not repeated here - the rows above already report it.
+        /// </summary>
+        void DoDebuggingGUI(Rect rc, float labelWidth, ref float y)
         {
-            GUILayout.Label("Developer Mode is on, showing live stream details:", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Socket", string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName);
-            EditorGUILayout.LabelField("Forwarded port", m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
-            EditorGUILayout.LabelField("Server on device", kServerDevicePath);
-            EditorGUILayout.LabelField("Touch injection",
-                !IsStreaming ? "-" : m_ControlSupported ? "supported" : "unavailable on this device");
+            if (!Unsupported.IsDeveloperMode())
+                return;
 
-            EditorGUILayout.BeginHorizontal(AndroidLogcatStyles.toolbar);
-            if (GUILayout.Button("Log server output", AndroidLogcatStyles.toolbarButton))
+            var height = EditorGUIUtility.singleLineHeight;
+            y += kNavigationSpacing;
+            if (y + height > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeveloperMode, EditorStyles.miniBoldLabel);
+            y += height;
+
+            DoStatsRow(rc, labelWidth, ref y, Styles.Socket,
+                string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName, m_SocketName);
+            DoStatsRow(rc, labelWidth, ref y, Styles.ForwardedPort,
+                m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
+            DoStatsRow(rc, labelWidth, ref y, Styles.ServerOnDevice, kServerDevicePath, kServerDevicePath);
+
+            if (y + height > rc.yMax)
+                return;
+
+            if (GUI.Button(new Rect(rc.x, y, Mathf.Min(kLogButtonWidth, rc.width), height),
+                Styles.LogServerOutput, EditorStyles.miniButton))
             {
                 string log;
                 lock (m_ServerLog)
                     log = m_ServerLog.ToString();
                 UnityEngine.Debug.Log(string.IsNullOrEmpty(log) ? "No server output captured" : log);
             }
-            EditorGUILayout.EndHorizontal();
+            y += height;
         }
     }
 }

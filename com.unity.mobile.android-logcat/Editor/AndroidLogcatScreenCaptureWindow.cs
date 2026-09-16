@@ -22,10 +22,7 @@ namespace Unity.Android.Logcat
             public static GUIContent CaptureScreenshot = new GUIContent("Capture", "Capture screenshot from the android device.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
-            // Same glyphs and wording as the navigation row in the Inputs window.
-            public static GUIContent LiveStreamBack = new GUIContent("◄", "Send Back key event. The Escape key does the same once the view has focus.");
-            public static GUIContent LiveStreamHome = new GUIContent("●", "Send Home key event");
-            public static GUIContent LiveStreamRecents = new GUIContent("■", "Send Overview key event");
+            public static GUIContent LiveStreamRow = new GUIContent("Live", "Show the device screen live. Streaming stops when another row is selected.");
 
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
@@ -46,8 +43,7 @@ namespace Unity.Android.Logcat
         internal enum Mode
         {
             Screenshot,
-            Video,
-            LiveStream
+            Video
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -69,6 +65,13 @@ namespace Unity.Android.Logcat
         private Splitter m_ScreenshotListSplitter;
         private Vector2 m_ScreenshotListScroll;
 
+        /// <summary>
+        /// Whether the "Live" row of the screenshot list is the selected one, in which
+        /// case the preview shows the live stream instead of a saved image. Not
+        /// persisted: reopening the window should not start streaming on its own.
+        /// </summary>
+        private bool m_LiveSelected;
+
         private bool IsCapturing
         {
             get
@@ -76,9 +79,8 @@ namespace Unity.Android.Logcat
                 var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
                 switch (mode)
                 {
-                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
+                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing || m_LiveStream.IsStreaming;
                     case Mode.Video: return m_CaptureVideo.IsRecording;
-                    case Mode.LiveStream: return m_LiveStream.IsStreaming;
                     default:
                         throw new NotImplementedException(mode.ToString());
                 }
@@ -92,9 +94,10 @@ namespace Unity.Android.Logcat
                 var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
                 switch (mode)
                 {
-                    case Mode.Screenshot: return m_CaptureScreenshot.SelectedImagePath;
+                    // A live stream leaves no file behind, so there is nothing to open or
+                    // save while its row is selected.
+                    case Mode.Screenshot: return m_LiveSelected ? string.Empty : m_CaptureScreenshot.SelectedImagePath;
                     case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
-                    case Mode.LiveStream: return string.Empty;
                     default:
                         throw new NotImplementedException(mode.ToString());
                 }
@@ -105,9 +108,9 @@ namespace Unity.Android.Logcat
         {
             get
             {
-                // Empty before the first capture, and always empty in LiveStream mode.
-                // The Save As button is disabled then, but this must not throw if it is
-                // ever read outside that guard.
+                // Empty before the first capture, and while the Live row is selected. The
+                // Save As button is disabled then, but this must not throw if it is ever
+                // read outside that guard.
                 var extension = Path.GetExtension(TemporaryPath);
                 return string.IsNullOrEmpty(extension) ? string.Empty : extension.Substring(1);
             }
@@ -139,6 +142,11 @@ namespace Unity.Android.Logcat
             if (captureSettings.ScreenshotListWidth < kScreenshotListMinWidth)
                 captureSettings.ScreenshotListWidth = kDefaultScreenshotListWidth;
 
+            // Settings saved while the removed LiveStream mode was selected still hold
+            // its value, which is now out of range and would throw in the switches above.
+            if (!Enum.IsDefined(typeof(Mode), captureSettings.Mode))
+                captureSettings.Mode = Mode.Screenshot;
+
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
         private void ReloadCaptureAssetsIfNeeded(IAndroidLogcatDevice device)
@@ -150,10 +158,21 @@ namespace Unity.Android.Logcat
 
             m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
             m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
+
+            // A stream belongs to the device it was started on, so it has to be restarted
+            // against the new one.
+            if (m_LiveSelected)
+                RestartLiveStream();
         }
 
         private void OnDisable()
         {
+            // The live stream is owned by the runtime, so it would otherwise keep
+            // mirroring the device after the window that was showing it is gone.
+            if (m_LiveStream != null)
+                m_LiveStream.StopStreaming();
+            m_LiveSelected = false;
+
             if (m_VideoPlayer != null)
             {
                 m_VideoPlayer.Dispose();
@@ -186,28 +205,6 @@ namespace Unity.Android.Logcat
         {
             if (result == AndroidLogcatCaptureVideo.Result.Success)
                 m_VideoPlayer.Play(videoPath);
-        }
-
-        /// <summary>
-        /// Android's Back / Home / Recents buttons.
-        /// <para>
-        /// On a device with the three-button navigation bar these are also just tappable
-        /// in the mirrored image, but on one using gesture navigation there is no bar to
-        /// tap - so without these there is no way to leave an app from the live view.
-        /// </para>
-        /// </summary>
-        private void DoLiveStreamNavigationGUI()
-        {
-            EditorGUI.BeginDisabledGroup(!m_LiveStream.IsStreaming || !m_LiveStream.ControlSupported);
-
-            if (GUILayout.Button(Styles.LiveStreamBack, AndroidLogcatStyles.toolbarButton))
-                m_LiveStream.SendKeyPress(AndroidKeyCode.BACK);
-            if (GUILayout.Button(Styles.LiveStreamHome, AndroidLogcatStyles.toolbarButton))
-                m_LiveStream.SendKeyPress(AndroidKeyCode.HOME);
-            if (GUILayout.Button(Styles.LiveStreamRecents, AndroidLogcatStyles.toolbarButton))
-                m_LiveStream.SendKeyPress(AndroidKeyCode.APP_SWITCH);
-
-            EditorGUI.EndDisabledGroup();
         }
 
         void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
@@ -315,24 +312,6 @@ namespace Unity.Android.Logcat
                         }
                     }
                     break;
-                case Mode.LiveStream:
-                    if (m_LiveStream.IsStreaming)
-                    {
-                        if (GUILayout.Button("Stop", AndroidLogcatStyles.toolbarButton))
-                        {
-                            m_LiveStream.StopStreaming();
-                        }
-                    }
-                    else
-                    {
-                        if (GUILayout.Button("Start", AndroidLogcatStyles.toolbarButton))
-                        {
-
-                            m_LiveStream.StartStreaming(m_DeviceSelection.SelectedDevice, OnLiveStreamCompleted);
-                        }
-                    }
-                    DoLiveStreamNavigationGUI();
-                    break;
             }
             EditorGUI.EndDisabledGroup();
         }
@@ -404,7 +383,16 @@ namespace Unity.Android.Logcat
                 Repaint();
             }
 
-            if (!m_CaptureScreenshot.DoGUI(imageRect))
+            if (m_LiveSelected)
+            {
+                // The developer-mode details are drawn by DoGUI, in the info column.
+                m_LiveStream.DoGUI(imageRect);
+                // Frames arrive on the runtime's update, not on GUI events, so the window
+                // has to keep repainting to show them.
+                if (m_LiveStream.IsStreaming)
+                    Repaint();
+            }
+            else if (!m_CaptureScreenshot.DoGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null
                     ? "No screenshot to show."
@@ -424,64 +412,64 @@ namespace Unity.Android.Logcat
             // Every device, not just the selected one: a screenshot is worth looking at
             // whichever device it came from, and the file name says which that was.
             var screenshots = m_CaptureScreenshot.GetScreenshots();
-            if (screenshots.Count == 0)
-            {
-                var label = new Rect(rc.x + 4, rc.y + 4, rc.width - 8, EditorGUIUtility.singleLineHeight);
-                GUI.Label(label, "No screenshots", EditorStyles.miniLabel);
-                return;
-            }
 
-            var selectedPath = m_CaptureScreenshot.SelectedImagePath;
-            var selectedIndex = -1;
-            for (var i = 0; i < screenshots.Count; i++)
+            // Row 0 is the live stream, the rest are saved screenshots.
+            var rowCount = screenshots.Count + 1;
+            var selectedRow = m_LiveSelected ? 0 : -1;
+            if (!m_LiveSelected)
             {
-                if (screenshots[i].Path == selectedPath)
+                var selectedPath = m_CaptureScreenshot.SelectedImagePath;
+                for (var i = 0; i < screenshots.Count; i++)
                 {
-                    selectedIndex = i;
-                    break;
+                    if (screenshots[i].Path == selectedPath)
+                    {
+                        selectedRow = i + 1;
+                        break;
+                    }
                 }
             }
 
             var rowHeight = EditorGUIUtility.singleLineHeight;
             var inner = new Rect(rc.x + 1, rc.y + 1, rc.width - 2, rc.height - 2);
-            var content = new Rect(0, 0, inner.width - 16, screenshots.Count * rowHeight);
+            var content = new Rect(0, 0, inner.width - 16, rowCount * rowHeight);
             var hasFocus = GUIUtility.keyboardControl == controlId;
 
             m_ScreenshotListScroll = GUI.BeginScrollView(inner, m_ScreenshotListScroll, content);
-            for (var i = 0; i < screenshots.Count; i++)
+            for (var row = 0; row < rowCount; row++)
             {
-                var row = new Rect(0, i * rowHeight, content.width, rowHeight);
-                var isSelected = i == selectedIndex;
+                var rowRect = new Rect(0, row * rowHeight, content.width, rowHeight);
+                var isSelected = row == selectedRow;
 
                 if (Event.current.type == EventType.Repaint && isSelected)
                 {
                     // Dimmer when the list is not focused, the way editor lists behave.
-                    EditorGUI.DrawRect(row, hasFocus
+                    EditorGUI.DrawRect(rowRect, hasFocus
                         ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
                         : new Color(0.30f, 0.30f, 0.30f, 0.85f));
                 }
 
-                var screenshot = screenshots[i];
-                var label = new GUIContent(screenshot.Name, screenshot.Path);
+                var label = row == 0
+                    ? Styles.LiveStreamRow
+                    : new GUIContent(screenshots[row - 1].Name, screenshots[row - 1].Path);
                 var style = isSelected ? Styles.SelectedScreenshotRow : EditorStyles.label;
-                GUI.Label(new Rect(row.x + 4, row.y, row.width - 4, row.height), label, style);
+                GUI.Label(new Rect(rowRect.x + 4, rowRect.y, rowRect.width - 4, rowRect.height), label, style);
 
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && row.Contains(Event.current.mousePosition))
+                    && rowRect.Contains(Event.current.mousePosition))
                 {
                     GUIUtility.keyboardControl = controlId;
-                    SelectScreenshot(screenshots, i);
+                    SelectRow(screenshots, row);
                     Event.current.Use();
                 }
             }
             GUI.EndScrollView();
 
-            HandleScreenshotListKeys(controlId, screenshots, selectedIndex, rowHeight, inner.height);
+            HandleScreenshotListKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
         }
 
         /// <summary>Up and Down cycle through the list once it has focus.</summary>
         private void HandleScreenshotListKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
-            int selectedIndex, float rowHeight, float viewHeight)
+            int rowCount, int selectedRow, float rowHeight, float viewHeight)
         {
             if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
                 return;
@@ -491,28 +479,56 @@ namespace Unity.Android.Logcat
             {
                 case KeyCode.UpArrow: delta = -1; break;
                 case KeyCode.DownArrow: delta = 1; break;
-                case KeyCode.Home: delta = -screenshots.Count; break;
-                case KeyCode.End: delta = screenshots.Count; break;
+                case KeyCode.Home: delta = -rowCount; break;
+                case KeyCode.End: delta = rowCount; break;
                 default: return;
             }
 
             // No selection yet: Down starts at the top, Up at the bottom.
-            var next = selectedIndex < 0
-                ? (delta > 0 ? 0 : screenshots.Count - 1)
-                : Mathf.Clamp(selectedIndex + delta, 0, screenshots.Count - 1);
+            var next = selectedRow < 0
+                ? (delta > 0 ? 0 : rowCount - 1)
+                : Mathf.Clamp(selectedRow + delta, 0, rowCount - 1);
 
-            if (next != selectedIndex)
+            if (next != selectedRow)
             {
-                SelectScreenshot(screenshots, next);
+                SelectRow(screenshots, next);
                 ScrollScreenshotIntoView(next, rowHeight, viewHeight);
             }
             Event.current.Use();
         }
 
-        private void SelectScreenshot(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int index)
+        /// <summary>
+        /// Row 0 shows the live stream, the rest a saved screenshot. Streaming starts and
+        /// stops with the selection rather than needing its own button, so leaving the
+        /// Live row does not leave the device mirroring for nothing.
+        /// </summary>
+        private void SelectRow(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int row)
         {
-            m_CaptureScreenshot.LoadImage(screenshots[index].Path);
+            if (row == 0)
+            {
+                if (!m_LiveSelected)
+                {
+                    m_LiveSelected = true;
+                    RestartLiveStream();
+                }
+            }
+            else
+            {
+                if (m_LiveSelected)
+                {
+                    m_LiveSelected = false;
+                    m_LiveStream.StopStreaming();
+                }
+                m_CaptureScreenshot.LoadImage(screenshots[row - 1].Path);
+            }
             Repaint();
+        }
+
+        private void RestartLiveStream()
+        {
+            m_LiveStream.StopStreaming();
+            if (m_DeviceSelection.SelectedDevice != null)
+                m_LiveStream.StartStreaming(m_DeviceSelection.SelectedDevice, OnLiveStreamCompleted);
         }
 
         private void ScrollScreenshotIntoView(int index, float rowHeight, float viewHeight)
@@ -552,18 +568,6 @@ namespace Unity.Android.Logcat
                     {
                         m_VideoPlayer.DoGUI(position);
                         if (m_VideoPlayer.IsPlaying())
-                            Repaint();
-                    }
-                    break;
-                case Mode.LiveStream:
-                    if (Unsupported.IsDeveloperMode())
-                        m_LiveStream.DoDebuggingGUI();
-                    {
-                        var rc = new Rect(0, kButtonAreaHeight, position.width, position.height - kButtonAreaHeight - kBottomAreaHeight);
-                        m_LiveStream.DoGUI(rc);
-                        // Frames arrive on the runtime's update, not on GUI events, so
-                        // the window has to keep repainting to show them.
-                        if (m_LiveStream.IsStreaming)
                             Repaint();
                     }
                     break;
