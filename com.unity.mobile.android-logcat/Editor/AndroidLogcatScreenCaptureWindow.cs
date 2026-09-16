@@ -76,6 +76,11 @@ namespace Unity.Android.Logcat
             }
         }
 
+        // Alongside the Logcat window's own entry, and reachable without opening that
+        // window first - the Screen Capture window is useful on its own. A device with
+        // no Android support installed gets the same message here as anywhere else, from
+        // OnGUI, rather than the item being hidden.
+        [MenuItem("Window/Analysis/Android Screen Capture")]
         public static void ShowWindow()
         {
             GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");

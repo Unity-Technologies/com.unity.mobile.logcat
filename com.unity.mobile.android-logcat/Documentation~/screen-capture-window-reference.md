@@ -2,7 +2,9 @@
 
 This page introduces the Device Screen Capture window's interface.
 
-To open the Device Screen Capture window:
+To open the Device Screen Capture window, from the main menu in Unity select **Window** > **Analysis** > **Android Screen Capture**.
+
+You can also open it from the Android Logcat window:
 
 1. Open the [Android Logcat window](android-logcat-window.md).
 2. From the [toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Screen Capture**.
