@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 using UnityEngine.TestTools;
 using NUnit.Framework;
 using System.Collections;
@@ -7,6 +8,48 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatGeneralTests
 {
+    [Test]
+    public void LiveStreamEditingShortcutTests()
+    {
+        AndroidKeyCode mapped;
+
+        // Ctrl on Windows and Linux, Cmd on macOS: both have to reach the device, where
+        // they arrive as Ctrl either way.
+        foreach (var modifier in new[] { EventModifiers.Control, EventModifiers.Command })
+        {
+            Assert.IsTrue(AndroidLogcatLiveStream.TryMapEditingShortcut(
+                new Event { keyCode = KeyCode.A, modifiers = modifier }, out mapped), $"A with {modifier}");
+            Assert.AreEqual(AndroidKeyCode.A, mapped);
+
+            Assert.IsTrue(AndroidLogcatLiveStream.TryMapEditingShortcut(
+                new Event { keyCode = KeyCode.C, modifiers = modifier }, out mapped), $"C with {modifier}");
+            Assert.AreEqual(AndroidKeyCode.C, mapped);
+
+            Assert.IsTrue(AndroidLogcatLiveStream.TryMapEditingShortcut(
+                new Event { keyCode = KeyCode.V, modifiers = modifier }, out mapped), $"V with {modifier}");
+            Assert.AreEqual(AndroidKeyCode.V, mapped);
+        }
+
+        // A bare letter is ordinary typing, which goes to the device as text instead.
+        Assert.IsFalse(AndroidLogcatLiveStream.TryMapEditingShortcut(
+            new Event { keyCode = KeyCode.A, modifiers = EventModifiers.None }, out mapped));
+
+        // Every other Ctrl chord belongs to the Editor - Ctrl+S in particular.
+        Assert.IsFalse(AndroidLogcatLiveStream.TryMapEditingShortcut(
+            new Event { keyCode = KeyCode.S, modifiers = EventModifiers.Control }, out mapped));
+        Assert.IsFalse(AndroidLogcatLiveStream.TryMapEditingShortcut(
+            new Event { keyCode = KeyCode.Z, modifiers = EventModifiers.Control }, out mapped));
+
+        // And so does anything with a further modifier on top, such as this window's own
+        // Ctrl+Shift+S, so only the bare chord is taken.
+        Assert.IsFalse(AndroidLogcatLiveStream.TryMapEditingShortcut(
+            new Event { keyCode = KeyCode.A, modifiers = EventModifiers.Control | EventModifiers.Shift },
+            out mapped));
+        Assert.IsFalse(AndroidLogcatLiveStream.TryMapEditingShortcut(
+            new Event { keyCode = KeyCode.V, modifiers = EventModifiers.Control | EventModifiers.Alt },
+            out mapped));
+    }
+
     [Test]
     public void ProjectRelativePathTests()
     {

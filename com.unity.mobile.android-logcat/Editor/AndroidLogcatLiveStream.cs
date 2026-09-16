@@ -128,7 +128,8 @@ namespace Unity.Android.Logcat
                 "Megabits per second arriving over adb.");
             internal static readonly GUIContent Input = new GUIContent("Input",
                 "Click or drag the image to send touch events to the device, and click it then type to send keys. " +
-                "Ctrl and Cmd combinations stay in the Editor.");
+                "Select all, copy and paste go to the device and use its clipboard; other Ctrl and Cmd " +
+                "combinations stay in the Editor.");
 
             // Same glyphs and wording as the navigation row in the Inputs window.
             internal static readonly GUIContent Back = new GUIContent("◄",
@@ -1246,8 +1247,22 @@ namespace Unity.Android.Logcat
             if (e.type != EventType.KeyDown && e.type != EventType.KeyUp)
                 return;
 
-            // Editor shortcuts keep working: Ctrl/Cmd combinations are never forwarded,
-            // so Ctrl+S still saves rather than going to the device.
+            // Select all, copy and paste act on the device: they are text editing where
+            // the text is, and they do nothing in this window otherwise. The device's
+            // own clipboard is what is copied to and pasted from - nothing is exchanged
+            // with the Editor's clipboard.
+            if (TryMapEditingShortcut(e, out var editingKeyCode))
+            {
+                // Forced to Ctrl even when the user pressed Cmd: Android has no Command
+                // modifier, and META_CTRL_ON is what a text field acts on.
+                SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
+                    editingKeyCode, MetaState(e.modifiers) | kMetaCtrlOn);
+                e.Use();
+                return;
+            }
+
+            // Every other Editor shortcut keeps working: Ctrl/Cmd combinations are not
+            // forwarded, so Ctrl+S still saves rather than going to the device.
             if ((e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0)
                 return;
 
@@ -1296,6 +1311,29 @@ namespace Unity.Android.Logcat
                 case KeyCode.PageUp: androidKeyCode = AndroidKeyCode.PAGE_UP; return true;
                 case KeyCode.PageDown: androidKeyCode = AndroidKeyCode.PAGE_DOWN; return true;
                 default: androidKeyCode = default; return false;
+            }
+        }
+
+        /// <summary>
+        /// The Ctrl/Cmd chords that are forwarded to the device rather than left to the
+        /// Editor: select all, copy and paste. Only the bare chord, so Ctrl+Shift+A and
+        /// anything with Alt still belong to the Editor.
+        /// </summary>
+        internal static bool TryMapEditingShortcut(Event e, out AndroidKeyCode androidKeyCode)
+        {
+            androidKeyCode = default;
+
+            if ((e.modifiers & (EventModifiers.Control | EventModifiers.Command)) == 0)
+                return false;
+            if ((e.modifiers & (EventModifiers.Shift | EventModifiers.Alt)) != 0)
+                return false;
+
+            switch (e.keyCode)
+            {
+                case KeyCode.A: androidKeyCode = AndroidKeyCode.A; return true;
+                case KeyCode.C: androidKeyCode = AndroidKeyCode.C; return true;
+                case KeyCode.V: androidKeyCode = AndroidKeyCode.V; return true;
+                default: return false;
             }
         }
 
