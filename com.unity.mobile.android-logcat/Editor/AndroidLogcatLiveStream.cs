@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -174,10 +175,23 @@ namespace Unity.Android.Logcat
         // Frame handover, reader thread -> main thread.
         readonly object m_FrameLock = new object();
         byte[] m_PendingFrame;
+        int m_PendingFrameSize;
         int m_PendingWidth;
         int m_PendingHeight;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
+
+        // Frame buffers are reused rather than allocated per frame, which at 30 fps was
+        // a few MB per second of short-lived garbage.
+        //
+        // A buffer is owned by exactly one of four places at any moment: this free list,
+        // the reader thread filling it, the pending slot, or the main thread decoding it.
+        // It only ever moves between them under m_FrameLock, and the main thread is what
+        // hands it back, so the reader cannot overwrite a buffer being decoded. Three is
+        // the most that can be in flight at once - one being filled, one pending, one
+        // being decoded.
+        const int kMaxFrameBuffers = 3;
+        readonly Stack<byte[]> m_FreeFrameBuffers = new Stack<byte[]>(kMaxFrameBuffers);
 
         volatile bool m_ControlSupported;
         // Reported by the server in the stream header, so it is exact rather than
@@ -278,6 +292,7 @@ namespace Unity.Android.Logcat
             lock (m_FrameLock)
             {
                 m_PendingFrame = null;
+                m_PendingFrameSize = 0;
                 m_ReceivedBytes = 0;
                 m_ReceivedFrames = 0;
             }
@@ -338,6 +353,16 @@ namespace Unity.Android.Logcat
             if (thread != null && !thread.Join(TimeSpan.FromSeconds(2)))
                 AndroidLogcatInternalLog.Log("Live stream reader thread did not stop in time");
 
+            // With the reader gone, and this being the main thread, nothing can still be
+            // holding a buffer - and once the stream is over they are only memory. A
+            // frame off a big display is worth a couple of MB.
+            lock (m_FrameLock)
+            {
+                m_PendingFrame = null;
+                m_PendingFrameSize = 0;
+                m_FreeFrameBuffers.Clear();
+            }
+
             KillServerProcess();
             RemovePortForward();
 
@@ -376,6 +401,7 @@ namespace Unity.Android.Logcat
         void ApplyPendingFrame()
         {
             byte[] frame;
+            int size;
             int width, height;
             long bytes;
             int frames;
@@ -383,7 +409,9 @@ namespace Unity.Android.Logcat
             lock (m_FrameLock)
             {
                 frame = m_PendingFrame;
+                size = m_PendingFrameSize;
                 m_PendingFrame = null;
+                m_PendingFrameSize = 0;
                 width = m_PendingWidth;
                 height = m_PendingHeight;
                 bytes = m_ReceivedBytes;
@@ -396,11 +424,19 @@ namespace Unity.Android.Logcat
                     m_Texture = new Texture2D(2, 2);
                 // LoadImage resizes the texture to the incoming frame, which is how a
                 // rotation is absorbed: the server just starts sending a new size.
-                if (m_Texture.LoadImage(frame))
+                //
+                // Decoded through a span rather than the byte[] overload, which would
+                // take the whole buffer: a reused buffer is usually larger than the
+                // frame sitting in it.
+                if (ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size)))
                 {
                     m_FrameWidth = width;
                     m_FrameHeight = height;
                 }
+
+                // Returned whether or not it decoded - a frame this thread could not
+                // read is still a buffer the reader can fill.
+                ReturnFrameBuffer(frame);
             }
 
             var now = DateTime.Now;
@@ -538,17 +574,20 @@ namespace Unity.Android.Logcat
                     if (size <= 0 || size > kMaxFrameSize)
                         throw new IOException($"Frame size {size} is out of range, the stream is out of sync");
 
-                    // Allocated per frame because Texture2D.LoadImage takes a whole
-                    // array with no length, so the buffer has to be exactly one frame.
-                    var payload = new byte[size];
+                    var payload = RentFrameBuffer(size);
                     ReadExactly(stream, payload, size);
 
                     lock (m_FrameLock)
                     {
                         // Only the newest frame is kept: if the Editor cannot keep up,
                         // showing the latest screen matters more than showing every
-                        // frame.
+                        // frame. The frame being dropped goes back to the free list
+                        // instead of to the GC - the main thread never saw it, so
+                        // nothing else can be holding it.
+                        ReturnFrameBuffer(m_PendingFrame);
+
                         m_PendingFrame = payload;
+                        m_PendingFrameSize = size;
                         m_PendingWidth = width;
                         m_PendingHeight = height;
                         m_ReceivedBytes += size;
@@ -777,6 +816,47 @@ namespace Unity.Android.Logcat
                 // Not worth failing the stop over: the forward goes away with the adb
                 // server, and a leaked one only occupies a local port.
                 AndroidLogcatInternalLog.Log(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// A buffer at least <paramref name="size"/> bytes long, reused if one that big
+        /// is free. Called only from the reader thread.
+        /// </summary>
+        byte[] RentFrameBuffer(int size)
+        {
+            lock (m_FrameLock)
+            {
+                while (m_FreeFrameBuffers.Count > 0)
+                {
+                    var buffer = m_FreeFrameBuffers.Pop();
+                    if (buffer.Length >= size)
+                        return buffer;
+                    // Too small, because frames have grown - a rotation, or simply a
+                    // busier screen. Dropped, and the rounding up below replaces it.
+                }
+            }
+
+            // Rounded up so that frames creeping up in size do not reallocate every
+            // time: JPEG sizes vary frame to frame even at a fixed resolution.
+            return new byte[Mathf.NextPowerOfTwo(size)];
+        }
+
+        /// <summary>
+        /// Gives a buffer back, from either thread. Null is accepted, so returning
+        /// whatever happened to be in the pending slot needs no check at the call site.
+        /// </summary>
+        void ReturnFrameBuffer(byte[] buffer)
+        {
+            if (buffer == null)
+                return;
+
+            lock (m_FrameLock)
+            {
+                // Over the cap only if a buffer has leaked somewhere, in which case the
+                // extra one is better dropped than kept forever.
+                if (m_FreeFrameBuffers.Count < kMaxFrameBuffers)
+                    m_FreeFrameBuffers.Push(buffer);
             }
         }
 
