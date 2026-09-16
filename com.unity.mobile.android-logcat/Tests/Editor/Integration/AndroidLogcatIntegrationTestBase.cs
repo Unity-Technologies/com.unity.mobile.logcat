@@ -60,6 +60,29 @@ internal class AndroidLogcatIntegrationTestBase
             throw new Exception("No Android Device connected?");
     }
 
+    /// <summary>
+    /// A device that has dozed off composes nothing, so a mirrored display hands over
+    /// no frames and `screenrecord` never starts - both of which surface as a test
+    /// timing out for reasons that have nothing to do with the code under test. Waking
+    /// it is part of putting the device in a known state, and it is cheap enough to do
+    /// per test rather than once per fixture.
+    /// </summary>
+    [SetUp]
+    protected void WakeDevice()
+    {
+        if (m_Device == null)
+            return;
+
+        m_Runtime.Tools.ADB.Run(new[]
+        {
+            $"-s {m_Device.Id}",
+            "shell",
+            "input",
+            "keyevent",
+            "KEYCODE_WAKEUP"
+        }, "Failed to wake the device");
+    }
+
     [OneTimeTearDown]
     protected void ShutdownRuntime()
     {
