@@ -113,7 +113,7 @@ namespace Unity.Android.Logcat
         const float kStatsWidth = 190;
         const float kStatsMargin = 8;
         const float kNavigationSpacing = 6;
-        const float kNavigationButtonWidth = 30;
+        const float kNavigationButtonWidth = 60;
         const float kLogButtonWidth = 110;
         const float kLogcatButtonWidth = 55;
 
