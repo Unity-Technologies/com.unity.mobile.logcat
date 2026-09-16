@@ -11,7 +11,12 @@ build_server_jar:
     # One command on purpose: Yamato runs each entry in its own shell, so an `export`
     # here would not survive to the next one. The SDK is located rather than
     # hardcoded because the editor layout differs between platforms.
-    - ANDROID_HOME="$(find .Editor -type d -path '*AndroidPlayer/SDK' | head -1)" JAVA_HOME="$(find .Editor -type d -path '*AndroidPlayer/OpenJDK' | head -1)" ./External/UnityLogcatServer/gradlew -p External/UnityLogcatServer dexJar
+    #
+    # Run through `sh` rather than as `./gradlew`, so the job does not depend on the
+    # wrapper's executable bit surviving in git. It is set, but this repo is worked on
+    # from Windows where `core.fileMode` is false, so the bit is invisible there and a
+    # wrapper upgrade can drop it without anyone noticing until this job fails.
+    - ANDROID_HOME="$(find .Editor -type d -path '*AndroidPlayer/SDK' | head -1)" JAVA_HOME="$(find .Editor -type d -path '*AndroidPlayer/OpenJDK' | head -1)" sh External/UnityLogcatServer/gradlew -p External/UnityLogcatServer dexJar
   artifacts:
     # The build copies the jar into the package; this is the path the pack job needs
     # it at, and Yamato restores a dependency's artifacts into the same relative
