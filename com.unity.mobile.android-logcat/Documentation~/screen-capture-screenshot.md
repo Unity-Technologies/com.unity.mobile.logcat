@@ -8,7 +8,7 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to ca
 4. Select **Capture**, or press Ctrl+Shift+S (Cmd+Shift+S on macOS). The Screen Capture tool takes a screenshot of the connected device, displays it in the [Capture preview](screen-capture-window-reference.md#capture-preview), and adds it to the [Capture list](screen-capture-window-reference.md#capture-list).
 5. Select **Save As** and use the file explorer to save a copy of the image file elsewhere on your computer.
 
-Every screenshot you capture is kept, so you do not have to save one before taking the next. Screenshots are stored in your project, in `UserSettings/AndroidLogcat/Screenshots`, and named `<device id>_<number>.png`.
+Every screenshot you capture is kept, so you do not have to save one before taking the next. Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and named `<device id>_<number>.png`. That folder is local to your machine and is not part of your build, so use **Save As** to keep a screenshot somewhere permanent.
 
 To rename or delete a screenshot, or to show it in Explorer or Finder, use the [Capture list](screen-capture-window-reference.md#capture-list).
 

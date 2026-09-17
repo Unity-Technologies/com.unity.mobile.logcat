@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changes & Improvements:
  - Unity 6.0 or later is required.
- - Screenshots are now saved to `UserSettings/AndroidLogcat/Screenshots` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
+ - Screenshots are now saved to `Library/AndroidLogcat/Screenshots` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
  - The Screen Capture window can be opened from **Window** > **Analysis** > **Android Screen Capture**, as well as from the Android Logcat window's **Tools** menu.
  - The Screen Capture window lists every saved screenshot by file name, next to the image and separated by a draggable splitter. Click a row or use the Up and Down keys to cycle through them, or the cross next to a row to delete that screenshot. Double click a row to open the image, or right click it to show it in Explorer, open it, save a copy elsewhere, or rename it. F2 (Enter on macOS) renames the selected screenshot and Delete (Command+Backspace on macOS) deletes it.
  - Ctrl+Shift+S, or Cmd+Shift+S on macOS, captures a screenshot while the Screen Capture window has focus. It appears in Edit > Shortcuts under "Android Logcat" and can be rebound there.

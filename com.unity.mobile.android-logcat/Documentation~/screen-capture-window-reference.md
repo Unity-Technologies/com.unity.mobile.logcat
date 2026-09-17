@@ -44,7 +44,7 @@ The list on the left of the window holds the live view and every screenshot you 
 | **Live**           | The first row. Select it to view the selected device's screen live. Refer to [View the device screen live](screen-capture-live-stream.md). |
 | A screenshot       | Named after its file, without the `.png` extension. Screenshots are saved automatically when you capture them, so every capture stays until you delete it. |
 
-Screenshots are stored in your project, in `UserSettings/AndroidLogcat/Screenshots`, and are named `<device id>_<number>.png`. They are not part of your build.
+Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and are named `<device id>_<number>.png`. They are not part of your build, and deleting the `Library` folder deletes them with it.
 
 To work with a screenshot in the list:
 

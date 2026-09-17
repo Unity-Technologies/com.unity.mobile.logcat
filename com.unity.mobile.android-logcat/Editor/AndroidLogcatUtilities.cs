@@ -166,13 +166,18 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Where captured screenshots are kept. UserSettings is per-developer and
-        /// already gitignored, and being outside Assets means Unity never imports the
-        /// images as assets.
+        /// Where captured screenshots are kept: under Library, which is per machine and
+        /// gitignored, and outside Assets so Unity never imports the images as assets.
+        /// Not UserSettings - that is for settings, and these are output.
+        /// <para>
+        /// Library is also deleted from time to time, by hand or by the Editor. That is
+        /// the right trade for debugging output: a screenshot worth keeping is one Save
+        /// As away from somewhere that is not Library.
+        /// </para>
         /// </summary>
         public static string GetScreenshotsDirectory()
         {
-            var path = Path.Combine(Application.dataPath, "..", "UserSettings", "AndroidLogcat", "Screenshots");
+            var path = Path.Combine(Application.dataPath, "..", "Library", "AndroidLogcat", "Screenshots");
             return Path.GetFullPath(path).Replace("\\", "/");
         }
 
