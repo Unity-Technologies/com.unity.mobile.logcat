@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using Unity.Android.Logcat;
 using UnityEditor;
 using UnityEditor.Compilation;
+using UnityEngine;
 
 class AndroidLogcatNetTests
 {
@@ -25,6 +26,22 @@ class AndroidLogcatNetTests
         var logcatAssembly = CompilationPipeline.GetAssemblies(AssembliesType.Editor).FirstOrDefault(a => a.name.Equals("Unity.Mobile.AndroidLogcat.Editor"));
         Assert.IsNotNull(logcatAssembly, "Failed to find Android Logcat assembly");
         return logcatAssembly;
+    }
+
+    static bool IsUnity7OrNewer()
+    {
+        var versionString = Application.unityVersion;
+
+        if (string.IsNullOrEmpty(versionString))
+            return false;
+
+        var majorEnd = versionString.IndexOf('.');
+        if (majorEnd <= 0)
+            return false;
+
+        return int.TryParse(
+            versionString.AsSpan(0, majorEnd),
+            out var majorVersion) && majorVersion >= 7000;
     }
 
     /// <summary>
@@ -51,20 +68,20 @@ class AndroidLogcatNetTests
             "UnityEditor.CoreModule"
         });
 
-#if UNITY_7000_0_OR_NEWER
-        expectedReferences.AddRange(new[]
-        {
+        if (IsUnity7OrNewer())
+        {   
+            expectedReferences.AddRange(new[]
+            {
             "Unity.Scripting",
             "UnityEngine.ScriptingModule",
             "UnityEngine.UICommonModule",
             "UnityEditor.Android.Extensions",
-        });
-#endif
+            });
+        }
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
 
         // ReflectionOnlyLoadFrom is unsupported on CoreCLR; inspect the loaded assembly instead.
-
         var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
         var errors = new StringBuilder();
         Console.WriteLine($"Logcat package references:\n{string.Join("\n", references)}");
