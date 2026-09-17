@@ -1,0 +1,10 @@
+{
+  "ErrorExceptions": [
+    {
+      "ValidationTest": "NDA Keyword Validation",
+      "ExceptionMessage": "#if UNITY_7000_0_OR_NEWER",
+      "PackageVersion": "1.5.0"
+    }
+  ],
+  "WarningExceptions": []
+}
