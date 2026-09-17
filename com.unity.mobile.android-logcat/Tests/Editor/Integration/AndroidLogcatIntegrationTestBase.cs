@@ -73,14 +73,7 @@ internal class AndroidLogcatIntegrationTestBase
         if (m_Device == null)
             return;
 
-        m_Runtime.Tools.ADB.Run(new[]
-        {
-            $"-s {m_Device.Id}",
-            "shell",
-            "input",
-            "keyevent",
-            "KEYCODE_WAKEUP"
-        }, "Failed to wake the device");
+        m_Device.WakeUp();
     }
 
     [OneTimeTearDown]

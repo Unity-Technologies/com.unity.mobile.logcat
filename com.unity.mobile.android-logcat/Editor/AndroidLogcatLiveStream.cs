@@ -342,6 +342,10 @@ namespace Unity.Android.Logcat
                 m_SocketName = "unity_logcat_server_" + sessionId;
                 m_ServerDevicePath = $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}-{sessionId}.jar";
 
+                // Before anything else, because a dark screen produces no frames at all
+                // and the wait for the first one would just time out.
+                device.WakeUp();
+
                 // Before pushing ours, so it cannot sweep away what it is about to push.
                 RemoveStaleServerJars(device);
 

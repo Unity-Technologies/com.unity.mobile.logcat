@@ -297,6 +297,32 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         }, $"Failed to start {action} on the device");
     }
 
+    /// <summary>
+    /// A device whose screen is off composes nothing, so a mirrored display produces no
+    /// frames and the view sits blank - which is why starting a stream wakes it. The
+    /// fixture wakes the device before every test, so this one puts it back to sleep to
+    /// have something to prove.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator StreamsAfterWakingASleepingDevice()
+    {
+        Device.Sleep();
+
+        var settle = DateTime.Now;
+        yield return WaitForCondition("Letting the device fall asleep",
+            () => (DateTime.Now - settle).TotalSeconds > 1.5);
+
+        Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
+
+        yield return WaitForCondition("Waiting for a frame from a device that was asleep",
+            () => Runtime.LiveStream.FramesReceived > 0,
+            30,
+            () => Runtime.LiveStream.Errors);
+
+        Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
+        Assert.IsTrue(Runtime.LiveStream.StopStreaming());
+    }
+
     private void SendKeyEvent(string keyCode)
     {
         Runtime.Tools.ADB.Run(new[]
