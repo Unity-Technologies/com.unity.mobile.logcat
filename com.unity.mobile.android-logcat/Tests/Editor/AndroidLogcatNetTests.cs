@@ -39,9 +39,7 @@ class AndroidLogcatNetTests
         if (majorEnd <= 0)
             return false;
 
-        return int.TryParse(
-            versionString.AsSpan(0, majorEnd),
-            out var majorVersion) && majorVersion >= 7000;
+        return int.TryParse(versionString.AsSpan(0, majorEnd), out var majorVersion) && majorVersion >= 7000;
     }
 
     /// <summary>
@@ -69,13 +67,13 @@ class AndroidLogcatNetTests
         });
 
         if (IsUnity7OrNewer())
-        {   
+        {
             expectedReferences.AddRange(new[]
             {
-            "Unity.Scripting",
-            "UnityEngine.ScriptingModule",
-            "UnityEngine.UICommonModule",
-            "UnityEditor.Android.Extensions",
+                "Unity.Scripting",
+                "UnityEngine.ScriptingModule",
+                "UnityEngine.UICommonModule",
+                "UnityEditor.Android.Extensions"
             });
         }
 
