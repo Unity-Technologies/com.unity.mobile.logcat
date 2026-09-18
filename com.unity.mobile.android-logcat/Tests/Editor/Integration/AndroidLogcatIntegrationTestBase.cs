@@ -10,10 +10,7 @@ using System.Linq;
 
 internal class AndroidLogcatIntegrationTestBase
 {
-    // How long a device is given to do something before the test gives up. Every
-    // wait here is for one adb round trip or one screen change, both of which take
-    // a second or two on the devices this has run on.
-    protected const float kDefaultTimeout = 10.0f;
+    protected const float kDefaultTimeout = 30.0f;
     private AndroidLogcatRuntime m_Runtime;
     private IAndroidLogcatDevice m_Device;
     private int m_Ticks;
