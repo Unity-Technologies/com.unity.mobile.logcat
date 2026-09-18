@@ -130,6 +130,35 @@ internal class AndroidLogcatIntegrationTestBase
         Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", message);
     }
 
+    /// <summary>
+    /// Saves something into this test's artifacts folder, which Yamato collects and a
+    /// local run leaves behind to look at. A frame count only says the screen changed;
+    /// the picture says what it changed to.
+    /// </summary>
+    protected static void ReportArtifact(string fileName, Texture2D texture)
+    {
+        ReportArtifact(fileName, texture.EncodeToPNG());
+    }
+
+    protected static void ReportArtifact(string fileName, byte[] contents)
+    {
+        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), fileName), contents);
+    }
+
+    protected static void ReportArtifact(string fileName, string contents)
+    {
+        File.WriteAllText(Path.Combine(GetOrCreateArtifactsPath(), fileName), contents);
+    }
+
+    /// <summary>
+    /// The same, for something already written to disk - a screenshot or a recording
+    /// the code under test produced.
+    /// </summary>
+    protected static void CopyToArtifacts(string fileName, string sourcePath)
+    {
+        File.Copy(sourcePath, Path.Combine(GetOrCreateArtifactsPath(), fileName), true);
+    }
+
     protected static string GetOrCreateArtifactsPath()
     {
         var root = Workspace.GetAritfactsPath();

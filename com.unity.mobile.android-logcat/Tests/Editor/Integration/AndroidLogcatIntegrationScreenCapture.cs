@@ -51,7 +51,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.Greater(texture.width, 10);
         Assert.Greater(texture.height, 10);
 
-        File.Copy(Runtime.CaptureScreenshot.GetLatestImagePath(Device), Path.Combine(GetOrCreateArtifactsPath(), "screenshot.png"), true);
+        CopyToArtifacts("screenshot.png", Runtime.CaptureScreenshot.GetLatestImagePath(Device));
     }
 
     /// <summary>
@@ -227,7 +227,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
         AssertFileExistanceOnHost(VideoPathOnHost, true);
 
-        File.Copy(Runtime.CaptureVideo.GetVideoPath(Device), Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
+        CopyToArtifacts("video.mp4", Runtime.CaptureVideo.GetVideoPath(Device));
     }
 
     [UnityTest]
@@ -249,7 +249,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
         AssertFileExistanceOnHost(VideoPathOnHost, true);
 
-        File.Copy(Runtime.CaptureVideo.GetVideoPath(Device), Path.Combine(GetOrCreateArtifactsPath(), "video.mp4"), true);
+        CopyToArtifacts("video.mp4", Runtime.CaptureVideo.GetVideoPath(Device));
     }
 
     [UnityTest]
@@ -272,6 +272,6 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         AssertFileExistanceOnHost(VideoPathOnHost, false);
 
         Debug.Log(errors);
-        File.WriteAllText(Path.Combine(GetOrCreateArtifactsPath(), "errors.txt"), errors);
+        ReportArtifact("errors.txt", errors);
     }
 }

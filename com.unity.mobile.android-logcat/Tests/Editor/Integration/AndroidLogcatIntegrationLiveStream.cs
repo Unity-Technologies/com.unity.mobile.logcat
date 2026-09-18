@@ -76,7 +76,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         // Written out so the frame can be eyeballed: a channel-order or row-order
         // mistake still produces a texture of the right size.
-        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "frame.png"), texture.EncodeToPNG());
+        ReportArtifact("frame.png", texture);
 
         // Note there is deliberately no assertion about a frame rate here. A mirrored
         // display only produces a buffer when the screen changes, so a device sitting
@@ -181,7 +181,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
 
         var texture = Runtime.LiveStream.Texture;
-        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-swipe.png"), texture.EncodeToPNG());
+        ReportArtifact("after-swipe.png", texture);
 
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
         SendKeyEvent("KEYCODE_HOME");
@@ -234,8 +234,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Log($"Injected text produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
 
-        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-keys.png"),
-            Runtime.LiveStream.Texture.EncodeToPNG());
+        ReportArtifact("after-keys.png", Runtime.LiveStream.Texture);
 
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
         SendKeyEvent("KEYCODE_HOME");
@@ -283,8 +282,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         // Written out because a frame count only says the screen changed, not that it
         // scrolled - the artifact is what shows the list moved.
-        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), "after-scroll.png"),
-            Runtime.LiveStream.Texture.EncodeToPNG());
+        ReportArtifact("after-scroll.png", Runtime.LiveStream.Texture);
 
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
         SendKeyEvent("KEYCODE_HOME");
@@ -360,6 +358,6 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.IsFalse(Runtime.LiveStream.IsStreaming);
 
         Log(errors);
-        File.WriteAllText(Path.Combine(GetOrCreateArtifactsPath(), "errors.txt"), errors);
+        ReportArtifact("errors.txt", errors);
     }
 }
