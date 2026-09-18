@@ -76,6 +76,8 @@ namespace Unity.Android.Logcat
             Up = 1
         }
 
+        readonly AndroidLogcatImageViewer m_Viewer = new AndroidLogcatImageViewer();
+
         static string m_ServerJarPath;
 
         internal static string GetServerJarPath()
@@ -1039,7 +1041,12 @@ namespace Unity.Android.Logcat
         /// <see cref="m_Device"/>: a stream that failed to start has already been shut
         /// down, and shutting down clears that. Only the error state's retry uses it.
         /// </param>
-        internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
+        /// <param name="repaint">
+        /// The window's repaint, for the things that change outside the frames arriving
+        /// - zooming and panning a stream that has stopped, say, which would otherwise
+        /// not be drawn until something else happened.
+        /// </param>
+        internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice, Action repaint)
         {
             // Allocated on every pass, before any early return: skipping it on some
             // frames would shift control ids between the Layout and Repaint passes and
@@ -1103,24 +1110,30 @@ namespace Unity.Android.Logcat
             var statsWidth = IsStreaming ? Mathf.Min(kStatsWidth, rc.width * 0.4f) : 0;
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            // Fitted explicitly rather than letting ScaleMode.ScaleToFit do it, because
-            // the letterboxed rect is also what mouse positions are mapped through.
-            var videoRect = FitRect(imageArea, (float)m_Texture.width / m_Texture.height);
+            var aspect = (float)m_Texture.width / m_Texture.height;
 
-            HandleTouchInput(controlId, videoRect);
+            // The viewer hands the image rect to the callback, because that rect is
+            // also what mouse positions are mapped through, and hands back the box it
+            // is seen through - the image's own, which is not the whole area and which
+            // grows with the zoom.
+            var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
+            {
+                HandleTouchInput(controlId, videoRect);
+                GUI.DrawTexture(videoRect, m_Texture);
+            }, repaint);
+
             HandleKeyboardInput(controlId);
-
-            GUI.DrawTexture(videoRect, m_Texture);
 
             if (statsWidth > 0)
             {
                 // Attached to the image rather than to the right edge of the area: the
-                // image is centred in what is left over, so the gap beside it varies.
+                // image is centred in what is left over, so the gap beside it varies -
+                // with the zoom as well as with the shape of the device's screen.
                 var statsRect = new Rect(
-                    videoRect.xMax + kStatsMargin,
-                    videoRect.y,
-                    Mathf.Max(0, rc.xMax - videoRect.xMax - kStatsMargin),
-                    videoRect.height);
+                    imageBox.xMax + kStatsMargin,
+                    imageBox.y,
+                    Mathf.Max(0, rc.xMax - imageBox.xMax - kStatsMargin),
+                    imageBox.height);
                 DoStatsGUI(statsRect);
             }
         }
@@ -1191,22 +1204,6 @@ namespace Unity.Android.Logcat
             GUI.Label(new Rect(rc.x + labelWidth, y, Mathf.Max(0, rc.width - labelWidth), height),
                 new GUIContent(value, valueTooltip ?? name.tooltip), EditorStyles.miniLabel);
             y += height;
-        }
-
-        /// <summary>Largest rect of the given aspect ratio that fits inside the container.</summary>
-        static Rect FitRect(Rect container, float aspect)
-        {
-            if (container.width <= 0 || container.height <= 0 || aspect <= 0)
-                return container;
-
-            if (aspect > container.width / container.height)
-            {
-                var height = container.width / aspect;
-                return new Rect(container.x, container.y + (container.height - height) * 0.5f, container.width, height);
-            }
-
-            var width = container.height * aspect;
-            return new Rect(container.x + (container.width - width) * 0.5f, container.y, width, container.height);
         }
 
         // ------------------------------------------------------------------

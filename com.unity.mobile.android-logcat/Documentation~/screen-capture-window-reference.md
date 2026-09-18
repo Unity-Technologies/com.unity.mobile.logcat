@@ -76,6 +76,20 @@ Contains settings for video recording. The Screen Capture tool contains default 
 
 This section of the window displays whatever the [Capture list](#capture-list) has selected: a screenshot, a recorded video, or the live view of the device's screen. You can use this to check the quality of the screen capture before you save it as a file on your computer.
 
+### Zoom into the image
+
+A screenshot and the live view are both fitted to the window, which can be too small to read a log line or see a single pixel. To look closer:
+
+| **Action**                                             | **Result**                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------ |
+| Ctrl+Wheel (Cmd+Wheel on macOS) over the image          | Zooms between 100% and 1000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
+| Ctrl+Middle mouse button drag (Cmd on macOS)            | Moves the zoomed image, to bring another part of it into view. |
+| The scrollbars                                          | The same, and they appear as soon as the image is larger than the space for it. |
+
+Zooming and moving the image only change how you see it. In the live view, the device still receives your clicks, drags and keys at the place on its screen you are pointing at, and the wheel on its own still scrolls the device rather than the view.
+
+The zoom of the live view and the zoom of the screenshots are separate, and both go back to 100% when scripts recompile.
+
 ## Live view details
 
 This section appears to the right of the image while the **Live** row is selected.

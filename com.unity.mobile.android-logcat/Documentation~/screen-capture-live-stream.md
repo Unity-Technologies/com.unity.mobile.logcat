@@ -29,7 +29,7 @@ While the live view is streaming, the Screen Capture tool sends your input to th
 | Ctrl+A, Ctrl+C, Ctrl+V (Cmd on macOS)      | Select all, copy and paste on the device, using the device's own clipboard. |
 | The **◄**, **●** and **■** buttons          | Sends the Back, Home and Overview keys. Useful on a device that uses gesture navigation, where the mirrored image has no navigation bar to tap. |
 
-Other Ctrl and Cmd combinations are left to the Unity Editor, so its own shortcuts keep working while the image has focus.
+Other Ctrl and Cmd combinations are left to the Unity Editor, so its own shortcuts keep working while the image has focus. Ctrl and the wheel zoom the view instead of scrolling the device: refer to [Zoom into the image](screen-capture-window-reference.md#zoom-into-the-image).
 
 > [!NOTE]
 > Nothing is exchanged between the device's clipboard and your computer's. Ctrl+C copies on the device, and Ctrl+V pastes what was copied there.

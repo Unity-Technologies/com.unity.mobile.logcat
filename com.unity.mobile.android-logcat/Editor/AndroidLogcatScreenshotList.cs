@@ -82,6 +82,12 @@ namespace Unity.Android.Logcat
         Texture2D m_PreviewTexture;
         string m_PreviewPath;
 
+        // Zoom and pan for the preview. Its own, separate from the live view's: they
+        // show different things, and a zoom set on one is rarely the one wanted on the
+        // other. Kept across screenshots, though - screenshots from the same device are
+        // the same size, so comparing two of them at the same zoom is the point.
+        readonly AndroidLogcatImageViewer m_Viewer = new AndroidLogcatImageViewer();
+
         /// <summary>
         /// Whether the Live row is the selected one, so the caller knows to show the
         /// stream rather than an image, and that there is no file to open or save.
@@ -142,7 +148,8 @@ namespace Unity.Android.Logcat
             if (m_PreviewTexture == null)
                 return false;
 
-            GUI.DrawTexture(rc, m_PreviewTexture, ScaleMode.ScaleToFit);
+            m_Viewer.DoGUI(rc, (float)m_PreviewTexture.width / m_PreviewTexture.height,
+                imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
             return true;
         }
 

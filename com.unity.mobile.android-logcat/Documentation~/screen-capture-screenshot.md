@@ -10,7 +10,7 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to ca
 
 Every screenshot you capture is kept, so you do not have to save one before taking the next. Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and named `<device id>_<number>.png`. That folder is local to your machine and is not part of your build, so use **Save As** to keep a screenshot somewhere permanent.
 
-To rename or delete a screenshot, or to show it in Explorer or Finder, use the [Capture list](screen-capture-window-reference.md#capture-list).
+To rename or delete a screenshot, or to show it in Explorer or Finder, use the [Capture list](screen-capture-window-reference.md#capture-list). To look at part of a screenshot more closely, [zoom into it](screen-capture-window-reference.md#zoom-into-the-image).
 
 ## Additional resources
 

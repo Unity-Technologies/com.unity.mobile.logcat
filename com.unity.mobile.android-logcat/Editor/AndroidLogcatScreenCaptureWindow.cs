@@ -361,7 +361,7 @@ namespace Unity.Android.Logcat
             if (m_ScreenshotList.LiveSelected)
             {
                 // The developer-mode details are drawn by DoGUI, in the info column.
-                m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice);
+                m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice, Repaint);
                 // Frames arrive on the runtime's update, not on GUI events, so the window
                 // has to keep repainting to show them.
                 if (m_LiveStream.IsStreaming)
