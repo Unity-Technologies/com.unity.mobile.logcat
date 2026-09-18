@@ -98,8 +98,7 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
-            m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime,
-                () => m_DeviceSelection.SelectedDevice, Repaint);
+            m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime, Repaint);
 
             // Settings saved while the removed LiveStream mode was selected still hold
             // its value, which is now out of range and would throw in the switches above.
@@ -119,7 +118,7 @@ namespace Unity.Android.Logcat
             m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
             m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
 
-            m_ScreenshotList.OnDeviceChanged();
+            m_ScreenshotList.OnDeviceChanged(m_DeviceSelection.SelectedDevice);
         }
 
         private void OnDisable()
@@ -357,7 +356,7 @@ namespace Unity.Android.Logcat
         private void DoScreenshotGUI(Rect rc)
         {
             // The list draws itself and the splitter, and hands back what is left.
-            var imageRect = m_ScreenshotList.DoGUI(rc);
+            var imageRect = m_ScreenshotList.DoGUI(rc, m_DeviceSelection.SelectedDevice);
 
             if (m_ScreenshotList.LiveSelected)
             {
