@@ -5,26 +5,16 @@ using UnityEngine;
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// Zoom and pan for an image drawn into a rect handed down by a window. The live
-    /// view and the saved screenshots both draw through it, so a closer look at either
-    /// works the same way.
-    /// <para>
-    /// Ctrl and the wheel zoom between 100% and 4000%, Ctrl and a middle mouse button
-    /// drag move the zoomed image, and scrollbars appear as soon as there is more image
-    /// than there is room for it. Everything else - clicks, a plain wheel, keys - is
-    /// left alone, because the live view forwards all of that to the device.
-    /// </para>
-    /// <para>
-    /// View state, and not serialized: the zoom goes back to 100% on a domain reload,
-    /// the same as the scroll position of any other IMGUI view.
-    /// </para>
+    /// Zoom and pan for an image drawn into a rect handed down by a window - the live
+    /// view and the saved screenshots both draw through it. Ctrl and the wheel zoom,
+    /// Ctrl and a middle mouse drag move the zoomed image, and scrollbars appear with
+    /// it. Everything else is left alone, because the live view forwards clicks, the
+    /// plain wheel and keys to the device.
     /// </summary>
     internal class AndroidLogcatImageViewer
     {
         static class Styles
         {
-            // Ctrl on Windows and Linux, Cmd on macOS - the same modifier the live
-            // view's editing shortcuts use.
             static readonly string kModifier =
                 Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl";
 
@@ -41,8 +31,7 @@ namespace Unity.Android.Logcat
 
             /// <summary>
             /// A help box that does not wrap. The standard one does, and CalcSize being
-            /// a fraction of a pixel short of what it then needs is enough to break
-            /// "168%" across two lines.
+            /// a fraction short of what it then needs breaks "168%" across two lines.
             /// </summary>
             internal static GUIStyle Badge
             {
@@ -63,17 +52,15 @@ namespace Unity.Android.Logcat
         internal const float kMinZoom = 1.0f;
         internal const float kMaxZoom = 40.0f;
 
-        // Four notches of the wheel double the zoom, so twenty-two of them cross the
-        // whole range either way. A factor rather than a fixed step, because a step
-        // that is a sensible move at 100% is an invisible one at 4000%.
+        // Four notches of the wheel double the zoom. A factor rather than a fixed step,
+        // because a step that is a sensible move at 100% is invisible at 4000%.
         const float kWheelDeltaPerNotch = 3.0f;
         const float kNotchesPerDoubling = 4.0f;
         const int kMiddleMouseButton = 2;
         const float kBadgeMargin = 4;
-        // Deliberately more than a scrollbar really takes. It only bounds how far the
-        // image can be moved, and BeginScrollView clamps what it is handed anyway - so
-        // guessing high costs nothing, where guessing low would leave a strip of the
-        // image that cannot be reached.
+        // Deliberately more than a scrollbar takes. It only bounds how far the image can
+        // be moved, and BeginScrollView clamps what it is handed, so guessing high costs
+        // nothing where guessing low leaves a strip of the image unreachable.
         const float kScrollbarSize = 20;
 
         float m_Zoom = kMinZoom;
@@ -82,14 +69,7 @@ namespace Unity.Android.Logcat
 
         internal float Zoom => m_Zoom;
         internal Vector2 Scroll => m_Scroll;
-
-        /// <summary>The zoom as it is shown: 100 to 300.</summary>
         internal int ZoomPercent => Mathf.RoundToInt(m_Zoom * 100);
-
-        /// <summary>
-        /// Whether the image is larger than the area showing it, i.e. whether there is
-        /// anything to scroll or pan to.
-        /// </summary>
         internal bool IsZoomed => m_Zoom > kMinZoom;
 
         internal void Reset()
@@ -99,53 +79,34 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Draws an image of the given aspect ratio into <paramref name="area"/>, zoomed
-        /// and panned as the user left it.
+        /// Draws an image of the given aspect ratio into <paramref name="area"/> and
+        /// returns the box it is seen through, for laying out whatever sits beside it.
+        /// <paramref name="drawContents"/> is handed the image rect, which is only
+        /// meaningful inside the scroll view - the same space the live view reads the
+        /// mouse in. <paramref name="repaint"/> covers the views that are not already
+        /// repainting, a stopped stream or a screenshot.
         /// </summary>
-        /// <param name="drawContents">
-        /// Handed the rect the image occupies, and draws it. A callback rather than a
-        /// returned rect, because that rect only means anything between the scroll
-        /// view's begin and end: the live view reads the mouse against it, and inside
-        /// the scroll view mouse positions are in the same space.
-        /// </param>
-        /// <param name="repaint">
-        /// Called when zooming or panning changed something. Without it a view that is
-        /// not already repainting - a stopped stream showing its last frame, or a
-        /// screenshot - would not show the zoom until something else caused a repaint.
-        /// </param>
-        /// <returns>
-        /// The box the image is seen through, in the window's coordinates, for laying
-        /// out whatever sits beside the image - it is not the whole area, and it moves
-        /// with the zoom.
-        /// </returns>
         internal Rect DoGUI(Rect area, float aspect, Action<Rect> drawContents, Action repaint)
         {
             // Allocated on every pass whatever the state, so that the ids handed out
             // after it do not shift between the Layout and Repaint passes.
             var controlId = GUIUtility.GetControlID(FocusType.Passive);
 
-            // Both before the scroll view, so that neither it nor the contents get these
+            // Both before the scroll view, so neither it nor the contents see these
             // events first: the live view forwards a plain wheel to the device, and the
-            // scroll view would scroll on it. They are handled against the box as it was
-            // drawn, which is why it is worked out before them and again after.
+            // scroll view would scroll on it.
             var box = ViewBox(area, aspect, out _);
             HandleZoom(area, aspect, box, repaint);
             HandlePan(controlId, area, aspect, box, repaint);
 
             box = ViewBox(area, aspect, out var image);
-
-            // The content is the image itself, so there is never empty space to scroll
-            // into, and the box is only as big as the image needs - so the scrollbars
-            // come up against the image rather than against the far side of whatever
-            // room it was given.
             var content = new Rect(0, 0, image.x, image.y);
 
             m_Scroll = GUI.BeginScrollView(box, m_Scroll, content);
             drawContents(content);
             GUI.EndScrollView();
 
-            // After the scroll view, in the window's own coordinates: inside it, the
-            // badge would scroll away with the image.
+            // Outside the scroll view, or it would scroll away with the image.
             if (IsZoomed)
                 DoZoomBadgeGUI(box);
 
@@ -153,22 +114,17 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// The box the image is seen through, centred in the area, and
-        /// <paramref name="image"/> - the size the image is drawn at.
-        /// <para>
-        /// The box is the image's own size until the image outgrows the area, and then
-        /// it is the area: at 100% that is exactly the fitted image, so the view looks
-        /// the same as it did before there was a zoom, and a zoomed portrait screen
-        /// keeps the scrollbar and anything laid out beside it against its edge instead
-        /// of stranding them across the letterbox. Room is left for whichever scrollbar
-        /// the image is about to need.
-        /// </para>
+        /// The box the image is seen through, centred in the area, and the size the
+        /// image is drawn at. The box is the image's own size until the image outgrows
+        /// the area: at 100% that is exactly the fitted image, and a zoomed portrait
+        /// screen keeps the scrollbar against its edge rather than across the letterbox.
         /// </summary>
         Rect ViewBox(Rect area, float aspect, out Vector2 image)
         {
             var fitted = FitRect(area, aspect);
             image = new Vector2(fitted.width, fitted.height) * m_Zoom;
 
+            // Room for whichever scrollbar the image is about to need.
             var want = image;
             if (image.y > area.height)
                 want.x += kScrollbarSize;
@@ -182,11 +138,6 @@ namespace Unity.Android.Logcat
                 size.x, size.y);
         }
 
-        /// <summary>
-        /// The largest rect of the given aspect ratio that fits inside the container,
-        /// centred in it. Fitted explicitly rather than with ScaleMode.ScaleToFit,
-        /// because the fitted rect is also what mouse positions are mapped through.
-        /// </summary>
         static Rect FitRect(Rect container, float aspect)
         {
             if (container.width <= 0 || container.height <= 0 || aspect <= 0)
@@ -204,14 +155,9 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Zooms by one wheel movement, keeping whatever is under
-        /// <paramref name="pointer"/> where it is: zooming towards a corner otherwise
-        /// walks it off the edge, and it has to be panned back afterwards. Positive
-        /// deltas zoom out, which is the direction the wheel reports for scrolling down.
+        /// <paramref name="pointer"/> where it is. Positive deltas zoom out, matching
+        /// the wheel. Returns false when the zoom was already at the end of its range.
         /// </summary>
-        /// <returns>
-        /// Whether the zoom changed, i.e. whether it was not already at the end of its
-        /// range.
-        /// </returns>
         internal bool ZoomAt(Rect area, float aspect, Vector2 pointer, float wheelDelta)
         {
             if (area.width <= 0 || area.height <= 0)
@@ -229,16 +175,14 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            // Where the pointer is on the image, as a fraction of it, so that the same
-            // point can be put back under it once the image has changed size.
             var pointOnImage = new Vector2(
                 (pointer.x - box.x + m_Scroll.x) / image.x,
                 (pointer.y - box.y + m_Scroll.y) / image.y);
 
             m_Zoom = zoom;
 
-            // The box moves as well as the image: it grows until it fills the area, so
-            // the same point is at a different place on screen even before scrolling.
+            // The box moves as well as the image, growing until it fills the area, so
+            // the same point is somewhere else on screen even before scrolling.
             var zoomedBox = ViewBox(area, aspect, out var zoomedImage);
             m_Scroll = new Vector2(
                 pointOnImage.x * zoomedImage.x - (pointer.x - zoomedBox.x),
@@ -247,10 +191,7 @@ namespace Unity.Android.Logcat
             return true;
         }
 
-        /// <summary>
-        /// Moves the visible part of the image by a mouse movement. The image follows
-        /// the mouse, so the view moves the other way.
-        /// </summary>
+        /// <summary>Moves the image with the mouse, so the view moves the other way.</summary>
         internal void Pan(Rect area, float aspect, Vector2 mouseDelta)
         {
             m_Scroll -= mouseDelta;
@@ -265,9 +206,8 @@ namespace Unity.Android.Logcat
             if (!box.Contains(e.mousePosition))
                 return;
 
-            // Used whether or not the zoom moved: at either end of the range the wheel
-            // is still zooming, and letting it through would scroll the view or, in the
-            // live view, the device.
+            // Used at either end of the range too: the wheel is still zooming, and
+            // letting it through would scroll the view or, in the live view, the device.
             e.Use();
 
             if (ZoomAt(area, aspect, e.mousePosition, e.delta.y))
@@ -281,18 +221,13 @@ namespace Unity.Android.Logcat
             switch (e.type)
             {
                 case EventType.MouseDown:
-                    // The middle button, under the same modifier as the zoom, so the two
-                    // are one gesture to learn. Nothing else in either view uses that
-                    // button, but the modifier keeps this out of the way if something
-                    // ever does.
                     if (e.button != kMiddleMouseButton || !IsViewModifier(e) || !IsZoomed)
                         break;
                     // Not while something else is being dragged - a touch being held on
                     // the device, say.
                     if (GUIUtility.hotControl != 0 || !box.Contains(e.mousePosition))
                         break;
-                    // Taking the hot control is what routes the rest of the drag here,
-                    // including the part that happens outside the area.
+                    // Routes the rest of the drag here, including outside the box.
                     GUIUtility.hotControl = controlId;
                     m_Panning = true;
                     e.Use();
@@ -328,26 +263,16 @@ namespace Unity.Android.Logcat
                 GUIUtility.hotControl = 0;
         }
 
-        /// <summary>
-        /// Ctrl, or Cmd on macOS. Both are taken on both platforms: this is view
-        /// navigation rather than a command, and nothing is lost by accepting either.
-        /// </summary>
         static bool IsViewModifier(Event e)
         {
             return (e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0;
         }
 
-        /// <summary>
-        /// Keeps the scrolled-away part between nothing and everything the box cannot
-        /// show, so the image can always be moved far enough to see its far edge and no
-        /// further.
-        /// </summary>
         void ClampScroll(Rect area, float aspect)
         {
             var box = ViewBox(area, aspect, out var image);
 
-            // The scrollbars sit inside the box, so each one takes a strip off what is
-            // left to see the image through.
+            // The scrollbars sit inside the box, so each takes a strip off what is left.
             var visible = new Vector2(
                 box.width - (image.y > box.height ? kScrollbarSize : 0),
                 box.height - (image.x > box.width ? kScrollbarSize : 0));
@@ -360,8 +285,6 @@ namespace Unity.Android.Logcat
         void DoZoomBadgeGUI(Rect area)
         {
             var content = Styles.Zoom(ZoomPercent);
-            // Rounded up, because a rect a fraction narrower than the text is a rect
-            // the text does not fit in.
             var size = Styles.Badge.CalcSize(content);
             var rect = new Rect(area.x + kBadgeMargin, area.y + kBadgeMargin,
                 Mathf.Min(Mathf.Ceil(size.x), area.width),

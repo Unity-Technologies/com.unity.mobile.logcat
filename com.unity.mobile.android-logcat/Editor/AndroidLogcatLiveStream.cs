@@ -103,10 +103,11 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 5;
+        const int kProtocolVersion = 6;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
-        const int kFrameHeaderSize = 20;  // ptsUs + width + height + payloadSize
+        // ptsUs + width + height + displayWidth + displayHeight + payloadSize
+        const int kFrameHeaderSize = 28;
 
         // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
         // injection, so touch messages will actually do something.
@@ -161,6 +162,10 @@ namespace Unity.Android.Logcat
 
         static class Styles
         {
+            internal static readonly GUIContent DisplaySize = new GUIContent("Display size",
+                "Resolution of the display being mirrored, as the frames report it. The streamed " +
+                "image is this scaled down to fit Max Size, so the two rows together say how much " +
+                "detail the stream is giving up.");
             internal static readonly GUIContent StreamSize = new GUIContent("Stream size",
                 "Size of the streamed image, which is the device display scaled down to fit max_size.");
             internal static readonly GUIContent FrameRate = new GUIContent("Frame rate",
@@ -227,6 +232,8 @@ namespace Unity.Android.Logcat
         int m_PendingFrameSize;
         int m_PendingWidth;
         int m_PendingHeight;
+        int m_PendingDisplayWidth;
+        int m_PendingDisplayHeight;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -258,6 +265,9 @@ namespace Unity.Android.Logcat
         Texture2D m_Texture;
         int m_FrameWidth;
         int m_FrameHeight;
+        // What the frames were scaled down from. Zero until the first one arrives.
+        int m_DisplayWidth;
+        int m_DisplayHeight;
         double m_Fps;
         double m_Mbps;
         DateTime m_StatsTime;
@@ -339,6 +349,8 @@ namespace Unity.Android.Logcat
             m_TouchDown = false;
             m_FrameWidth = 0;
             m_FrameHeight = 0;
+            m_DisplayWidth = 0;
+            m_DisplayHeight = 0;
             m_Fps = 0;
             m_Mbps = 0;
             m_StatsTime = DateTime.Now;
@@ -510,6 +522,7 @@ namespace Unity.Android.Logcat
             byte[] frame;
             int size;
             int width, height;
+            int displayWidth, displayHeight;
             long bytes;
             int frames;
 
@@ -521,6 +534,8 @@ namespace Unity.Android.Logcat
                 m_PendingFrameSize = 0;
                 width = m_PendingWidth;
                 height = m_PendingHeight;
+                displayWidth = m_PendingDisplayWidth;
+                displayHeight = m_PendingDisplayHeight;
                 bytes = m_ReceivedBytes;
                 frames = m_ReceivedFrames;
             }
@@ -539,6 +554,8 @@ namespace Unity.Android.Logcat
                 {
                     m_FrameWidth = width;
                     m_FrameHeight = height;
+                    m_DisplayWidth = displayWidth;
+                    m_DisplayHeight = displayHeight;
                 }
 
                 // Returned whether or not it decoded - a frame this thread could not
@@ -656,7 +673,9 @@ namespace Unity.Android.Logcat
                     // displayed as they arrive rather than scheduled.
                     var width = ReadInt32BE(header, 8);
                     var height = ReadInt32BE(header, 12);
-                    var size = ReadInt32BE(header, 16);
+                    var displayWidth = ReadInt32BE(header, 16);
+                    var displayHeight = ReadInt32BE(header, 20);
+                    var size = ReadInt32BE(header, 24);
 
                     if (size <= 0 || size > kMaxFrameSize)
                         throw new IOException($"Frame size {size} is out of range, the stream is out of sync");
@@ -677,6 +696,8 @@ namespace Unity.Android.Logcat
                         m_PendingFrameSize = size;
                         m_PendingWidth = width;
                         m_PendingHeight = height;
+                        m_PendingDisplayWidth = displayWidth;
+                        m_PendingDisplayHeight = displayHeight;
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }
@@ -1042,9 +1063,7 @@ namespace Unity.Android.Logcat
         /// down, and shutting down clears that. Only the error state's retry uses it.
         /// </param>
         /// <param name="repaint">
-        /// The window's repaint, for the things that change outside the frames arriving
-        /// - zooming and panning a stream that has stopped, say, which would otherwise
-        /// not be drawn until something else happened.
+        /// For what changes outside the frames arriving - zooming a stopped stream.
         /// </param>
         internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice, Action repaint)
         {
@@ -1112,10 +1131,6 @@ namespace Unity.Android.Logcat
 
             var aspect = (float)m_Texture.width / m_Texture.height;
 
-            // The viewer hands the image rect to the callback, because that rect is
-            // also what mouse positions are mapped through, and hands back the box it
-            // is seen through - the image's own, which is not the whole area and which
-            // grows with the zoom.
             var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
             {
                 HandleTouchInput(controlId, videoRect);
@@ -1126,9 +1141,8 @@ namespace Unity.Android.Logcat
 
             if (statsWidth > 0)
             {
-                // Attached to the image rather than to the right edge of the area: the
-                // image is centred in what is left over, so the gap beside it varies -
-                // with the zoom as well as with the shape of the device's screen.
+                // Against the image rather than the right edge of the area: the image
+                // is centred in what is left over, so the gap beside it varies.
                 var statsRect = new Rect(
                     imageBox.xMax + kStatsMargin,
                     imageBox.y,
@@ -1143,6 +1157,9 @@ namespace Unity.Android.Logcat
             const float kLabelWidth = 80;
             var y = rc.y;
 
+            // A row reading 0x0 says less than no row at all.
+            if (m_DisplayWidth > 0 && m_DisplayHeight > 0)
+                DoStatsRow(rc, kLabelWidth, ref y, Styles.DisplaySize, $"{m_DisplayWidth}x{m_DisplayHeight}");
             DoStatsRow(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
             DoStatsRow(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
             DoStatsRow(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");

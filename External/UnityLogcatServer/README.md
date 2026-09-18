@@ -194,13 +194,21 @@ Stream header, once, 20 bytes:
   u32  flags            bit 0: the server can inject input
   u32  serverPid        this process on the device, so the Editor can name it
 
-Frame, repeated, 20 byte header + payload:
+Frame, repeated, 28 byte header + payload:
   u64  ptsUs            microseconds since the first frame
-  u32  width            pixels
-  u32  height           pixels
+  u32  width            pixels of the streamed image
+  u32  height           pixels of the streamed image
+  u32  displayWidth     pixels of the display it was captured from
+  u32  displayHeight    pixels of the display it was captured from
   u32  payloadSize      bytes of encoded frame that follow
   u8[] payload          JPEG
 ```
+
+The sizes are in every frame because they change - on a rotation, on a foldable
+being opened, or on `wm size` being overridden - and the server starts a new
+capture session for the new geometry without announcing it on the socket. The
+display size rides along so that the Editor can say what the stream is scaling
+down from without asking adb, and without the two numbers being able to disagree.
 
 Editor to server, on the same socket (see `ControlReader.java`):
 

@@ -312,7 +312,12 @@ public final class ScreenStreamer implements Closeable {
             return;
         }
 
-        protocol.writeFrame(captureNs, width, height, jpeg.buffer(), jpeg.size());
+        // The session's own size, which is what this frame was scaled down from.
+        Size display = displaySize;
+        protocol.writeFrame(captureNs, width, height,
+            display == null ? 0 : display.getWidth(),
+            display == null ? 0 : display.getHeight(),
+            jpeg.buffer(), jpeg.size());
 
         statsFrames++;
         statsBytes += jpeg.size();
