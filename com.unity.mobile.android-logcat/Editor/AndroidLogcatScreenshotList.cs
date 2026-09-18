@@ -55,7 +55,6 @@ namespace Unity.Android.Logcat
         readonly AndroidLogcatRuntimeBase m_Runtime;
         readonly AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         readonly AndroidLogcatLiveStream m_LiveStream;
-        readonly Func<IAndroidLogcatDevice> m_SelectedDevice;
         readonly Action m_Repaint;
 
         const string kRenameControlName = "ScreenshotRenameField";
@@ -89,13 +88,11 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool LiveSelected => m_LiveSelected;
 
-        internal AndroidLogcatScreenshotList(AndroidLogcatRuntimeBase runtime,
-            Func<IAndroidLogcatDevice> selectedDevice, Action repaint)
+        internal AndroidLogcatScreenshotList(AndroidLogcatRuntimeBase runtime, Action repaint)
         {
             m_Runtime = runtime;
             m_CaptureScreenshot = runtime.CaptureScreenshot;
             m_LiveStream = runtime.LiveStream;
-            m_SelectedDevice = selectedDevice;
             m_Repaint = repaint;
 
             // Settings saved before the width existed deserialize it as 0, which would
@@ -186,17 +183,17 @@ namespace Unity.Android.Logcat
         /// A stream belongs to the device it was started on, so it has to be restarted
         /// against a new one.
         /// </summary>
-        internal void OnDeviceChanged()
+        internal void OnDeviceChanged(IAndroidLogcatDevice device)
         {
             if (m_LiveSelected)
-                m_LiveStream.RestartStreaming(m_SelectedDevice());
+                m_LiveStream.RestartStreaming(device);
         }
 
         /// <summary>
         /// Draws the list and the splitter, and returns what is left for the caller to
         /// draw the image or the stream into.
         /// </summary>
-        internal Rect DoGUI(Rect rc)
+        internal Rect DoGUI(Rect rc, IAndroidLogcatDevice device)
         {
             var settings = m_Runtime.UserSettings.CaptureSettings;
             var width = settings.ScreenshotListWidth;
@@ -204,7 +201,7 @@ namespace Unity.Android.Logcat
             var listRect = new Rect(rc.x, rc.y, width, rc.height);
             var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
 
-            DoListGUI(listRect);
+            DoListGUI(listRect, device);
 
             if (m_Splitter.DoGUI(splitterRect, ref width))
             {
@@ -215,7 +212,7 @@ namespace Unity.Android.Logcat
             return new Rect(splitterRect.xMax, rc.y, Mathf.Max(0, rc.xMax - splitterRect.xMax), rc.height);
         }
 
-        void DoListGUI(Rect rc)
+        void DoListGUI(Rect rc, IAndroidLogcatDevice device)
         {
             // Allocated on every pass, before any early return, so control ids do not
             // shift between the Layout and Repaint passes.
@@ -255,7 +252,7 @@ namespace Unity.Android.Logcat
                 m_InitialSelectionDone = true;
                 if (screenshots.Count == 0 && !m_LiveSelected)
                 {
-                    SelectRow(screenshots, 0);
+                    SelectRow(screenshots, 0, device);
                     selectedRow = 0;
                 }
             }
@@ -340,7 +337,7 @@ namespace Unity.Android.Logcat
                     && (row == 0 || screenshots[row - 1].Path != m_RenamingPath))
                 {
                     GUIUtility.keyboardControl = controlId;
-                    SelectRow(screenshots, row);
+                    SelectRow(screenshots, row, device);
 
                     // The Live row has no file to open.
                     if (Event.current.clickCount == 2 && row > 0)
@@ -354,7 +351,7 @@ namespace Unity.Android.Logcat
                 {
                     // Selected as well, so the menu acts on what is now on screen.
                     GUIUtility.keyboardControl = controlId;
-                    SelectRow(screenshots, row);
+                    SelectRow(screenshots, row, device);
 
                     menuRow = row;
                     menuPath = row == 0 ? null : screenshots[row - 1].Path;
@@ -366,15 +363,15 @@ namespace Unity.Android.Logcat
             }
             GUI.EndScrollView();
 
-            HandleKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height);
+            HandleKeys(controlId, screenshots, rowCount, selectedRow, rowHeight, inner.height, device);
 
             if (menuRow == 0)
-                ShowLiveRowContextMenu(GUIUtility.ScreenToGUIPoint(menuScreenPosition));
+                ShowLiveRowContextMenu(GUIUtility.ScreenToGUIPoint(menuScreenPosition), device);
             else if (menuRow > 0)
                 ShowRowContextMenu(menuPath, GUIUtility.ScreenToGUIPoint(menuScreenPosition));
 
             if (deletePath != null)
-                ConfirmAndDelete(deletePath, deleteRow);
+                ConfirmAndDelete(deletePath, deleteRow, device);
         }
 
         /// <summary>
@@ -382,10 +379,16 @@ namespace Unity.Android.Logcat
         /// over - a server that died, or a device that went away and came back, otherwise
         /// needs the selection moved off the row and back onto it.
         /// </summary>
-        void ShowLiveRowContextMenu(Vector2 position)
+        void ShowLiveRowContextMenu(Vector2 position, IAndroidLogcatDevice device)
         {
             var menu = new AndroidContextMenu<ScreenshotContextMenu>();
-            menu.Add(ScreenshotContextMenu.Reconnect, "Reconnect", false);
+            // The device travels in the menu item, because the menu is answered long
+            // after this method has returned - the same reason the screenshot rows put
+            // their path there. Named argument: the third positional parameter of Add
+            // is `selected`, not `enabled`, and reconnecting without a device to
+            // reconnect to does nothing.
+            menu.Add(ScreenshotContextMenu.Reconnect, "Reconnect",
+                enabled: device != null, userData: device);
             menu.Show(position, OnContextMenuSelection);
         }
 
@@ -478,25 +481,26 @@ namespace Unity.Android.Logcat
             if (item == null)
                 return;
 
-            var path = (string)item.UserData;
+            // What UserData holds depends on the item: a path for the screenshot rows,
+            // the device for the Live row.
             switch (item.Item)
             {
                 case ScreenshotContextMenu.ShowInFileBrowser:
-                    AndroidLogcatUtilities.RevealInFileBrowser(path);
+                    AndroidLogcatUtilities.RevealInFileBrowser((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.Open:
-                    AndroidLogcatUtilities.OpenFile(path);
+                    AndroidLogcatUtilities.OpenFile((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.SaveAs:
-                    SaveAs(path);
+                    SaveAs((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.Rename:
-                    BeginRename(path);
+                    BeginRename((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.Reconnect:
                     // The context click selected the row, so the stream is this window's
                     // to restart by the time this runs.
-                    m_LiveStream.RestartStreaming(m_SelectedDevice());
+                    m_LiveStream.RestartStreaming((IAndroidLogcatDevice)item.UserData);
                     m_Repaint();
                     break;
             }
@@ -544,7 +548,7 @@ namespace Unity.Android.Logcat
         /// deletes.
         /// </summary>
         void HandleKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots,
-            int rowCount, int selectedRow, float rowHeight, float viewHeight)
+            int rowCount, int selectedRow, float rowHeight, float viewHeight, IAndroidLogcatDevice device)
         {
             // While the rename field has focus it owns the keyboard, so none of this runs.
             if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
@@ -567,7 +571,7 @@ namespace Unity.Android.Logcat
                 // confirmation as the row's own button, and it runs from the same place
                 // in the frame - after the scroll view has closed.
                 if (selectedRow > 0)
-                    ConfirmAndDelete(screenshots[selectedRow - 1].Path, selectedRow);
+                    ConfirmAndDelete(screenshots[selectedRow - 1].Path, selectedRow, device);
                 return;
             }
 
@@ -588,7 +592,7 @@ namespace Unity.Android.Logcat
 
             if (next != selectedRow)
             {
-                SelectRow(screenshots, next);
+                SelectRow(screenshots, next, device);
                 ScrollIntoView(next, rowHeight, viewHeight);
             }
             Event.current.Use();
@@ -599,14 +603,15 @@ namespace Unity.Android.Logcat
         /// stops with the selection rather than needing its own button, so leaving the
         /// Live row does not leave the device mirroring for nothing.
         /// </summary>
-        void SelectRow(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int row)
+        void SelectRow(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> screenshots, int row,
+            IAndroidLogcatDevice device)
         {
             if (row == 0)
             {
                 if (!m_LiveSelected)
                 {
                     m_LiveSelected = true;
-                    m_LiveStream.RestartStreaming(m_SelectedDevice());
+                    m_LiveStream.RestartStreaming(device);
                 }
             }
             else
@@ -635,7 +640,7 @@ namespace Unity.Android.Logcat
         /// prompt, which the Layout Viewer sharing that instance should not inherit, and
         /// picking what to select next.
         /// </summary>
-        void ConfirmAndDelete(string path, int row)
+        void ConfirmAndDelete(string path, int row, IAndroidLogcatDevice device)
         {
             var name = Path.GetFileNameWithoutExtension(path);
             if (!EditorUtility.DisplayDialog("Delete Screenshot",
@@ -653,7 +658,7 @@ namespace Unity.Android.Logcat
                 // Live row, which would start streaming because a file was deleted.
                 var remaining = m_CaptureScreenshot.GetScreenshots();
                 if (remaining.Count > 0)
-                    SelectRow(remaining, Mathf.Clamp(row - 1, 0, remaining.Count - 1) + 1);
+                    SelectRow(remaining, Mathf.Clamp(row - 1, 0, remaining.Count - 1) + 1, device);
             }
             m_Repaint();
         }
