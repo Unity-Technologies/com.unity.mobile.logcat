@@ -78,7 +78,7 @@ namespace Unity.Android.Logcat
 
         static string m_ServerJarPath;
 
-        static string GetServerJarPath()
+        internal static string GetServerJarPath()
         {
             if (!string.IsNullOrEmpty(m_ServerJarPath))
                 return m_ServerJarPath;

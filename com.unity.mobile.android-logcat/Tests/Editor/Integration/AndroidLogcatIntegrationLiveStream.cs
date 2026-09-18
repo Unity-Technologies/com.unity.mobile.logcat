@@ -19,6 +19,12 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     protected void Init()
     {
         Cleanup();
+
+        // Every test here pushes the server to the device, so without a jar the whole
+        // fixture fails one slow timeout at a time, saying nothing useful. It is a
+        // build output and is not committed, so a fresh clone has none yet.
+        FileAssert.Exists(AndroidLogcatLiveStream.GetServerJarPath(),
+            "Build the live stream server by running 'gradlew dexJar' in External/UnityLogcatServer.");
     }
 
     [TearDown]
@@ -55,7 +61,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         // first frame, so this gets a longer timeout than the rest.
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.Texture != null,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors, "Did not expect any errors while streaming");
@@ -108,7 +114,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.FramesReceived > 0,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         var framesBefore = Runtime.LiveStream.FramesReceived;
@@ -123,7 +129,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for frames produced by the screen changing",
             () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            20,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Log($"Received {Runtime.LiveStream.FramesReceived - framesBefore} frames while the screen was changing");
@@ -146,7 +152,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.FramesReceived > 0,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
@@ -168,7 +174,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the screen to react to the injected swipe",
             () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            20,
+            kDefaultTimeout,
             () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
 
         Log($"Injected swipe produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
@@ -194,7 +200,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.FramesReceived > 0,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
@@ -210,7 +216,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the screen to react to the injected key",
             () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            20,
+            kDefaultTimeout,
             () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
 
         Log($"Injected key produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
@@ -222,7 +228,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the screen to react to injected text",
             () => Runtime.LiveStream.FramesReceived > framesBefore + 2,
-            20,
+            kDefaultTimeout,
             () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
 
         Log($"Injected text produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
@@ -250,7 +256,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.FramesReceived > 0,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
@@ -269,7 +275,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for the screen to react to the injected scroll",
             () => Runtime.LiveStream.FramesReceived > framesBefore + 3,
-            20,
+            kDefaultTimeout,
             () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
 
         Log($"Injected scroll produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
@@ -316,7 +322,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         yield return WaitForCondition("Waiting for a frame from a device that was asleep",
             () => Runtime.LiveStream.FramesReceived > 0,
-            30,
+            kDefaultTimeout,
             () => Runtime.LiveStream.Errors);
 
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
@@ -344,7 +350,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
             yield return WaitForCondition($"Waiting for a frame on attempt {attempt + 1}",
                 () => Runtime.LiveStream.FramesReceived > 0,
-                30,
+                kDefaultTimeout,
                 () => Runtime.LiveStream.Errors);
 
             Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);

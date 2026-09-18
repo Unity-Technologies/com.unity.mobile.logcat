@@ -10,7 +10,10 @@ using System.Linq;
 
 internal class AndroidLogcatIntegrationTestBase
 {
-    protected const float kDefaulTimeOut = 10.0f;
+    // How long a device is given to do something before the test gives up. Every
+    // wait here is for one adb round trip or one screen change, both of which take
+    // a second or two on the devices this has run on.
+    protected const float kDefaultTimeout = 10.0f;
     private AndroidLogcatRuntime m_Runtime;
     private IAndroidLogcatDevice m_Device;
     private int m_Ticks;
@@ -104,7 +107,7 @@ internal class AndroidLogcatIntegrationTestBase
 #endif
     }
 
-    protected IEnumerator WaitForCondition(string name, Func<bool> condition, float timeOutInSeconds = kDefaulTimeOut, Func<string> additionalErrorMessage = null)
+    protected IEnumerator WaitForCondition(string name, Func<bool> condition, float timeOutInSeconds = kDefaultTimeout, Func<string> additionalErrorMessage = null)
     {
         m_Runtime.OnUpdate();
 
