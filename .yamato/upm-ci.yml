@@ -8,6 +8,7 @@ test_platforms:
     model:
     move_alias: move
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor
   - name: mac
     type: Unity::VM::osx
     image: package-ci/macos-13-arm64:v4.77.0
@@ -15,6 +16,7 @@ test_platforms:
     model: M1
     move_alias: mv
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor --arch arm64
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu-22.04:v4
@@ -22,6 +24,7 @@ test_platforms:
     model:
     move_alias: mv
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor
 test_module_support:
   - name: android
     install_command: -c android
@@ -40,7 +43,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     flavor: {{ platform.flavor}}
     {% if platform.model %}model: {{ platform.model }}{% endif %}
   commands:
-    - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
+    - unity-downloader-cli -u {{ editor.version }} {{ platform.install_editor_command }} {{ module_support.install_command }} --wait
     - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/Integration/csc.rsp
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
