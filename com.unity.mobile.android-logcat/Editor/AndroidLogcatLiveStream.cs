@@ -39,6 +39,12 @@ namespace Unity.Android.Logcat
             Failure
         }
 
+        internal enum FailureType
+        {
+            None,
+            JarNotFound
+        }
+
         /// <summary>
         /// The type byte that starts every Editor to server control message. Values match
         /// the TYPE_* constants in ControlReader.java, and the server stops reading
@@ -68,6 +74,21 @@ namespace Unity.Android.Logcat
         {
             Down = 0,
             Up = 1
+        }
+
+        static string m_ServerJarPath;
+
+        static string GetServerJarPath()
+        {
+            if (!string.IsNullOrEmpty(m_ServerJarPath))
+                return m_ServerJarPath;
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                typeof(AndroidLogcatLiveStream).Assembly);
+            if (package == null)
+                throw new FileNotFoundException($"Couldn't locate the Android Logcat package to find {kServerJarName} in it.");
+
+            m_ServerJarPath = Path.Combine(package.resolvedPath, kServerExternalFolder, kServerJarName);
+            return m_ServerJarPath;
         }
 
         // Android KeyEvent.META_* flags.
@@ -175,6 +196,7 @@ namespace Unity.Android.Logcat
         AndroidLogcatRuntimeBase m_Runtime;
         IAndroidLogcatDevice m_Device;
         Action<Result> m_OnStopLiveStream;
+        FailureType m_FailureType;
 
         Process m_ServerProcess;
         readonly StringBuilder m_ServerLog = new StringBuilder();
@@ -298,6 +320,7 @@ namespace Unity.Android.Logcat
                 throw new InvalidOperationException("Already streaming");
 
             m_Errors.Clear();
+            m_FailureType = FailureType.None;
             lock (m_ServerLog)
                 m_ServerLog.Clear();
             DestroyTexture();
@@ -350,6 +373,17 @@ namespace Unity.Android.Logcat
                 RemoveStaleServerJars(device);
 
                 var jarPath = GetServerJarPath();
+                if (!File.Exists(jarPath))
+                {
+                    m_FailureType = FailureType.JarNotFound;
+                    var error = $"{kServerJarName} is missing from the package, live streaming is unavailable.\n" +
+    $"Expected it at {jarPath}\n" +
+    "Build it by running 'gradlew dexJar' in External/UnityLogcatServer.";
+                    AppendError(error);
+                    Shutdown(Result.Failure);
+                    return;
+                }
+
                 PushServer(device, jarPath);
 
                 var settings = m_Runtime.Settings;
@@ -524,26 +558,6 @@ namespace Unity.Android.Logcat
         // ------------------------------------------------------------------
         // Server setup
         // ------------------------------------------------------------------
-
-        static string GetServerJarPath()
-        {
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
-                typeof(AndroidLogcatLiveStream).Assembly);
-            if (package == null)
-                throw new FileNotFoundException($"Couldn't locate the Android Logcat package to find {kServerJarName} in it.");
-
-            var path = Path.Combine(package.resolvedPath, kServerExternalFolder, kServerJarName);
-            if (!File.Exists(path))
-            {
-                // Expected during development: the jar is a build output and is not
-                // committed, so a fresh clone does not have one yet.
-                throw new FileNotFoundException(
-                    $"{kServerJarName} is missing from the package, live streaming is unavailable.\n" +
-                    $"Expected it at {path}\n" +
-                    "Build it by running 'gradlew dexJar' in External/UnityLogcatServer.");
-            }
-            return path;
-        }
 
         void PushServer(IAndroidLogcatDevice device, string jarPath)
         {
@@ -1029,6 +1043,20 @@ namespace Unity.Android.Logcat
             if (m_Errors.Length > 0)
             {
                 EditorGUI.HelpBox(rc, m_Errors.ToString(), MessageType.Error);
+                if (m_FailureType == FailureType.JarNotFound)
+                {
+                    // TODO: make it nice
+                    var path = GetServerGradleProjectPath();
+                    if (Directory.Exists(path))
+                    {
+                        if (GUILayout.Button($"Build Jar at '{path}'"))
+                        {
+                            RebuildServerJar(GetServerGradleProjectPath());
+                            RestartStreaming(m_Device);
+                        }
+                    }
+                }
+                  
                 return;
             }
 
