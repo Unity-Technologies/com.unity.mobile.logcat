@@ -151,6 +151,7 @@ namespace Unity.Android.Logcat
         const float kStatsWidth = 190;
         const float kStatsMargin = 8;
         const float kNavigationSpacing = 6;
+        const float kBuildJarButtonWidth = 180;
         const float kNavigationButtonWidth = 60;
         // A row each: both labels are too wide for the two of them to share the stats
         // column without being clipped.
@@ -377,8 +378,8 @@ namespace Unity.Android.Logcat
                 {
                     m_FailureType = FailureType.JarNotFound;
                     var error = $"{kServerJarName} is missing from the package, live streaming is unavailable.\n" +
-    $"Expected it at {jarPath}\n" +
-    "Build it by running 'gradlew dexJar' in External/UnityLogcatServer.";
+                        $"Expected it at {jarPath}\n" +
+                        "Build it by running 'gradlew dexJar' in External/UnityLogcatServer.";
                     AppendError(error);
                     Shutdown(Result.Failure);
                     return;
@@ -1033,7 +1034,12 @@ namespace Unity.Android.Logcat
         // GUI
         // ------------------------------------------------------------------
 
-        internal void DoGUI(Rect rc)
+        /// <param name="selectedDevice">
+        /// The device the window is pointed at, which is not necessarily
+        /// <see cref="m_Device"/>: a stream that failed to start has already been shut
+        /// down, and shutting down clears that. Only the error state's retry uses it.
+        /// </param>
+        internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
         {
             // Allocated on every pass, before any early return: skipping it on some
             // frames would shift control ids between the Layout and Repaint passes and
@@ -1042,21 +1048,42 @@ namespace Unity.Android.Logcat
 
             if (m_Errors.Length > 0)
             {
-                EditorGUI.HelpBox(rc, m_Errors.ToString(), MessageType.Error);
-                if (m_FailureType == FailureType.JarNotFound)
+                // The jar is a build output and is not committed, so a fresh clone has
+                // none until Gradle has run. Offering to run it here is the whole of
+                // the fix, so the button is only worth drawing when that project is
+                // actually next to the package - GetServerGradleProjectPath says so.
+                var gradleProject = m_FailureType == FailureType.JarNotFound
+                    ? GetServerGradleProjectPath()
+                    : null;
+
+                var message = new GUIContent(m_Errors.ToString(),
+                    EditorGUIUtility.IconContent("console.erroricon").image);
+
+                var buttonHeight = gradleProject == null
+                    ? 0
+                    : EditorGUIUtility.singleLineHeight + kNavigationSpacing;
+                var messageRect = new Rect(rc.x, rc.y, rc.width,
+                    Mathf.Min(Mathf.Max(0, rc.height - buttonHeight),
+                        EditorStyles.helpBox.CalcHeight(message, rc.width)));
+
+                GUI.Label(messageRect, message, EditorStyles.helpBox);
+
+                if (gradleProject != null)
                 {
-                    // TODO: make it nice
-                    var path = GetServerGradleProjectPath();
-                    if (Directory.Exists(path))
+                    var buttonRect = new Rect(rc.x,
+                        messageRect.yMax + kNavigationSpacing,
+                        Mathf.Min(kBuildJarButtonWidth, rc.width),
+                        EditorGUIUtility.singleLineHeight);
+                    if (GUI.Button(buttonRect, new GUIContent("Build the server jar",
+                        $"Runs 'gradlew dexJar' in {gradleProject}, then starts the stream again.")))
                     {
-                        if (GUILayout.Button($"Build Jar at '{path}'"))
-                        {
-                            RebuildServerJar(GetServerGradleProjectPath());
-                            RestartStreaming(m_Device);
-                        }
+                        RebuildServerJar(gradleProject);
+                        // Whatever the window is pointed at now. Building is worth
+                        // doing even with no device selected; only the retry needs one.
+                        RestartStreaming(selectedDevice);
                     }
                 }
-                  
+
                 return;
             }
 
