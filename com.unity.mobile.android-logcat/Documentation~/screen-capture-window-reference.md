@@ -17,6 +17,7 @@ The window is split into two: a list of captures on the left, and whatever the l
 | [Capture list](#capture-list)           | The live view and every screenshot you have taken. Drag the divider to resize it. |
 | [Recorder settings](#recorder-settings) | Contains settings for video recording.                       |
 | [Capture preview](#capture-preview)     | The screenshot, video or live view that the list has selected. |
+| [Screenshot details](#screenshot-details) | Information about the selected screenshot.                 |
 | [Live view details](#live-view-details) | Information about the live stream, and the device navigation buttons. |
 
 ## Toolbar
@@ -89,6 +90,16 @@ A screenshot and the live view are both fitted to the window, which can be too s
 Zooming and moving the image only change how you see it. In the live view, the device still receives your clicks, drags and keys at the place on its screen you are pointing at, and the wheel on its own still scrolls the device rather than the view.
 
 The zoom of the live view and the zoom of the screenshots are separate, and both go back to 100% when scripts recompile.
+
+## Screenshot details
+
+This section appears to the right of the image while a screenshot is selected.
+
+| **Property**    | **Description**                                              |
+| --------------- | ------------------------------------------------------------ |
+| **Image size**  | The size of the image in pixels, which is the resolution of the display it was captured from. |
+| **File size**   | The size of the `.png` file on disk.                         |
+| **Captured**    | When the file was last written. Hover over it for the full date and time. |
 
 ## Live view details
 

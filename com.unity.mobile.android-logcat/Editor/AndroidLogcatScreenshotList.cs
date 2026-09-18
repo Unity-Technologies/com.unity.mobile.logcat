@@ -27,6 +27,13 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Delete = new GUIContent("×",
                 "Delete this screenshot from disk");
 
+            internal static readonly GUIContent ImageSize = new GUIContent("Image size",
+                "Size of the image in pixels, which is the resolution of the display it was captured from.");
+            internal static readonly GUIContent FileSize = new GUIContent("File size",
+                "Size of the file on disk.");
+            internal static readonly GUIContent Captured = new GUIContent("Captured",
+                "When the file was last written.");
+
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
             static GUIStyle s_SelectedRow;
@@ -81,6 +88,8 @@ namespace Unity.Android.Logcat
         // image. Only the selected path is shared.
         Texture2D m_PreviewTexture;
         string m_PreviewPath;
+        long m_PreviewFileSize;
+        DateTime m_PreviewWriteTime;
 
         // Zoom and pan for the preview. Its own, separate from the live view's: they
         // show different things, and a zoom set on one is rarely the one wanted on the
@@ -148,9 +157,31 @@ namespace Unity.Android.Logcat
             if (m_PreviewTexture == null)
                 return false;
 
-            m_Viewer.DoGUI(rc, (float)m_PreviewTexture.width / m_PreviewTexture.height,
+            // The same column the live view draws, so the two modes look alike. Taken
+            // out of the area before the image is fitted, or the image would be drawn
+            // underneath it.
+            var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc);
+            var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
+
+            var imageBox = m_Viewer.DoGUI(imageArea,
+                (float)m_PreviewTexture.width / m_PreviewTexture.height,
                 imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
+
+            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
             return true;
+        }
+
+        void DoStatsGUI(Rect rc)
+        {
+            const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
+            var y = rc.y;
+
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize,
+                $"{m_PreviewTexture.width}x{m_PreviewTexture.height}");
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize,
+                EditorUtility.FormatBytes(m_PreviewFileSize));
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured,
+                m_PreviewWriteTime.ToString("g"), m_PreviewWriteTime.ToString("F"));
         }
 
         /// <summary>
@@ -173,9 +204,16 @@ namespace Unity.Android.Logcat
 
             var texture = new Texture2D(2, 2);
             if (texture.LoadImage(File.ReadAllBytes(path)))
+            {
                 m_PreviewTexture = texture;
+                var info = new FileInfo(path);
+                m_PreviewFileSize = info.Length;
+                m_PreviewWriteTime = info.LastWriteTime;
+            }
             else
+            {
                 UnityEngine.Object.DestroyImmediate(texture);
+            }
         }
 
         void DestroyPreview()
@@ -184,6 +222,8 @@ namespace Unity.Android.Logcat
                 UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
             m_PreviewTexture = null;
             m_PreviewPath = null;
+            m_PreviewFileSize = 0;
+            m_PreviewWriteTime = default;
         }
 
         /// <summary>

@@ -149,10 +149,6 @@ namespace Unity.Android.Logcat
         // has desynchronized and we should fail instead of allocating wildly.
         const int kMaxFrameSize = 32 * 1024 * 1024;
 
-        // The info column beside the image. Capped to a fraction of the available width
-        // as well, so a narrow window does not lose the image entirely to it.
-        const float kStatsWidth = 190;
-        const float kStatsMargin = 8;
         const float kNavigationSpacing = 6;
         const float kBuildJarButtonWidth = 180;
         const float kNavigationButtonWidth = 60;
@@ -1126,7 +1122,7 @@ namespace Unity.Android.Logcat
 
             // The info column is reserved before the image is fitted, so that the image
             // is never drawn underneath it.
-            var statsWidth = IsStreaming ? Mathf.Min(kStatsWidth, rc.width * 0.4f) : 0;
+            var statsWidth = IsStreaming ? AndroidLogcatStatsColumn.WidthFor(rc) : 0;
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             var aspect = (float)m_Texture.width / m_Texture.height;
@@ -1140,35 +1136,26 @@ namespace Unity.Android.Logcat
             HandleKeyboardInput(controlId);
 
             if (statsWidth > 0)
-            {
-                // Against the image rather than the right edge of the area: the image
-                // is centred in what is left over, so the gap beside it varies.
-                var statsRect = new Rect(
-                    imageBox.xMax + kStatsMargin,
-                    imageBox.y,
-                    Mathf.Max(0, rc.xMax - imageBox.xMax - kStatsMargin),
-                    imageBox.height);
-                DoStatsGUI(statsRect);
-            }
+                DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
         }
 
         void DoStatsGUI(Rect rc)
         {
-            const float kLabelWidth = 80;
+            const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
             var y = rc.y;
 
             // A row reading 0x0 says less than no row at all.
             if (m_DisplayWidth > 0 && m_DisplayHeight > 0)
-                DoStatsRow(rc, kLabelWidth, ref y, Styles.DisplaySize, $"{m_DisplayWidth}x{m_DisplayHeight}");
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, $"{m_DisplayWidth}x{m_DisplayHeight}");
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
             // Listed whether or not it works: without the row there is nothing in the
             // window to say the view is interactive at all. One row rather than separate
             // Touch and Keyboard ones because the server reports a single capability
             // covering both, so the two could never disagree. The column is too narrow
             // for how to use them, so that lives in the tooltip.
-            DoStatsRow(rc, kLabelWidth, ref y, Styles.Input,
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Input,
                 m_ControlSupported ? "Supported" : "Unsupported");
 
             y += kNavigationSpacing;
@@ -1205,21 +1192,6 @@ namespace Unity.Android.Logcat
                 SendKeyPress(AndroidKeyCode.APP_SWITCH);
 
             EditorGUI.EndDisabledGroup();
-            y += height;
-        }
-
-        static void DoStatsRow(Rect rc, float labelWidth, ref float y, GUIContent name, string value,
-            string valueTooltip = null)
-        {
-            var height = EditorGUIUtility.singleLineHeight;
-            if (y + height > rc.yMax)
-                return;
-
-            GUI.Label(new Rect(rc.x, y, labelWidth, height), name, EditorStyles.miniLabel);
-            // The column is narrow enough that long values clip, so the tooltip carries
-            // the full text where that matters.
-            GUI.Label(new Rect(rc.x + labelWidth, y, Mathf.Max(0, rc.width - labelWidth), height),
-                new GUIContent(value, valueTooltip ?? name.tooltip), EditorStyles.miniLabel);
             y += height;
         }
 
@@ -1646,13 +1618,13 @@ namespace Unity.Android.Logcat
             GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeveloperMode, EditorStyles.miniBoldLabel);
             y += height;
 
-            DoStatsRow(rc, labelWidth, ref y, Styles.Socket,
+            AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.Socket,
                 string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName, m_SocketName);
-            DoStatsRow(rc, labelWidth, ref y, Styles.ForwardedPort,
+            AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.ForwardedPort,
                 m_ForwardedPort > 0 ? m_ForwardedPort.ToString() : "-");
-            DoStatsRow(rc, labelWidth, ref y, Styles.ServerOnDevice,
+            AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.ServerOnDevice,
                 string.IsNullOrEmpty(m_ServerDevicePath) ? "-" : m_ServerDevicePath, m_ServerDevicePath);
-            DoStatsRow(rc, labelWidth, ref y, Styles.ServerPid,
+            AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.ServerPid,
                 m_ServerPid > 0 ? m_ServerPid.ToString() : "-");
 
             if (y + height > rc.yMax)
