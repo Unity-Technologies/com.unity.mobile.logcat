@@ -82,7 +82,7 @@ A screenshot and the live view are both fitted to the window, which can be too s
 
 | **Action**                                             | **Result**                                                   |
 | ------------------------------------------------------ | ------------------------------------------------------------ |
-| Ctrl+Wheel (Cmd+Wheel on macOS) over the image          | Zooms between 100% and 1000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
+| Ctrl+Wheel (Cmd+Wheel on macOS) over the image          | Zooms between 100% and 4000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
 | Ctrl+Middle mouse button drag (Cmd on macOS)            | Moves the zoomed image, to bring another part of it into view. |
 | The scrollbars                                          | The same, and they appear as soon as the image is larger than the space for it. |
 
@@ -96,6 +96,7 @@ This section appears to the right of the image while the **Live** row is selecte
 
 | **Property**    | **Description**                                              |
 | --------------- | ------------------------------------------------------------ |
+| **Display size** | The device's own display resolution, read when the stream started. Compare it with **Stream size** to see how much the stream is scaling down. |
 | **Stream size** | The size of the streamed image. This is the device display scaled down to fit the **Max Size** setting, not the device's own resolution. |
 | **Frame rate**  | How many frames per second are arriving. The device only sends a frame when its screen changes, so a device showing a still screen sends almost none. |
 | **Bandwidth**   | How much data per second is arriving from the device.        |

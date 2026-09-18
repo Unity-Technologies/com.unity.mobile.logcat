@@ -9,7 +9,7 @@ namespace Unity.Android.Logcat
     /// view and the saved screenshots both draw through it, so a closer look at either
     /// works the same way.
     /// <para>
-    /// Ctrl and the wheel zoom between 100% and 1000%, Ctrl and a middle mouse button
+    /// Ctrl and the wheel zoom between 100% and 4000%, Ctrl and a middle mouse button
     /// drag move the zoomed image, and scrollbars appear as soon as there is more image
     /// than there is room for it. Everything else - clicks, a plain wheel, keys - is
     /// left alone, because the live view forwards all of that to the device.
@@ -29,7 +29,7 @@ namespace Unity.Android.Logcat
                 Application.platform == RuntimePlatform.OSXEditor ? "Cmd" : "Ctrl";
 
             static readonly string Gestures =
-                $"{kModifier}+Wheel over the image zooms between 100% and 1000%, " +
+                $"{kModifier}+Wheel over the image zooms between 100% and 4000%, " +
                 $"{kModifier}+Middle mouse drag moves the zoomed image.";
 
             internal static GUIContent Zoom(int percent)
@@ -61,11 +61,11 @@ namespace Unity.Android.Logcat
         }
 
         internal const float kMinZoom = 1.0f;
-        internal const float kMaxZoom = 10.0f;
+        internal const float kMaxZoom = 40.0f;
 
-        // Four notches of the wheel double the zoom, so fourteen of them cross the
+        // Four notches of the wheel double the zoom, so twenty-two of them cross the
         // whole range either way. A factor rather than a fixed step, because a step
-        // that is a sensible move at 100% is an invisible one at 1000%.
+        // that is a sensible move at 100% is an invisible one at 4000%.
         const float kWheelDeltaPerNotch = 3.0f;
         const float kNotchesPerDoubling = 4.0f;
         const int kMiddleMouseButton = 2;

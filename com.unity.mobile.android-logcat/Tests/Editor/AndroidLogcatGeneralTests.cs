@@ -289,7 +289,7 @@ class AndroidLogcatGeneralTests
     /// arithmetic that can simply be called.
     /// </summary>
     [Test]
-    public void ImageViewerZoomsBetween100And1000Percent()
+    public void ImageViewerZoomsBetween100And4000Percent()
     {
         var viewer = new AndroidLogcatImageViewer();
         var area = new Rect(0, 0, 400, 300);
@@ -310,7 +310,7 @@ class AndroidLogcatGeneralTests
             viewer.ZoomAt(area, aspect, area.center, -3.0f);
 
         Assert.AreEqual(AndroidLogcatImageViewer.kMaxZoom, viewer.Zoom, 0.0001f,
-            "Expected to stop at 1000%");
+            "Expected to stop at 4000%");
         Assert.IsFalse(viewer.ZoomAt(area, aspect, area.center, -3.0f),
             "Expected no change once the zoom is at its maximum");
 
