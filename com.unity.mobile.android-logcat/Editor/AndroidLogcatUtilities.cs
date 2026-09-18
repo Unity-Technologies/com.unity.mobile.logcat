@@ -181,6 +181,20 @@ namespace Unity.Android.Logcat
             return Path.GetFullPath(path).Replace("\\", "/");
         }
 
+
+        internal static string ResolvePath(params string[] relativeParts)
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                typeof(AndroidLogcatUtilities).Assembly);
+            if (package == null)
+                return null;
+
+            var parts = new string[relativeParts.Length + 1];
+            parts[0] = package.resolvedPath;
+            Array.Copy(relativeParts, 0, parts, 1, relativeParts.Length);
+            return Path.GetFullPath(Path.Combine(parts));
+        }
+
         /// <summary>
         /// The path with the project folder stripped off, for showing in the UI. A
         /// screenshot's absolute path is mostly project folder, which in a tooltip is

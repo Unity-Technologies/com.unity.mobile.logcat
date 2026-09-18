@@ -82,12 +82,12 @@ namespace Unity.Android.Logcat
         {
             if (!string.IsNullOrEmpty(m_ServerJarPath))
                 return m_ServerJarPath;
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
-                typeof(AndroidLogcatLiveStream).Assembly);
-            if (package == null)
+
+            var path = AndroidLogcatUtilities.ResolvePath(kServerExternalFolder, kServerJarName);
+            if (path == null)
                 throw new FileNotFoundException($"Couldn't locate the Android Logcat package to find {kServerJarName} in it.");
 
-            m_ServerJarPath = Path.Combine(package.resolvedPath, kServerExternalFolder, kServerJarName);
+            m_ServerJarPath = path;
             return m_ServerJarPath;
         }
 
@@ -1682,14 +1682,8 @@ namespace Unity.Android.Logcat
         /// </summary>
         static string GetServerGradleProjectPath()
         {
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
-                typeof(AndroidLogcatLiveStream).Assembly);
-            if (package == null)
-                return null;
-
-            var path = Path.GetFullPath(Path.Combine(package.resolvedPath, "..",
-                "External", "UnityLogcatServer"));
-            return File.Exists(Path.Combine(path, "build.gradle")) ? path : null;
+            var path = AndroidLogcatUtilities.ResolvePath("..", "External", "UnityLogcatServer");
+            return path != null && File.Exists(Path.Combine(path, "build.gradle")) ? path : null;
         }
 
         /// <summary>
