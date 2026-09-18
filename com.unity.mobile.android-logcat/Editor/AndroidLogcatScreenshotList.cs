@@ -189,7 +189,7 @@ namespace Unity.Android.Logcat
         internal void OnDeviceChanged()
         {
             if (m_LiveSelected)
-                RestartLiveStream();
+                m_LiveStream.RestartStreaming(m_SelectedDevice());
         }
 
         /// <summary>
@@ -385,8 +385,7 @@ namespace Unity.Android.Logcat
         void ShowLiveRowContextMenu(Vector2 position)
         {
             var menu = new AndroidContextMenu<ScreenshotContextMenu>();
-            menu.Add(ScreenshotContextMenu.Reconnect, "Reconnect",
-                enabled: m_SelectedDevice() != null);
+            menu.Add(ScreenshotContextMenu.Reconnect, "Reconnect", false);
             menu.Show(position, OnContextMenuSelection);
         }
 
@@ -497,7 +496,7 @@ namespace Unity.Android.Logcat
                 case ScreenshotContextMenu.Reconnect:
                     // The context click selected the row, so the stream is this window's
                     // to restart by the time this runs.
-                    RestartLiveStream();
+                    m_LiveStream.RestartStreaming(m_SelectedDevice());
                     m_Repaint();
                     break;
             }
@@ -607,7 +606,7 @@ namespace Unity.Android.Logcat
                 if (!m_LiveSelected)
                 {
                     m_LiveSelected = true;
-                    RestartLiveStream();
+                    m_LiveStream.RestartStreaming(m_SelectedDevice());
                 }
             }
             else
@@ -620,16 +619,6 @@ namespace Unity.Android.Logcat
                 m_CaptureScreenshot.SelectImage(screenshots[row - 1].Path);
             }
             m_Repaint();
-        }
-
-        void RestartLiveStream()
-        {
-            m_LiveStream.StopStreaming();
-            // The window keeps its own device selection, which is not necessarily what
-            // the runtime-wide device query points at.
-            var device = m_SelectedDevice();
-            if (device != null)
-                m_LiveStream.StartStreaming(device, OnLiveStreamCompleted);
         }
 
         void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)

@@ -1657,7 +1657,7 @@ namespace Unity.Android.Logcat
             if (!wasStreaming)
                 return;
 
-            RestartStreaming();
+            RestartStreaming(m_Device);
             // Armed after the restart, so that the state reset inside StartStreaming
             // does not clear it, and only if that restart actually took: a stream that
             // failed to start has no server to show, and Shutdown disarms this anyway.
@@ -1668,12 +1668,8 @@ namespace Unity.Android.Logcat
         /// Stops and starts the stream against the same device, keeping the caller's
         /// completion callback. Does nothing when no stream is running.
         /// </summary>
-        internal void RestartStreaming()
+        internal void RestartStreaming(IAndroidLogcatDevice device)
         {
-            if (!IsStreaming)
-                return;
-
-            var device = m_Device;
             var onStopped = m_OnStopLiveStream;
             StopStreaming();
             if (device != null)
