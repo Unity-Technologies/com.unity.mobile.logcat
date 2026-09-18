@@ -57,8 +57,8 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         // Starting a second stream without stopping the first should throw
         Assert.Throws(typeof(InvalidOperationException), () => Runtime.LiveStream.StartStreaming(Device, null));
 
-        // Pushing the jar, starting the server and connecting all happen before the
-        // first frame, so this gets a longer timeout than the rest.
+        // The texture, not the frame count, because this test is about the texture
+        // being there to draw. Everything else uses WaitForFirstFrame.
         yield return WaitForCondition("Waiting for the first frame",
             () => Runtime.LiveStream.Texture != null,
             kDefaultTimeout,
@@ -112,10 +112,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     {
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-        yield return WaitForCondition("Waiting for the first frame",
-            () => Runtime.LiveStream.FramesReceived > 0,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForFirstFrame();
 
         var framesBefore = Runtime.LiveStream.FramesReceived;
 
@@ -127,10 +124,8 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         SendKeyEvent("KEYCODE_APP_SWITCH");
         SendKeyEvent("KEYCODE_HOME");
 
-        yield return WaitForCondition("Waiting for frames produced by the screen changing",
-            () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForMoreFrames("Waiting for frames produced by the screen changing",
+            framesBefore, 5);
 
         Log($"Received {Runtime.LiveStream.FramesReceived - framesBefore} frames while the screen was changing");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
@@ -150,10 +145,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-        yield return WaitForCondition("Waiting for the first frame",
-            () => Runtime.LiveStream.FramesReceived > 0,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForFirstFrame();
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
             "Expected the server to report that it can inject input");
@@ -172,10 +164,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         }
         Runtime.LiveStream.SendTouch(AndroidLogcatLiveStream.TouchAction.Up, 0.5f, 0.30f);
 
-        yield return WaitForCondition("Waiting for the screen to react to the injected swipe",
-            () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            kDefaultTimeout,
-            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+        yield return WaitForMoreFrames("Waiting for the screen to react to the injected swipe", framesBefore, 5);
 
         Log($"Injected swipe produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
@@ -198,10 +187,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-        yield return WaitForCondition("Waiting for the first frame",
-            () => Runtime.LiveStream.FramesReceived > 0,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForFirstFrame();
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
             "Expected the server to report that it can inject input");
@@ -214,10 +200,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         // SendKeyPress is what the toolbar's Back / Home / Recents buttons call.
         Runtime.LiveStream.SendKeyPress(AndroidKeyCode.APP_SWITCH);
 
-        yield return WaitForCondition("Waiting for the screen to react to the injected key",
-            () => Runtime.LiveStream.FramesReceived > framesBefore + 5,
-            kDefaultTimeout,
-            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+        yield return WaitForMoreFrames("Waiting for the screen to react to the injected key", framesBefore, 5);
 
         Log($"Injected key produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
 
@@ -226,10 +209,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         framesBefore = Runtime.LiveStream.FramesReceived;
         Runtime.LiveStream.SendText("unity");
 
-        yield return WaitForCondition("Waiting for the screen to react to injected text",
-            () => Runtime.LiveStream.FramesReceived > framesBefore + 2,
-            kDefaultTimeout,
-            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+        yield return WaitForMoreFrames("Waiting for the screen to react to injected text", framesBefore, 2);
 
         Log($"Injected text produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
@@ -253,10 +233,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-        yield return WaitForCondition("Waiting for the first frame",
-            () => Runtime.LiveStream.FramesReceived > 0,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForFirstFrame();
 
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
             "Expected the server to report that it can inject input");
@@ -272,10 +249,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         for (var i = 0; i < 5; i++)
             Runtime.LiveStream.SendScroll(0.3f, 0.7f, 0f, -3f);
 
-        yield return WaitForCondition("Waiting for the screen to react to the injected scroll",
-            () => Runtime.LiveStream.FramesReceived > framesBefore + 3,
-            kDefaultTimeout,
-            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. {Runtime.LiveStream.Errors}");
+        yield return WaitForMoreFrames("Waiting for the screen to react to the injected scroll", framesBefore, 3);
 
         Log($"Injected scroll produced {Runtime.LiveStream.FramesReceived - framesBefore} frames");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
@@ -305,13 +279,45 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-        yield return WaitForCondition("Waiting for a frame from a device that was asleep",
-            () => Runtime.LiveStream.FramesReceived > 0,
-            kDefaultTimeout,
-            () => Runtime.LiveStream.Errors);
+        yield return WaitForFirstFrame("Waiting for a frame from a device that was asleep");
 
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
+    }
+
+    /// <summary>
+    /// Waits for the stream to deliver its first frame, which is the earliest a test
+    /// can tell that the server is up, connected and mirroring.
+    /// <para>
+    /// Frames rather than <c>Texture</c>: the texture outlives a stream, so a restart
+    /// would see the previous one and wait for nothing. The frame count is reset by
+    /// every start.
+    /// </para>
+    /// <para>
+    /// Returns the wait instead of yielding it, so that callers keep the single level
+    /// of enumerator the test runner drives.
+    /// </para>
+    /// </summary>
+    private IEnumerator WaitForFirstFrame(string what = "Waiting for the first frame")
+    {
+        return WaitForCondition(what,
+            () => Runtime.LiveStream.FramesReceived > 0,
+            kDefaultTimeout,
+            () => Runtime.LiveStream.Errors);
+    }
+
+    /// <summary>
+    /// Waits for the screen to produce another <paramref name="count"/> frames, which
+    /// is how a test sees that something it injected actually did something. The device
+    /// only sends a frame when the screen changes, so this is the effect, not a clock.
+    /// </summary>
+    private IEnumerator WaitForMoreFrames(string what, int framesBefore, int count)
+    {
+        return WaitForCondition(what,
+            () => Runtime.LiveStream.FramesReceived > framesBefore + count,
+            kDefaultTimeout,
+            () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. " +
+                $"{Runtime.LiveStream.Errors}");
     }
 
     private void SendKeyEvent(string keyCode)
@@ -333,10 +339,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         {
             Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
-            yield return WaitForCondition($"Waiting for a frame on attempt {attempt + 1}",
-                () => Runtime.LiveStream.FramesReceived > 0,
-                kDefaultTimeout,
-                () => Runtime.LiveStream.Errors);
+            yield return WaitForFirstFrame($"Waiting for a frame on attempt {attempt + 1}");
 
             Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
             Assert.IsTrue(Runtime.LiveStream.StopStreaming());
@@ -351,7 +354,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
             maxSize: kMaxSize, maxFps: kMaxFps, displayId: "12345");
 
         yield return WaitForCondition("Waiting for the stream to fail",
-            () => result == AndroidLogcatLiveStream.Result.Failure, 30);
+            () => result == AndroidLogcatLiveStream.Result.Failure, kDefaultTimeout);
 
         var errors = Runtime.LiveStream.Errors;
         Assert.Greater(errors.Length, 0, "Expected an error explaining why the stream failed");
