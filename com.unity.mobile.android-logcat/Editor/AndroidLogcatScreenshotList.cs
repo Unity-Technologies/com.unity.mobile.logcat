@@ -626,13 +626,6 @@ namespace Unity.Android.Logcat
             m_Repaint();
         }
 
-        void OnLiveStreamCompleted(AndroidLogcatLiveStream.Result result)
-        {
-            // Nothing to collect - a live stream leaves no file behind. On failure the
-            // reason is in AndroidLogcatLiveStream.Errors, which its DoGUI shows.
-            m_Repaint();
-        }
-
         /// <summary>
         /// Deleting is confirmed first: the button sits next to the row one clicks to
         /// select it, and the file is gone for good afterwards. The deletion itself is
