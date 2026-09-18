@@ -250,7 +250,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     [UnityTest]
     public IEnumerator CanScrollDeviceScreen()
     {
-        StartActivity("android.settings.SETTINGS");
+        Device.ActivityManager.StartOrResumePackage("com.android.settings");
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 
@@ -288,19 +288,6 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
         Assert.IsTrue(Runtime.LiveStream.StopStreaming());
         SendKeyEvent("KEYCODE_HOME");
-    }
-
-    private void StartActivity(string action)
-    {
-        Runtime.Tools.ADB.Run(new[]
-        {
-            $"-s {Device.Id}",
-            "shell",
-            "am",
-            "start",
-            "-a",
-            action
-        }, $"Failed to start {action} on the device");
     }
 
     /// <summary>
