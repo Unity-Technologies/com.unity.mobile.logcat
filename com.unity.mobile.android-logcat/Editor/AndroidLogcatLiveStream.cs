@@ -93,10 +93,11 @@ namespace Unity.Android.Logcat
             return m_ServerJarPath;
         }
 
-        // Android KeyEvent.META_* flags.
-        const int kMetaShiftOn = 0x1;
-        const int kMetaAltOn = 0x2;
-        const int kMetaCtrlOn = 0x1000;
+        // Android KeyEvent.META_* flags. Both the basic flag and the left variant,
+        // the way a keyboard reports a modifier that is actually held down.
+        const int kMetaShiftOn = 0x1 | 0x40;
+        const int kMetaAltOn = 0x2 | 0x10;
+        const int kMetaCtrlOn = 0x1000 | 0x2000;
 
         // Must stay in step with External/UnityLogcatServer: Protocol.java and the
         // serverProtocolVersion / serverSocketName / serverDevicePath entries in
@@ -256,6 +257,7 @@ namespace Unity.Android.Logcat
         bool m_ShowLogcatWhenServerStarts;
         readonly byte[] m_ControlMessage = new byte[kControlMessageSize];
         bool m_TouchDown;
+        // The modifier keys the device is holding because the user is holding them.
         EventModifiers m_HeldModifiers;
         bool m_ControlWriteFailed;
 
@@ -1483,17 +1485,19 @@ namespace Unity.Android.Logcat
         {
             if (!CanSendInput || GUIUtility.keyboardControl != controlId)
             {
-                // Focus moved away, or the stream went down, between a key going down
-                // and coming back up. Let go of the modifiers rather than leaving the
-                // device holding shift.
-                if (m_HeldModifiers != EventModifiers.None)
-                    ReleaseModifiers();
+                // Focus moved away, or the stream went down, with a modifier held: let
+                // go of it rather than leaving the device holding shift.
+                SyncModifiers(EventModifiers.None);
                 return;
             }
 
             var e = Event.current;
             if (e.type != EventType.KeyDown && e.type != EventType.KeyUp)
                 return;
+
+            // Before whatever this event turns into: the device holds a modifier for as
+            // long as the user does.
+            SyncModifiers(e.modifiers);
 
             // Select all, copy and paste act on the device: they are text editing where
             // the text is, and they do nothing in this window otherwise. The device's
@@ -1516,8 +1520,8 @@ namespace Unity.Android.Logcat
 
             if (TryMapKeyCode(e.keyCode, out var androidKeyCode))
             {
-                SendModifiedKey(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
-                    androidKeyCode, e.modifiers);
+                SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
+                    androidKeyCode, MetaState(e.modifiers));
                 e.Use();
                 return;
             }
@@ -1535,42 +1539,37 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Sends a key with its modifiers pressed on the device around it, rather than
-        /// only named in the key's metaState. A text field extends a selection while the
-        /// shift key is held down: checked on a device, where the same arrow carrying
-        /// META_SHIFT_ON alone moves the cursor without selecting anything.
+        /// Presses and releases modifier keys on the device so that what it holds
+        /// matches what the user holds. A text field extends a selection while shift is
+        /// down and not merely named in a key's metaState - checked on a device - and
+        /// this is how scrcpy does it too, by forwarding the modifier keys themselves.
+        /// <para>
+        /// Ctrl and Cmd are deliberately not among them: those chords stay with the
+        /// Editor apart from the three that are mapped, and pressing Ctrl on the device
+        /// every time someone saves a scene would be its own kind of surprise.
+        /// </para>
         /// </summary>
-        void SendModifiedKey(KeyAction action, AndroidKeyCode keyCode, EventModifiers modifiers)
+        void SyncModifiers(EventModifiers modifiers)
         {
-            var meta = MetaState(modifiers);
+            var wanted = modifiers & (EventModifiers.Shift | EventModifiers.Alt);
+            var changed = wanted ^ m_HeldModifiers;
+            if (changed == EventModifiers.None)
+                return;
 
-            if (action == KeyAction.Down)
+            m_HeldModifiers = wanted;
+            var meta = MetaState(wanted);
+
+            if ((changed & EventModifiers.Shift) != 0)
             {
-                m_HeldModifiers = modifiers & (EventModifiers.Shift | EventModifiers.Alt);
-                if ((m_HeldModifiers & EventModifiers.Shift) != 0)
-                    SendKeyMessage(KeyAction.Down, AndroidKeyCode.SHIFT_LEFT, meta);
-                if ((m_HeldModifiers & EventModifiers.Alt) != 0)
-                    SendKeyMessage(KeyAction.Down, AndroidKeyCode.ALT_LEFT, meta);
+                SendKeyMessage((wanted & EventModifiers.Shift) != 0 ? KeyAction.Down : KeyAction.Up,
+                    AndroidKeyCode.SHIFT_LEFT, meta);
             }
 
-            SendKeyMessage(action, keyCode, meta);
-
-            if (action == KeyAction.Up)
-                ReleaseModifiers();
-        }
-
-        /// <summary>
-        /// Lets go of whatever <see cref="SendModifiedKey"/> pressed - the modifiers the
-        /// key went down with, not the ones held now, so that releasing shift before the
-        /// arrow does not leave the device holding it.
-        /// </summary>
-        void ReleaseModifiers()
-        {
-            if ((m_HeldModifiers & EventModifiers.Alt) != 0)
-                SendKeyMessage(KeyAction.Up, AndroidKeyCode.ALT_LEFT, 0);
-            if ((m_HeldModifiers & EventModifiers.Shift) != 0)
-                SendKeyMessage(KeyAction.Up, AndroidKeyCode.SHIFT_LEFT, 0);
-            m_HeldModifiers = EventModifiers.None;
+            if ((changed & EventModifiers.Alt) != 0)
+            {
+                SendKeyMessage((wanted & EventModifiers.Alt) != 0 ? KeyAction.Down : KeyAction.Up,
+                    AndroidKeyCode.ALT_LEFT, meta);
+            }
         }
 
         /// <summary>
