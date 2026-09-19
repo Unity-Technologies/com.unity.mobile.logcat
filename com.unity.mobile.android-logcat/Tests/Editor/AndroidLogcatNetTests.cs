@@ -1,12 +1,13 @@
+using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using NUnit.Framework;
+using Unity.Android.Logcat;
 using UnityEditor;
 using UnityEditor.Compilation;
-using Assembly = System.Reflection.Assembly;
 
 class AndroidLogcatNetTests
 {
@@ -47,23 +48,52 @@ class AndroidLogcatNetTests
             "System.Core",
             "UnityEngine.ImageConversionModule",
             "UnityEngine.JSONSerializeModule",
-            "UnityEditor.CoreModule",
-            "Unity.Scripting",
+            "UnityEditor.CoreModule"
         });
+#if UNITY_6000_1_OR_NEWER
+        // While running tests in Yamato in logcat package, the active build target is Android
+        // But in unity/unity it's not Android...
+        // That's why we expect this reference conditionally
+        if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
+        {
+            expectedReferences.AddRange(new[]
+            {
+                "UnityEditor.Android.Extensions"
+            });
+        };
+#endif
+
+#if UNITY_7000_0_OR_NEWER
+        expectedReferences.AddRange(new[]
+        {
+            "Unity.Scripting",
+            "UnityEngine.ScriptingModule",
+            "UnityEngine.UICommonModule",
+        });
+#endif
 
         var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
 
-        var references = Assembly.ReflectionOnlyLoadFrom(logcatAssembly.outputPath).GetReferencedAssemblies().Select(a => a.Name);
+        // ReflectionOnlyLoadFrom is unsupported on CoreCLR; inspect the loaded assembly instead.
+
+        var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
+        var errors = new StringBuilder();
+        Console.WriteLine($"Logcat package references:\n{string.Join("\n", references)}");
         foreach (var r in references)
         {
-            Assert.Contains(r, expectedReferences, $"Unexpected reference '{r}'");
-            referencedCount[r]++;
+            if (!expectedReferences.Contains(r))
+                errors.AppendLine($"Unexpected reference '{r}'");
+            else
+                referencedCount[r]++;
         }
 
         foreach (var r in referencedCount)
         {
-            Assert.AreEqual(1, r.Value, $"'{r.Key}' was expected to be referenced once, but was referenced {r.Value} times, please adjust expectations, maybe the reference is no longer needed?");
+            if (r.Value != 1)
+                errors.AppendLine($"'{r.Key}' was expected to be referenced once, but was referenced {r.Value} times, please adjust expectations, maybe the reference is no longer needed?");
         }
+
+        Assert.AreEqual(0, errors.Length, errors.ToString());
     }
 
     /// <summary>
