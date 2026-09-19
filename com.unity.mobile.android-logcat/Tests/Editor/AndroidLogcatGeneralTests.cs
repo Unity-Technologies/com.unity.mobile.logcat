@@ -284,6 +284,24 @@ class AndroidLogcatGeneralTests
     }
 
     /// <summary>
+    /// The server jar is a build output, not something a clone comes with, and every
+    /// live stream test needs it on the device. Checking it here means one quick
+    /// failure saying what to run, rather than a device fixture timing out later.
+    /// </summary>
+    [Test]
+    public void LiveStreamServerJarIsBuilt()
+    {
+        var path = AndroidLogcatLiveStream.GetServerJarPath().Replace("\\", "/");
+
+        // Resolved through the Package Manager, so it follows the package wherever it
+        // is installed from.
+        StringAssert.EndsWith("External~/unity-logcat-server.jar", path);
+        FileAssert.Exists(path,
+            "Was the server jar packed? It is built by 'gradlew dexJar' in External/UnityLogcatServer, " +
+            "which copies it into the package.");
+    }
+
+    /// <summary>
     /// The details file written beside a screenshot. No device: the fake one answers
     /// the same calls, and the rest is a file next to a file.
     /// </summary>
