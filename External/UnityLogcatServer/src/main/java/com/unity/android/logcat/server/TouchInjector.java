@@ -95,55 +95,21 @@ public final class TouchInjector {
             downTimes[pointerId] = 0;
         }
 
-        // Clamped rather than rejected: a drag that runs off the edge of the view in the
-        // Editor should still read as a swipe to the edge of the screen.
-        float x = clamp01(nx) * size.getWidth();
-        float y = clamp01(ny) * size.getHeight();
+        MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+        properties.id = pointerId;
+        properties.toolType = MotionEvent.TOOL_TYPE_FINGER;
 
-        MotionEvent.PointerProperties[] properties = new MotionEvent.PointerProperties[1];
-        properties[0] = new MotionEvent.PointerProperties();
-        properties[0].id = pointerId;
-        properties[0].toolType = MotionEvent.TOOL_TYPE_FINGER;
-
-        MotionEvent.PointerCoords[] coords = new MotionEvent.PointerCoords[1];
-        coords[0] = new MotionEvent.PointerCoords();
-        coords[0].x = x;
-        coords[0].y = y;
+        MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
+        coords.x = size.pixelX(nx);
+        coords.y = size.pixelY(ny);
         // A touchscreen event with zero pressure and size reads as a hover on some
         // devices, so an active pointer always reports some.
-        coords[0].pressure = motionAction == MotionEvent.ACTION_UP ? 0f : Math.max(clamp01(pressure), 0.1f);
-        coords[0].size = 1f;
+        coords.pressure = motionAction == MotionEvent.ACTION_UP
+            ? 0f
+            : Math.min(Math.max(pressure, 0.1f), 1f);
+        coords.size = 1f;
 
-        MotionEvent event = MotionEvent.obtain(
-            downTime,
-            now,
-            motionAction,
-            1, // pointerCount
-            properties,
-            coords,
-            0, // metaState
-            0, // buttonState
-            1f, // xPrecision
-            1f, // yPrecision
-            0, // deviceId
-            0, // edgeFlags
-            InputDevice.SOURCE_TOUCHSCREEN,
-            0); // flags
-
-        try {
-            if (displayId != 0) {
-                InputManagerWrapper.setDisplayId(event, displayId);
-            }
-            inputManager.injectInputEvent(event);
-        } finally {
-            event.recycle();
-        }
-    }
-
-    private static float clamp01(float value) {
-        if (value < 0f) {
-            return 0f;
-        }
-        return value > 1f ? 1f : value;
+        inputManager.inject(InputManagerWrapper.obtainMotionEvent(
+            downTime, now, motionAction, properties, coords, InputDevice.SOURCE_TOUCHSCREEN), displayId);
     }
 }

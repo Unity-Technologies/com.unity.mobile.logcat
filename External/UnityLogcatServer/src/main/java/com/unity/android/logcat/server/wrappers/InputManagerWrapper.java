@@ -4,6 +4,7 @@ import com.unity.android.logcat.server.Logger;
 
 import android.annotation.SuppressLint;
 import android.view.InputEvent;
+import android.view.MotionEvent;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -85,6 +86,51 @@ public final class InputManagerWrapper {
         } catch (ReflectiveOperationException | IllegalArgumentException e) {
             setDisplayIdUnavailable = true;
             Logger.w("setDisplayId is unavailable, input will go to the default display", e);
+        }
+    }
+
+    /**
+     * A one pointer {@link MotionEvent} at the given position. The arguments the
+     * injectors never vary are fixed here, so that the long {@code obtain} call is
+     * written once.
+     */
+    public static MotionEvent obtainMotionEvent(long downTime, long eventTime, int action,
+            MotionEvent.PointerProperties properties, MotionEvent.PointerCoords coords, int source) {
+        return MotionEvent.obtain(
+            downTime,
+            eventTime,
+            action,
+            1, // pointerCount
+            new MotionEvent.PointerProperties[] { properties },
+            new MotionEvent.PointerCoords[] { coords },
+            0, // metaState
+            0, // buttonState
+            1f, // xPrecision
+            1f, // yPrecision
+            0, // deviceId
+            0, // edgeFlags
+            source,
+            0); // flags
+    }
+
+    /**
+     * Sends an event to the display being captured and recycles it, which is what every
+     * injector does with one.
+     *
+     * @return false when the event was rejected, which the caller should not treat as fatal.
+     */
+    public boolean inject(InputEvent event, int displayId) {
+        try {
+            if (displayId != 0) {
+                setDisplayId(event, displayId);
+            }
+            return injectInputEvent(event);
+        } finally {
+            if (event instanceof MotionEvent) {
+                // A KeyEvent from KeyCharacterMap is not ours to recycle, and recycling
+                // one that is still referenced is worse than not recycling it at all.
+                ((MotionEvent) event).recycle();
+            }
         }
     }
 

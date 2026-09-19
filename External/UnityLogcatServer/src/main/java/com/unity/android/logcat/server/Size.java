@@ -27,6 +27,27 @@ public final class Size {
     }
 
     /**
+     * Maps a normalized horizontal position, 0..1, onto these pixels. Clamped rather
+     * than rejected: a drag that runs off the edge of the view in the Editor should
+     * still read as a swipe to the edge of the screen.
+     */
+    public float pixelX(float normalized) {
+        return clamp01(normalized) * width;
+    }
+
+    /** The same down the display. */
+    public float pixelY(float normalized) {
+        return clamp01(normalized) * height;
+    }
+
+    private static float clamp01(float value) {
+        if (value < 0f) {
+            return 0f;
+        }
+        return value > 1f ? 1f : value;
+    }
+
+    /**
      * Scales down so that the longest side is at most {@code maxSize}, preserving
      * aspect ratio. A {@code maxSize} of 0 means "do not scale", but the result is
      * aligned either way.

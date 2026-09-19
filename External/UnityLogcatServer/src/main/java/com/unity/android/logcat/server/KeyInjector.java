@@ -90,9 +90,6 @@ public final class KeyInjector {
     }
 
     private void inject(KeyEvent event) {
-        if (displayId != 0) {
-            InputManagerWrapper.setDisplayId(event, displayId);
-        }
-        inputManager.injectInputEvent(event);
+        inputManager.inject(event, displayId);
     }
 }

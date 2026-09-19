@@ -51,22 +51,15 @@ public final class ScrollInjector {
 
         long now = SystemClock.uptimeMillis();
 
-        // Clamped rather than rejected, as for touch: the Editor sends where the mouse
-        // is, and the edge of the view should read as the edge of the screen.
-        float x = clamp01(nx) * size.getWidth();
-        float y = clamp01(ny) * size.getHeight();
+        MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+        properties.id = 0;
+        properties.toolType = MotionEvent.TOOL_TYPE_MOUSE;
 
-        MotionEvent.PointerProperties[] properties = new MotionEvent.PointerProperties[1];
-        properties[0] = new MotionEvent.PointerProperties();
-        properties[0].id = 0;
-        properties[0].toolType = MotionEvent.TOOL_TYPE_MOUSE;
-
-        MotionEvent.PointerCoords[] coords = new MotionEvent.PointerCoords[1];
-        coords[0] = new MotionEvent.PointerCoords();
-        coords[0].x = x;
-        coords[0].y = y;
-        coords[0].setAxisValue(MotionEvent.AXIS_VSCROLL, vScroll);
-        coords[0].setAxisValue(MotionEvent.AXIS_HSCROLL, hScroll);
+        MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
+        coords.x = size.pixelX(nx);
+        coords.y = size.pixelY(ny);
+        coords.setAxisValue(MotionEvent.AXIS_VSCROLL, vScroll);
+        coords.setAxisValue(MotionEvent.AXIS_HSCROLL, hScroll);
 
         // A mouse has to be hovering over a view before a scroll means anything to it,
         // and nothing else moves this pointer: the Editor sends a position with every
@@ -75,40 +68,14 @@ public final class ScrollInjector {
         inject(MotionEvent.ACTION_SCROLL, now, properties, coords);
     }
 
-    private void inject(int action, long now, MotionEvent.PointerProperties[] properties,
-            MotionEvent.PointerCoords[] coords) {
-        MotionEvent event = MotionEvent.obtain(
-            now, // downTime - a scroll has no gesture behind it, so it is its own
-            now,
-            action,
-            1, // pointerCount
-            properties,
-            coords,
-            0, // metaState
-            0, // buttonState
-            1f, // xPrecision
-            1f, // yPrecision
-            0, // deviceId
-            0, // edgeFlags
-            InputDevice.SOURCE_MOUSE,
-            0); // flags
+    private void inject(int action, long now, MotionEvent.PointerProperties properties,
+            MotionEvent.PointerCoords coords) {
+        // downTime is now: a scroll has no gesture behind it, so it is its own.
+        MotionEvent event = InputManagerWrapper.obtainMotionEvent(
+            now, now, action, properties, coords, InputDevice.SOURCE_MOUSE);
 
-        try {
-            if (displayId != 0) {
-                InputManagerWrapper.setDisplayId(event, displayId);
-            }
-            if (!inputManager.injectInputEvent(event)) {
-                Logger.d("Scroll event " + action + " was rejected");
-            }
-        } finally {
-            event.recycle();
+        if (!inputManager.inject(event, displayId)) {
+            Logger.d("Scroll event " + action + " was rejected");
         }
-    }
-
-    private static float clamp01(float value) {
-        if (value < 0f) {
-            return 0f;
-        }
-        return value > 1f ? 1f : value;
     }
 }
