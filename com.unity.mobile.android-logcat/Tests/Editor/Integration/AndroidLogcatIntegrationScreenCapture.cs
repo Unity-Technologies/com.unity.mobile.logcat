@@ -51,7 +51,15 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.Greater(texture.width, 10);
         Assert.Greater(texture.height, 10);
 
-        CopyToArtifacts("screenshot.png", Runtime.CaptureScreenshot.GetLatestImagePath(Device));
+        var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
+        CopyToArtifacts("screenshot.png", path);
+
+        var info = AndroidLogcatScreenshotInfo.Load(path);
+        Assert.IsNotNull(info, "Expected details to be saved beside the screenshot");
+        Assert.AreEqual(Device.Id, info.deviceId);
+        Assert.AreEqual(Device.APILevel, info.apiLevel);
+        Assert.Greater(info.displayWidth, 0, $"Expected a display size, got {info.displayWidth}x{info.displayHeight}");
+        CopyToArtifacts("screenshot.json", AndroidLogcatScreenshotInfo.PathFor(path));
     }
 
     /// <summary>
@@ -118,6 +126,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.IsTrue(Runtime.CaptureScreenshot.DeleteScreenshot(path), "Delete should have succeeded");
 
         Assert.IsFalse(File.Exists(path), "The file should be gone from disk");
+        Assert.IsNull(AndroidLogcatScreenshotInfo.Load(path), "Its details should go with it");
         Assert.AreEqual(before - 1, Runtime.CaptureScreenshot.GetScreenshots().Count,
             "The list should have lost the row");
         // It was the displayed one, so the image is cleared rather than left pointing at
@@ -160,6 +169,9 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
             "A renamed file no longer counts towards its device");
         Assert.AreEqual(renamed, Runtime.CaptureScreenshot.SelectedImagePath,
             "The displayed image should follow the rename");
+
+        Assert.IsNull(AndroidLogcatScreenshotInfo.Load(path), "The details should not be left behind");
+        Assert.IsNotNull(AndroidLogcatScreenshotInfo.Load(renamed), "The details should follow the image");
 
         var entry = screenshots.First(s => s.Path == renamed);
         Assert.AreEqual(newName, entry.Name);

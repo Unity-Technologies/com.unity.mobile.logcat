@@ -13,6 +13,7 @@ namespace Unity.Android.Logcat
             internal AndroidBridge.ADB adb;
             internal string imagePath;
             internal string deviceId;
+            internal IAndroidLogcatDevice device;
             internal Action onCompleted;
         }
 
@@ -24,6 +25,7 @@ namespace Unity.Android.Logcat
             internal string reservedPath;
             internal string deviceId;
             internal string error;
+            internal AndroidLogcatScreenshotInfo info;
             internal Action onCompleted;
         }
 
@@ -262,6 +264,8 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
+            AndroidLogcatScreenshotInfo.Move(path, target);
+
             // Rescan, so the list picks up the new name and reorders.
             InvalidateScreenshots();
 
@@ -289,6 +293,8 @@ namespace Unity.Android.Logcat
                 UnityEngine.Debug.LogError($"Failed to delete '{path}'.\n{ex.Message}");
                 return false;
             }
+
+            AndroidLogcatScreenshotInfo.Delete(path);
 
             // Rescan, so the list loses the row.
             InvalidateScreenshots();
@@ -321,6 +327,7 @@ namespace Unity.Android.Logcat
                     // Allocated here on the main thread, before the task is scheduled.
                     imagePath = AllocateImagePath(device),
                     deviceId = device.Id,
+                    device = device,
                     onCompleted = onCompleted
                 },
                 ExecuteScreenCapture,
@@ -340,6 +347,9 @@ namespace Unity.Android.Logcat
                 reservedPath = i.imagePath,
                 deviceId = i.deviceId,
                 error = error,
+                // Read here because it asks the device; written on the main thread,
+                // where JsonUtility is safe to call.
+                info = result ? AndroidLogcatScreenshotInfo.Create(i.device) : null,
                 onCompleted = i.onCompleted
             };
         }
@@ -355,6 +365,8 @@ namespace Unity.Android.Logcat
             // never will. Only this one is released - reservations for captures still
             // in flight have to stand, which is why they do not live in the cache.
             m_ReservedPaths.Remove(captureResult.reservedPath);
+
+            captureResult.info?.Save(captureResult.imagePath);
 
             // Drop the cache so the new file appears in the list, and so a failed
             // capture's entry disappears again. One rescan per capture, rather than per

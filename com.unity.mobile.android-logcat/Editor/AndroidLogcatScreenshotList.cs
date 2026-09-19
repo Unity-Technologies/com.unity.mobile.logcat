@@ -27,6 +27,12 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Delete = new GUIContent("×",
                 "Delete this screenshot from disk");
 
+            internal static readonly GUIContent Device = new GUIContent("Device",
+                "The device the screenshot was captured from, as its details file records it.");
+            internal static readonly GUIContent OS = new GUIContent("OS",
+                "The Android version the device was running.");
+            internal static readonly GUIContent DisplaySize = new GUIContent("Display size",
+                "The device's display resolution at the time, which is not the image size when the display was rotated or its size overridden.");
             internal static readonly GUIContent ImageSize = new GUIContent("Image size",
                 "Size of the image in pixels, which is the resolution of the display it was captured from.");
             internal static readonly GUIContent FileSize = new GUIContent("File size",
@@ -65,6 +71,7 @@ namespace Unity.Android.Logcat
         readonly Action m_Repaint;
 
         const string kRenameControlName = "ScreenshotRenameField";
+        const string kUndefined = "Undefined";
 
         readonly Splitter m_Splitter = new Splitter(Splitter.SplitterType.Horizontal, kMinWidth, kMaxWidth);
         Vector2 m_Scroll;
@@ -90,6 +97,7 @@ namespace Unity.Android.Logcat
         string m_PreviewPath;
         long m_PreviewFileSize;
         DateTime m_PreviewWriteTime;
+        AndroidLogcatScreenshotInfo m_PreviewInfo;
 
         // Zoom and pan for the preview. Its own, separate from the live view's: they
         // show different things, and a zoom set on one is rarely the one wanted on the
@@ -176,12 +184,33 @@ namespace Unity.Android.Logcat
             const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
             var y = rc.y;
 
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device,
+                m_PreviewInfo == null ? kUndefined : Value(m_PreviewInfo.deviceName),
+                m_PreviewInfo?.deviceId);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS,
+                m_PreviewInfo == null ? kUndefined : OperatingSystem(m_PreviewInfo));
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize,
+                m_PreviewInfo == null || m_PreviewInfo.displayWidth <= 0
+                    ? kUndefined
+                    : $"{m_PreviewInfo.displayWidth}x{m_PreviewInfo.displayHeight}");
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize,
                 $"{m_PreviewTexture.width}x{m_PreviewTexture.height}");
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize,
                 EditorUtility.FormatBytes(m_PreviewFileSize));
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured,
                 m_PreviewWriteTime.ToString("g"), m_PreviewWriteTime.ToString("F"));
+        }
+
+        static string Value(string value)
+        {
+            return string.IsNullOrEmpty(value) ? kUndefined : value;
+        }
+
+        static string OperatingSystem(AndroidLogcatScreenshotInfo info)
+        {
+            if (string.IsNullOrEmpty(info.osVersion))
+                return info.apiLevel > 0 ? $"API {info.apiLevel}" : kUndefined;
+            return info.apiLevel > 0 ? $"Android {info.osVersion} (API {info.apiLevel})" : $"Android {info.osVersion}";
         }
 
         /// <summary>
@@ -206,9 +235,10 @@ namespace Unity.Android.Logcat
             if (texture.LoadImage(File.ReadAllBytes(path)))
             {
                 m_PreviewTexture = texture;
-                var info = new FileInfo(path);
-                m_PreviewFileSize = info.Length;
-                m_PreviewWriteTime = info.LastWriteTime;
+                var file = new FileInfo(path);
+                m_PreviewFileSize = file.Length;
+                m_PreviewWriteTime = file.LastWriteTime;
+                m_PreviewInfo = AndroidLogcatScreenshotInfo.Load(path);
             }
             else
             {
@@ -224,6 +254,7 @@ namespace Unity.Android.Logcat
             m_PreviewPath = null;
             m_PreviewFileSize = 0;
             m_PreviewWriteTime = default;
+            m_PreviewInfo = null;
         }
 
         /// <summary>

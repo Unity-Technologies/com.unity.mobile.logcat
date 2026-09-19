@@ -34,7 +34,7 @@ The toolbar contains options to control the Screen Capture tool.
 | **Capture**             | If **Screen Capture Mode** is **Screenshot**, this captures a screenshot from the Android device. If **Screen Capture Mode** is **Video**, this begins video recording.<br/>Ctrl+Shift+S (Cmd+Shift+S on macOS) captures a screenshot while this window has focus. |
 | **Stop**                | Stops video recording.<br/>This option only appears while the Screen Capture tool is recording a video. |
 | **Open**                | Opens the screen capture using the application associate with the file extension. The file extension is `.png` for screenshots and `.mp4` for videos. |
-| **Save As**             | Saves the screen capture as a file on your computer.         |
+| **Save As**             | Saves the screen capture as a file on your computer. A screenshot's details file is saved next to the copy. |
 
 ## Capture list
 
@@ -95,11 +95,16 @@ The zoom of the live view and the zoom of the screenshots are separate, and both
 
 This section appears to the right of the image while a screenshot is selected.
 
-| **Property**    | **Description**                                              |
-| --------------- | ------------------------------------------------------------ |
-| **Image size**  | The size of the image in pixels, which is the resolution of the display it was captured from. |
-| **File size**   | The size of the `.png` file on disk.                         |
-| **Captured**    | When the file was last written. Hover over it for the full date and time. |
+| **Property**       | **Description**                                              |
+| ------------------ | ------------------------------------------------------------ |
+| **Device**         | The device the screenshot was captured from. Hover over it for the device id. |
+| **OS**             | The Android version and API level the device was running.    |
+| **Display size**   | The device's display resolution when the screenshot was taken. This differs from **Image size** if the display was rotated or its size overridden. |
+| **Image size**     | The size of the image in pixels.                             |
+| **File size**      | The size of the `.png` file on disk.                         |
+| **Captured**       | When the file was last written. Hover over it for the full date and time. |
+
+**Device**, **OS** and **Display size** come from the details file saved next to the screenshot, so they read `Undefined` for a screenshot captured before this package wrote one, or for an image added to the folder by hand.
 
 ## Live view details
 

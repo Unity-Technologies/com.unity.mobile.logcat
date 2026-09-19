@@ -284,6 +284,60 @@ class AndroidLogcatGeneralTests
     }
 
     /// <summary>
+    /// The details file written beside a screenshot. No device: the fake one answers
+    /// the same calls, and the rest is a file next to a file.
+    /// </summary>
+    [Test]
+    public void ScreenshotInfoRoundTripsAndFollowsTheImage()
+    {
+        var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+        System.IO.Directory.CreateDirectory(directory);
+
+        var image = System.IO.Path.Combine(directory, "unittest-info_1.png").Replace("\\", "/");
+        var renamed = System.IO.Path.Combine(directory, "unittest-info-renamed.png").Replace("\\", "/");
+
+        try
+        {
+            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(image),
+                "A screenshot with no details file has nothing to read");
+
+            var device = new AndroidLogcatFakeDevice90("unittest-device");
+            device.SetRawDisplayInfo("Physical size: 1080x2400\nOverride size: 540x1200");
+
+            var info = AndroidLogcatScreenshotInfo.Create(device);
+            Assert.AreEqual("unittest-device", info.deviceId);
+            // An overridden size is what the device composes, so that is what a
+            // screenshot of it was taken at.
+            Assert.AreEqual(540, info.displayWidth);
+            Assert.AreEqual(1200, info.displayHeight);
+
+            info.Save(image);
+            FileAssert.Exists(AndroidLogcatScreenshotInfo.PathFor(image));
+
+            var loaded = AndroidLogcatScreenshotInfo.Load(image);
+            Assert.AreEqual(AndroidLogcatScreenshotInfo.kVersion, loaded.version);
+            Assert.AreEqual(info.deviceId, loaded.deviceId);
+            Assert.AreEqual(info.deviceName, loaded.deviceName);
+            Assert.AreEqual(info.capturedAt, loaded.capturedAt);
+            Assert.AreEqual(info.displayWidth, loaded.displayWidth);
+            Assert.AreEqual(info.displayHeight, loaded.displayHeight);
+
+            AndroidLogcatScreenshotInfo.Move(image, renamed);
+            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(image),
+                "The details should have moved with the image");
+            Assert.AreEqual(info.deviceId, AndroidLogcatScreenshotInfo.Load(renamed).deviceId);
+
+            AndroidLogcatScreenshotInfo.Delete(renamed);
+            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(renamed));
+        }
+        finally
+        {
+            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(image));
+            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(renamed));
+        }
+    }
+
+    /// <summary>
     /// The zoom of the live view and the screenshot preview. No device and no GUI: what
     /// the wheel and the drag do to the view is arithmetic that can simply be called.
     /// </summary>
