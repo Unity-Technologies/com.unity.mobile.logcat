@@ -33,8 +33,6 @@ class AndroidLogcatNetTests
     [Test]
     public void ValidateAssemblyReferences()
     {
-        Assert.AreEqual(BuildTarget.Android, EditorUserBuildSettings.activeBuildTarget, "Android must be an active target for UNITY_ANDROID to be defined.");
-
         var logcatAssembly = GetLogcatAssembly();
 
         var expectedReferences = new List<string>(new[]
@@ -53,10 +51,16 @@ class AndroidLogcatNetTests
             "UnityEditor.CoreModule"
         });
 #if UNITY_6000_1_OR_NEWER
-        expectedReferences.AddRange(new[]
+        // While running tests in Yamato in logcat package, the active build target is Android
+        // But in unity/unity it's not Android...
+        // That's why we expect this reference conditionally
+        if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
         {
-            "UnityEditor.Android.Extensions"
-        });
+            expectedReferences.AddRange(new[]
+            {
+                "UnityEditor.Android.Extensions"
+            });
+        };
 #endif
 
 #if UNITY_7000_0_OR_NEWER
