@@ -24,6 +24,20 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// The same, widened to hold the values it is given - a device name is longer
+        /// than anything the live view shows - and capped the same way, so a narrow
+        /// window keeps its image rather than losing it to the column.
+        /// </summary>
+        internal static float WidthFor(Rect area, string[] values)
+        {
+            var widest = 0.0f;
+            foreach (var value in values)
+                widest = Mathf.Max(widest, Mathf.Ceil(EditorStyles.miniLabel.CalcSize(new GUIContent(value)).x));
+
+            return Mathf.Min(Mathf.Max(kWidth, kLabelWidth + widest + kMargin), area.width * 0.4f);
+        }
+
+        /// <summary>
         /// The column's rect, against the image rather than the right edge of the area:
         /// the image is centred in what is left over, so the gap beside it varies.
         /// </summary>

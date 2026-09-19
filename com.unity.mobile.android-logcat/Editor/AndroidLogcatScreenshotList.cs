@@ -95,9 +95,7 @@ namespace Unity.Android.Logcat
         // image. Only the selected path is shared.
         Texture2D m_PreviewTexture;
         string m_PreviewPath;
-        long m_PreviewFileSize;
-        DateTime m_PreviewWriteTime;
-        AndroidLogcatScreenshotInfo m_PreviewInfo;
+        PreviewDetails m_PreviewDetails;
 
         // Zoom and pan for the preview. Its own, separate from the live view's: they
         // show different things, and a zoom set on one is rarely the one wanted on the
@@ -167,8 +165,8 @@ namespace Unity.Android.Logcat
 
             // The same column the live view draws, so the two modes look alike. Taken
             // out of the area before the image is fitted, or the image would be drawn
-            // underneath it.
-            var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc);
+            // underneath it, and sized to its text, or a device name is cut in half.
+            var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc, m_PreviewDetails.Values);
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             var imageBox = m_Viewer.DoGUI(imageArea,
@@ -183,27 +181,47 @@ namespace Unity.Android.Logcat
         {
             const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
             var y = rc.y;
+            var details = m_PreviewDetails;
 
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device,
-                m_PreviewInfo == null ? kUndefined : Value(m_PreviewInfo.deviceName),
-                m_PreviewInfo?.deviceId);
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS,
-                m_PreviewInfo == null ? kUndefined : OperatingSystem(m_PreviewInfo));
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize,
-                m_PreviewInfo == null || m_PreviewInfo.displayWidth <= 0
-                    ? kUndefined
-                    : $"{m_PreviewInfo.displayWidth}x{m_PreviewInfo.displayHeight}");
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize,
-                $"{m_PreviewTexture.width}x{m_PreviewTexture.height}");
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize,
-                EditorUtility.FormatBytes(m_PreviewFileSize));
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured,
-                m_PreviewWriteTime.ToString("g"), m_PreviewWriteTime.ToString("F"));
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device, details.Device, details.DeviceId);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS, details.OS);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, details.DisplaySize);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize, details.ImageSize);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize, details.FileSize);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured, details.Captured, details.CapturedInFull);
         }
 
-        static string Value(string value)
+        /// <summary>
+        /// What the details column says about the selected screenshot, worked out when
+        /// it is loaded: the column is measured against these before the image is
+        /// fitted, and none of it changes while the same screenshot is shown.
+        /// </summary>
+        class PreviewDetails
         {
-            return string.IsNullOrEmpty(value) ? kUndefined : value;
+            internal string Device { get; }
+            internal string DeviceId { get; }
+            internal string OS { get; }
+            internal string DisplaySize { get; }
+            internal string ImageSize { get; }
+            internal string FileSize { get; }
+            internal string Captured { get; }
+            internal string CapturedInFull { get; }
+            internal string[] Values { get; }
+
+            internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
+            {
+                Device = info == null || string.IsNullOrEmpty(info.deviceName) ? kUndefined : info.deviceName;
+                DeviceId = info?.deviceId;
+                OS = info == null ? kUndefined : OperatingSystem(info);
+                DisplaySize = info == null || info.displayWidth <= 0
+                    ? kUndefined
+                    : $"{info.displayWidth}x{info.displayHeight}";
+                ImageSize = $"{texture.width}x{texture.height}";
+                FileSize = EditorUtility.FormatBytes(file.Length);
+                Captured = file.LastWriteTime.ToString("g");
+                CapturedInFull = file.LastWriteTime.ToString("F");
+                Values = new[] { Device, OS, DisplaySize, ImageSize, FileSize, Captured };
+            }
         }
 
         static string OperatingSystem(AndroidLogcatScreenshotInfo info)
@@ -235,10 +253,8 @@ namespace Unity.Android.Logcat
             if (texture.LoadImage(File.ReadAllBytes(path)))
             {
                 m_PreviewTexture = texture;
-                var file = new FileInfo(path);
-                m_PreviewFileSize = file.Length;
-                m_PreviewWriteTime = file.LastWriteTime;
-                m_PreviewInfo = AndroidLogcatScreenshotInfo.Load(path);
+                m_PreviewDetails = new PreviewDetails(texture, new FileInfo(path),
+                    AndroidLogcatScreenshotInfo.Load(path));
             }
             else
             {
@@ -252,9 +268,7 @@ namespace Unity.Android.Logcat
                 UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
             m_PreviewTexture = null;
             m_PreviewPath = null;
-            m_PreviewFileSize = 0;
-            m_PreviewWriteTime = default;
-            m_PreviewInfo = null;
+            m_PreviewDetails = null;
         }
 
         /// <summary>
