@@ -256,6 +256,7 @@ namespace Unity.Android.Logcat
         bool m_ShowLogcatWhenServerStarts;
         readonly byte[] m_ControlMessage = new byte[kControlMessageSize];
         bool m_TouchDown;
+        EventModifiers m_HeldModifiers;
         bool m_ControlWriteFailed;
 
         Texture2D m_Texture;
@@ -343,6 +344,7 @@ namespace Unity.Android.Logcat
             m_ServerPid = 0;
             m_ControlWriteFailed = false;
             m_TouchDown = false;
+            m_HeldModifiers = EventModifiers.None;
             m_FrameWidth = 0;
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
@@ -1480,7 +1482,14 @@ namespace Unity.Android.Logcat
         void HandleKeyboardInput(int controlId)
         {
             if (!CanSendInput || GUIUtility.keyboardControl != controlId)
+            {
+                // Focus moved away, or the stream went down, between a key going down
+                // and coming back up. Let go of the modifiers rather than leaving the
+                // device holding shift.
+                if (m_HeldModifiers != EventModifiers.None)
+                    ReleaseModifiers();
                 return;
+            }
 
             var e = Event.current;
             if (e.type != EventType.KeyDown && e.type != EventType.KeyUp)
@@ -1507,8 +1516,8 @@ namespace Unity.Android.Logcat
 
             if (TryMapKeyCode(e.keyCode, out var androidKeyCode))
             {
-                SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
-                    androidKeyCode, MetaState(e.modifiers));
+                SendModifiedKey(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
+                    androidKeyCode, e.modifiers);
                 e.Use();
                 return;
             }
@@ -1523,6 +1532,45 @@ namespace Unity.Android.Logcat
                 SendTextMessage(e.character.ToString());
                 e.Use();
             }
+        }
+
+        /// <summary>
+        /// Sends a key with its modifiers pressed on the device around it, rather than
+        /// only named in the key's metaState. A text field extends a selection while the
+        /// shift key is held down: checked on a device, where the same arrow carrying
+        /// META_SHIFT_ON alone moves the cursor without selecting anything.
+        /// </summary>
+        void SendModifiedKey(KeyAction action, AndroidKeyCode keyCode, EventModifiers modifiers)
+        {
+            var meta = MetaState(modifiers);
+
+            if (action == KeyAction.Down)
+            {
+                m_HeldModifiers = modifiers & (EventModifiers.Shift | EventModifiers.Alt);
+                if ((m_HeldModifiers & EventModifiers.Shift) != 0)
+                    SendKeyMessage(KeyAction.Down, AndroidKeyCode.SHIFT_LEFT, meta);
+                if ((m_HeldModifiers & EventModifiers.Alt) != 0)
+                    SendKeyMessage(KeyAction.Down, AndroidKeyCode.ALT_LEFT, meta);
+            }
+
+            SendKeyMessage(action, keyCode, meta);
+
+            if (action == KeyAction.Up)
+                ReleaseModifiers();
+        }
+
+        /// <summary>
+        /// Lets go of whatever <see cref="SendModifiedKey"/> pressed - the modifiers the
+        /// key went down with, not the ones held now, so that releasing shift before the
+        /// arrow does not leave the device holding it.
+        /// </summary>
+        void ReleaseModifiers()
+        {
+            if ((m_HeldModifiers & EventModifiers.Alt) != 0)
+                SendKeyMessage(KeyAction.Up, AndroidKeyCode.ALT_LEFT, 0);
+            if ((m_HeldModifiers & EventModifiers.Shift) != 0)
+                SendKeyMessage(KeyAction.Up, AndroidKeyCode.SHIFT_LEFT, 0);
+            m_HeldModifiers = EventModifiers.None;
         }
 
         /// <summary>

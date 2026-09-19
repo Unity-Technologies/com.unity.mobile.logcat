@@ -25,6 +25,7 @@ While the live view is streaming, the Screen Capture tool sends your input to th
 | Click or drag the image                    | A tap or a swipe at the same place on the device's screen.    |
 | Scroll the wheel over the image            | Scrolls whatever is under the pointer.                        |
 | Click the image, then type                 | Sends the keys you type, including Backspace, Enter, Tab and the arrow keys. |
+| Shift and an arrow key                     | Extends the selection in a text field on the device, as it would on the device's own keyboard. |
 | Escape                                     | Sends the Back key.                                           |
 | Ctrl+A, Ctrl+C, Ctrl+V (Cmd on macOS)      | Select all, copy and paste on the device, using the device's own clipboard. |
 | The **◄**, **●** and **■** buttons          | Sends the Back, Home and Overview keys. Useful on a device that uses gesture navigation, where the mirrored image has no navigation bar to tap. |
