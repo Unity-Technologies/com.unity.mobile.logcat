@@ -1,8 +1,5 @@
-using UnityEditor;
 using UnityEditor.Android;
 using UnityEditor.Build;
-using UnityEditor.Build.Reporting;
-using UnityEngine;
 
 namespace Unity.Android.Logcat
 {

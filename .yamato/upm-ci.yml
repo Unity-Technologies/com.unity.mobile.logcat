@@ -45,7 +45,7 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
   commands:
     - unity-downloader-cli -u {{ editor.version }} {{ platform.install_editor_command }} {{ module_support.install_command }} --wait
     - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/Integration/csc.rsp
-    - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+    - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --extra-editor-arg=-buildTarget --extra-editor-arg=Android --artifacts_path=upm-ci~/test-results/editor-android/
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:
     {{ platform.name }}_{{ editor.version }}_{{ module_support.name }}_logs:

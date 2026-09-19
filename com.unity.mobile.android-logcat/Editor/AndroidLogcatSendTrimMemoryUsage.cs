@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor.Android;
 
 namespace Unity.Android.Logcat
 {

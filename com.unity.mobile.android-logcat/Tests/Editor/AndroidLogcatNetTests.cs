@@ -33,6 +33,8 @@ class AndroidLogcatNetTests
     [Test]
     public void ValidateAssemblyReferences()
     {
+        Assert.AreEqual(BuildTarget.Android, EditorUserBuildSettings.activeBuildTarget, "Android must be an active target for UNITY_ANDROID to be defined.");
+
         var logcatAssembly = GetLogcatAssembly();
 
         var expectedReferences = new List<string>(new[]
@@ -50,6 +52,12 @@ class AndroidLogcatNetTests
             "UnityEngine.JSONSerializeModule",
             "UnityEditor.CoreModule"
         });
+#if UNITY_6000_1_OR_NEWER
+        expectedReferences.AddRange(new[]
+        {
+            "UnityEditor.Android.Extensions"
+        });
+#endif
 
 #if UNITY_7000_0_OR_NEWER
         expectedReferences.AddRange(new[]
@@ -57,7 +65,6 @@ class AndroidLogcatNetTests
             "Unity.Scripting",
             "UnityEngine.ScriptingModule",
             "UnityEngine.UICommonModule",
-            "UnityEditor.Android.Extensions",
         });
 #endif
 
