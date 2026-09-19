@@ -602,13 +602,8 @@ namespace Unity.Android.Logcat
         {
             // Screenshots are always saved under the Screenshot mode's remembered
             // location, whatever mode the window happens to be in.
-            var settings = m_Runtime.UserSettings.CaptureSettings;
-            const AndroidLogcatScreenCaptureWindow.Mode mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot;
-
-            var directory = AndroidLogcatUtilities.SaveFileAs(path, "Save Screenshot",
-                settings.GetLastSaveLocation(mode));
-            if (directory != null)
-                settings.SetLastSaveLocation(mode, directory);
+            m_Runtime.UserSettings.CaptureSettings.SaveFileAs(
+                AndroidLogcatScreenCaptureWindow.Mode.Screenshot, path, "Save Screenshot");
         }
 
         /// <summary>

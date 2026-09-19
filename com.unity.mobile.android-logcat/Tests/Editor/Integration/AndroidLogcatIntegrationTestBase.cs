@@ -135,6 +135,17 @@ internal class AndroidLogcatIntegrationTestBase
     /// local run leaves behind to look at. A frame count only says the screen changed;
     /// the picture says what it changed to.
     /// </summary>
+    /// <summary>
+    /// Waits out a stretch of time, for what cannot be watched for directly: a screen
+    /// settling after an app opens, a device falling asleep, a recording running long
+    /// enough to be worth stopping.
+    /// </summary>
+    protected IEnumerator WaitFor(double seconds, string what)
+    {
+        var start = DateTime.Now;
+        return WaitForCondition(what, () => (DateTime.Now - start).TotalSeconds > seconds);
+    }
+
     protected static void ReportArtifact(string fileName, Texture2D texture)
     {
         ReportArtifact(fileName, texture.EncodeToPNG());

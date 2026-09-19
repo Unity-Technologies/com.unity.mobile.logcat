@@ -83,8 +83,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         // on a static screen legitimately sends nothing at all - see
         // StreamsFramesWhileScreenChanges. What matters here is that the stream stays
         // up rather than dying once the first frame is through.
-        var start = DateTime.Now;
-        yield return WaitForCondition("Letting the stream run", () => (DateTime.Now - start).TotalSeconds > 2.0);
+        yield return WaitFor(2.0, "Letting the stream run");
 
         Assert.IsTrue(Runtime.LiveStream.IsStreaming, "Expected the stream to still be running");
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors, "Did not expect errors while streaming");
@@ -151,8 +150,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
             "Expected the server to report that it can inject input");
 
         // Let the home screen settle, so the frames counted below are the swipe's.
-        var settle = DateTime.Now;
-        yield return WaitForCondition("Letting the screen settle", () => (DateTime.Now - settle).TotalSeconds > 1.5);
+        yield return WaitFor(1.5, "Letting the screen settle");
 
         var framesBefore = Runtime.LiveStream.FramesReceived;
         Runtime.LiveStream.SendTouch(AndroidLogcatLiveStream.TouchAction.Down, 0.5f, 0.85f);
@@ -192,8 +190,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
             "Expected the server to report that it can inject input");
 
-        var settle = DateTime.Now;
-        yield return WaitForCondition("Letting the screen settle", () => (DateTime.Now - settle).TotalSeconds > 1.5);
+        yield return WaitFor(1.5, "Letting the screen settle");
 
         // Recents animates in, so it is a visible effect that needs no app installed.
         var framesBefore = Runtime.LiveStream.FramesReceived;
@@ -238,8 +235,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.IsTrue(Runtime.LiveStream.ControlSupported,
             "Expected the server to report that it can inject input");
 
-        var settle = DateTime.Now;
-        yield return WaitForCondition("Letting Settings settle", () => (DateTime.Now - settle).TotalSeconds > 2.0);
+        yield return WaitFor(2.0, "Letting Settings settle");
 
         var framesBefore = Runtime.LiveStream.FramesReceived;
 
@@ -273,9 +269,7 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     {
         Device.Sleep();
 
-        var settle = DateTime.Now;
-        yield return WaitForCondition("Letting the device fall asleep",
-            () => (DateTime.Now - settle).TotalSeconds > 1.5);
+        yield return WaitFor(1.5, "Letting the device fall asleep");
 
         Runtime.LiveStream.StartStreaming(Device, null, maxSize: kMaxSize, maxFps: kMaxFps);
 

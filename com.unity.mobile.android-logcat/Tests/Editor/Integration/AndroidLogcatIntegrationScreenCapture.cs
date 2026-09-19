@@ -34,16 +34,22 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         SafeDeleteOnHost(VideoPathOnHost);
     }
 
+    /// <summary>
+    /// Takes a screenshot and waits for it to land, which is where most of these tests
+    /// start. Returns the wait rather than yielding it, so the capture is queued as
+    /// soon as this is called.
+    /// </summary>
+    private IEnumerator CaptureScreenshot(string what = "Waiting for screenshot")
+    {
+        var completed = false;
+        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
+        return WaitForCondition(what, () => completed);
+    }
+
     [UnityTest]
     public IEnumerator CanGetScreenshot()
     {
-        var completed = false;
-        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () =>
-        {
-            completed = true;
-        });
-
-        yield return WaitForCondition("Waiting for screenshot", () => completed);
+        yield return CaptureScreenshot();
 
         var texture = Runtime.CaptureScreenshot.ImageTexture;
         Assert.IsNotNull(texture, "Expected to have a valid texture");
@@ -76,9 +82,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
 
         for (var i = 0; i < 2; i++)
         {
-            var completed = false;
-            Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
-            yield return WaitForCondition($"Waiting for screenshot {i + 1}", () => completed);
+            yield return CaptureScreenshot($"Waiting for screenshot {i + 1}");
         }
 
         var screenshots = Runtime.CaptureScreenshot.GetScreenshots();
@@ -115,9 +119,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     [UnityTest]
     public IEnumerator CanDeleteScreenshot()
     {
-        var completed = false;
-        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
-        yield return WaitForCondition("Waiting for screenshot", () => completed);
+        yield return CaptureScreenshot();
 
         var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
         Assert.IsTrue(File.Exists(path));
@@ -146,9 +148,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     [UnityTest]
     public IEnumerator CanRenameScreenshot()
     {
-        var completed = false;
-        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => completed = true);
-        yield return WaitForCondition("Waiting for screenshot", () => completed);
+        yield return CaptureScreenshot();
 
         var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
         var prefix = AndroidLogcatUtilities.SanitizeFileName(Device.Id);
@@ -179,9 +179,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.AreEqual(0, entry.Number);
 
         // Renaming onto a name that already exists must refuse rather than overwrite.
-        var second = false;
-        Runtime.CaptureScreenshot.QueueScreenCapture(Device, () => second = true);
-        yield return WaitForCondition("Waiting for a second screenshot", () => second);
+        yield return CaptureScreenshot("Waiting for a second screenshot");
         var other = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
 
         LogAssert.Expect(LogType.Error, new Regex("already exists"));
@@ -224,8 +222,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         yield return WaitForCondition("Waiting for Android's screenrecord to become active",
             () => Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
 
-        var start = DateTime.Now;
-        yield return WaitForCondition("Recording video", () => (DateTime.Now - start).TotalSeconds > 5.0f);
+        yield return WaitFor(5.0, "Recording video");
         var result = Runtime.CaptureVideo.StopRecording();
         Assert.IsTrue(result, "Failed to stop the recording");
         Assert.AreEqual(AndroidLogcatCaptureVideo.Result.Success, recordingResult);

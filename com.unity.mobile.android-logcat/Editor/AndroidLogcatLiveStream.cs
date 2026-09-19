@@ -823,6 +823,12 @@ namespace Unity.Android.Logcat
             }
         }
 
+        static void WriteUInt16BE(byte[] buffer, int offset, int value)
+        {
+            buffer[offset] = (byte)(value >> 8);
+            buffer[offset + 1] = (byte)value;
+        }
+
         static int ReadInt32BE(byte[] buffer, int offset)
         {
             return (buffer[offset] << 24)
@@ -932,17 +938,27 @@ namespace Unity.Android.Logcat
             if (device == null || string.IsNullOrEmpty(target))
                 return;
 
+            RunAdbQuietly(new[]
+            {
+                $"-s {device.Id}",
+                "shell",
+                // Quoted so the target reaches the device's shell whole, glob and all,
+                // rather than anything on this side of adb taking an interest in it.
+                // rm -f is silent when nothing matches.
+                $"\"rm -f {target}\""
+            }, $"Failed to delete {target} from the device");
+        }
+
+        /// <summary>
+        /// Runs an adb command and never throws. Everything that goes through here is
+        /// tidying up after a stream, where what is left behind if it fails is a file in
+        /// a temporary folder or a port forward that goes away with the adb server.
+        /// </summary>
+        void RunAdbQuietly(string[] args, string failureMessage)
+        {
             try
             {
-                m_Runtime.Tools.ADB.Run(new[]
-                {
-                    $"-s {device.Id}",
-                    "shell",
-                    // Quoted so the target reaches the device's shell whole, glob and
-                    // all, rather than anything on this side of adb taking an interest
-                    // in it. rm -f is silent when nothing matches.
-                    $"\"rm -f {target}\""
-                }, $"Failed to delete {target} from the device");
+                m_Runtime.Tools.ADB.Run(args, failureMessage);
             }
             catch (Exception ex)
             {
@@ -961,22 +977,13 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return;
 
-            try
+            RunAdbQuietly(new[]
             {
-                m_Runtime.Tools.ADB.Run(new[]
-                {
-                    $"-s {device.Id}",
-                    "forward",
-                    "--remove",
-                    $"tcp:{port}"
-                }, $"Failed to remove the adb port forward for tcp:{port}");
-            }
-            catch (Exception ex)
-            {
-                // Not worth failing the stop over: the forward goes away with the adb
-                // server, and a leaked one only occupies a local port.
-                AndroidLogcatInternalLog.Log(ex.Message);
-            }
+                $"-s {device.Id}",
+                "forward",
+                "--remove",
+                $"tcp:{port}"
+            }, $"Failed to remove the adb port forward for tcp:{port}");
         }
 
         /// <summary>
@@ -1327,44 +1334,45 @@ namespace Unity.Android.Logcat
 
         void SendTouchAt(TouchAction action, Rect videoRect, Vector2 mousePosition)
         {
-            // Clamped, not rejected: a swipe that overshoots the edge of the view should
-            // still read as a swipe to the edge of the screen. GUI y grows downward and
-            // so does the device y, so there is nothing to flip.
-            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
-            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
-            SendTouchMessage(action, x, y);
+            var position = PositionOnScreen(videoRect, mousePosition);
+            SendTouchMessage(action, position.x, position.y);
         }
 
         void SendScrollAt(Rect videoRect, Vector2 mousePosition, Vector2 delta)
         {
-            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
-            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
+            var position = PositionOnScreen(videoRect, mousePosition);
 
             // Unity's scroll delta grows downward, where Android's VSCROLL is notches
             // away from the user, so the vertical sign flips. Horizontal is passed
             // through: both count rightward as positive.
-            SendScrollMessage(x, y,
+            SendScrollMessage(position.x, position.y,
                 delta.x / kUnityScrollLinesPerNotch,
                 -delta.y / kUnityScrollLinesPerNotch);
         }
 
+        /// <summary>
+        /// Where a mouse position falls on the device screen, 0..1. Clamped, not
+        /// rejected: a swipe that overshoots the edge of the view should still read as a
+        /// swipe to the edge of the screen. GUI y grows downward and so does the device
+        /// y, so there is nothing to flip.
+        /// </summary>
+        static Vector2 PositionOnScreen(Rect videoRect, Vector2 mousePosition)
+        {
+            return new Vector2(
+                Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width),
+                Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height));
+        }
+
         void SendTouchMessage(TouchAction action, float x, float y)
         {
-            var nx = (int)Mathf.Round(x * kNormalizedMax);
-            var ny = (int)Mathf.Round(y * kNormalizedMax);
-            // Full pressure. The server drops it to 0 for an Up by itself.
-            var pressure = (int)kNormalizedMax;
-
             var message = m_ControlMessage;
             message[0] = (byte)ControlMessage.Touch;
             message[1] = (byte)action;
             message[2] = 0; // pointer id - a mouse is a single finger
-            message[3] = (byte)(nx >> 8);
-            message[4] = (byte)nx;
-            message[5] = (byte)(ny >> 8);
-            message[6] = (byte)ny;
-            message[7] = (byte)(pressure >> 8);
-            message[8] = (byte)pressure;
+            WriteUInt16BE(message, 3, ToNormalized(x));
+            WriteUInt16BE(message, 5, ToNormalized(y));
+            // Full pressure. The server drops it to 0 for an Up by itself.
+            WriteUInt16BE(message, 7, (int)kNormalizedMax);
 
             SendControlMessage(message, 9, "touch");
         }
@@ -1378,21 +1386,20 @@ namespace Unity.Android.Logcat
             if (h == 0 && v == 0)
                 return;
 
-            var nx = (int)Mathf.Round(x * kNormalizedMax);
-            var ny = (int)Mathf.Round(y * kNormalizedMax);
-
             var message = m_ControlMessage;
             message[0] = (byte)ControlMessage.Scroll;
-            message[1] = (byte)(nx >> 8);
-            message[2] = (byte)nx;
-            message[3] = (byte)(ny >> 8);
-            message[4] = (byte)ny;
-            message[5] = (byte)(h >> 8);
-            message[6] = (byte)h;
-            message[7] = (byte)(v >> 8);
-            message[8] = (byte)v;
+            WriteUInt16BE(message, 1, ToNormalized(x));
+            WriteUInt16BE(message, 3, ToNormalized(y));
+            WriteUInt16BE(message, 5, h);
+            WriteUInt16BE(message, 7, v);
 
             SendControlMessage(message, 9, "scroll");
+        }
+
+        /// <summary>A position, 0..1, as the protocol carries it.</summary>
+        static int ToNormalized(float value)
+        {
+            return (int)Mathf.Round(value * kNormalizedMax);
         }
 
         static short ToScrollFixedPoint(float notches)
@@ -1426,8 +1433,7 @@ namespace Unity.Android.Logcat
             // happens on a keystroke or a paste.
             var message = new byte[3 + bytes.Length];
             message[0] = (byte)ControlMessage.Text;
-            message[1] = (byte)(bytes.Length >> 8);
-            message[2] = (byte)bytes.Length;
+            WriteUInt16BE(message, 1, bytes.Length);
             Array.Copy(bytes, 0, message, 3, bytes.Length);
 
             SendControlMessage(message, message.Length, "text");

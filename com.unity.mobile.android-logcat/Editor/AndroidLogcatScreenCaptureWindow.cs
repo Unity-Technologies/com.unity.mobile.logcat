@@ -346,11 +346,7 @@ namespace Unity.Android.Logcat
             if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
             {
                 var settings = m_Runtime.UserSettings.CaptureSettings;
-                var mode = settings.Mode;
-                var directory = AndroidLogcatUtilities.SaveFileAs(TemporaryPath, "Save Screen Capture",
-                    settings.GetLastSaveLocation(mode));
-                if (directory != null)
-                    settings.SetLastSaveLocation(mode, directory);
+                settings.SaveFileAs(settings.Mode, TemporaryPath, "Save Screen Capture");
             }
             EditorGUI.EndDisabledGroup();
         }

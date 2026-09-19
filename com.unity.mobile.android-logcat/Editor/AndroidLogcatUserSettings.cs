@@ -58,6 +58,17 @@ namespace Unity.Android.Logcat
             [SerializeField]
             private string[] m_LastSaveLocation;
 
+            /// <summary>
+            /// Saves a copy of a capture wherever the user picks, starting from where
+            /// they picked last time for this mode, and remembering where that was.
+            /// </summary>
+            internal void SaveFileAs(AndroidLogcatScreenCaptureWindow.Mode mode, string path, string title)
+            {
+                var directory = AndroidLogcatUtilities.SaveFileAs(path, title, GetLastSaveLocation(mode));
+                if (directory != null)
+                    SetLastSaveLocation(mode, directory);
+            }
+
             internal void SetLastSaveLocation(AndroidLogcatScreenCaptureWindow.Mode mode, string path)
             {
                 if (m_LastSaveLocation == null || (int)mode >= m_LastSaveLocation.Length)
