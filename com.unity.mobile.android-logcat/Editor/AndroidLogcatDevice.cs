@@ -53,6 +53,24 @@ namespace Unity.Android.Logcat
 
         internal abstract void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize);
 
+        /// <summary>
+        /// Wakes the device's screen. A display that is off composes nothing, so
+        /// anything that reads the screen - a mirrored display, screenrecord - gets
+        /// nothing at all out of a sleeping device.
+        /// <para>
+        /// Only a wake: a lock screen stays up, and streams perfectly well, because it
+        /// composes like any other screen. Best effort, too - a device that will not
+        /// take it is not an error, since it may well be showing something already.
+        /// </para>
+        /// </summary>
+        internal abstract void WakeUp();
+
+        /// <summary>
+        /// Puts the device's screen to sleep, the counterpart of <see cref="WakeUp"/>
+        /// and best effort in the same way.
+        /// </summary>
+        internal abstract void Sleep();
+
         protected void ParseDisplaySize(string input, out Vector2 displaySize, out Vector2? overridenDisplaySize)
         {
             displaySize = Vector2.zero;
@@ -154,6 +172,7 @@ namespace Unity.Android.Logcat
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
+
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
             : base(new AndroidLogcatActivityManager(adb, deviceId))
         {
@@ -254,6 +273,27 @@ namespace Unity.Android.Logcat
                     m_DisplayName = $"{Manufacturer} {Model} (version: {OSVersion}, abi: {ABI}, sdk: {APILevel}, id: {Id})";
                     return m_DisplayName;
                 }
+            }
+        }
+
+        internal override void WakeUp() => SendPowerKey("KEYCODE_WAKEUP", "Failed to wake the device");
+
+        internal override void Sleep() => SendPowerKey("KEYCODE_SLEEP", "Failed to put the device to sleep");
+
+        void SendPowerKey(string keyCode, string failureMessage)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+
+            var args = $"-s {Id} shell input keyevent {keyCode}";
+            try
+            {
+                var output = m_ADB.Run(new[] { args }, failureMessage);
+                AndroidLogcatInternalLog.Log($"adb {args}\n{output}");
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
             }
         }
 

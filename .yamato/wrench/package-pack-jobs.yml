@@ -26,6 +26,7 @@ package_pack_-_mobile_android-logcat:
       paths:
       - upm-ci~/packages/**/*
   dependencies:
+  - path: .yamato/build-server-jar.yml#build_server_jar
   - path: .yamato/format.yml#check_formatting
   variables:
     UPMCI_ACK_LARGE_PACKAGE: 1

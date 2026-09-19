@@ -29,6 +29,16 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
         get { return m_DeviceId; }
     }
 
+    /// <summary>Nothing to wake.</summary>
+    internal override void WakeUp()
+    {
+    }
+
+    /// <summary>Nothing to put to sleep.</summary>
+    internal override void Sleep()
+    {
+    }
+
     internal override void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize)
     {
         ParseDisplaySize(m_DisplayInfo, out displaySize, out overridenDisplaySize);
@@ -39,9 +49,9 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
         m_DisplayInfo = displayInfo;
     }
 
-    internal override string DisplayName => throw new NotImplementedException();
+    internal override string DisplayName => throw new NotImplementedException(nameof(DisplayName));
 
-    internal override string ShortDisplayName => throw new NotImplementedException();
+    internal override string ShortDisplayName => throw new NotImplementedException(nameof(ShortDisplayName));
 
     protected override string GetTagPriorityAsString(string tag)
     {

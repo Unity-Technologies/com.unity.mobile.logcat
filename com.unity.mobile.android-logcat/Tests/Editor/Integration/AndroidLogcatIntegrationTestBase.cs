@@ -10,7 +10,7 @@ using System.Linq;
 
 internal class AndroidLogcatIntegrationTestBase
 {
-    protected const float kDefaulTimeOut = 10.0f;
+    protected const float kDefaultTimeout = 30.0f;
     private AndroidLogcatRuntime m_Runtime;
     private IAndroidLogcatDevice m_Device;
     private int m_Ticks;
@@ -60,6 +60,22 @@ internal class AndroidLogcatIntegrationTestBase
             throw new Exception("No Android Device connected?");
     }
 
+    /// <summary>
+    /// A device that has dozed off composes nothing, so a mirrored display hands over
+    /// no frames and `screenrecord` never starts - both of which surface as a test
+    /// timing out for reasons that have nothing to do with the code under test. Waking
+    /// it is part of putting the device in a known state, and it is cheap enough to do
+    /// per test rather than once per fixture.
+    /// </summary>
+    [SetUp]
+    protected void WakeDevice()
+    {
+        if (m_Device == null)
+            return;
+
+        m_Device.WakeUp();
+    }
+
     [OneTimeTearDown]
     protected void ShutdownRuntime()
     {
@@ -88,7 +104,7 @@ internal class AndroidLogcatIntegrationTestBase
 #endif
     }
 
-    protected IEnumerator WaitForCondition(string name, Func<bool> condition, float timeOutInSeconds = kDefaulTimeOut, Func<string> additionalErrorMessage = null)
+    protected IEnumerator WaitForCondition(string name, Func<bool> condition, float timeOutInSeconds = kDefaultTimeout, Func<string> additionalErrorMessage = null)
     {
         m_Runtime.OnUpdate();
 
@@ -112,6 +128,46 @@ internal class AndroidLogcatIntegrationTestBase
     protected static void Log(string message)
     {
         Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "{0}", message);
+    }
+
+    /// <summary>
+    /// Saves something into this test's artifacts folder, which Yamato collects and a
+    /// local run leaves behind to look at. A frame count only says the screen changed;
+    /// the picture says what it changed to.
+    /// </summary>
+    /// <summary>
+    /// Waits out a stretch of time, for what cannot be watched for directly: a screen
+    /// settling after an app opens, a device falling asleep, a recording running long
+    /// enough to be worth stopping.
+    /// </summary>
+    protected IEnumerator WaitFor(double seconds, string what)
+    {
+        var start = DateTime.Now;
+        return WaitForCondition(what, () => (DateTime.Now - start).TotalSeconds > seconds);
+    }
+
+    protected static void ReportArtifact(string fileName, Texture2D texture)
+    {
+        ReportArtifact(fileName, texture.EncodeToPNG());
+    }
+
+    protected static void ReportArtifact(string fileName, byte[] contents)
+    {
+        File.WriteAllBytes(Path.Combine(GetOrCreateArtifactsPath(), fileName), contents);
+    }
+
+    protected static void ReportArtifact(string fileName, string contents)
+    {
+        File.WriteAllText(Path.Combine(GetOrCreateArtifactsPath(), fileName), contents);
+    }
+
+    /// <summary>
+    /// The same, for something already written to disk - a screenshot or a recording
+    /// the code under test produced.
+    /// </summary>
+    protected static void CopyToArtifacts(string fileName, string sourcePath)
+    {
+        File.Copy(sourcePath, Path.Combine(GetOrCreateArtifactsPath(), fileName), true);
     }
 
     protected static string GetOrCreateArtifactsPath()
