@@ -11,7 +11,7 @@ test_platforms:
     install_editor_command: -c editor
   - name: mac
     type: Unity::VM::osx
-    image: package-ci/macos-13-arm64:v4.77.0
+    image: package-ci/macos-13-arm64:v4.90.0
     flavor: m1.mac
     model: M1
     move_alias: mv
