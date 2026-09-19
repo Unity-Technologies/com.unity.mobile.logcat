@@ -183,6 +183,12 @@ namespace Unity.Android.Logcat
 
         void OnScreenshotCompleted()
         {
+            // The image lands on disk while the capture is still running, and its
+            // details file only when the capture is integrated here. Selecting the row
+            // in between loads one without the other, and the preview would keep that
+            // for as long as the selection does not change.
+            m_ScreenshotList?.InvalidatePreview();
+
             var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
                 maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
