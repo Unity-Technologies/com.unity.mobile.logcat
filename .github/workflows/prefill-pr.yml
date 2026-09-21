@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   update-pr:
-    runs-on: [ unity-linux-runner ]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Update PR body
