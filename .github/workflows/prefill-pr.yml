@@ -26,7 +26,7 @@ jobs:
 
             const yamatoBadge = "[![Yamato CI](https://img.shields.io/badge/Yamato-CI-blue?logo=unity&logoColor=white)](" + yamatoUrl + ")";
 
-            const buttons = MARKER + "\n" + yamatoBadge + " " + grafanaBadge + "\n" + MARKER;
+            const buttons = MARKER + "\n" + yamatoBadge + "\n" + MARKER;
 
             await github.rest.pulls.update({
               owner: context.repo.owner,
