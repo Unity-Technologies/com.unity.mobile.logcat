@@ -1,0 +1,36 @@
+name: Prefill PR Body
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  update-pr:
+    runs-on: [ unity-linux-runner ]
+
+    steps:
+      - name: Update PR body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MARKER = "<!--Auto generated, don't edit-->";
+
+            const currentBody = context.payload.pull_request.body || "";
+            if (currentBody.includes(MARKER)) return;
+
+            const branch = encodeURIComponent(context.payload.pull_request.head.ref);
+            const yamatoUrl = "https://yamato.ds.unity3d.com/project/277/branch/" + branch + "/recent-jobs";
+
+            const yamatoBadge = "[![Yamato CI](https://img.shields.io/badge/Yamato-CI-blue?logo=unity&logoColor=white)](" + yamatoUrl + ")";
+
+            const buttons = MARKER + "\n" + yamatoBadge + " " + grafanaBadge + "\n" + MARKER;
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: `${buttons}\n\n${currentBody}`
+            });
