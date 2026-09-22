@@ -66,6 +66,7 @@ test_all_trigger:
           only:
             - "master"
   dependencies:
+    - .yamato/format.yml#check_formatting
     - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
     {% for editor in test_editors %}
     - .yamato/upm-integration-ci.yml#test_integration_{{ editor.version }}
