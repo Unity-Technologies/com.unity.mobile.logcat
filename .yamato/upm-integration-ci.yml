@@ -5,7 +5,7 @@
 test_integration_{{ editor.version }}:
   name : Test Integration on {{ editor.version }} Pixel Pro Android 16
   agent:
-      image: mobile/android-windows-unity:v2.8084395
+      image: mobile/android-windows-unity:v2.8585035
       type: Unity::mobile::pixel
       flavor: b1.large
       model: 8pro-Android16
