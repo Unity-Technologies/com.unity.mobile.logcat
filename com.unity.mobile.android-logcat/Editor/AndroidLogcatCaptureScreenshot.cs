@@ -254,6 +254,15 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
+            // Checked before the image moves, so the two cannot end up apart.
+            if (!AndroidLogcatScreenshotInfo.CanWriteBeside(target))
+            {
+                UnityEngine.Debug.LogError(
+                    $"'{Path.GetFileName(AndroidLogcatScreenshotInfo.PathFor(target))}' already exists " +
+                    "and was not written by Android Logcat.");
+                return false;
+            }
+
             try
             {
                 File.Move(path, target);

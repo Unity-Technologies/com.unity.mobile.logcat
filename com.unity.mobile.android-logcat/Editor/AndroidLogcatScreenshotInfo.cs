@@ -79,20 +79,36 @@ namespace Unity.Android.Logcat
             return info != null && info.version > 0 && !string.IsNullOrEmpty(info.capturedAt);
         }
 
-        static bool MayReplace(string path, string what)
+        static bool IsFree(string path)
         {
             if (!File.Exists(path))
                 return true;
 
             try
             {
-                if (IsDetails(JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(File.ReadAllText(path))))
-                    return true;
+                return IsDetails(JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(File.ReadAllText(path)));
             }
             catch (Exception)
             {
                 // Not readable as ours, so certainly not ours.
+                return false;
             }
+        }
+
+        /// <summary>
+        /// Whether details could be written beside <paramref name="imagePath"/>, for a
+        /// caller that has to know before it moves the image there.
+        /// </summary>
+        internal static bool CanWriteBeside(string imagePath)
+        {
+            var path = PathFor(imagePath);
+            return path == null || IsFree(path);
+        }
+
+        static bool MayReplace(string path, string what)
+        {
+            if (IsFree(path))
+                return true;
 
             UnityEngine.Debug.LogWarning($"Not {what} '{path}': it was not written by Android Logcat.");
             return false;

@@ -80,6 +80,59 @@ class AndroidLogcatGeneralTests
         }
     }
 
+    /// <summary>
+    /// A rename moves the details with the image. When something else already holds
+    /// the name the details would take, the rename is refused rather than leaving the
+    /// image under one name and its details under another.
+    /// </summary>
+    [Test]
+    public void RenameIsRefusedWhenTheDetailsNameIsTaken()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        try
+        {
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime);
+
+            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            System.IO.Directory.CreateDirectory(directory);
+
+            var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
+            var taken = System.IO.Path.Combine(directory, "unittest-rename-taken.json").Replace("\\", "/");
+            var renamed = System.IO.Path.Combine(directory, "unittest-rename-free.png").Replace("\\", "/");
+            const string keep = "{\"keep\":\"me\"}";
+
+            System.IO.File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
+            System.IO.File.WriteAllText(taken, keep);
+
+            try
+            {
+                LogAssert.Expect(LogType.Error, new Regex("was not written by Android Logcat"));
+                Assert.IsFalse(captureScreenshot.RenameScreenshot(image, "unittest-rename-taken"),
+                    "The rename should be refused");
+                FileAssert.Exists(image);
+                Assert.AreEqual(keep, System.IO.File.ReadAllText(taken),
+                    "A refused rename should leave the other file alone");
+
+                Assert.IsTrue(captureScreenshot.RenameScreenshot(image, "unittest-rename-free"),
+                    "A name nothing else holds should rename");
+                FileAssert.Exists(renamed);
+            }
+            finally
+            {
+                foreach (var path in new[] { image, taken, renamed })
+                {
+                    if (System.IO.File.Exists(path))
+                        System.IO.File.Delete(path);
+                }
+            }
+        }
+        finally
+        {
+            runtime.Shutdown();
+        }
+    }
+
     [Test]
     public void SettingsRangeTests()
     {
