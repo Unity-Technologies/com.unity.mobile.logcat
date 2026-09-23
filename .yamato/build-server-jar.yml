@@ -1,0 +1,44 @@
+build_server_jar:
+  name: Build live stream server jar
+  agent:
+    type: Unity::VM
+    image: package-ci/ubuntu-22.04:v4
+    flavor: b1.large
+  commands:
+    # The Android module ships everything the build needs: platforms/android-36,
+    # build-tools/36.0.0 and OpenJDK 17. Nothing else has to be provisioned.
+    - unity-downloader-cli -u 6000.0 -c editor -c android --wait
+    # One entry, several lines: Yamato writes each entry to its own script, so an
+    # `export` reaches the lines below it but not the next entry.
+    #
+    # The SDK and JDK are located rather than hardcoded, because the editor layout
+    # differs between platforms. Absolute paths, from $PWD: Gradle resolves a relative
+    # ANDROID_HOME against the project directory - External/UnityLogcatServer - rather
+    # than against the directory this runs in, which is what made the first attempt
+    # fail with "Android SDK not found". `find -L` because those directories can be
+    # symlinks into the editor's own layout, which plain `-type d` would skip.
+    #
+    # Run through `sh` rather than as `./gradlew`, so the job does not depend on the
+    # wrapper's executable bit surviving in git. It is set, but this repo is worked on
+    # from Windows where `core.fileMode` is false, so the bit is invisible there and a
+    # wrapper upgrade can drop it without anyone noticing until this job fails.
+    - |
+      set -e
+      export ANDROID_HOME="$(find -L "$PWD/.Editor" -type d -path '*AndroidPlayer/SDK' | head -1)"
+      export JAVA_HOME="$(find -L "$PWD/.Editor" -type d -path '*AndroidPlayer/OpenJDK' | head -1)"
+      # Echoed so that a layout change shows up here, rather than as a puzzling
+      # failure fifteen seconds later inside Gradle.
+      echo "ANDROID_HOME=$ANDROID_HOME"
+      echo "JAVA_HOME=$JAVA_HOME"
+      test -d "$ANDROID_HOME" || { echo "No Android SDK under $PWD/.Editor"; exit 1; }
+      test -d "$JAVA_HOME" || { echo "No JDK under $PWD/.Editor"; exit 1; }
+      sh External/UnityLogcatServer/gradlew -p External/UnityLogcatServer dexJar
+  artifacts:
+    # The build copies the jar into the package; this is the path the pack job needs
+    # it at, and Yamato restores a dependency's artifacts into the same relative
+    # location in the dependent job's workspace.
+    server_jar:
+      paths:
+        - "com.unity.mobile.android-logcat/External~/unity-logcat-server.jar"
+  # No triggers: this runs as a dependency of the package pack job. Giving it its own
+  # branch trigger would just build the same jar twice per push.
