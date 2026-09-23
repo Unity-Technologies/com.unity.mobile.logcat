@@ -244,7 +244,13 @@ namespace Unity.Android.Logcat
         int m_ForwardedPort = -1;
 
         Thread m_ReaderThread;
-        volatile bool m_Stop;
+        /// <summary>One per stream, so a reader cannot outlive its own session.</summary>
+        sealed class ReaderSession
+        {
+            internal volatile bool Stop;
+        }
+
+        ReaderSession m_Session;
         volatile string m_ReaderError;
         volatile bool m_StreamEnded;
 
@@ -370,7 +376,8 @@ namespace Unity.Android.Logcat
 
             m_Device = device;
             m_OnStopLiveStream = onStopLiveStream;
-            m_Stop = false;
+            var session = new ReaderSession();
+            m_Session = session;
             m_ReaderError = null;
             m_StreamEnded = false;
             m_ControlSupported = false;
@@ -442,7 +449,7 @@ namespace Unity.Android.Logcat
 
                 // Connecting is retried until the server has created its socket, so it
                 // happens on the reader thread rather than stalling the main thread.
-                m_ReaderThread = new Thread(ReadFrames)
+                m_ReaderThread = new Thread(() => ReadFrames(session))
                 {
                     Name = "AndroidLogcatLiveStream",
                     IsBackground = true
@@ -473,7 +480,10 @@ namespace Unity.Android.Logcat
         /// </summary>
         void Shutdown(Result result)
         {
-            m_Stop = true;
+            var session = m_Session;
+            m_Session = null;
+            if (session != null)
+                session.Stop = true;
             // Whatever was waiting for a pid is not getting one now.
             m_ShowLogcatWhenServerStarts = false;
 
@@ -791,14 +801,14 @@ namespace Unity.Android.Logcat
         // Reader thread
         // ------------------------------------------------------------------
 
-        void ReadFrames()
+        void ReadFrames(ReaderSession session)
         {
             try
             {
-                var stream = Connect();
+                var stream = Connect(session);
                 var header = new byte[kFrameHeaderSize];
 
-                while (!m_Stop)
+                while (!session.Stop)
                 {
                     ReadExactly(stream, header, kFrameHeaderSize);
                     // Bytes 0..7 are the presentation timestamp, unused: frames are
@@ -814,6 +824,9 @@ namespace Unity.Android.Logcat
 
                     var payload = RentFrameBuffer(size);
                     ReadExactly(stream, payload, size);
+
+                    if (session != m_Session)
+                        break;
 
                     lock (m_FrameLock)
                     {
@@ -839,12 +852,13 @@ namespace Unity.Android.Logcat
             {
                 // A read failing after Stop was requested is just the connection we
                 // closed ourselves.
-                if (!m_Stop)
+                if (!session.Stop && session == m_Session)
                     m_ReaderError = ex.Message;
             }
             finally
             {
-                m_StreamEnded = true;
+                if (session == m_Session)
+                    m_StreamEnded = true;
             }
         }
 
@@ -854,7 +868,7 @@ namespace Unity.Android.Logcat
         /// not anything is listening on the device yet, so an early attempt shows up as
         /// a connection that is immediately closed rather than as a refused connect.
         /// </summary>
-        NetworkStream Connect()
+        NetworkStream Connect(ReaderSession session)
         {
             var deadline = DateTime.Now.AddMilliseconds(kConnectTimeoutMs);
             var addresses = string.IsNullOrEmpty(TunnelHost) ? AdbServerAddresses() : Resolve(TunnelHost);
@@ -863,7 +877,7 @@ namespace Unity.Android.Logcat
             // reachable is the whole diagnosis when this times out.
             var failures = new Dictionary<IPAddress, string>();
 
-            while (!m_Stop)
+            while (!session.Stop)
             {
                 foreach (var address in addresses)
                 {
@@ -877,7 +891,7 @@ namespace Unity.Android.Logcat
                         client = new TcpClient(address.AddressFamily) { NoDelay = true };
                         lock (m_ConnectionLock)
                         {
-                            if (m_Stop)
+                            if (session.Stop)
                                 throw new OperationCanceledException();
                             // Published before connecting, so that a Stop arriving now can
                             // close the socket and break us out of the attempt.
@@ -917,12 +931,12 @@ namespace Unity.Android.Logcat
                     }
                 }
 
-                if (m_Stop || DateTime.Now >= deadline)
+                if (session.Stop || DateTime.Now >= deadline)
                     break;
                 Thread.Sleep(kConnectRetryDelayMs);
             }
 
-            if (m_Stop)
+            if (session.Stop)
                 throw new OperationCanceledException();
 
             var reasons = failures.Select(f => $"{f.Key}:{port} - {f.Value}");
