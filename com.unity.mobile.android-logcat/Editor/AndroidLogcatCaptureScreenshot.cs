@@ -30,6 +30,11 @@ namespace Unity.Android.Logcat
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
+        // Where captures are kept, and whether previous ones are kept with them. The
+        // Screen Capture window numbers its screenshots and keeps them all; the Layout
+        // Viewer has its own directory holding one.
+        private readonly string m_Directory;
+        private readonly bool m_KeepHistory;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
         private string m_Error;
@@ -123,16 +128,18 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Reserves the next free path, <c>&lt;device_id&gt;_&lt;number&gt;.png</c> under
-        /// <see cref="AndroidLogcatUtilities.GetScreenshotsDirectory"/>, and makes sure
-        /// the directory exists - adb pull will not create it.
+        /// the capture directory, and makes sure it exists - adb pull will not create it.
         /// </summary>
         private string AllocateImagePath(IAndroidLogcatDevice device)
         {
-            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            var directory = m_Directory;
             Directory.CreateDirectory(directory);
 
             var prefix = AndroidLogcatUtilities.SanitizeFileName(device.Id);
             var screenshots = GetScreenshots();
+
+            if (!m_KeepHistory)
+                return AllocateSingleImagePath(directory, prefix);
 
             // Numbering is per device, so only this device's entries count.
             var number = 1;
@@ -148,18 +155,42 @@ namespace Unity.Android.Logcat
             // exists from picking the same number - the list is counted from, not the
             // directory. It is both recorded and added to the live list, so it survives
             // a rescan and is visible to the next allocation either way. The completion
-            // handler releases it. The Layout Viewer can queue captures without waiting
-            // for the previous one, so this is reachable.
+            // handler releases it.
             m_ReservedPaths.Add(path);
             m_Screenshots.Add(new Screenshot(path, prefix, number));
             m_Screenshots.Sort(CompareScreenshots);
             return path;
         }
 
+        /// <summary>
+        /// The single slot of a capture that keeps no history: always the same file,
+        /// with everything captured before it - including a capture of another device -
+        /// deleted, so the directory holds one screenshot and no more.
+        /// </summary>
+        private string AllocateSingleImagePath(string directory, string prefix)
+        {
+            var path = Path.Combine(directory, $"{prefix}_1{GetImageExtension()}").Replace("\\", "/");
+
+            foreach (var screenshot in GetScreenshots())
+            {
+                // Not a capture in flight: that file is about to be written.
+                if (screenshot.Path == path || m_ReservedPaths.Contains(screenshot.Path))
+                    continue;
+                DeleteQuietly(screenshot.Path);
+                AndroidLogcatScreenshotInfo.Delete(screenshot.Path);
+            }
+
+            m_ReservedPaths.Add(path);
+            // Rather than editing the cached list: the deletions above have already
+            // made it wrong, and the rescan puts the reservation back.
+            InvalidateScreenshots();
+            return path;
+        }
+
         private List<Screenshot> ScanScreenshots()
         {
             var screenshots = new List<Screenshot>();
-            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            var directory = m_Directory;
             if (!Directory.Exists(directory))
                 return screenshots;
 
@@ -319,9 +350,11 @@ namespace Unity.Android.Logcat
             return ".png";
         }
 
-        internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime)
+        internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime, string directory, bool keepHistory)
         {
             m_Runtime = runtime;
+            m_Directory = directory;
+            m_KeepHistory = keepHistory;
         }
 
         public void QueueScreenCapture(IAndroidLogcatDevice device, Action onCompleted)
@@ -411,11 +444,10 @@ namespace Unity.Android.Logcat
         /// Records which screenshot is selected without touching
         /// <see cref="ImageTexture"/>, for a window that shows the image itself.
         /// <para>
-        /// The texture here is shared with the Layout Viewer, which draws its node
-        /// bounds over it while holding a hierarchy queried against a particular
-        /// screenshot. Loading a historical screenshot into it from the capture list
-        /// would leave that overlay drawn over an unrelated image, so the list keeps
-        /// its own texture and only the path is shared.
+        /// The texture here is the last capture, which is what a window drawing an
+        /// overlay over it has queried against. Loading a historical screenshot into it
+        /// from the capture list would put that overlay on an unrelated image, so the
+        /// list keeps its own texture and only the path is shared.
         /// </para>
         /// </summary>
         public void SelectImage(string imagePath)

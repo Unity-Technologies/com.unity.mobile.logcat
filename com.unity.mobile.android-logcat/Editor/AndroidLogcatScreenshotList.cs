@@ -11,10 +11,9 @@ namespace Unity.Android.Logcat
     /// splitter that separates it from whatever is being shown on the right.
     /// <para>
     /// One per window rather than one per runtime: the scroll position, the splitter
-    /// width and which row is selected are all view state, and
-    /// <see cref="AndroidLogcatCaptureScreenshot"/> is a runtime-wide singleton shared
-    /// with the Layout Viewer. Files, numbering and the image itself stay there; this
-    /// only decides what to look at.
+    /// width and which row is selected are all view state, while
+    /// <see cref="AndroidLogcatCaptureScreenshot"/> is runtime-wide. Files, numbering
+    /// and the image itself stay there; this only decides what to look at.
     /// </para>
     /// </summary>
     internal class AndroidLogcatScreenshotList
@@ -92,10 +91,9 @@ namespace Unity.Android.Logcat
         int m_ListControlId;
 
         // The selected screenshot, drawn by this window and nothing else. It is
-        // deliberately not AndroidLogcatCaptureScreenshot's texture: that one is shared
-        // with the Layout Viewer, which draws node bounds over it, and swapping it for
-        // a screenshot picked out of this list would put that overlay on an unrelated
-        // image. Only the selected path is shared.
+        // deliberately not AndroidLogcatCaptureScreenshot's texture: that one is the
+        // last capture, and swapping it for a screenshot picked out of this list would
+        // lose it. Only the selected path is shared.
         Texture2D m_PreviewTexture;
         string m_PreviewPath;
         PreviewDetails m_PreviewDetails;
@@ -733,8 +731,7 @@ namespace Unity.Android.Logcat
         /// Deleting is confirmed first: the button sits next to the row one clicks to
         /// select it, and the file is gone for good afterwards. The deletion itself is
         /// AndroidLogcatCaptureScreenshot.DeleteScreenshot; what belongs here is the
-        /// prompt, which the Layout Viewer sharing that instance should not inherit, and
-        /// picking what to select next.
+        /// prompt and picking what to select next.
         /// </summary>
         void ConfirmAndDelete(string path, int row, IAndroidLogcatDevice device)
         {

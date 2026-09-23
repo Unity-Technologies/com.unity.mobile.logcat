@@ -373,7 +373,7 @@ namespace Unity.Android.Logcat
                     Repaint();
             }
             // The list draws the image, not AndroidLogcatCaptureScreenshot: its texture
-            // belongs to the Layout Viewer as much as to this window.
+            // is the last capture rather than the selected row.
             else if (!m_ScreenshotList.DoPreviewGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null

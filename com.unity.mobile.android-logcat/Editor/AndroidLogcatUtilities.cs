@@ -181,7 +181,22 @@ namespace Unity.Android.Logcat
         /// </summary>
         public static string GetScreenshotsDirectory()
         {
-            var path = Path.Combine(Application.dataPath, "..", "Library", "AndroidLogcat", "Screenshots");
+            return GetCaptureDirectory("Screenshots");
+        }
+
+        /// <summary>
+        /// Where the Layout Viewer keeps its screenshot. Its own directory, not the one
+        /// above: that capture belongs to the layout it was queried with and is replaced
+        /// by the next query, so it has no business in the saved screenshot list.
+        /// </summary>
+        public static string GetLayoutViewDirectory()
+        {
+            return GetCaptureDirectory("LayoutView");
+        }
+
+        static string GetCaptureDirectory(string name)
+        {
+            var path = Path.Combine(Application.dataPath, "..", "Library", "AndroidLogcat", name);
             return Path.GetFullPath(path).Replace("\\", "/");
         }
 

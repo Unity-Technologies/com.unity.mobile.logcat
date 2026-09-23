@@ -30,7 +30,8 @@ class AndroidLogcatGeneralTests
             // Built directly rather than taken from the runtime: the test runtime has
             // no screen capture service, and the two calls used here only read the
             // directory - nothing is queued, so nothing needs a device or a dispatcher.
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime);
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
+                AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
 
             var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
             System.IO.Directory.CreateDirectory(directory);
@@ -92,7 +93,8 @@ class AndroidLogcatGeneralTests
         runtime.Initialize();
         try
         {
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime);
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
+                AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
 
             var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
             System.IO.Directory.CreateDirectory(directory);
