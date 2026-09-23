@@ -72,15 +72,22 @@ namespace Unity.Android.Logcat
 
         public static string GetTemporaryPath(IAndroidLogcatDevice device, string name, string extension)
         {
-            string fileName = device != null ? device.Id : "NoDevice";
-            if (device != null)
-            {
-                foreach (var p in Path.GetInvalidFileNameChars())
-                    fileName = fileName.Replace(p, '_');
-            }
+            string fileName = device != null ? SanitizeFileName(device.Id) : "NoDevice";
             fileName = $"{name}_{fileName}{extension}";
             return Path.Combine(Application.dataPath, "..", "Temp", fileName).Replace("\\", "/");
         }
+
+        /// <summary>
+        /// Replaces anything the filesystem will not accept in a file name. A device id
+        /// can be an ip:port, and ':' is not allowed on Windows.
+        /// </summary>
+        public static string SanitizeFileName(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name;
+        }
+
 
         /// <summary>
         /// Get the top activity on the given device.
@@ -481,6 +488,15 @@ namespace Unity.Android.Logcat
             libName = null;
             buildId = null;
             return false;
+        }
+
+        internal static void KillScreenRecordProcess(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return;
+            var pid = GetPidFromPackageName(runtime.Tools.ADB, device, "screenrecord");
+            if (pid != -1)
+                KillProcesss(runtime.Tools.ADB, device, pid);
         }
 
         internal static void ShowAndroidIsNotInstalledMessage()

@@ -3,19 +3,18 @@
 ---
 {% for editor in test_editors %}
 test_integration_{{ editor.version }}:
-  name : Test Integration on {{ editor.version }}
+  name : Test Integration on {{ editor.version }} Pixel Pro Android 16
   agent:
-      type: Unity::mobile::shield
-      image: mobile/android-package-ci-win:latest
-      flavor: b1.medium
+      image: mobile/android-windows-unity:v2.8585035
+      type: Unity::mobile::pixel
+      flavor: b1.large
+      model: 8pro-Android16
   commands:
-    - pip install unity-downloader-cli --index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple --upgrade
+    - gsudo choco install unity-downloader-cli -y -s https://artifactory.prd.it.unity3d.com/artifactory/api/nuget/unity-choco-local
     - unity-downloader-cli -u {{ editor.version }} -c editor -c android --wait
     - curl -s https://artifactory.prd.it.unity3d.com/artifactory/unity-tools-local/utr-standalone/utr.bat --output utr.bat
-    - move ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/csc.rsp
+    - python .yamato/use-packed-package.py TestProjects/SampleProject1 com.unity.mobile.android-logcat
     - |
-       REM Set the IP of the device. In case device gets lost, UTR will try to recconect to ANDROID_DEVICE_CONNECTION
-       set ANDROID_DEVICE_CONNECTION=%BOKKEN_DEVICE_IP%
        set ARTIFACTS_PATH=upm-ci~/test-results/integration-artifacts/
        REM Editor will perform the connection instead of upm script, since editor might use different SDK (and adb)
        ./utr.bat  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
@@ -23,6 +22,8 @@ test_integration_{{ editor.version }}:
     integration_{{ editor.version }}_logs:
       paths:
         - "upm-ci~/test-results/**/*"
+  variables:
+    ANDROID_DEVICE_AVAILABLE: 1
   dependencies:
     - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
 {% endfor %}
