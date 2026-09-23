@@ -339,14 +339,14 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            // With no screenshots to look at, open on the live view rather than on an
-            // empty pane. Once per window, and only when the list is empty: deleting the
-            // last screenshot deliberately leaves nothing selected rather than starting a
-            // stream, and that has to stay true.
+            // With nothing selected - an empty list, or a domain reload, which does not
+            // remember the selected screenshot - open on the live view rather than on an
+            // empty pane. Once per window: deleting the last screenshot deliberately
+            // leaves nothing selected rather than starting a stream.
             if (!m_InitialSelectionDone)
             {
                 m_InitialSelectionDone = true;
-                if (screenshots.Count == 0 && !m_LiveSelected)
+                if (selectedRow < 0)
                 {
                     SelectRow(screenshots, 0, device);
                     selectedRow = 0;
