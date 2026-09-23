@@ -5,6 +5,7 @@
 [Tt]emp/
 [Ss]treaming[Aa]ssets/
 [Ll]ogs/
+LocalTestResults/
 **/UserSettings/**
 .utmp
 .vs
@@ -31,3 +32,6 @@
 .vsconfig
 packages-lock.json
 Tools/CI/bin
+
+# Built from External/UnityLogcatServer by "gradlew dexJar"; CI produces it on demand
+com.unity.mobile.android-logcat/External~/unity-logcat-server.jar
