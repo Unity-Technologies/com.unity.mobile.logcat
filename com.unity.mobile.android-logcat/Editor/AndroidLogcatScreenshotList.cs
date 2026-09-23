@@ -61,6 +61,7 @@ namespace Unity.Android.Logcat
         const float kMinWidth = 150;
         const float kMaxWidth = 400;
         const float kSplitterWidth = 5;
+        const float kMinPreviewWidth = 100;
         const float kScrollbarWidth = 16;
         const float kDeleteButtonWidth = 18;
         const float kDeleteButtonMargin = 2;
@@ -290,7 +291,8 @@ namespace Unity.Android.Logcat
         internal Rect DoGUI(Rect rc, IAndroidLogcatDevice device)
         {
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            var width = settings.ScreenshotListWidth;
+            var width = Mathf.Min(settings.ScreenshotListWidth,
+                Mathf.Max(0, rc.width - kSplitterWidth - kMinPreviewWidth));
 
             var listRect = new Rect(rc.x, rc.y, width, rc.height);
             var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
