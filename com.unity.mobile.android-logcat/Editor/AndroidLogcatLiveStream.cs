@@ -296,6 +296,10 @@ namespace Unity.Android.Logcat
         bool m_TouchDown;
         // The modifier keys the device is holding because the user is holding them.
         EventModifiers m_HeldModifiers;
+        // The keys the device is holding because their key-down was forwarded, so that
+        // their key-up can be forwarded too even when the event that carries it no
+        // longer qualifies for the path that sent the down.
+        readonly Dictionary<KeyCode, AndroidKeyCode> m_HeldKeys = new Dictionary<KeyCode, AndroidKeyCode>();
         bool m_ControlWriteFailed;
 
         Texture2D m_Texture;
@@ -385,6 +389,7 @@ namespace Unity.Android.Logcat
             m_ControlWriteFailed = false;
             m_TouchDown = false;
             m_HeldModifiers = EventModifiers.None;
+            m_HeldKeys.Clear();
             m_FrameWidth = 0;
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
@@ -1738,9 +1743,11 @@ namespace Unity.Android.Logcat
         {
             if (!CanSendInput || GUIUtility.keyboardControl != controlId)
             {
-                // Focus moved away, or the stream went down, with a modifier held: let
-                // go of it rather than leaving the device holding shift.
+                // Focus moved away, or the stream went down, with something held: let
+                // go of it rather than leaving the device holding shift or a key whose
+                // release we will never see.
                 SyncModifiers(EventModifiers.None);
+                ReleaseHeldKeys();
                 return;
             }
 
@@ -1752,6 +1759,17 @@ namespace Unity.Android.Logcat
             // long as the user does.
             SyncModifiers(e.modifiers);
 
+            // A key the device is holding is released on its own key-up, whatever the
+            // modifiers say by then. The user can let go of Ctrl before the C in Ctrl+C,
+            // and the paths below would no longer recognise that event.
+            if (e.type == EventType.KeyUp && m_HeldKeys.TryGetValue(e.keyCode, out var heldKeyCode))
+            {
+                m_HeldKeys.Remove(e.keyCode);
+                SendKeyMessage(KeyAction.Up, heldKeyCode, MetaState(e.modifiers));
+                e.Use();
+                return;
+            }
+
             // Select all, copy and paste act on the device: they are text editing where
             // the text is, and they do nothing in this window otherwise. The device's
             // own clipboard is what is copied to and pasted from - nothing is exchanged
@@ -1762,6 +1780,8 @@ namespace Unity.Android.Logcat
                 // modifier, and META_CTRL_ON is what a text field acts on.
                 SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
                     editingKeyCode, MetaState(e.modifiers) | kMetaCtrlOn);
+                if (e.type == EventType.KeyDown)
+                    m_HeldKeys[e.keyCode] = editingKeyCode;
                 e.Use();
                 return;
             }
@@ -1789,6 +1809,8 @@ namespace Unity.Android.Logcat
             {
                 SendKeyMessage(e.type == EventType.KeyDown ? KeyAction.Down : KeyAction.Up,
                     androidKeyCode, MetaState(e.modifiers));
+                if (e.type == EventType.KeyDown)
+                    m_HeldKeys[e.keyCode] = androidKeyCode;
                 e.Use();
                 return;
             }
@@ -1808,6 +1830,22 @@ namespace Unity.Android.Logcat
         static bool IsPrintable(char c)
         {
             return c != '\0' && !char.IsControl(c);
+        }
+
+        /// <summary>
+        /// Releases every key the device is still holding. Used when the window stops
+        /// being the one the keyboard talks to, where the key-up that would have
+        /// released them is never delivered here.
+        /// </summary>
+        void ReleaseHeldKeys()
+        {
+            if (m_HeldKeys.Count == 0)
+                return;
+
+            foreach (var keyCode in m_HeldKeys.Values)
+                SendKeyMessage(KeyAction.Up, keyCode, 0);
+
+            m_HeldKeys.Clear();
         }
 
         /// <summary>
