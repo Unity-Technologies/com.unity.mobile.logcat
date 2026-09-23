@@ -76,7 +76,7 @@ namespace Unity.Android.Logcat
             fileName = $"{name}_{fileName}{extension}";
             return Path.Combine(Application.dataPath, "..", "Temp", fileName).Replace("\\", "/");
         }
-        
+
         /// <summary>
         /// Replaces anything the filesystem will not accept in a file name. A device id
         /// can be an ip:port, and ':' is not allowed on Windows.
