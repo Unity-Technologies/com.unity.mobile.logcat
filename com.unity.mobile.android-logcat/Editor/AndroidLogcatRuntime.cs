@@ -111,7 +111,7 @@ namespace Unity.Android.Logcat
             m_DeviceQuery = CreateDeviceQuery();
             m_CaptureVideo = CreateScreenRecorder();
             m_CaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
-            m_LayoutCaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetLayoutViewDirectory(), false);
+            m_LayoutCaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetLayoutViewerDirectory(), false);
             m_QueryLayout = CreateQueryLayout();
             m_LiveSream = CreateLiveStream();
 

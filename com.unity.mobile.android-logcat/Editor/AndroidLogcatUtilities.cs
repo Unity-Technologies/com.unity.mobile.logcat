@@ -189,9 +189,9 @@ namespace Unity.Android.Logcat
         /// above: that capture belongs to the layout it was queried with and is replaced
         /// by the next query, so it has no business in the saved screenshot list.
         /// </summary>
-        public static string GetLayoutViewDirectory()
+        public static string GetLayoutViewerDirectory()
         {
-            return GetCaptureDirectory("LayoutView");
+            return GetCaptureDirectory("LayoutViewer");
         }
 
         static string GetCaptureDirectory(string name)
