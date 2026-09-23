@@ -7,6 +7,19 @@ using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
+    /// <summary>
+    /// How the device's screen is rotated. The numbers are Android's own
+    /// Surface.ROTATION_* values, which is what the user_rotation setting takes.
+    /// </summary>
+    internal enum AndroidDeviceRotation
+    {
+        Auto = -1,
+        Rotate0 = 0,
+        Rotate90 = 1,
+        Rotate180 = 2,
+        Rotate270 = 3
+    }
+
     internal abstract class IAndroidLogcatDevice
     {
         internal IAndroidLogcatActivityManager m_ActivityManager;
@@ -52,6 +65,30 @@ namespace Unity.Android.Logcat
         internal abstract string DisplayName { get; }
 
         internal abstract void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize);
+
+        /// <summary>
+        /// Wakes the device's screen. A display that is off composes nothing, so
+        /// anything that reads the screen - a mirrored display, screenrecord - gets
+        /// nothing at all out of a sleeping device.
+        /// <para>
+        /// Only a wake: a lock screen stays up, and streams perfectly well, because it
+        /// composes like any other screen. Best effort, too - a device that will not
+        /// take it is not an error, since it may well be showing something already.
+        /// </para>
+        /// </summary>
+        internal abstract void WakeUp();
+
+        /// <summary>
+        /// Puts the device's screen to sleep, the counterpart of <see cref="WakeUp"/>
+        /// and best effort in the same way.
+        /// </summary>
+        internal abstract void Sleep();
+
+        /// <summary>
+        /// Rotates the device's screen, or with <see cref="AndroidDeviceRotation.Auto"/>
+        /// hands the rotation back to the accelerometer.
+        /// </summary>
+        internal abstract void SetRotation(AndroidDeviceRotation rotation);
 
         protected void ParseDisplaySize(string input, out Vector2 displaySize, out Vector2? overridenDisplaySize)
         {
@@ -154,6 +191,7 @@ namespace Unity.Android.Logcat
         private AndroidBridge.ADB m_ADB;
         private Version m_Version;
         private string m_DisplayName;
+
         internal AndroidLogcatDevice(AndroidBridge.ADB adb, string deviceId)
             : base(new AndroidLogcatActivityManager(adb, deviceId))
         {
@@ -255,6 +293,48 @@ namespace Unity.Android.Logcat
                     return m_DisplayName;
                 }
             }
+        }
+
+        internal override void WakeUp() => SendPowerKey("KEYCODE_WAKEUP", "Failed to wake the device");
+
+        internal override void Sleep() => SendPowerKey("KEYCODE_SLEEP", "Failed to put the device to sleep");
+
+        void SendPowerKey(string keyCode, string failureMessage)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+
+            var args = $"-s {Id} shell input keyevent {keyCode}";
+            try
+            {
+                var output = m_ADB.Run(new[] { args }, failureMessage);
+                AndroidLogcatInternalLog.Log($"adb {args}\n{output}");
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+            }
+        }
+
+        internal override void SetRotation(AndroidDeviceRotation rotation)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+
+            // user_rotation is only obeyed while auto rotation is off, so the two
+            // settings are one operation: turn the accelerometer off and pin the
+            // rotation, or turn it back on and leave the pinned value alone.
+            var auto = rotation == AndroidDeviceRotation.Auto;
+            PutSystemSetting("accelerometer_rotation", auto ? 1 : 0);
+            if (!auto)
+                PutSystemSetting("user_rotation", (int)rotation);
+        }
+
+        void PutSystemSetting(string name, int value)
+        {
+            var args = $"-s {Id} shell settings put system {name} {value}";
+            AndroidLogcatInternalLog.Log($"adb {args}");
+            m_ADB.Run(new[] { args }, $"Failed to set '{name}' to {value}");
         }
 
         internal override void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize)
