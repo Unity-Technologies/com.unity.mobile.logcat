@@ -116,7 +116,10 @@ namespace Unity.Android.Logcat
             m_LastDeviceUsedForAssets = device;
 
             m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
-            m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
+
+            // The screenshots are not tied to a device, so losing one keeps the view.
+            if (string.IsNullOrEmpty(m_Runtime.CaptureScreenshot.SelectedImagePath))
+                m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
 
             m_ScreenshotList.OnDeviceChanged(m_DeviceSelection.SelectedDevice);
         }
