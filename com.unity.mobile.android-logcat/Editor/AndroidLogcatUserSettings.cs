@@ -52,8 +52,22 @@ namespace Unity.Android.Logcat
         {
             [SerializeField]
             internal AndroidLogcatScreenCaptureWindow.Mode Mode;
+            /// <summary>Width of the saved screenshot list, left of the splitter.</summary>
+            [SerializeField]
+            internal float ScreenshotListWidth;
             [SerializeField]
             private string[] m_LastSaveLocation;
+
+            /// <summary>
+            /// Saves a copy of a capture wherever the user picks, starting from where
+            /// they picked last time for this mode, and remembering where that was.
+            /// </summary>
+            internal void SaveFileAs(AndroidLogcatScreenCaptureWindow.Mode mode, string path, string title)
+            {
+                var directory = AndroidLogcatUtilities.SaveFileAs(path, title, GetLastSaveLocation(mode));
+                if (directory != null)
+                    SetLastSaveLocation(mode, directory);
+            }
 
             internal void SetLastSaveLocation(AndroidLogcatScreenCaptureWindow.Mode mode, string path)
             {
@@ -383,7 +397,8 @@ namespace Unity.Android.Logcat
         {
             m_ScreenCaptureSettings = new ScreenCaptureSettings
             {
-                Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot
+                Mode = AndroidLogcatScreenCaptureWindow.Mode.Screenshot,
+                ScreenshotListWidth = AndroidLogcatScreenshotList.kDefaultWidth
             };
             m_ScreenCaptureSettings.ResetLastSaveLocation();
         }
