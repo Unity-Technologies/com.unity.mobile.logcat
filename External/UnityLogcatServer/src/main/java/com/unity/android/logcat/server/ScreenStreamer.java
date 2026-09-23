@@ -164,6 +164,10 @@ public final class ScreenStreamer implements Closeable {
             try {
                 virtualDisplay = displayManager
                     .createVirtualDisplay(VIRTUAL_DISPLAY_NAME, width, height, info.getDisplayId(), surface);
+                if (virtualDisplay == null) {
+                    // Refused rather than thrown, on some devices.
+                    throw new IllegalStateException("createVirtualDisplay returned null");
+                }
                 Logger.d("Mirroring " + info.getSize() + " to " + videoSize + " via DisplayManagerGlobal");
             } catch (Exception displayManagerFailure) {
                 // Expected on some devices and Android versions - the fallback is
