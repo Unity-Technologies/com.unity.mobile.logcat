@@ -10,13 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Unity 6.0 or later is required.
  - Screenshots are now saved to `Library/AndroidLogcat/Screenshots` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
  - The Screen Capture window can be opened from **Window** > **Analysis** > **Android Screen Capture**, as well as from the Android Logcat window's **Tools** menu.
- - The Screen Capture window lists every saved screenshot by file name, next to the image and separated by a draggable splitter. Click a row or use the Up and Down keys to cycle through them, or the cross next to a row to delete that screenshot. Double click a row to open the image, or right click it to show it in Explorer, open it, save a copy elsewhere, or rename it. F2 (Enter on macOS) renames the selected screenshot and Delete (Command+Backspace on macOS) deletes it.
+ - The Screen Capture window now lists every saved screenshot. Click a row or use the Up and Down keys to cycle through them, or the cross next to a row to delete that screenshot.
  - Ctrl+Shift+S, or Cmd+Shift+S on macOS, captures a screenshot while the Screen Capture window has focus. It appears in Edit > Shortcuts under "Android Logcat" and can be rebound there.
- - Capturing a screenshot also writes a `.json` file beside it, recording the device it was captured from and when. It is renamed, deleted and saved with the screenshot, including through **Save As**.
+ - Capturing a screenshot also writes a `.json` file beside it, recording the device it was captured from and when.
  - The details beside a selected screenshot show the device, its Android version and display size, along with the image size, the file size and when it was captured. The device details read `Undefined` for a screenshot saved without them.
- - The screenshot and the live view can be zoomed between 100% and 4000% with Ctrl+Wheel (Cmd+Wheel on macOS), and the zoomed image moved with a Ctrl+middle mouse button drag or with the scrollbars that appear.
- - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags, the scroll wheel and typing are sent to the device as touch, scroll and key events, and Ctrl+A, Ctrl+C and Ctrl+V (Cmd on macOS) select all, copy and paste on the device using its own clipboard, and Back / Home / Overview buttons sit beside the image with the stream details. The details beside the image include the device's display resolution next to the streamed one, so it is clear how much the stream is scaling down. The stream's size, JPEG quality and frame rate cap can be changed in Preferences > Analysis > Android Logcat Settings. Streaming stops when another row is selected or the window is closed, and right clicking the "Live" row offers Reconnect for a stream that stopped on its own.
-
+ - The screenshot and the live view can be zoomed with Ctrl+Wheel (Cmd+Wheel on macOS), and the zoomed image moved with a Ctrl+middle mouse button drag or with the scrollbars that appear.
+ - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags, the scroll wheel and typing are sent to the device as touch, scroll and key events, and Ctrl+A, Ctrl+C and Ctrl+V (Cmd on macOS) select all, copy and paste on the device using its own clipboard, and Back / Home / Overview buttons sit beside the image with the stream details. 
+ 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
  - Periodic device queries no longer occur when no devices are connected and Logcat window is unfocused.
