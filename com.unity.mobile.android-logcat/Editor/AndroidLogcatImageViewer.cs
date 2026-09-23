@@ -7,7 +7,7 @@ namespace Unity.Android.Logcat
     /// <summary>
     /// Zoom and pan for an image drawn into a rect handed down by a window - the live
     /// view and the saved screenshots both draw through it. Ctrl and the wheel zoom,
-    /// Ctrl and a middle mouse drag move the zoomed image, and scrollbars appear with
+    /// Ctrl and a left or middle mouse drag move the zoomed image, and scrollbars appear with
     /// it. Everything else is left alone, because the live view forwards clicks, the
     /// plain wheel and keys to the device.
     /// </summary>
@@ -56,6 +56,7 @@ namespace Unity.Android.Logcat
         // because a step that is a sensible move at 100% is invisible at 4000%.
         const float kWheelDeltaPerNotch = 3.0f;
         const float kNotchesPerDoubling = 4.0f;
+        const int kLeftMouseButton = 0;
         const int kMiddleMouseButton = 2;
         const float kBadgeMargin = 4;
         // Deliberately more than a scrollbar takes. It only bounds how far the image can
@@ -221,7 +222,11 @@ namespace Unity.Android.Logcat
             switch (e.type)
             {
                 case EventType.MouseDown:
-                    if (e.button != kMiddleMouseButton || !IsViewModifier(e) || !IsZoomed)
+                    // The left button as well as the middle one: a trackpad has no
+                    // middle button, so on macOS there would be no way to pan at all.
+                    // The modifier is what keeps a plain drag going to the device.
+                    if ((e.button != kMiddleMouseButton && e.button != kLeftMouseButton)
+                        || !IsViewModifier(e) || !IsZoomed)
                         break;
                     // Not while something else is being dragged - a touch being held on
                     // the device, say.

@@ -84,7 +84,7 @@ A screenshot and the live view are both fitted to the window, which can be too s
 | **Action**                                             | **Result**                                                   |
 | ------------------------------------------------------ | ------------------------------------------------------------ |
 | Ctrl+Wheel (Cmd+Wheel on macOS) over the image          | Zooms between 100% and 4000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
-| Ctrl+Middle mouse button drag (Cmd on macOS)            | Moves the zoomed image, to bring another part of it into view. |
+| Ctrl+Left or middle mouse button drag (Cmd on macOS)    | Moves the zoomed image, to bring another part of it into view. |
 | The scrollbars                                          | The same, and they appear as soon as the image is larger than the space for it. |
 
 Zooming and moving the image only change how you see it. In the live view, the device still receives your clicks, drags and keys at the place on its screen you are pointing at, and the wheel on its own still scrolls the device rather than the view.
