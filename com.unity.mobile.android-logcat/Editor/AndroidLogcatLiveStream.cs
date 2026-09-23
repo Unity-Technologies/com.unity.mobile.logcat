@@ -1766,6 +1766,20 @@ namespace Unity.Android.Logcat
                 return;
             }
 
+            // AltGr is reported as Ctrl+Alt on Windows, so a chord carrying a
+            // printable character is someone typing @ or a currency sign, not a shortcut.
+            if (e.type == EventType.KeyDown && IsPrintable(e.character)
+                && (e.modifiers & EventModifiers.Control) != 0
+                && (e.modifiers & EventModifiers.Alt) != 0)
+            {
+                // The character already says what the layout produced, so the device
+                // must not be holding Alt when it arrives.
+                SyncModifiers(e.modifiers & EventModifiers.Shift);
+                SendTextMessage(e.character.ToString());
+                e.Use();
+                return;
+            }
+
             // Every other Editor shortcut keeps working: Ctrl/Cmd combinations are not
             // forwarded, so Ctrl+S still saves rather than going to the device.
             if ((e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0)
@@ -1784,11 +1798,16 @@ namespace Unity.Android.Logcat
             // only the character knows about the keyboard layout, so letting the device
             // work out the keystrokes from the character is what makes punctuation and
             // non-US layouts come out right.
-            if (e.type == EventType.KeyDown && e.character != '\0' && !char.IsControl(e.character))
+            if (e.type == EventType.KeyDown && IsPrintable(e.character))
             {
                 SendTextMessage(e.character.ToString());
                 e.Use();
             }
+        }
+
+        static bool IsPrintable(char c)
+        {
+            return c != '\0' && !char.IsControl(c);
         }
 
         /// <summary>

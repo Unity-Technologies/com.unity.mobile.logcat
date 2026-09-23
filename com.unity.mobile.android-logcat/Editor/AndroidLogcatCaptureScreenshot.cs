@@ -363,6 +363,21 @@ namespace Unity.Android.Logcat
             };
         }
 
+        static void DeleteQuietly(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            try
+            {
+                File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to delete '{path}': {ex.Message}");
+            }
+        }
+
         private void IntegrateCaptureScreenShot(IAndroidLogcatTaskResult result)
         {
             if (m_CaptureCount > 0)
@@ -376,6 +391,11 @@ namespace Unity.Android.Logcat
             m_ReservedPaths.Remove(captureResult.reservedPath);
 
             captureResult.info?.Save(captureResult.imagePath);
+
+            // A pull that failed part way still leaves what it had written, and the
+            // rescan below would list that as a screenshot.
+            if (string.IsNullOrEmpty(captureResult.imagePath))
+                DeleteQuietly(captureResult.reservedPath);
 
             // Drop the cache so the new file appears in the list, and so a failed
             // capture's entry disappears again. One rescan per capture, rather than per
