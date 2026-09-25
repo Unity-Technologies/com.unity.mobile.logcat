@@ -55,7 +55,7 @@ namespace Unity.Android.Logcat
             var r = rootVisualElement;
             r.Clear();
 
-            var tree = AndroidLogcatUtilities.LoadUXML("Command/AndroidLogcatPlaceholder.uxml");
+            var tree = AndroidLogcatUtilities.LoadUXML("Commands/AndroidLogcatPlaceholder.uxml");
             tree.CloneTree(r);
 
             r.Q<Label>("CommandPreview").text = m_OriginalCommand ?? "";
@@ -115,7 +115,11 @@ namespace Unity.Android.Logcat
                         () => field.value = value);
                 }
 
+#if UNITY_6000_3_OR_NEWER
+                menu.DropDown(field.worldBound, button, DropdownMenuSizeMode.Fixed);
+#else
                 menu.DropDown(field.worldBound, button, true);
+#endif
             })
             { text = "▾" };
 

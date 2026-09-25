@@ -107,7 +107,7 @@ namespace Unity.Android.Logcat
             toolbar.style.flexGrow = 0;
             r.Add(toolbar);
 
-            var tree = AndroidLogcatUtilities.LoadUXML("Command/AndroidLogcatCommands.uxml");
+            var tree = AndroidLogcatUtilities.LoadUXML("Commands/AndroidLogcatCommands.uxml");
             tree.CloneTree(r);
 
             m_FavoritesContainer = r.Q<VisualElement>("FavoritesContainer");

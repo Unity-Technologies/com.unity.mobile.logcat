@@ -49,7 +49,7 @@ namespace Unity.Android.Logcat
             var r = rootVisualElement;
             r.Clear();
 
-            var tree = AndroidLogcatUtilities.LoadUXML("Command/AndroidLogcatAddCommand.uxml");
+            var tree = AndroidLogcatUtilities.LoadUXML("Commands/AndroidLogcatAddCommand.uxml");
             tree.CloneTree(r);
 
             var nameField = r.Q<TextField>("NameField");

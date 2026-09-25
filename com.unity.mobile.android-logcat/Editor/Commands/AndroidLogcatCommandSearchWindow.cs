@@ -63,7 +63,7 @@ namespace Unity.Android.Logcat
             var r = rootVisualElement;
             r.Clear();
 
-            var tree = AndroidLogcatUtilities.LoadUXML("Command/AndroidLogcatCommandSearch.uxml");
+            var tree = AndroidLogcatUtilities.LoadUXML("Commands/AndroidLogcatCommandSearch.uxml");
             tree.CloneTree(r);
 
             m_SearchTextField = r.Q<TextField>("SearchField");
