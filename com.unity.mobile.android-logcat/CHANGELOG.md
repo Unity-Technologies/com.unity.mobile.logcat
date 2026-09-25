@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changes & Improvements:
  - Unity 6.0 or later is required.
+ - Added a Commands window, accessible via the Tools menu in the Android Logcat window. It lets you save, organize, search and run adb commands which don't have a dedicated UI in this package, such as package management, permissions, dumpsys, settings and Meta Quest properties. Commands run asynchronously so the Editor stays responsive, support `<placeholder>` substitution with per-token examples and suggestions, and can be imported and exported as JSON. Edit Mode supports selecting several commands and deleting them in one step.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
