@@ -12,7 +12,7 @@ The live view mirrors the device's display into the Unity Editor. Unlike a scree
 
 The stream stops when you select another row in the list, close the window, or disconnect the device. Selecting a different device restarts the stream against the newly selected one.
 
-The device only sends a frame when its screen changes, so **Frame rate** in the [Live view details](screen-capture-window-reference.md#live-view-details) drops to almost nothing while the device shows a still screen. This is expected: the last frame stays on display.
+The device only sends a frame when its screen changes, so **Frame Rate** in the [Live view details](screen-capture-window-reference.md#live-view-details) drops to almost nothing while the device shows a still screen. This is expected: the last frame stays on display.
 
 If the stream stops on its own, for example because the device restarted, right-click the **Live** row and select **Reconnect**.
 

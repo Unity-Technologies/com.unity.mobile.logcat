@@ -270,7 +270,9 @@ namespace Unity.Android.Logcat
 
             if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
             {
-                UnityEngine.Debug.LogError($"'{newName}' is not a usable file name.");
+                UnityEngine.Debug.LogError($"'{newName}' is not a usable file name. " +
+                    "File names cannot contain \\ / : * ? \" < > | or control characters. " +
+                    "Choose a different name.");
                 return false;
             }
 
@@ -281,7 +283,8 @@ namespace Unity.Android.Logcat
 
             if (File.Exists(target))
             {
-                UnityEngine.Debug.LogError($"'{newName}{GetImageExtension()}' already exists.");
+                UnityEngine.Debug.LogError(
+                    $"'{newName}{GetImageExtension()}' already exists. Choose a different name.");
                 return false;
             }
 
@@ -290,7 +293,7 @@ namespace Unity.Android.Logcat
             {
                 UnityEngine.Debug.LogError(
                     $"'{Path.GetFileName(AndroidLogcatScreenshotInfo.PathFor(target))}' already exists " +
-                    "and was not written by Android Logcat.");
+                    "and was not written by Android Logcat. Choose a different name.");
                 return false;
             }
 

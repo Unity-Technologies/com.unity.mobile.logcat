@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
 
             static readonly string Gestures =
                 $"{kModifier}+Wheel over the image zooms between 100% and 4000%, " +
-                $"{kModifier}+Middle mouse drag moves the zoomed image.";
+                $"{kModifier}+Left or middle mouse drag moves the zoomed image";
 
             internal static GUIContent Zoom(int percent)
             {

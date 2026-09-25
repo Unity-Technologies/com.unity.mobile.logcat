@@ -110,14 +110,16 @@ namespace Unity.Android.Logcat
             if (IsFree(path))
                 return true;
 
-            UnityEngine.Debug.LogWarning($"Not {what} '{path}': it was not written by Android Logcat.");
+            UnityEngine.Debug.LogWarning($"The screenshot details were not {what}: '{path}' already " +
+                "exists and was not written by Android Logcat. Rename or remove that file if Android " +
+                "Logcat should manage it.");
             return false;
         }
 
         internal void Save(string imagePath)
         {
             var path = PathFor(imagePath);
-            if (!MayReplace(path, "overwriting"))
+            if (!MayReplace(path, "saved"))
                 return;
 
             try
@@ -157,7 +159,7 @@ namespace Unity.Android.Logcat
         {
             if (!Both(fromImagePath, toImagePath, out var from, out var to))
                 return;
-            if (!MayReplace(to, "overwriting"))
+            if (!MayReplace(to, "moved"))
                 return;
 
             try
@@ -176,7 +178,7 @@ namespace Unity.Android.Logcat
         {
             if (!Both(fromImagePath, toImagePath, out var from, out var to))
                 return;
-            if (!MayReplace(to, "overwriting"))
+            if (!MayReplace(to, "copied"))
                 return;
 
             try
@@ -201,7 +203,7 @@ namespace Unity.Android.Logcat
             var path = PathFor(imagePath);
             if (path == null || !File.Exists(path))
                 return;
-            if (!MayReplace(path, "deleting"))
+            if (!MayReplace(path, "removed"))
                 return;
 
             try

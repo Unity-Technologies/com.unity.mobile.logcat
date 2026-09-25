@@ -162,13 +162,13 @@ namespace Unity.Android.Logcat
 
         static class Styles
         {
-            internal static readonly GUIContent DisplaySize = new GUIContent("Display size",
+            internal static readonly GUIContent DisplaySize = new GUIContent("Display Size",
                 "Resolution of the display being mirrored, as the frames report it. The streamed " +
                 "image is this scaled down to fit Max Size, so the two rows together say how much " +
                 "detail the stream is giving up.");
-            internal static readonly GUIContent StreamSize = new GUIContent("Stream size",
+            internal static readonly GUIContent StreamSize = new GUIContent("Stream Size",
                 "Size of the streamed image, which is the device display scaled down to fit max_size.");
-            internal static readonly GUIContent FrameRate = new GUIContent("Frame rate",
+            internal static readonly GUIContent FrameRate = new GUIContent("Frame Rate",
                 "Frames arriving per second. A mirrored display only produces a frame when the screen changes, so an idle device sends almost none.");
             internal static readonly GUIContent Bandwidth = new GUIContent("Bandwidth",
                 "Megabits per second arriving over adb.");
@@ -202,19 +202,21 @@ namespace Unity.Android.Logcat
                 "Local TCP port adb forwards to that socket.");
             internal static readonly GUIContent ServerOnDevice = new GUIContent("Server",
                 "Where the server jar was pushed on the device.");
-            internal static readonly GUIContent ServerPid = new GUIContent("Server pid",
+            internal static readonly GUIContent ServerPid = new GUIContent("Server PID",
                 "Process id of the server on the device, for adb shell kill or ps.");
-            internal static readonly GUIContent RebuildJar = new GUIContent("Rebuild server",
+            internal static readonly GUIContent RebuildJar = new GUIContent("Rebuild Server",
                 "Run 'gradlew dexJar' on External/UnityLogcatServer, which also copies the jar into the " +
                 "package, then restart the stream so the device picks the new one up and point the " +
                 "Logcat window at the server that comes back. Only available in the package's own " +
                 "repository, where that Gradle project sits next to the package.");
-            internal static readonly GUIContent KillServer = new GUIContent("Kill server",
+            internal static readonly GUIContent KillServer = new GUIContent("Kill Server",
                 "Kill the server on the device, so the stream fails the way it would if the " +
                 "server died on its own.");
+            internal static readonly string NoDevice =
+                "No device selected. Connect a device, then select it from the device list.";
             internal static readonly GUIContent Reconnect = new GUIContent("Reconnect",
                 "Start the stream on the device again.");
-            internal static readonly GUIContent ShowServerLogcat = new GUIContent("Show server logs",
+            internal static readonly GUIContent ShowServerLogcat = new GUIContent("Show Server Logs",
                 "Open the Android Logcat window filtered to this server's process.");
         }
 
@@ -1265,13 +1267,34 @@ namespace Unity.Android.Logcat
             // stream but leaves the last frame behind, and a still image of a device
             // that is no longer there says nothing about why it stopped updating.
             else if (selectedDevice == null)
-                EditorGUI.HelpBox(rc, "No valid device selected.", MessageType.Info);
+                EditorGUI.HelpBox(rc, Styles.NoDevice, MessageType.Info);
             else if (m_Texture == null)
-                EditorGUI.HelpBox(rc, IsStreaming
-                    ? "Starting the stream on the device..."
-                    : "The live stream is not running.", MessageType.Info);
+                DoStatusGUI(rc, selectedDevice);
             else
                 DoStreamGUI(rc, controlId, repaint);
+        }
+
+        /// <summary>Why there is no image yet, and the one thing to do about it.</summary>
+        void DoStatusGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
+        {
+            if (IsStreaming)
+            {
+                EditorGUI.HelpBox(rc, "Starting the stream on the device...", MessageType.Info);
+                return;
+            }
+
+            var message = new GUIContent("The live stream is not running. Select Reconnect to start it again.");
+            var height = EditorGUIUtility.singleLineHeight;
+            var messageRect = new Rect(rc.x, rc.y, rc.width,
+                Mathf.Min(Mathf.Max(0, rc.height - height - kNavigationSpacing),
+                    EditorStyles.helpBox.CalcHeight(message, rc.width)));
+
+            EditorGUI.HelpBox(messageRect, message.text, MessageType.Info);
+
+            var buttonRect = new Rect(rc.x, messageRect.yMax + kNavigationSpacing,
+                Mathf.Min(kReconnectButtonWidth, rc.width), height);
+            if (GUI.Button(buttonRect, Styles.Reconnect, EditorStyles.miniButton))
+                RestartStreaming(selectedDevice);
         }
 
         /// <summary>
@@ -1306,7 +1329,7 @@ namespace Unity.Android.Logcat
             if (gradleProject != null)
             {
                 var buttonRect = new Rect(x, y, Mathf.Min(kBuildJarButtonWidth, rc.width), height);
-                if (GUI.Button(buttonRect, new GUIContent("Build the server jar",
+                if (GUI.Button(buttonRect, new GUIContent("Build Server Jar",
                     $"Runs 'gradlew dexJar' in {gradleProject}, then starts the stream again.")))
                 {
                     RebuildServerJar(gradleProject);

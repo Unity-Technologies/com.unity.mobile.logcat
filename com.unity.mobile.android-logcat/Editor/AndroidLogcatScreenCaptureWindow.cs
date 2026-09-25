@@ -377,8 +377,8 @@ namespace Unity.Android.Logcat
             else if (!m_ScreenshotList.DoPreviewGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null
-                    ? "No screenshot to show."
-                    : "No screenshot to show, click Capture button.";
+                    ? "No screenshot to show. Select one from the list."
+                    : "No screenshot to show. Select Capture to take one.";
                 EditorGUI.HelpBox(imageRect, message, MessageType.Info);
             }
         }
@@ -402,7 +402,9 @@ namespace Unity.Android.Logcat
                     // while none is selected.
                     if (m_DeviceSelection.SelectedDevice == null)
                     {
-                        EditorGUILayout.HelpBox("No valid device selected.", MessageType.Info);
+                        EditorGUILayout.HelpBox(
+                            "No device selected. Connect a device, then select it from the device list.",
+                            MessageType.Info);
                         break;
                     }
 

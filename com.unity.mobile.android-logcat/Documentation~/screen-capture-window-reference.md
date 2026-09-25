@@ -99,12 +99,12 @@ This section appears to the right of the image while a screenshot is selected.
 | ------------------ | ------------------------------------------------------------ |
 | **Device**         | The device the screenshot was captured from. Hover over it for the device id. |
 | **OS**             | The Android version and API level the device was running.    |
-| **Display size**   | The device's display resolution when the screenshot was taken. This differs from **Image size** if the display was rotated or its size overridden. |
-| **Image size**     | The size of the image in pixels.                             |
-| **File size**      | The size of the `.png` file on disk.                         |
+| **Display Size**   | The device's display resolution when the screenshot was taken. This differs from **Image Size** if the display was rotated or its size overridden. |
+| **Image Size**     | The size of the image in pixels.                             |
+| **File Size**      | The size of the `.png` file on disk.                         |
 | **Captured**       | When the file was last written. Hover over it for the full date and time. |
 
-**Device**, **OS** and **Display size** come from the details file saved next to the screenshot, so they read `Undefined` for a screenshot captured before this package wrote one, or for an image added to the folder by hand.
+**Device**, **OS** and **Display Size** come from the details file saved next to the screenshot, so they read `Undefined` for a screenshot captured before this package wrote one, or for an image added to the folder by hand.
 
 ## Live view details
 
@@ -112,9 +112,9 @@ This section appears to the right of the image while the **Live** row is selecte
 
 | **Property**    | **Description**                                              |
 | --------------- | ------------------------------------------------------------ |
-| **Display size** | The resolution of the display being mirrored. Compare it with **Stream size** to see how much the stream is scaling down. It follows the device, so it changes when the device is rotated or a foldable is opened. |
-| **Stream size** | The size of the streamed image. This is the device display scaled down to fit the **Max Size** setting, not the device's own resolution. |
-| **Frame rate**  | How many frames per second are arriving. The device only sends a frame when its screen changes, so a device showing a still screen sends almost none. |
+| **Display Size** | The resolution of the display being mirrored. Compare it with **Stream Size** to see how much the stream is scaling down. It follows the device, so it changes when the device is rotated or a foldable is opened. |
+| **Stream Size** | The size of the streamed image. This is the device display scaled down to fit the **Max Size** setting, not the device's own resolution. |
+| **Frame Rate**  | How many frames per second are arriving. The device only sends a frame when its screen changes, so a device showing a still screen sends almost none. |
 | **Bandwidth**   | How much data per second is arriving from the device.        |
 | **Input**       | Whether the device accepts the touch, scroll and key events this window sends it. Devices that refuse input injection still stream. |
 

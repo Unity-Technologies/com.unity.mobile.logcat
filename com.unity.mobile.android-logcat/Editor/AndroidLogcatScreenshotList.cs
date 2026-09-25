@@ -30,11 +30,11 @@ namespace Unity.Android.Logcat
                 "The device the screenshot was captured from, as its details file records it.");
             internal static readonly GUIContent OS = new GUIContent("OS",
                 "The Android version the device was running.");
-            internal static readonly GUIContent DisplaySize = new GUIContent("Display size",
+            internal static readonly GUIContent DisplaySize = new GUIContent("Display Size",
                 "The device's display resolution at the time, which is not the image size when the display was rotated or its size overridden.");
-            internal static readonly GUIContent ImageSize = new GUIContent("Image size",
+            internal static readonly GUIContent ImageSize = new GUIContent("Image Size",
                 "Size of the image in pixels, which is the resolution of the display it was captured from.");
-            internal static readonly GUIContent FileSize = new GUIContent("File size",
+            internal static readonly GUIContent FileSize = new GUIContent("File Size",
                 "Size of the file on disk.");
             internal static readonly GUIContent Captured = new GUIContent("Captured",
                 "When the file was last written.");
