@@ -317,7 +317,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory });
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory, UseShellExecute = true });
                     break;
                 case RuntimePlatform.OSXEditor:
                     var pathsToCheck = new[]
@@ -335,9 +335,70 @@ namespace Unity.Android.Logcat
                     }
 
                     throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n", pathsToCheck)));
+                case RuntimePlatform.LinuxEditor:
+                    OpenLinuxTerminal(workingDirectory);
+                    break;
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        private static void OpenLinuxTerminal(string workingDirectory)
+        {
+            // Terminal executable and the arguments used to set its working directory.
+            // Terminals with no arguments inherit the working directory from ProcessStartInfo.
+            var terminals = new List<KeyValuePair<string, string>>();
+
+            var userTerminal = Environment.GetEnvironmentVariable("TERMINAL");
+            if (!string.IsNullOrEmpty(userTerminal))
+                terminals.Add(new KeyValuePair<string, string>(userTerminal, string.Empty));
+
+            terminals.Add(new KeyValuePair<string, string>("x-terminal-emulator", string.Empty));
+            terminals.Add(new KeyValuePair<string, string>("gnome-terminal", $"--working-directory=\"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("konsole", $"--workdir \"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("xfce4-terminal", $"--working-directory=\"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("mate-terminal", $"--working-directory=\"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("tilix", $"--working-directory=\"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("alacritty", $"--working-directory \"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("kitty", $"--directory \"{workingDirectory}\""));
+            terminals.Add(new KeyValuePair<string, string>("xterm", string.Empty));
+
+            foreach (var terminal in terminals)
+            {
+                var path = FindExecutableInPath(terminal.Key);
+                if (path == null)
+                    continue;
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path, terminal.Value)
+                {
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = false
+                });
+                return;
+            }
+
+            throw new Exception(string.Format("Failed to launch terminal, tried following terminals:\n{0}", string.Join("\n", terminals.Select(t => t.Key))));
+        }
+
+        private static string FindExecutableInPath(string executable)
+        {
+            if (Path.IsPathRooted(executable))
+                return File.Exists(executable) ? executable : null;
+
+            var paths = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(paths))
+                return null;
+
+            foreach (var dir in paths.Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                var fullPath = Path.Combine(dir, executable);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
 
         public static Version ParseVersionLegacy(string versionString)
