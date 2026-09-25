@@ -48,7 +48,7 @@ namespace Unity.Android.Logcat
             m_Runtime = AndroidLogcatManager.instance.Runtime;
             m_Runtime.Closing += OnDisable;
             m_DeviceSelection = new AndroidLogcatDeviceSelection(m_Runtime, null, nameof(AndroidLogcatLayoutViewerWindow) + "_DeviceId");
-            m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
+            m_CaptureScreenshot = m_Runtime.LayoutCaptureScreenshot;
             m_QueryLayout = m_Runtime.QueryLayout;
 
             LoadUI();
@@ -258,7 +258,7 @@ namespace Unity.Android.Logcat
         }
         private void DoScreenshotSaveAsGUI()
         {
-            var srcPath = m_CaptureScreenshot.GetImagePath(m_DeviceSelection.SelectedDevice);
+            var srcPath = m_CaptureScreenshot.GetLatestImagePath(m_DeviceSelection.SelectedDevice);
             EditorGUI.BeginDisabledGroup(string.IsNullOrEmpty(srcPath) || m_CaptureScreenshot.ImageTexture == null);
             if (GUILayout.Button(Styles.SaveScreenshot, AndroidLogcatStyles.toolbarButton))
             {

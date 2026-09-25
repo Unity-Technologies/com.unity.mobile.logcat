@@ -13,8 +13,10 @@ namespace Unity.Android.Logcat
         protected AndroidTools m_Tools;
         protected AndroidLogcatDeviceQueryBase m_DeviceQuery;
         protected AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
+        protected AndroidLogcatCaptureScreenshot m_LayoutCaptureScreenshot;
         protected AndroidLogcatCaptureVideo m_CaptureVideo;
         protected AndroidLogcatQueryLayout m_QueryLayout;
+        protected AndroidLogcatLiveStream m_LiveSream;
         protected bool m_Initialized;
 
         protected abstract string UserSettingsPath { get; }
@@ -60,6 +62,21 @@ namespace Unity.Android.Logcat
             get { ValidateIsInitialized(); return m_CaptureScreenshot; }
         }
 
+        /// <summary>
+        /// The Layout Viewer's own capture, separate from <see cref="CaptureScreenshot"/>
+        /// so that neither window's captures show up in - or replace what is on screen
+        /// in - the other.
+        /// </summary>
+        public AndroidLogcatCaptureScreenshot LayoutCaptureScreenshot
+        {
+            get { ValidateIsInitialized(); return m_LayoutCaptureScreenshot; }
+        }
+
+        public AndroidLogcatLiveStream LiveStream
+        {
+            get { ValidateIsInitialized(); return m_LiveSream; }
+        }
+
         public AndroidLogcatQueryLayout QueryLayout
         {
             get { ValidateIsInitialized(); return m_QueryLayout; }
@@ -70,8 +87,9 @@ namespace Unity.Android.Logcat
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
         protected abstract AndroidLogcatCaptureVideo CreateScreenRecorder();
-        protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture();
+        protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory);
         protected abstract AndroidLogcatQueryLayout CreateQueryLayout();
+        protected abstract AndroidLogcatLiveStream CreateLiveStream();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
 
         public virtual void Initialize()
@@ -92,8 +110,10 @@ namespace Unity.Android.Logcat
             m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
             m_CaptureVideo = CreateScreenRecorder();
-            m_CaptureScreenshot = CreateScreenCapture();
+            m_CaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
+            m_LayoutCaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetLayoutViewerDirectory(), false);
             m_QueryLayout = CreateQueryLayout();
+            m_LiveSream = CreateLiveStream();
 
             m_Initialized = true;
         }
@@ -170,14 +190,19 @@ namespace Unity.Android.Logcat
             return new AndroidLogcatCaptureVideo(this);
         }
 
-        protected override AndroidLogcatCaptureScreenshot CreateScreenCapture()
+        protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory)
         {
-            return new AndroidLogcatCaptureScreenshot(this);
+            return new AndroidLogcatCaptureScreenshot(this, directory, keepHistory);
         }
 
         protected override AndroidLogcatQueryLayout CreateQueryLayout()
         {
             return new AndroidLogcatQueryLayout(this);
+        }
+
+        protected override AndroidLogcatLiveStream CreateLiveStream()
+        {
+            return new AndroidLogcatLiveStream(this);
         }
 
         protected override AndroidLogcatSettings LoadEditorSettings()

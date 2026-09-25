@@ -5,6 +5,7 @@ namespace Unity.Android.Logcat
     internal abstract class IAndroidLogcatActivityManager
     {
         internal virtual void StartOrResumePackage(string packageName, string activityName = null) { }
+        internal virtual void StartAction(string action) { }
         internal virtual void StopPackage(string packageName) { }
         internal virtual void StopProcess(int processId) { }
         internal virtual void CrashPackage(string packageName) { }
@@ -58,6 +59,28 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
 
             m_ADB.Run(args.ToArray(), $"Failed to start package '{packageName}'");
+        }
+
+        /// <summary>
+        /// Starts whatever handles an intent action, for screens that are reached by
+        /// action rather than by naming a package - which activity serves one differs
+        /// between devices, the action does not.
+        /// </summary>
+        internal override void StartAction(string action)
+        {
+            var args = new[]
+            {
+                "-s",
+                m_DeviceId,
+                "shell",
+                "am",
+                "start",
+                "-a",
+                action
+             };
+            AndroidLogcatInternalLog.Log($"adb {string.Join(" ", args)}");
+
+            m_ADB.Run(args, $"Failed to start '{action}'");
         }
 
         internal override void StopPackage(string packageName)

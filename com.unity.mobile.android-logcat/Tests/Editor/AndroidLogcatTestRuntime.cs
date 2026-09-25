@@ -34,7 +34,13 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
     {
         return null;
     }
-    protected override AndroidLogcatCaptureScreenshot CreateScreenCapture()
+
+    protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory)
+    {
+        return null;
+    }
+
+    protected override AndroidLogcatLiveStream CreateLiveStream()
     {
         return null;
     }
