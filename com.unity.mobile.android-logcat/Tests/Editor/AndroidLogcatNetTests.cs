@@ -63,7 +63,7 @@ class AndroidLogcatNetTests
         };
 #endif
 
-#if UNITY_7000_0_OR_NEWER
+#if UNITY_6000_7_OR_NEWER
         expectedReferences.AddRange(new[]
         {
             "Unity.Scripting",
