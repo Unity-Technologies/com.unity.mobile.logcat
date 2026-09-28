@@ -31,9 +31,9 @@ class AndroidLogcatGeneralTests
             // no screen capture service, and the two calls used here only read the
             // directory - nothing is queued, so nothing needs a device or a dispatcher.
             var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
+                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
 
-            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
             System.IO.Directory.CreateDirectory(directory);
 
             var first = System.IO.Path.Combine(directory, "unittest-device_1.png").Replace("\\", "/");
@@ -94,9 +94,9 @@ class AndroidLogcatGeneralTests
         try
         {
             var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
+                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
 
-            var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
             System.IO.Directory.CreateDirectory(directory);
 
             var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
@@ -364,7 +364,7 @@ class AndroidLogcatGeneralTests
     [Test]
     public void ScreenshotInfoRoundTripsAndFollowsTheImage()
     {
-        var directory = AndroidLogcatUtilities.GetScreenshotsDirectory();
+        var directory = AndroidLogcatUtilities.GetCapturesDirectory();
         System.IO.Directory.CreateDirectory(directory);
 
         var image = System.IO.Path.Combine(directory, "unittest-info_1.png").Replace("\\", "/");

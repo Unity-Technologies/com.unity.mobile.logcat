@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -20,6 +21,12 @@ namespace Unity.Android.Logcat
             public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
             public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
+
+            public static GUIContent capturesFolder = new GUIContent("Captures Folder",
+                "Where screenshots are written. A relative path starts at the project folder; empty "
+                + $"means {AndroidLogcatSettings.kDefaultCaptureOutputDirectory}, which is local to "
+                + "this machine and not part of a build.");
+            public static GUIContent browse = new GUIContent("Browse...", "Pick the captures folder.");
 
             public static GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
@@ -75,7 +82,11 @@ namespace Unity.Android.Logcat
             settings.MaxExitedPackagesToShow = EditorGUILayout.IntSlider(Styles.maxExitedPackageToShow, settings.MaxExitedPackagesToShow, 1, 100);
 
             GUILayout.Space(20);
-            EditorGUILayout.LabelField("Live Stream", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Capture Settings", EditorStyles.boldLabel);
+            DoCapturesFolderGUI(settings);
+
+            GUILayout.Space(10);
+            EditorGUILayout.LabelField("Live Stream", EditorStyles.miniBoldLabel);
             // Applied when a stream starts, so a stream that is already running keeps the
             // settings it started with until it is reconnected.
             settings.LiveStreamMaxSize = LiveStreamSlider(Styles.liveStreamMaxSize,
@@ -114,6 +125,52 @@ namespace Unity.Android.Logcat
                 settings.Reset();
             GUILayout.Space(5);
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>
+        /// The folder captures are written to, as a field that can be typed into, a
+        /// browse button, and a way back to the default. The resolved folder is shown
+        /// underneath, since an empty setting and a relative path both say little on
+        /// their own.
+        /// </summary>
+        void DoCapturesFolderGUI(AndroidLogcatSettings settings)
+        {
+            // Applied after the row, so that opening a modal dialog cannot leave the
+            // layout half drawn. Empty means the dialog was cancelled.
+            string picked = null;
+
+            EditorGUILayout.BeginHorizontal();
+            var folder = EditorGUILayout.TextField(Styles.capturesFolder, settings.CaptureOutputDirectory);
+
+            if (GUILayout.Button(Styles.browse, EditorStyles.miniButton, GUILayout.Width(70)))
+                picked = EditorUtility.OpenFolderPanel(Styles.capturesFolder.text,
+                    AndroidLogcatUtilities.GetCapturesDirectory(settings), string.Empty);
+
+            EditorGUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(picked))
+                SetCapturesFolder(settings, picked);
+            else
+                settings.CaptureOutputDirectory = folder;
+
+            // The resolved folder, which is what a relative path does not show.
+            EditorGUILayout.LabelField(" ", AndroidLogcatUtilities.GetCapturesDirectory(settings),
+                EditorStyles.miniLabel);
+        }
+
+        /// <summary>
+        /// Stores a folder picked in the file browser, which arrives absolute. One
+        /// inside the project is stored relative to it, so that the project can move
+        /// or be opened elsewhere and still find it.
+        /// </summary>
+        static void SetCapturesFolder(AndroidLogcatSettings settings, string picked)
+        {
+            var full = Path.GetFullPath(picked).Replace("\\", "/");
+            var project = AndroidLogcatUtilities.ProjectDirectory() + "/";
+
+            settings.CaptureOutputDirectory = full.StartsWith(project, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(project.Length)
+                : full;
         }
 
         /// <summary>

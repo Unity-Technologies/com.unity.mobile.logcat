@@ -33,7 +33,9 @@ namespace Unity.Android.Logcat
         // Where captures are kept, and whether previous ones are kept with them. The
         // Screen Capture window numbers its screenshots and keeps them all; the Layout
         // Viewer has its own directory holding one.
-        private readonly string m_Directory;
+        // Asked rather than remembered: the folder is a setting, and changing it has
+        // to take effect without restarting the Editor.
+        private readonly Func<string> m_Directory;
         private readonly bool m_KeepHistory;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
@@ -66,6 +68,10 @@ namespace Unity.Android.Logcat
         // this from OnGUI, and scanning the directory every repaint would be disk I/O
         // per frame. Rescanned when a capture lands.
         private List<Screenshot> m_Screenshots;
+
+        // Which folder the cache above was read from, so that pointing the setting
+        // somewhere else is noticed without anything having to say so.
+        private string m_ScannedDirectory;
 
         // Paths handed out for captures that have not produced a file yet. Held apart
         // from the cache above, because dropping that cache must not lose them: a
@@ -100,8 +106,12 @@ namespace Unity.Android.Logcat
         /// </summary>
         public IReadOnlyList<Screenshot> GetScreenshots()
         {
-            if (m_Screenshots == null)
-                m_Screenshots = ScanScreenshots();
+            var directory = m_Directory();
+            if (m_Screenshots == null || directory != m_ScannedDirectory)
+            {
+                m_Screenshots = ScanScreenshots(directory);
+                m_ScannedDirectory = directory;
+            }
             return m_Screenshots;
         }
 
@@ -132,7 +142,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         private string AllocateImagePath(IAndroidLogcatDevice device)
         {
-            var directory = m_Directory;
+            var directory = m_Directory();
             Directory.CreateDirectory(directory);
 
             var prefix = AndroidLogcatUtilities.SanitizeFileName(device.Id);
@@ -187,10 +197,9 @@ namespace Unity.Android.Logcat
             return path;
         }
 
-        private List<Screenshot> ScanScreenshots()
+        private List<Screenshot> ScanScreenshots(string directory)
         {
             var screenshots = new List<Screenshot>();
-            var directory = m_Directory;
             if (!Directory.Exists(directory))
                 return screenshots;
 
@@ -353,7 +362,7 @@ namespace Unity.Android.Logcat
             return ".png";
         }
 
-        internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime, string directory, bool keepHistory)
+        internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime, Func<string> directory, bool keepHistory)
         {
             m_Runtime = runtime;
             m_Directory = directory;

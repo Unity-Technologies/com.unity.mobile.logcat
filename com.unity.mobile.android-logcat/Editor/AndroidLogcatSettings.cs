@@ -25,6 +25,11 @@ namespace Unity.Android.Logcat
         internal static readonly SettingsRange kLiveStreamQuality = new SettingsRange(70, 1, 100);
         internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 120);
 
+        // Where captures go unless told otherwise, relative to the project. Library is
+        // local to the machine and outside any build, which suits output that is cheap
+        // to produce again.
+        internal const string kDefaultCaptureOutputDirectory = "Library/AndroidLogcat/Screenshots";
+
         internal static readonly string[] kAddressResolveRegex =
         {
             @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9xX]+).*\/(?<abi>\S+)\/(?<libName>lib.*)\.so(?:.*\(BuildId:\s*(?<buildId>\S+)\))?",
@@ -64,6 +69,11 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private int m_MaxExitedPackagesToShow;
+
+        // A relative path starts at the project folder, an absolute one is where it
+        // says - see AndroidLogcatUtilities.GetCapturesDirectory.
+        [SerializeField]
+        private string m_CaptureOutputDirectory;
 
         [SerializeField]
         private int m_LiveStreamMaxSize;
@@ -149,6 +159,27 @@ namespace Unity.Android.Logcat
         /// Longest side of the live stream, in pixels. The device display is scaled down
         /// to fit, which is what keeps the bandwidth and the encoding cost down.
         /// </summary>
+        /// <summary>
+        /// Where screenshots, and later videos, are written. A relative path starts at
+        /// the project folder; empty falls back to
+        /// <see cref="kDefaultCaptureOutputDirectory"/>.
+        /// </summary>
+        internal string CaptureOutputDirectory
+        {
+            set
+            {
+                var corrected = string.IsNullOrEmpty(value) ? string.Empty : value.Trim().Replace("\\", "/");
+                if (m_CaptureOutputDirectory == corrected)
+                    return;
+                m_CaptureOutputDirectory = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_CaptureOutputDirectory ?? string.Empty;
+            }
+        }
+
         internal int LiveStreamMaxSize
         {
             set
@@ -282,6 +313,7 @@ namespace Unity.Android.Logcat
             m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;
+            m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");

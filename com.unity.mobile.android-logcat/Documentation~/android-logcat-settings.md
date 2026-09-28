@@ -49,7 +49,19 @@ Use the **Request Interval ms** setting to specify a time interval to request me
 
 Use the **Max Exited Packages** setting to specify the maximum number for the applications selected in the Package Selector that are now closed. This allows you to restrict the number of entries in the Package Selector dropdown for closed applications to prevent overpopulating the dropdown.
 
-## Live Stream
+## Capture Settings
+
+Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The line underneath the field shows the folder it currently resolves to.
+
+A relative path starts at your project folder, which is how the default `Library/AndroidLogcat/Screenshots` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
+
+Select **Browse...** to pick a folder. A folder inside the project is stored relative to it, and one outside it is stored as an absolute path.
+
+The default, `Library/AndroidLogcat/Screenshots`, is local to your machine and is not part of a build, and Unity deletes `Library` from time to time, so choose a folder of your own for captures you want to keep.
+
+Changing the folder takes effect immediately. Captures already written stay where they are, and the [Capture list](screen-capture-window-reference.md#capture-list) shows what is in the new folder.
+
+### Live Stream
 
 Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
 

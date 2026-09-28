@@ -179,9 +179,28 @@ namespace Unity.Android.Logcat
         /// As away from somewhere that is not Library.
         /// </para>
         /// </summary>
-        public static string GetScreenshotsDirectory()
+        /// <summary>
+        /// The folder captures are written to - screenshots today, videos later.
+        /// Settings can point it anywhere: a relative path starts at the project
+        /// folder, an absolute one is where it says. A settings object that is null,
+        /// or holds nothing, is the default described above.
+        /// </summary>
+        public static string GetCapturesDirectory(AndroidLogcatSettings settings = null)
         {
-            return GetCaptureDirectory("Screenshots");
+            var configured = settings != null ? settings.CaptureOutputDirectory : null;
+            if (string.IsNullOrEmpty(configured))
+                configured = AndroidLogcatSettings.kDefaultCaptureOutputDirectory;
+
+            var path = Path.IsPathRooted(configured)
+                ? configured
+                : Path.Combine(ProjectDirectory(), configured);
+            return Path.GetFullPath(path).Replace("\\", "/");
+        }
+
+        /// <summary>The folder holding Assets, which is what a project path starts at.</summary>
+        public static string ProjectDirectory()
+        {
+            return Path.GetFullPath(Path.Combine(Application.dataPath, "..")).Replace("\\", "/");
         }
 
         /// <summary>
@@ -196,7 +215,7 @@ namespace Unity.Android.Logcat
 
         static string GetCaptureDirectory(string name)
         {
-            var path = Path.Combine(Application.dataPath, "..", "Library", "AndroidLogcat", name);
+            var path = Path.Combine(ProjectDirectory(), "Library", "AndroidLogcat", name);
             return Path.GetFullPath(path).Replace("\\", "/");
         }
 

@@ -340,6 +340,17 @@ namespace Unity.Android.Logcat
         internal bool IsStreaming => m_ReaderThread != null;
 
         /// <summary>
+        /// Raised when there is something new to say about the stream: the first frame
+        /// has arrived and named its size, that size changed under it - a rotation, a
+        /// foldable opening - or the stream ended. Always on the main thread.
+        /// <para>
+        /// An event rather than a callback passed to <see cref="StartStreaming"/>,
+        /// because the row that starts a stream is not the window that reports it.
+        /// </para>
+        /// </summary>
+        internal event Action StreamChanged;
+
+        /// <summary>
         /// The size frames are arriving at, and the size of the display they are
         /// scaled down from. Both zero until the first frame says what they are.
         /// </summary>
@@ -553,6 +564,7 @@ namespace Unity.Android.Logcat
             var callback = m_OnStopLiveStream;
             m_OnStopLiveStream = null;
             callback?.Invoke(result);
+            StreamChanged?.Invoke();
         }
 
         void Update()
@@ -629,10 +641,18 @@ namespace Unity.Android.Logcat
                 // frame sitting in it.
                 if (ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size)))
                 {
+                    var resized = m_FrameWidth != width || m_FrameHeight != height
+                        || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight;
+
                     m_FrameWidth = width;
                     m_FrameHeight = height;
                     m_DisplayWidth = displayWidth;
                     m_DisplayHeight = displayHeight;
+
+                    // The first frame counts as a resize, since everything was zero
+                    // until it arrived.
+                    if (resized)
+                        StreamChanged?.Invoke();
                 }
 
                 // Returned whether or not it decoded - a frame this thread could not

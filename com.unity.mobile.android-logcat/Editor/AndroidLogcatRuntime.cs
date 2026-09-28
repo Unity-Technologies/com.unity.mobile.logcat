@@ -87,7 +87,7 @@ namespace Unity.Android.Logcat
         protected abstract AndroidLogcatSettings LoadEditorSettings();
         protected abstract AndroidTools CreateAndroidTools();
         protected abstract AndroidLogcatCaptureVideo CreateScreenRecorder();
-        protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory);
+        protected abstract AndroidLogcatCaptureScreenshot CreateScreenCapture(Func<string> directory, bool keepHistory);
         protected abstract AndroidLogcatQueryLayout CreateQueryLayout();
         protected abstract AndroidLogcatLiveStream CreateLiveStream();
         protected abstract void SaveEditorSettings(AndroidLogcatSettings settings);
@@ -110,8 +110,13 @@ namespace Unity.Android.Logcat
             m_Tools = CreateAndroidTools();
             m_DeviceQuery = CreateDeviceQuery();
             m_CaptureVideo = CreateScreenRecorder();
-            m_CaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetScreenshotsDirectory(), true);
-            m_LayoutCaptureScreenshot = CreateScreenCapture(AndroidLogcatUtilities.GetLayoutViewerDirectory(), false);
+            // The screenshots folder follows the setting, so it is read when it is
+            // needed rather than captured here. The Layout Viewer's is not a setting -
+            // it is a working folder of its own.
+            m_CaptureScreenshot = CreateScreenCapture(
+                () => AndroidLogcatUtilities.GetCapturesDirectory(Settings), true);
+            m_LayoutCaptureScreenshot = CreateScreenCapture(
+                AndroidLogcatUtilities.GetLayoutViewerDirectory, false);
             m_QueryLayout = CreateQueryLayout();
             m_LiveSream = CreateLiveStream();
 
@@ -190,7 +195,7 @@ namespace Unity.Android.Logcat
             return new AndroidLogcatCaptureVideo(this);
         }
 
-        protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory)
+        protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(Func<string> directory, bool keepHistory)
         {
             return new AndroidLogcatCaptureScreenshot(this, directory, keepHistory);
         }

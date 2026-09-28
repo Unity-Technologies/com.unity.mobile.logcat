@@ -35,7 +35,7 @@ internal class AndroidLogcatTestRuntime : AndroidLogcatRuntimeBase
         return null;
     }
 
-    protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(string directory, bool keepHistory)
+    protected override AndroidLogcatCaptureScreenshot CreateScreenCapture(Func<string> directory, bool keepHistory)
     {
         return null;
     }
