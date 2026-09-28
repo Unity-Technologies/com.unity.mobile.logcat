@@ -45,6 +45,7 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
 
         private AndroidLogcatScreenshotList m_ScreenshotList;
+        private AndroidLogcatStatusBar m_StatusBar;
 
         // Recording the screen will join this.
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
@@ -94,8 +95,11 @@ namespace Unity.Android.Logcat
             m_CaptureScreenshot = m_Runtime.CaptureScreenshot;
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
+            m_LiveStream.StreamChanged += ReportStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
             m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime, Repaint);
+            // Nothing here connects to anything, so the bar carries the message alone.
+            m_StatusBar = new AndroidLogcatStatusBar() { ShowConnection = false };
 
             // The buttons the live view draws for this window, in the order they
             // appear. Each says for itself when it can run.
@@ -132,8 +136,15 @@ namespace Unity.Android.Logcat
         private void OnDisable()
         {
             // The live stream is owned by the runtime, so it would otherwise keep
-            // mirroring the device after the window that was showing it is gone.
+            // mirroring the device after the window that was showing it is gone - and
+            // keep reporting to a status bar that is gone with it.
             m_ScreenshotList?.Deselect();
+
+            if (m_LiveStream != null)
+            {
+                m_LiveStream.StreamChanged -= ReportStream;
+                m_LiveStream = null;
+            }
 
             if (m_VideoPlayer != null)
             {
@@ -156,7 +167,60 @@ namespace Unity.Android.Logcat
 
         private void QueueScreenCapture()
         {
+            // Whatever the bar said about the last one is about to be out of date.
+            m_StatusBar.Message = string.Empty;
             m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, OnScreenshotCompleted);
+        }
+
+        /// <summary>
+        /// Says what the stream is doing, whenever it has something new to say - see
+        /// <see cref="AndroidLogcatLiveStream.StreamChanged"/>.
+        /// </summary>
+        private void ReportStream()
+        {
+            var stream = m_LiveStream.StreamSize;
+
+            if (!m_LiveStream.IsStreaming)
+            {
+                // The sizes outlive the stream, so a stream that ended having never
+                // delivered a frame has nothing here. It failed, and the view says so
+                // where the image would be.
+                if (stream.x > 0)
+                    m_StatusBar.Message = "Live stream stopped";
+            }
+            else
+            {
+                var display = m_LiveStream.DisplaySize;
+                var scaledFrom = display.x > 0 ? $"{display.x}x{display.y} scaled to " : string.Empty;
+                var device = m_DeviceSelection.SelectedDevice;
+                var name = device != null ? device.ShortDisplayName : "device";
+
+                m_StatusBar.Message = $"Live stream: {name}, {scaledFrom}{stream.x}x{stream.y}, " +
+                    $"up to {m_Runtime.Settings.LiveStreamMaxFps} fps";
+            }
+
+            Repaint();
+        }
+
+        /// <summary>
+        /// Says where a capture landed, in the status bar. A path inside the project
+        /// is shown relative to it, which is short enough to read at a glance.
+        /// </summary>
+        private void ReportSaved(string what, string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                m_StatusBar.Message = string.Empty;
+                return;
+            }
+
+            var full = Path.GetFullPath(path).Replace("\\", "/");
+            var project = Path.GetFullPath(Path.Combine(Application.dataPath, "..")).Replace("\\", "/") + "/";
+            var shown = full.StartsWith(project, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(project.Length)
+                : full;
+
+            m_StatusBar.Message = $"{what} saved to '{shown}'";
         }
 
         /// <summary>
@@ -201,6 +265,10 @@ namespace Unity.Android.Logcat
             // for as long as the selection does not change.
             m_ScreenshotList?.InvalidatePreview();
 
+            // Set after the capture was integrated, so this is the new screenshot -
+            // and empty when the capture failed, where the error is reported already.
+            ReportSaved("Screenshot", m_CaptureScreenshot.SelectedImagePath);
+
             var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
                 maxSize = new Vector2(Math.Max(texture.width, position.width), texture.height + kButtonAreaHeight);
@@ -209,8 +277,11 @@ namespace Unity.Android.Logcat
 
         void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result, string videoPath)
         {
+            ReportSaved("Video", result == AndroidLogcatCaptureVideo.Result.Success ? videoPath : null);
+
             if (result == AndroidLogcatCaptureVideo.Result.Success)
                 m_VideoPlayer.Play(videoPath);
+            Repaint();
         }
 
         void DoModeGUI()
@@ -263,6 +334,8 @@ namespace Unity.Android.Logcat
 
             GUILayout.Space(5);
             DoPreviewGUI();
+
+            m_StatusBar?.DoGUI();
 
             EditorGUILayout.EndVertical();
         }
@@ -337,6 +410,7 @@ namespace Unity.Android.Logcat
                             if (vs.DisplayIdEnabled && !string.IsNullOrEmpty(vs.DisplayId))
                                 displayId = vs.DisplayId;
 
+                            m_StatusBar.Message = string.Empty;
                             m_CaptureVideo.StartRecording(m_DeviceSelection.SelectedDevice, OnVideoCompleted, timeLimit, videoSizeX, videoSizeY, bitRate, displayId);
                         }
                     }

@@ -19,6 +19,7 @@ The window is split into two: a list of captures on the left, and whatever the l
 | [Capture preview](#capture-preview)     | The screenshot, video or live view that the list has selected. |
 | [Screenshot details](#screenshot-details) | Information about the selected screenshot.                 |
 | [Live view details](#live-view-details) | Information about the live stream, and the device navigation buttons. |
+| [Status bar](#status-bar)               | Where the last screenshot or video was saved.                |
 
 ## Toolbar
 
@@ -139,6 +140,15 @@ Below them, **Device Rotation** turns the device's screen:
 **Take Screenshot**, at the bottom, captures the device screen and adds it to the [Capture list](#capture-list). The screenshot is taken on the device rather than copied from the stream, so it is full resolution whatever the stream is scaled down to. Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same while this window has focus.
 
 For how to interact with the device and how to change the size, quality and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
+
+## Status bar
+
+The bar along the bottom of the window reports what the window last did:
+
+* Where a capture was written, for example `Screenshot saved to Library/AndroidLogcat/Screenshots/<device id>_1.png`. A path inside your project is shown relative to it.
+* What the live view is streaming, once its first frame arrives, for example `Live stream: Google Pixel 7 Pro (36081FDH3002Q8), 1080x2340 scaled to 232x512, up to 15 fps`. It is reported again when the streamed size changes, which happens when the device is rotated or a foldable is opened, and `Live stream stopped` when it ends.
+
+Videos are written to a temporary file that the next recording from the same device replaces, so use **Save As** to keep one. Screenshots are kept until you delete them.
 
 ## Additional resources
 
