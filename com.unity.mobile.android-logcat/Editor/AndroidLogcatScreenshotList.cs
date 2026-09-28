@@ -22,6 +22,20 @@ namespace Unity.Android.Logcat
         {
             internal static readonly GUIContent Live = new GUIContent("Live",
                 "Show the device screen live. Streaming stops when a capture is selected.");
+            // The Editor's own asset icons, so a row reads as what it holds before it
+            // is read. Through IconContent, which is what picks the icon for the skin.
+            static readonly GUIContent kImage = EditorGUIUtility.IconContent("Image Icon");
+            static readonly GUIContent kVideo = EditorGUIUtility.IconContent("VideoPlayer Icon");
+
+            /// <summary>The icon for a capture, by what kind of file it is.</summary>
+            internal static Texture IconFor(string path)
+            {
+                var extension = Path.GetExtension(path);
+                var video = extension == ".mp4" || extension == ".webm";
+                var icon = video ? kVideo : kImage;
+                return icon != null ? icon.image : null;
+            }
+
             internal static readonly GUIContent Captures = new GUIContent("Captures",
                 "Everything captured from a device, from every device. Shift click and " +
                 "Ctrl click select more than one; Ctrl+A selects all.");
@@ -61,6 +75,8 @@ namespace Unity.Android.Logcat
         const float kSplitterWidth = 5;
         const float kMinPreviewWidth = 100;
         const float kScrollbarWidth = 16;
+        const float kIconSize = 16;
+        const float kIconMargin = 2;
         // Air between the Live button and the captures under it.
         const float kGroupGap = 5;
 
@@ -412,8 +428,14 @@ namespace Unity.Android.Logcat
                         : new Color(0.30f, 0.30f, 0.30f, 0.85f));
                 }
 
-                var labelRect = new Rect(rowRect.x + 4, rowRect.y,
-                    Mathf.Max(0, rowRect.width - 4), rowRect.height);
+                var iconRect = new Rect(rowRect.x + 4, rowRect.y + (rowRect.height - kIconSize) * 0.5f,
+                    kIconSize, kIconSize);
+                var labelRect = new Rect(iconRect.xMax + kIconMargin, rowRect.y,
+                    Mathf.Max(0, rowRect.xMax - iconRect.xMax - kIconMargin), rowRect.height);
+
+                var icon = Styles.IconFor(path);
+                if (icon != null && Event.current.type == EventType.Repaint)
+                    GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit);
 
                 if (path == m_RenamingPath)
                 {
@@ -429,10 +451,11 @@ namespace Unity.Android.Logcat
                     GUI.Label(labelRect, label, style);
                 }
 
-                // Skipped while this row is being renamed, so clicking into the text
-                // field does not count as selecting the row.
+                // The whole row, icon included. Skipped while this row is being
+                // renamed, so clicking into the text field does not count as selecting
+                // the row.
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && labelRect.Contains(Event.current.mousePosition) && path != m_RenamingPath)
+                    && rowRect.Contains(Event.current.mousePosition) && path != m_RenamingPath)
                 {
                     GUIUtility.keyboardControl = controlId;
                     ClickRow(captures, path, Event.current, device);
