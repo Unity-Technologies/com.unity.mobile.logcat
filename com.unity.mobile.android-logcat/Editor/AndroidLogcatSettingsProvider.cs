@@ -98,7 +98,7 @@ namespace Unity.Android.Logcat
 
             EditorGUILayout.HelpBox(
                 "Applied when a stream starts. To apply them to a stream that is already running, " +
-                "right click the Live row in the Device Screen Capture window and choose Reconnect.",
+                "turn Live off and on again in the Device Screen Capture window.",
                 MessageType.None);
 
             GUILayout.BeginHorizontal();

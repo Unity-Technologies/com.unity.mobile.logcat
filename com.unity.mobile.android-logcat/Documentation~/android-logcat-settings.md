@@ -71,7 +71,7 @@ Use the **Live Stream** settings to control the [live view of the device's scree
 |**JPEG Quality**|Specifies the quality of each streamed frame, between 1 and 100. Lower values produce smaller frames and use less bandwidth. The default value is 70.|
 |**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 120. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
 
-These settings apply when a stream starts. To apply them to a stream that is already running, right-click the **Live** row in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list) and select **Reconnect**.
+These settings apply when a stream starts. To apply them to a stream that is already running, turn **Live** off and on again in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list).
 
 Use the **Reset** button in this section to restore the three Live Stream settings without changing any other setting.
 

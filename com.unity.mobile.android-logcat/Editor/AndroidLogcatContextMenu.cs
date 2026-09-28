@@ -46,7 +46,8 @@ namespace Unity.Android.Logcat
         Open,
         SaveAs,
         Rename,
-        Reconnect
+        Delete,
+        SelectAll
     }
 
     class AndroidContextMenu<T>

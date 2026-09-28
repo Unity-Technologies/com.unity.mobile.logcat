@@ -39,23 +39,31 @@ The toolbar contains options to control the Screen Capture tool.
 
 ## Capture list
 
-The list on the left of the window holds the live view and every screenshot you have taken, from every device. Select a row to show it in the [Capture preview](#capture-preview), or use the Up and Down arrow keys to move through the list. Drag the divider between the list and the preview to resize the list.
+The left of the window holds the **Live** button and, under it, every capture you have taken, from every device. Select **Live** to mirror the device's screen, or select a capture to show it in the [Capture preview](#capture-preview). The Up and Down arrow keys move through the captures. Drag the divider between the list and the preview to resize the list.
 
-| **Row**            | **Description**                                              |
+Select more than one capture to act on several at once: Shift and click extends the selection, Ctrl and click (Cmd on macOS) adds or removes one, and Ctrl+A (Cmd+A) selects all of them. Press Delete, or right-click and select **Delete**, to remove every selected capture in one step - which is how you clear the list.
+
+| **Item**           | **Description**                                              |
 | ------------------ | ------------------------------------------------------------ |
-| **Live**           | The first row. Select it to view the selected device's screen live. Refer to [View the device screen live](screen-capture-live-stream.md). |
-| A screenshot       | Named after its file, without the `.png` extension. Screenshots are saved automatically when you capture them, so every capture stays until you delete it. |
+| **Live**           | The button above the list. Select it to view the selected device's screen live, and to take screenshots. Refer to [View the device screen live](screen-capture-live-stream.md). |
+| A capture          | Named after its file, without the `.png` extension. Captures are saved as you take them, so every one stays until you delete it. |
 
-Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and are named `<device id>_<number>.png`. They are not part of your build, and deleting the `Library` folder deletes them with it.
+Screenshots are stored in your project, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.png`. The default folder is not part of your build, and deleting the `Library` folder deletes them with it.
 
-To work with a screenshot in the list:
+To work with the captures in the list:
 
-| **Action**                           | **Result**                                              |
-| ------------------------------------ | ------------------------------------------------------- |
-| Double-click a row                   | Opens the image in the application associated with `.png`. |
-| Click the **×** at the end of a row  | Deletes the screenshot from disk, after asking you to confirm. The Delete key (Cmd+Backspace on macOS) does the same to the selected row. |
-| Right-click a row                    | Opens a menu with **Show In Explorer** (**Show In Finder** on macOS), **Open**, **Save As** and **Rename**. |
-| Press F2 (Enter on macOS)            | Renames the selected screenshot. Enter confirms the new name and Escape cancels. |
+| **Action**                                | **Result**                                              |
+| ----------------------------------------- | ------------------------------------------------------- |
+| Click a row                               | Selects that capture and shows it in the [Capture preview](#capture-preview). |
+| Shift-click a row                         | Extends the selection from the last one you clicked. |
+| Ctrl-click a row (Cmd-click on macOS)     | Adds a capture to the selection, or removes it. |
+| Press Ctrl+A (Cmd+A on macOS)             | Selects every capture. |
+| Double-click a row                        | Opens the image in the application associated with `.png`. |
+| Press Delete (Cmd+Backspace on macOS)     | Deletes every selected capture from disk, after asking you to confirm. |
+| Right-click a row                         | Opens a menu with **Show In Explorer** (**Show In Finder** on macOS), **Open**, **Save As**, **Rename**, **Delete** and **Select All**. The first four act on the row you clicked and are unavailable while several captures are selected; **Delete** removes all of them. |
+| Press F2 (Enter on macOS)                 | Renames the selected capture. Enter confirms the new name and Escape cancels. |
+
+To empty the list, select every capture with Ctrl+A (Cmd+A on macOS) and press Delete.
 
 > [!NOTE]
 > Renaming a screenshot to something other than `<device id>_<number>` keeps it in the list, but it no longer counts towards that device's numbering.

@@ -14,7 +14,7 @@ The stream stops when you select another row in the list, close the window, or d
 
 The device only sends a frame when its screen changes, so **Frame Rate** in the [Live view details](screen-capture-window-reference.md#live-view-details) drops to almost nothing while the device shows a still screen. This is expected: the last frame stays on display.
 
-If the stream stops on its own, for example because the device restarted, right-click the **Live** row and select **Reconnect**.
+If the stream stops on its own, for example because the device restarted, select **Reconnect** in the live view, or turn **Live** off and on again.
 
 ## Control the device
 
@@ -39,7 +39,7 @@ Other Ctrl and Cmd combinations are left to the Unity Editor, so its own shortcu
 
 Streaming a display uses both the device's CPU, to compress each frame, and the connection to your computer, to carry it. To trade quality for either, go to **Edit** > **Preferences** > **Analysis** > **Android Logcat Settings** (Windows) or **Unity** > **Settings** > **Analysis** > **Android Logcat Settings** (macOS) and use the [Live Stream](android-logcat-settings.md#live-stream) settings.
 
-The settings apply when a stream starts. To apply them to a stream that is already running, right-click the **Live** row and select **Reconnect**.
+The settings apply when a stream starts. To apply them to a stream that is already running, select **Reconnect** in the live view, or turn **Live** off and on again.
 
 > [!NOTE]
 > If you connected the device with `adb connect` rather than by USB, the stream shares the device's Wi-Fi connection with everything else adb does, including the message log. Lower **Max Size** and **Max Frame Rate**, or connect the device by USB, if the connection struggles.
