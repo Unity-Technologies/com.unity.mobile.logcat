@@ -338,6 +338,14 @@ namespace Unity.Android.Logcat
         int m_StatsFrames;
 
         internal bool IsStreaming => m_ReaderThread != null;
+
+        /// <summary>
+        /// The size frames are arriving at, and the size of the display they are
+        /// scaled down from. Both zero until the first frame says what they are.
+        /// </summary>
+        internal Vector2Int StreamSize => new Vector2Int(m_FrameWidth, m_FrameHeight);
+
+        internal Vector2Int DisplaySize => new Vector2Int(m_DisplayWidth, m_DisplayHeight);
         internal string Errors => m_Errors.ToString();
         internal Texture2D Texture => m_Texture;
 
