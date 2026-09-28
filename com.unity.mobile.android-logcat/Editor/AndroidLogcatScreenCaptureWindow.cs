@@ -335,10 +335,13 @@ namespace Unity.Android.Logcat
             GUILayout.Space(5);
             DoPreviewGUI();
 
-            // Video mode's settings take only the height they need, where screenshot
-            // mode claims what is left, so without this the bar would sit under the
-            // last control rather than at the bottom of the window.
-            GUILayout.FlexibleSpace();
+            // Video mode's settings take only the height they need, so the bar would
+            // sit under the last control rather than at the bottom of the window.
+            // Screenshot mode claims what is left for the list and the preview, and
+            // must not be made to share it.
+            if (m_Runtime.UserSettings.CaptureSettings.Mode == Mode.Video)
+                GUILayout.FlexibleSpace();
+
             m_StatusBar?.DoGUI();
 
             EditorGUILayout.EndVertical();
