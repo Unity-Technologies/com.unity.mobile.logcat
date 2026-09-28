@@ -15,6 +15,17 @@ namespace Unity.Android.Logcat
         internal const float kLabelWidth = 80;
 
         /// <summary>
+        /// The box an image and its column sit in, which is the same help box a message
+        /// in that area is drawn in - so the view keeps its shape whether it is showing
+        /// a stream, a capture, or a line of text.
+        /// </summary>
+        internal static void DrawBox(Rect area)
+        {
+            if (Event.current.type == EventType.Repaint)
+                EditorStyles.helpBox.Draw(area, false, false, false, false);
+        }
+
+        /// <summary>
         /// Width to reserve out of an area before the image is fitted into it. Capped
         /// to a fraction of it, so a narrow window does not lose the image to the column.
         /// </summary>

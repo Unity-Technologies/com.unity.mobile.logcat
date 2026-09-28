@@ -176,6 +176,8 @@ namespace Unity.Android.Logcat
             if (m_PreviewTexture == null)
                 return false;
 
+            AndroidLogcatStatsColumn.DrawBox(rc);
+
             // The same column the live view draws, so the two modes look alike. Taken
             // out of the area before the image is fitted, or the image would be drawn
             // underneath it, and sized to its text, or a device name is cut in half.

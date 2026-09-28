@@ -63,6 +63,8 @@ namespace Unity.Android.Logcat
         // be moved, and BeginScrollView clamps what it is handed, so guessing high costs
         // nothing where guessing low leaves a strip of the image unreachable.
         const float kScrollbarSize = 20;
+        // Inset of the image inside the box it is drawn in.
+        const float kFramePadding = 2;
 
         float m_Zoom = kMinZoom;
         Vector2 m_Scroll;
@@ -92,6 +94,11 @@ namespace Unity.Android.Logcat
             // Allocated on every pass whatever the state, so that the ids handed out
             // after it do not shift between the Layout and Repaint passes.
             var controlId = GUIUtility.GetControlID(FocusType.Passive);
+
+            // Inside the box the caller drew - see AndroidLogcatStatsColumn.DrawBox.
+            area = new Rect(area.x + kFramePadding, area.y + kFramePadding,
+                Mathf.Max(0, area.width - kFramePadding * 2),
+                Mathf.Max(0, area.height - kFramePadding * 2));
 
             // Both before the scroll view, so neither it nor the contents see these
             // events first: the live view forwards a plain wheel to the device, and the

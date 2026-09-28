@@ -1408,6 +1408,8 @@ namespace Unity.Android.Logcat
         /// <summary>The mirrored screen, with the stats column beside it.</summary>
         void DoStreamGUI(Rect rc, int controlId, Action repaint, IReadOnlyList<CaptureAction> captureActions)
         {
+            AndroidLogcatStatsColumn.DrawBox(rc);
+
             // The info column is reserved before the image is fitted, so that the image
             // is never drawn underneath it.
             var statsWidth = IsStreaming ? AndroidLogcatStatsColumn.WidthFor(rc) : 0;
