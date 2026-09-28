@@ -49,6 +49,9 @@ namespace Unity.Android.Logcat
         // Recording the screen will join this.
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
 
+        // Fixed, so that what follows it does not move when the mode changes.
+        const float kModeDropdownWidth = 90;
+
         private bool IsCapturing
         {
             get
@@ -213,7 +216,8 @@ namespace Unity.Android.Logcat
         void DoModeGUI()
         {
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            var mode = (Mode)EditorGUILayout.EnumPopup(settings.Mode, AndroidLogcatStyles.toolbarPopup);
+            var mode = (Mode)EditorGUILayout.EnumPopup(settings.Mode, AndroidLogcatStyles.toolbarPopup,
+                GUILayout.Width(kModeDropdownWidth));
             if (mode == settings.Mode)
                 return;
 
