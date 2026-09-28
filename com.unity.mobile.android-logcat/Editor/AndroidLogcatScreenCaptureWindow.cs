@@ -20,8 +20,10 @@ namespace Unity.Android.Logcat
             public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
             public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
             public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
-            public static GUIContent CaptureScreenshot = new GUIContent("Capture",
-                "Capture screenshot from the android device. Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS.");
+            public static GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
+                "Capture the device screen and add it to the list. The screenshot comes from the device "
+                + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
+                + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
@@ -43,6 +45,9 @@ namespace Unity.Android.Logcat
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
 
         private AndroidLogcatScreenshotList m_ScreenshotList;
+
+        // Recording the screen will join this.
+        private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
 
         private bool IsCapturing
         {
@@ -89,6 +94,14 @@ namespace Unity.Android.Logcat
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
             m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime, Repaint);
 
+            // The buttons the live view draws for this window, in the order they
+            // appear. Each says for itself when it can run.
+            m_CaptureActions = new[]
+            {
+                new AndroidLogcatLiveStream.CaptureAction(Styles.TakeScreenshot, QueueScreenCapture,
+                    () => CanCaptureScreenshot)
+            };
+
             // Settings saved while the removed LiveStream mode was selected still hold
             // its value, which is now out of range and would throw in the switches above.
             var captureSettings = m_Runtime.UserSettings.CaptureSettings;
@@ -134,6 +147,10 @@ namespace Unity.Android.Logcat
             m_Runtime = null;
         }
 
+        /// <summary>Whether a screenshot can be taken right now.</summary>
+        private bool CanCaptureScreenshot =>
+            m_DeviceSelection.SelectedDevice != null && !m_CaptureScreenshot.IsCapturing;
+
         private void QueueScreenCapture()
         {
             m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, OnScreenshotCompleted);
@@ -167,7 +184,7 @@ namespace Unity.Android.Logcat
                 return;
             if (m_Runtime.UserSettings.CaptureSettings.Mode != Mode.Screenshot)
                 return;
-            if (m_DeviceSelection.SelectedDevice == null || m_CaptureScreenshot.IsCapturing)
+            if (!CanCaptureScreenshot)
                 return;
 
             QueueScreenCapture();
@@ -279,10 +296,8 @@ namespace Unity.Android.Logcat
             switch (m_Runtime.UserSettings.CaptureSettings.Mode)
             {
                 case Mode.Screenshot:
-                    EditorGUI.BeginDisabledGroup(m_CaptureScreenshot.IsCapturing);
-                    if (GUILayout.Button(Styles.CaptureScreenshot, AndroidLogcatStyles.toolbarButton))
-                        QueueScreenCapture();
-                    EditorGUI.EndDisabledGroup();
+                    // Taking a screenshot lives in the live view, beside the screen it
+                    // captures - see DoScreenshotGUI.
                     break;
                 case Mode.Video:
                     if (m_CaptureVideo.IsRecording)
@@ -360,7 +375,7 @@ namespace Unity.Android.Logcat
             if (m_ScreenshotList.LiveSelected)
             {
                 // The developer-mode details are drawn by DoGUI, in the info column.
-                m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice, Repaint);
+                m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice, Repaint, m_CaptureActions);
                 // Frames arrive on the runtime's update, not on GUI events, so the window
                 // has to keep repainting to show them.
                 if (m_LiveStream.IsStreaming)

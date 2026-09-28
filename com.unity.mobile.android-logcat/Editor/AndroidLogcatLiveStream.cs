@@ -246,6 +246,27 @@ namespace Unity.Android.Logcat
         int m_ForwardedPort = -1;
 
         Thread m_ReaderThread;
+        /// <summary>
+        /// A button the window puts under the stream's own controls, for doing
+        /// something with the device being watched - taking a screenshot of it, and
+        /// later recording it. The stream captures nothing itself, it only draws
+        /// these.
+        /// </summary>
+        internal readonly struct CaptureAction
+        {
+            internal readonly GUIContent Label;
+            internal readonly Action Action;
+            /// <summary>Asked on every repaint. Null is a button that is always enabled.</summary>
+            internal readonly Func<bool> Enabled;
+
+            internal CaptureAction(GUIContent label, Action action, Func<bool> enabled = null)
+            {
+                Label = label;
+                Action = action;
+                Enabled = enabled;
+            }
+        }
+
         /// <summary>One per stream, so a reader cannot outlive its own session.</summary>
         sealed class ReaderSession
         {
@@ -1254,7 +1275,12 @@ namespace Unity.Android.Logcat
         /// <param name="repaint">
         /// For what changes outside the frames arriving - zooming a stopped stream.
         /// </param>
-        internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice, Action repaint)
+        /// <param name="captureActions">
+        /// Buttons for the window's own capture actions, drawn under the stream's
+        /// controls. See <see cref="CaptureAction"/>.
+        /// </param>
+        internal void DoGUI(Rect rc, IAndroidLogcatDevice selectedDevice, Action repaint,
+            IReadOnlyList<CaptureAction> captureActions = null)
         {
             // Allocated on every pass, before any early return: skipping it on some
             // frames would shift control ids between the Layout and Repaint passes and
@@ -1271,7 +1297,7 @@ namespace Unity.Android.Logcat
             else if (m_Texture == null)
                 DoStatusGUI(rc, selectedDevice);
             else
-                DoStreamGUI(rc, controlId, repaint);
+                DoStreamGUI(rc, controlId, repaint, captureActions);
         }
 
         /// <summary>Why there is no image yet, and the one thing to do about it.</summary>
@@ -1352,7 +1378,7 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>The mirrored screen, with the stats column beside it.</summary>
-        void DoStreamGUI(Rect rc, int controlId, Action repaint)
+        void DoStreamGUI(Rect rc, int controlId, Action repaint, IReadOnlyList<CaptureAction> captureActions)
         {
             // The info column is reserved before the image is fitted, so that the image
             // is never drawn underneath it.
@@ -1370,10 +1396,10 @@ namespace Unity.Android.Logcat
             HandleKeyboardInput(controlId);
 
             if (statsWidth > 0)
-                DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
+                DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
         }
 
-        void DoStatsGUI(Rect rc)
+        void DoStatsGUI(Rect rc, IReadOnlyList<CaptureAction> captureActions)
         {
             const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
             var y = rc.y;
@@ -1395,6 +1421,7 @@ namespace Unity.Android.Logcat
             y += kNavigationSpacing;
             DoNavigationGUI(rc, ref y);
             DoRotationGUI(rc, ref y);
+            DoCaptureActionsGUI(rc, ref y, captureActions);
             DoDebuggingGUI(rc, kLabelWidth, ref y);
         }
 
@@ -1473,6 +1500,36 @@ namespace Unity.Android.Logcat
         static float ButtonRowWidth(Rect rc)
         {
             return Mathf.Min(kNavigationButtonWidth, Mathf.Floor(rc.width / 3)) * 3;
+        }
+
+        /// <summary>
+        /// The window's capture actions, under the stream's own controls: capturing the
+        /// device is usually wanted while watching it.
+        /// </summary>
+        void DoCaptureActionsGUI(Rect rc, ref float y, IReadOnlyList<CaptureAction> captureActions)
+        {
+            if (captureActions == null)
+                return;
+
+            var height = EditorGUIUtility.singleLineHeight;
+            y += kNavigationSpacing;
+
+            foreach (var capture in captureActions)
+            {
+                if (y + height > rc.yMax)
+                    return;
+
+                var enabled = capture.Action != null && (capture.Enabled == null || capture.Enabled());
+                EditorGUI.BeginDisabledGroup(!enabled);
+                if (GUI.Button(new Rect(rc.x, y, ButtonRowWidth(rc), height),
+                    capture.Label, EditorStyles.miniButton))
+                {
+                    capture.Action();
+                }
+                EditorGUI.EndDisabledGroup();
+
+                y += height;
+            }
         }
 
         void SetRotation(AndroidDeviceRotation rotation)

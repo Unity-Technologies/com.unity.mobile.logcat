@@ -30,8 +30,8 @@ The toolbar contains options to control the Screen Capture tool.
 | **Toolbar option**      | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
 | **Device Selector**     | Specifies the Android device to capture the screen of.       |
-| **Screen Capture Mode** | Specifies the screen capture mode to use. The options are: <br/>&#8226; **Screenshot**: Switches the Screen Capture tool to screenshot mode. When you click **Capture**, the Screen Capture tool takes a screenshot and displays it in the [Capture preview](#capture-preview). <br/>&#8226; **Video**: Switches the Screen Capture tool to video mode. When you click **Capture**, the Screen Capture tool begins capturing a video of the selected device. When you click **Stop**, the Screen capture tool finishes capturing the video and displays it in the [Capture preview](#capture-preview). |
-| **Capture**             | If **Screen Capture Mode** is **Screenshot**, this captures a screenshot from the Android device. If **Screen Capture Mode** is **Video**, this begins video recording.<br/>Ctrl+Shift+S (Cmd+Shift+S on macOS) captures a screenshot while this window has focus. |
+| **Screen Capture Mode** | Specifies the screen capture mode to use. The options are: <br/>&#8226; **Screenshot**: Switches the Screen Capture tool to screenshot mode. Take screenshots with **Take Screenshot** in the [Live view details](#live-view-details). <br/>&#8226; **Video**: Switches the Screen Capture tool to video mode. When you click **Capture**, the Screen Capture tool begins capturing a video of the selected device. When you click **Stop**, the Screen capture tool finishes capturing the video and displays it in the [Capture preview](#capture-preview). |
+| **Capture**             | Begins video recording.<br/>This option only appears in video mode. To take a screenshot, use **Take Screenshot** in the [Live view details](#live-view-details), or press Ctrl+Shift+S (Cmd+Shift+S on macOS) while this window has focus. |
 | **Stop**                | Stops video recording.<br/>This option only appears while the Screen Capture tool is recording a video. |
 | **Open**                | Opens the video using the application associated with the `.mp4` file extension.<br/>This option only appears in video mode. To open a screenshot, right-click its row in the [Capture list](#capture-list). |
 | **Save As**             | Saves the video as a file on your computer.<br/>This option only appears in video mode. To save a screenshot, right-click its row in the [Capture list](#capture-list); its details file is saved next to the copy. |
@@ -125,6 +125,18 @@ Below the properties are the device navigation buttons, which work while the liv
 | **◄**      | Sends the Back key. The Escape key does the same once you click the image. |
 | **●**      | Sends the Home key.                                          |
 | **■**      | Sends the Overview (recent apps) key.                        |
+
+Below them, **Device Rotation** turns the device's screen:
+
+| **Button**  | **Description**                                              |
+| ----------- | ------------------------------------------------------------ |
+| **Auto**    | Hands the rotation back to the device's accelerometer.       |
+| **0°**      | Locks the device to its natural orientation.                 |
+| **90°**     | Locks the device rotated 90°.                                |
+| **180°**    | Locks the device rotated 180°.                               |
+| **270°**    | Locks the device rotated 270°.                               |
+
+**Take Screenshot**, at the bottom, captures the device screen and adds it to the [Capture list](#capture-list). The screenshot is taken on the device rather than copied from the stream, so it is full resolution whatever the stream is scaled down to. Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same while this window has focus.
 
 For how to interact with the device and how to change the size, quality and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
 

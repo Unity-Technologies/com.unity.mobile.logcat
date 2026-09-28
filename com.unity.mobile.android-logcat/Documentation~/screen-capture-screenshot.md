@@ -5,10 +5,10 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to ca
 1. Open the [Device Screen Capture window](screen-capture-window-reference.md).
 2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify to device to take a screenshot of.
 3. Set **Screen Capture Mode** to **Screenshot**.
-4. Select **Capture**, or press Ctrl+Shift+S (Cmd+Shift+S on macOS). The Screen Capture tool takes a screenshot of the connected device, displays it in the [Capture preview](screen-capture-window-reference.md#capture-preview), and adds it to the [Capture list](screen-capture-window-reference.md#capture-list).
-5. Select **Save As** and use the file explorer to save a copy of the image file elsewhere on your computer.
+4. Select the **Live** row in the [Capture list](screen-capture-window-reference.md#capture-list), then select **Take Screenshot** in the [Live view details](screen-capture-window-reference.md#live-view-details). Pressing Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same from anywhere in this window. The Screen Capture tool takes a screenshot of the connected device, displays it in the [Capture preview](screen-capture-window-reference.md#capture-preview), and adds it to the list.
+5. Right-click the screenshot's row, select **Save As...**, and use the file explorer to save a copy of the image file elsewhere on your computer.
 
-Every screenshot you capture is kept, so you do not have to save one before taking the next. Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and named `<device id>_<number>.png`. That folder is local to your machine and is not part of your build, so use **Save As** to keep a screenshot somewhere permanent.
+Every screenshot you capture is kept, so you do not have to save one before taking the next. Screenshots are stored in your project, in `Library/AndroidLogcat/Screenshots`, and named `<device id>_<number>.png`. That folder is local to your machine and is not part of your build, so use **Save As...** to keep a screenshot somewhere permanent.
 
 Each screenshot is saved with a `.json` file of the same name beside it, recording the device it came from - its name, id, Android version, API level, ABI and display size - and when it was captured. The [Screenshot details](screen-capture-window-reference.md#screenshot-details) beside the image read it, and it is renamed, deleted and saved along with the image, so a copy you keep elsewhere still knows where it came from. A screenshot without one still opens; its device details read `Undefined`.
 
