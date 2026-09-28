@@ -170,15 +170,27 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Where captured screenshots are kept: under Library, which is per machine and
-        /// gitignored, and outside Assets so Unity never imports the images as assets.
-        /// Not UserSettings - that is for settings, and these are output.
-        /// <para>
-        /// Library is also deleted from time to time, by hand or by the Editor. That is
-        /// the right trade for debugging output: a screenshot worth keeping is one Save
-        /// As away from somewhere that is not Library.
-        /// </para>
+        /// Copies a capture into a folder, keeping its name, and takes its details file
+        /// along with it. Overwrites what is there: the caller has already asked.
         /// </summary>
+        /// <returns>False if the copy failed, which is logged.</returns>
+        public static bool CopyInto(string sourcePath, string directory)
+        {
+            var target = Path.Combine(directory, Path.GetFileName(sourcePath)).Replace("\\", "/");
+            try
+            {
+                File.Copy(sourcePath, target, true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to copy '{sourcePath}' to '{target}'.\n{ex.Message}");
+                return false;
+            }
+
+            AndroidLogcatScreenshotInfo.CopyBeside(sourcePath, target);
+            return true;
+        }
+
         /// <summary>
         /// The folder captures are written to - screenshots today, videos later.
         /// Settings can point it anywhere: a relative path starts at the project

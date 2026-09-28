@@ -18,8 +18,8 @@ namespace Unity.Android.Logcat
             public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit rate (in Kbps), the default is 2000Kbps.");
             public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
             public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
-            public static GUIContent Open = new GUIContent("Open", "Open captured screenshot or video.");
-            public static GUIContent SaveAs = new GUIContent("Save As", "Save captured screenshot or video.");
+            public static GUIContent Open = new GUIContent("Open", "Open the recorded video.");
+            public static GUIContent SaveAs = new GUIContent("Save As", "Save the recorded video as a file on your computer.");
             public static GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "

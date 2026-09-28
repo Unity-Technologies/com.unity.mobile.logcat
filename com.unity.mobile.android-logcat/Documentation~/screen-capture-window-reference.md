@@ -60,7 +60,7 @@ To work with the captures in the list:
 | Press Ctrl+A (Cmd+A on macOS)             | Selects every capture. |
 | Double-click a row                        | Opens the image in the application associated with `.png`. |
 | Press Delete (Cmd+Backspace on macOS)     | Deletes every selected capture from disk, after asking you to confirm. |
-| Right-click a row                         | Opens a menu with **Show In Explorer** (**Show In Finder** on macOS), **Open**, **Save As**, **Rename**, **Delete** and **Select All**. The first four act on the row you clicked and are unavailable while several captures are selected; **Delete** removes all of them. |
+| Right-click a row                         | Opens a menu with **Show In Explorer** (**Show In Finder** on macOS), **Open**, **Copy To...**, **Rename**, **Delete** and **Select All**. **Show In Explorer**, **Open** and **Rename** act on the row you clicked and are unavailable while several captures are selected. **Copy To...** and **Delete** act on the whole selection: copying one capture asks for a name, copying several asks for a folder to put them in. |
 | Press F2 (Enter on macOS)                 | Renames the selected capture. Enter confirms the new name and Escape cancels. |
 
 To empty the list, select every capture with Ctrl+A (Cmd+A on macOS) and press Delete.

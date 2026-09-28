@@ -643,7 +643,8 @@ namespace Unity.Android.Logcat
             menu.Add(ScreenshotContextMenu.ShowInFileBrowser,
                 AndroidLogcatUtilities.RevealInFileBrowserLabel, enabled: single, userData: path);
             menu.Add(ScreenshotContextMenu.Open, "Open", enabled: single, userData: path);
-            menu.Add(ScreenshotContextMenu.SaveAs, "Save As...", enabled: single, userData: path);
+            menu.Add(ScreenshotContextMenu.CopyTo,
+                single ? "Copy To..." : $"Copy {m_Selected.Count} Captures To...");
             menu.Add(ScreenshotContextMenu.Rename, "Rename", enabled: single, userData: path);
             menu.Add(ScreenshotContextMenu.Delete,
                 single ? "Delete" : $"Delete {m_Selected.Count} Captures");
@@ -741,8 +742,9 @@ namespace Unity.Android.Logcat
                 case ScreenshotContextMenu.Open:
                     AndroidLogcatUtilities.OpenFile((string)item.UserData);
                     break;
-                case ScreenshotContextMenu.SaveAs:
-                    SaveAs((string)item.UserData);
+                case ScreenshotContextMenu.CopyTo:
+                    // Read when the menu is answered, not when it was opened.
+                    CopyTo(SelectedInOrder(m_CaptureScreenshot.GetScreenshots()));
                     break;
                 case ScreenshotContextMenu.Rename:
                     BeginRename((string)item.UserData);
@@ -761,12 +763,66 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void SaveAs(string path)
+        /// <summary>
+        /// Copies captures somewhere they will be kept. One is copied under a name of
+        /// the user's choosing, several into a folder under the names they have - a
+        /// dialog per file is not what one click asks for.
+        /// </summary>
+        void CopyTo(IReadOnlyList<string> paths)
         {
-            // Screenshots are always saved under the Screenshot mode's remembered
+            if (paths.Count == 0)
+                return;
+
+            // Captures are always copied from the Screenshot mode's remembered
             // location, whatever mode the window happens to be in.
-            m_Runtime.UserSettings.CaptureSettings.SaveFileAs(
-                AndroidLogcatScreenCaptureWindow.Mode.Screenshot, path, "Save Screenshot");
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            const AndroidLogcatScreenCaptureWindow.Mode mode =
+                AndroidLogcatScreenCaptureWindow.Mode.Screenshot;
+
+            if (paths.Count == 1)
+            {
+                settings.SaveFileAs(mode, paths[0], "Copy Screenshot");
+                return;
+            }
+
+            var directory = EditorUtility.OpenFolderPanel($"Copy {paths.Count} Captures",
+                settings.GetLastSaveLocation(mode), string.Empty);
+            if (string.IsNullOrEmpty(directory))
+                return;
+
+            if (!ConfirmOverwrites(paths, directory))
+                return;
+
+            var copied = 0;
+            foreach (var path in paths)
+            {
+                if (AndroidLogcatUtilities.CopyInto(path, directory))
+                    copied++;
+            }
+
+            if (copied > 0)
+                settings.SetLastSaveLocation(mode, Path.GetFullPath(directory));
+        }
+
+        /// <summary>
+        /// Asks once about the files already in the folder, rather than once each.
+        /// </summary>
+        static bool ConfirmOverwrites(IReadOnlyList<string> paths, string directory)
+        {
+            var existing = 0;
+            foreach (var path in paths)
+            {
+                if (File.Exists(Path.Combine(directory, Path.GetFileName(path))))
+                    existing++;
+            }
+
+            if (existing == 0)
+                return true;
+
+            var what = existing == 1 ? "One capture" : $"{existing} captures";
+            return EditorUtility.DisplayDialog("Copy Captures",
+                $"{what} of the same name already exist in {directory}.\n\nReplace them?",
+                "Replace", "Cancel");
         }
 
         /// <summary>

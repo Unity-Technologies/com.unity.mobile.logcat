@@ -44,7 +44,7 @@ namespace Unity.Android.Logcat
         None,
         ShowInFileBrowser,
         Open,
-        SaveAs,
+        CopyTo,
         Rename,
         Delete,
         SelectAll
