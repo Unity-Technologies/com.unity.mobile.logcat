@@ -59,22 +59,11 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private string TemporaryPath
-        {
-            get
-            {
-                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
-                switch (mode)
-                {
-                    // A live stream leaves no file behind, so there is nothing to open or
-                    // save while its row is selected.
-                    case Mode.Screenshot: return m_ScreenshotList.LiveSelected ? string.Empty : m_CaptureScreenshot.SelectedImagePath;
-                    case Mode.Video: return m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
-                    default:
-                        throw new NotImplementedException(mode.ToString());
-                }
-            }
-        }
+        /// <summary>
+        /// The recording of the selected device. Only video has one: a screenshot is
+        /// opened and saved from its own row in the list.
+        /// </summary>
+        private string VideoPath => m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
 
         // Alongside the Logcat window's own entry, and reachable without opening that
         // window first - the Screen Capture window is useful on its own. A device with
@@ -266,8 +255,13 @@ namespace Unity.Android.Logcat
 
             DoModeGUI();
             DoCaptureGUI();
-            DoOpenGUI();
-            DoSaveAsGUI();
+
+            // Remove this once Live view is reimplemented in Video mode, or the button is moved to the video player.
+            if (m_Runtime.UserSettings.CaptureSettings.Mode == Mode.Video)
+            {
+                DoOpenGUI();
+                DoSaveAsGUI();
+            }
 
             EditorGUILayout.EndHorizontal();
         }
@@ -334,19 +328,19 @@ namespace Unity.Android.Logcat
 
         private void DoOpenGUI()
         {
-            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            EditorGUI.BeginDisabledGroup(!File.Exists(VideoPath));
             if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
-                AndroidLogcatUtilities.OpenFile(TemporaryPath);
+                AndroidLogcatUtilities.OpenFile(VideoPath);
             EditorGUI.EndDisabledGroup();
         }
 
         private void DoSaveAsGUI()
         {
-            EditorGUI.BeginDisabledGroup(!File.Exists(TemporaryPath));
+            EditorGUI.BeginDisabledGroup(!File.Exists(VideoPath));
             if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
             {
                 var settings = m_Runtime.UserSettings.CaptureSettings;
-                settings.SaveFileAs(settings.Mode, TemporaryPath, "Save Screen Capture");
+                settings.SaveFileAs(settings.Mode, VideoPath, "Save Screen Capture");
             }
             EditorGUI.EndDisabledGroup();
         }
