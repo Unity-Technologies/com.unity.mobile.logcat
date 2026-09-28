@@ -145,6 +145,8 @@ Below them, **Device Rotation** turns the device's screen:
 | **180°**    | Locks the device rotated 180°.                               |
 | **270°**    | Locks the device rotated 270°.                               |
 
+On a foldable, **Device Fold** follows: **Fold**, **Unfold**, and **Half** on a device that reports half open as a state of its own, hold the device that way whatever its hinge is doing - which is how the other display is reached without touching the device. **Auto** hands it back to the hinge. The row does not appear for a device that does not fold.
+
 **Take Screenshot**, at the bottom, captures the device screen and adds it to the [Capture list](#capture-list). The screenshot is taken on the device rather than copied from the stream, so it is full resolution whatever the stream is scaled down to. Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same while this window has focus.
 
 For how to interact with the device and how to change the size, quality and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).

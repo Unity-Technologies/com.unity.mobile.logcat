@@ -184,6 +184,23 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Home = new GUIContent("●", "Send Home key event");
             internal static readonly GUIContent Recents = new GUIContent("■", "Send Overview key event");
 
+            internal static readonly GUIContent Fold = new GUIContent("Fold",
+                "Hold the device folded, whatever its hinge is doing.");
+            internal static readonly GUIContent FoldHalf = new GUIContent("Half",
+                "Hold the device half open, whatever its hinge is doing. Only for devices that " +
+                "report it as a state of its own.");
+            internal static readonly GUIContent Unfold = new GUIContent("Unfold",
+                "Hold the device unfolded, whatever its hinge is doing.");
+            internal static readonly GUIContent FoldAuto = new GUIContent("Auto",
+                "Follow the hinge again.");
+            internal static readonly GUIContent DeviceCapture = new GUIContent("Device Capture",
+                "Captures taken on the device itself, at its own resolution, rather than copied " +
+                "from the stream.");
+
+            internal static readonly GUIContent DeviceFold = new GUIContent("Device Fold",
+                "Folds and unfolds the device without touching it, which is how a foldable's " +
+                "two displays are reached from here. Only for devices that fold.");
+
             internal static readonly GUIContent DeviceRotation = new GUIContent("Device Rotation",
                 "Rotate the device itself. Auto hands the rotation back to its accelerometer.");
             internal static readonly GUIContent[] Rotations =
@@ -274,6 +291,11 @@ namespace Unity.Android.Logcat
         }
 
         ReaderSession m_Session;
+
+        // What the device folds between, asked for once per stream: it costs an adb
+        // call, and a device does not start folding half way through one.
+        FoldStates m_FoldStates = FoldStates.None;
+        bool m_FoldStatesQueried;
         volatile string m_ReaderError;
         volatile bool m_StreamEnded;
 
@@ -432,6 +454,8 @@ namespace Unity.Android.Logcat
             m_TouchDown = false;
             m_HeldModifiers = EventModifiers.None;
             m_HeldKeys.Clear();
+            m_FoldStates = FoldStates.None;
+            m_FoldStatesQueried = false;
             m_FrameWidth = 0;
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
@@ -1451,6 +1475,7 @@ namespace Unity.Android.Logcat
             y += kNavigationSpacing;
             DoNavigationGUI(rc, ref y);
             DoRotationGUI(rc, ref y);
+            DoFoldGUI(rc, ref y);
             DoCaptureActionsGUI(rc, ref y, captureActions);
             DoDebuggingGUI(rc, kLabelWidth, ref y);
         }
@@ -1538,11 +1563,16 @@ namespace Unity.Android.Logcat
         /// </summary>
         void DoCaptureActionsGUI(Rect rc, ref float y, IReadOnlyList<CaptureAction> captureActions)
         {
-            if (captureActions == null)
+            if (captureActions == null || captureActions.Count == 0)
                 return;
 
             var height = EditorGUIUtility.singleLineHeight;
             y += kNavigationSpacing;
+            if (y + height * 2 > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeviceCapture, EditorStyles.miniBoldLabel);
+            y += height;
 
             foreach (var capture in captureActions)
             {
@@ -1559,6 +1589,71 @@ namespace Unity.Android.Logcat
                 EditorGUI.EndDisabledGroup();
 
                 y += height;
+            }
+        }
+
+        /// <summary>
+        /// Folds and unfolds a foldable, which is the only way to see its other
+        /// display from here. Nothing is drawn for a device that does not fold.
+        /// </summary>
+        void DoFoldGUI(Rect rc, ref float y)
+        {
+            if (!m_FoldStatesQueried && m_Device != null)
+            {
+                m_FoldStatesQueried = true;
+                m_FoldStates = m_Device.QueryFoldStates();
+            }
+
+            if (!m_FoldStates.Supported)
+                return;
+
+            var height = EditorGUIUtility.singleLineHeight;
+            y += kNavigationSpacing;
+            if (y + height * 2 > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeviceFold, EditorStyles.miniBoldLabel);
+            y += height;
+
+            EditorGUI.BeginDisabledGroup(m_Device == null);
+
+            // Auto first, as in the rotation row above: the state the device is in
+            // until something here overrides it. Then the hinge's own order.
+            var count = m_FoldStates.HasHalf ? 4 : 3;
+            var width = Mathf.Floor(ButtonRowWidth(rc) / count);
+
+            if (FoldButton(rc, y, width, 0, count, Styles.FoldAuto))
+                SetDeviceState(-1);
+            if (FoldButton(rc, y, width, 1, count, Styles.Fold))
+                SetDeviceState(m_FoldStates.Folded);
+            if (m_FoldStates.HasHalf && FoldButton(rc, y, width, 2, count, Styles.FoldHalf))
+                SetDeviceState(m_FoldStates.Half);
+            if (FoldButton(rc, y, width, count - 1, count, Styles.Unfold))
+                SetDeviceState(m_FoldStates.Unfolded);
+
+            EditorGUI.EndDisabledGroup();
+            y += height;
+        }
+
+        static bool FoldButton(Rect rc, float y, float width, int index, int count, GUIContent label)
+        {
+            var style = index == 0 ? EditorStyles.miniButtonLeft
+                : index == count - 1 ? EditorStyles.miniButtonRight
+                : EditorStyles.miniButtonMid;
+
+            return GUI.Button(new Rect(rc.x + width * index, y, width,
+                EditorGUIUtility.singleLineHeight), label, style);
+        }
+
+        void SetDeviceState(int identifier)
+        {
+            try
+            {
+                m_Device.SetDeviceState(identifier);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to set the device state: {InnermostMessage(ex)}");
             }
         }
 
