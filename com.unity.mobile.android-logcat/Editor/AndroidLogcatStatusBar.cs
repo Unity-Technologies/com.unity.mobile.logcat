@@ -9,9 +9,16 @@ namespace Unity.Android.Logcat
 
         public bool Connected { set; get; }
 
+        /// <summary>
+        /// Whether the bar leads with the connection state. A window that has nothing
+        /// to connect to - the Screen Capture window - shows only its message.
+        /// </summary>
+        public bool ShowConnection { set; get; }
+
         public AndroidLogcatStatusBar()
         {
             Message = String.Empty;
+            ShowConnection = true;
         }
 
         public void DoGUI()
@@ -23,11 +30,14 @@ namespace Unity.Android.Logcat
             }
             rc.x += 10.0f;
             rc.width -= 10.0f;
-            var msg = Connected ? "<color=#00FF00FF><b>Connected</b></color>" : "<color=#FF0000FF><b>Disconnected</b></color>";
+            var msg = string.Empty;
+            if (ShowConnection)
+                msg = Connected ? "<color=#00FF00FF><b>Connected</b></color>" : "<color=#FF0000FF><b>Disconnected</b></color>";
 
             if (!string.IsNullOrEmpty(Message))
             {
-                msg += " : ";
+                if (msg.Length > 0)
+                    msg += " : ";
                 msg += Message;
             }
 
