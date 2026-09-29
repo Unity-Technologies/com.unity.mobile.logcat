@@ -153,10 +153,8 @@ namespace Unity.Android.Logcat
             else
                 settings.CaptureOutputDirectory = folder;
 
-            // Spelled out rather than left to the tooltip: a relative path says nothing
-            // about where it lands, and that is the thing to know before capturing.
             EditorGUILayout.HelpBox(
-                "The folder can be relative to the project folder, or an absolute path. " +
+                "The path can be relative to the project folder, or an absolute path. " +
                 $"Captures are written to '{AndroidLogcatUtilities.GetCapturesDirectory(settings)}'.",
                 MessageType.None);
         }
