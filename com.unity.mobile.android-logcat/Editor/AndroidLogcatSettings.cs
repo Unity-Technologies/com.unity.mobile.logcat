@@ -75,6 +75,23 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private string m_CaptureOutputDirectory;
 
+        // What to override of screenrecord's own defaults. Unset means the recorder
+        // decides, which is what it does when the argument is not passed at all.
+        [SerializeField]
+        private bool m_VideoTimeLimitEnabled;
+        [SerializeField]
+        private uint m_VideoTimeLimit;
+        [SerializeField]
+        private bool m_VideoSizeEnabled;
+        [SerializeField]
+        private uint m_VideoSizeX;
+        [SerializeField]
+        private uint m_VideoSizeY;
+        [SerializeField]
+        private bool m_VideoBitRateEnabled;
+        [SerializeField]
+        private ulong m_VideoBitRateK;
+
         [SerializeField]
         private int m_LiveStreamMaxSize;
 
@@ -178,6 +195,59 @@ namespace Unity.Android.Logcat
             {
                 return m_CaptureOutputDirectory ?? string.Empty;
             }
+        }
+
+        internal bool VideoTimeLimitEnabled
+        {
+            set { Set(ref m_VideoTimeLimitEnabled, value); }
+            get { return m_VideoTimeLimitEnabled; }
+        }
+
+        /// <summary>How long a recording runs, in seconds.</summary>
+        internal uint VideoTimeLimit
+        {
+            set { Set(ref m_VideoTimeLimit, value); }
+            get { return m_VideoTimeLimit; }
+        }
+
+        internal bool VideoSizeEnabled
+        {
+            set { Set(ref m_VideoSizeEnabled, value); }
+            get { return m_VideoSizeEnabled; }
+        }
+
+        internal uint VideoSizeX
+        {
+            set { Set(ref m_VideoSizeX, value); }
+            get { return m_VideoSizeX; }
+        }
+
+        internal uint VideoSizeY
+        {
+            set { Set(ref m_VideoSizeY, value); }
+            get { return m_VideoSizeY; }
+        }
+
+        internal bool VideoBitRateEnabled
+        {
+            set { Set(ref m_VideoBitRateEnabled, value); }
+            get { return m_VideoBitRateEnabled; }
+        }
+
+        /// <summary>Kilobits per second.</summary>
+        internal ulong VideoBitRateK
+        {
+            set { Set(ref m_VideoBitRateK, value); }
+            get { return m_VideoBitRateK; }
+        }
+
+        /// <summary>Assigns and reports the change, for the settings that just store a value.</summary>
+        void Set<T>(ref T field, T value)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+                return;
+            field = value;
+            InvokeOnSettingsChanged();
         }
 
         internal int LiveStreamMaxSize
@@ -314,6 +384,13 @@ namespace Unity.Android.Logcat
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;
             m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
+            m_VideoTimeLimitEnabled = false;
+            m_VideoTimeLimit = 180;
+            m_VideoSizeEnabled = false;
+            m_VideoSizeX = 1280;
+            m_VideoSizeY = 720;
+            m_VideoBitRateEnabled = false;
+            m_VideoBitRateK = 20000;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");

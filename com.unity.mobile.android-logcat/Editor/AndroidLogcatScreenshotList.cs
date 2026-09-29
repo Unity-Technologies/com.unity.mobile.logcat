@@ -30,9 +30,7 @@ namespace Unity.Android.Logcat
             /// <summary>The icon for a capture, by what kind of file it is.</summary>
             internal static Texture IconFor(string path)
             {
-                var extension = Path.GetExtension(path);
-                var video = extension == ".mp4" || extension == ".webm";
-                var icon = video ? kVideo : kImage;
+                var icon = IsVideo(path) ? kVideo : kImage;
                 return icon != null ? icon.image : null;
             }
 
@@ -51,6 +49,14 @@ namespace Unity.Android.Logcat
                 "Size of the file on disk.");
             internal static readonly GUIContent Captured = new GUIContent("Captured",
                 "When the file was last written.");
+            internal static readonly GUIContent VideoSize = new GUIContent("Video Size",
+                "Size of the recording in pixels.");
+            internal static readonly GUIContent Length = new GUIContent("Length",
+                "How long the recording runs.");
+            internal static readonly GUIContent Play = new GUIContent("Play",
+                "Play the recording.");
+            internal static readonly GUIContent Pause = new GUIContent("Pause",
+                "Pause the recording.");
 
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
@@ -121,6 +127,10 @@ namespace Unity.Android.Logcat
         // last capture, and swapping it for a screenshot picked out of this list would
         // lose it. Only the selected path is shared.
         Texture2D m_PreviewTexture;
+        // A recording is previewed by playing it, where a screenshot is drawn. Only
+        // one of the two is ever loaded, since only one row is selected.
+        readonly AndroidLogcatVideoPlayer m_VideoPlayer = new AndroidLogcatVideoPlayer();
+        bool m_PreviewIsVideo;
         string m_PreviewPath;
         PreviewDetails m_PreviewDetails;
 
@@ -151,14 +161,31 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Stops the stream and drops the selection, for a window that is going away or
-        /// has switched to a mode that does not show this list. The initial selection is
-        /// forgotten with it, so coming back decides what to open on again.
+        /// Shows a capture, for something outside the list that has just made one.
+        /// </summary>
+        internal void Select(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+            SelectOnly(path, m_SelectedDevice);
+        }
+
+        /// <summary>The player holds a texture and a VideoPlayer of its own.</summary>
+        internal void Dispose()
+        {
+            m_VideoPlayer.Dispose();
+            DestroyPreview();
+        }
+
+        /// <summary>
+        /// Stops the stream and drops the selection, for a window that is going away.
+        /// The initial selection is forgotten with it, so coming back decides what to
+        /// open on again.
         /// </summary>
         internal void Deselect()
         {
             if (m_LiveSelected)
-                m_LiveStream.StopStreaming();
+                StopLive();
             m_LiveSelected = false;
             m_Selected.Clear();
             m_SelectionAnchor = null;
@@ -189,22 +216,46 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            if (m_PreviewTexture == null)
+            if (m_PreviewTexture == null && !m_PreviewIsVideo)
                 return false;
 
             AndroidLogcatStatsColumn.DrawBox(rc);
 
-            // The same column the live view draws, so the two modes look alike. Taken
-            // out of the area before the image is fitted, or the image would be drawn
+            // The same column the live view draws, so the two look alike. Taken out of
+            // the area before the image is fitted, or the image would be drawn
             // underneath it, and sized to its text, or a device name is cut in half.
             var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc, m_PreviewDetails.Values);
-            var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
+            var previewArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            var imageBox = m_Viewer.DoGUI(imageArea,
-                (float)m_PreviewTexture.width / m_PreviewTexture.height,
-                imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
+            Rect previewBox;
+            if (m_PreviewIsVideo)
+            {
+                // A video opens asynchronously; there is no frame and no size until it has.
+                var frame = m_VideoPlayer.Texture;
+                var aspect = m_VideoPlayer.Aspect;
+                var opening = frame == null || aspect <= 0;
+                if (opening)
+                {
+                    EditorGUI.HelpBox(previewArea, "Opening the recording...", MessageType.Info);
+                    previewBox = previewArea;
+                }
+                else
+                {
+                    previewBox = m_Viewer.DoGUI(previewArea, aspect,
+                        videoRect => GUI.DrawTexture(videoRect, frame), m_Repaint);
+                }
 
-            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
+                if (opening || m_VideoPlayer.IsPlaying())
+                    m_Repaint();
+            }
+            else
+            {
+                previewBox = m_Viewer.DoGUI(previewArea,
+                    (float)m_PreviewTexture.width / m_PreviewTexture.height,
+                    imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
+            }
+
+            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, previewBox));
             return true;
         }
 
@@ -217,9 +268,41 @@ namespace Unity.Android.Logcat
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device, details.Device, details.DeviceId);
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS, details.OS);
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, details.DisplaySize);
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize, details.ImageSize);
+
+            // A recording's size and length are known only once the player has opened it.
+            if (m_PreviewIsVideo)
+            {
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.VideoSize,
+                    Undefined(m_VideoPlayer.Dimensions));
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Length,
+                    Undefined(m_VideoPlayer.Length));
+            }
+            else
+            {
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize, details.ImageSize);
+            }
+
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize, details.FileSize);
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured, details.Captured, details.CapturedInFull);
+
+            if (m_PreviewIsVideo)
+                DoPlaybackGUI(rc, ref y);
+        }
+
+        static string Undefined(string value) => string.IsNullOrEmpty(value) ? kUndefined : value;
+
+        void DoPlaybackGUI(Rect rc, ref float y)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            y += kGroupGap;
+            if (y + height > rc.yMax)
+                return;
+
+            var label = m_VideoPlayer.IsPlaying() ? Styles.Pause : Styles.Play;
+            if (GUI.Button(new Rect(rc.x, y, rc.width, height), label, EditorStyles.miniButton))
+                m_VideoPlayer.TogglePlay();
+
+            y += height;
         }
 
         /// <summary>
@@ -239,6 +322,7 @@ namespace Unity.Android.Logcat
             internal string CapturedInFull { get; }
             internal string[] Values { get; }
 
+            /// <summary>A recording has no texture, so it has no image size either.</summary>
             internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
             {
                 Device = info == null || string.IsNullOrEmpty(info.deviceName) ? kUndefined : info.deviceName;
@@ -247,7 +331,7 @@ namespace Unity.Android.Logcat
                 DisplaySize = info == null || info.displayWidth <= 0
                     ? kUndefined
                     : $"{info.displayWidth}x{info.displayHeight}";
-                ImageSize = $"{texture.width}x{texture.height}";
+                ImageSize = texture != null ? $"{texture.width}x{texture.height}" : kUndefined;
                 FileSize = EditorUtility.FormatBytes(file.Length);
                 Captured = file.LastWriteTime.ToString("g");
                 CapturedInFull = file.LastWriteTime.ToString("F");
@@ -280,6 +364,15 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return;
 
+            if (IsVideo(path))
+            {
+                m_PreviewIsVideo = true;
+                m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
+                    AndroidLogcatScreenshotInfo.Load(path));
+                m_VideoPlayer.Play(path);
+                return;
+            }
+
             var texture = new Texture2D(2, 2);
             if (texture.LoadImage(File.ReadAllBytes(path)))
             {
@@ -293,8 +386,18 @@ namespace Unity.Android.Logcat
             }
         }
 
+        internal static bool IsVideo(string path)
+        {
+            var extension = Path.GetExtension(path);
+            return string.Equals(extension, ".mp4", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".webm", StringComparison.OrdinalIgnoreCase);
+        }
+
         void DestroyPreview()
         {
+            if (m_PreviewIsVideo)
+                m_VideoPlayer.Play(null);
+            m_PreviewIsVideo = false;
             if (m_PreviewTexture != null)
                 UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
             m_PreviewTexture = null;
@@ -542,9 +645,20 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                m_LiveStream.StopStreaming();
+                StopLive();
             }
             m_Repaint();
+        }
+
+        /// <summary>
+        /// A recording is taken while watching the device, and once the live view is
+        /// gone nothing says one is still running - so it ends with it. The stream goes
+        /// first, so the status bar ends up saying where the recording landed.
+        /// </summary>
+        void StopLive()
+        {
+            m_LiveStream.StopStreaming();
+            m_Runtime.CaptureVideo.StopRecording();
         }
 
         /// <summary>
@@ -796,20 +910,16 @@ namespace Unity.Android.Logcat
             if (paths.Count == 0)
                 return;
 
-            // Captures are always copied from the Screenshot mode's remembered
-            // location, whatever mode the window happens to be in.
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            const AndroidLogcatScreenCaptureWindow.Mode mode =
-                AndroidLogcatScreenCaptureWindow.Mode.Screenshot;
 
             if (paths.Count == 1)
             {
-                settings.SaveFileAs(mode, paths[0], "Copy Screenshot");
+                settings.SaveFileAs(paths[0], "Copy Capture");
                 return;
             }
 
             var directory = EditorUtility.OpenFolderPanel($"Copy {paths.Count} Captures",
-                settings.GetLastSaveLocation(mode), string.Empty);
+                settings.LastSaveLocation, string.Empty);
             if (string.IsNullOrEmpty(directory))
                 return;
 
@@ -824,7 +934,7 @@ namespace Unity.Android.Logcat
             }
 
             if (copied > 0)
-                settings.SetLastSaveLocation(mode, Path.GetFullPath(directory));
+                settings.LastSaveLocation = Path.GetFullPath(directory);
         }
 
         /// <summary>

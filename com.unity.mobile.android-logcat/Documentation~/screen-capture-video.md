@@ -1,13 +1,15 @@
 # Capture a video
 
-This page explains how to use the [Screen Capture tool](screen-capture.md) to capture a video of the connected device's screen and save it as a file on your computer.
+This page explains how to use the [Screen Capture tool](screen-capture.md) to record the connected device's screen.
 
 1. Open the [Device Screen Capture window](screen-capture-window-reference.md).
-2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify to device to take a screenshot of.
-3. Set **Screen Capture Mode** to **Video**.
-4. Select **Capture**. The Screen Capture tool begins to capture a video of the connected device's screen.
-5. When you want to finish the video, select **Stop**. The Screen Capture tool finishes capturing the video and displays it in the [Capture preview](screen-capture-window-reference.md#capture-preview).
-6. Select **Save As** and use the file explorer to save the video file to your computer.
+2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify the device to record.
+3. Select **Live** in the [Capture list](screen-capture-window-reference.md#capture-list) to view the device's screen.
+4. Select **Take Recording** in the [Live view details](screen-capture-window-reference.md#live-view-details). The Screen Capture tool begins to record the device's screen, and the button becomes **Stop Recording**.
+5. Select **Stop Recording** to finish. The recording is added to the [Capture list](screen-capture-window-reference.md#capture-list) and selected, which plays it in the [Capture preview](screen-capture-window-reference.md#capture-preview). Selecting a capture from the list, or closing the window, also stops the recording.
+6. To keep a copy elsewhere, right-click the recording's row and select **Copy To...**.
+
+Recordings are stored beside screenshots, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.mp4`. To change how long a recording runs, its size or its bit rate, use the **Recording** settings in [Preferences](android-logcat-settings.md#capture-settings).
 
 ## Details
 

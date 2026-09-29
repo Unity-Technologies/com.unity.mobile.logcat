@@ -28,6 +28,14 @@ namespace Unity.Android.Logcat
                 + "this machine and not part of a build.");
             public static GUIContent browse = new GUIContent("Browse...", "Pick the captures folder.");
 
+            // Note: info acquired from adb shell screenrecord --help
+            public static GUIContent videoTimeLimit = new GUIContent("Time Limit",
+                "How long a recording runs, in seconds. Unchecked, the device stops it after 180 seconds.");
+            public static GUIContent videoSize = new GUIContent("Video Size",
+                "Size of the recording in pixels. Unchecked, the device records its display resolution.");
+            public static GUIContent videoBitRate = new GUIContent("Bit Rate",
+                "Bit rate of the recording, in Kbps. Unchecked, the device picks it.");
+
             public static GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
             public static GUIContent liveStreamQuality = new GUIContent("JPEG Quality",
@@ -84,6 +92,10 @@ namespace Unity.Android.Logcat
             GUILayout.Space(20);
             EditorGUILayout.LabelField("Capture Settings", EditorStyles.boldLabel);
             DoCapturesFolderGUI(settings);
+
+            GUILayout.Space(10);
+            EditorGUILayout.LabelField("Recording", EditorStyles.miniBoldLabel);
+            DoRecordingGUI(settings);
 
             GUILayout.Space(10);
             EditorGUILayout.LabelField("Live Stream", EditorStyles.miniBoldLabel);
@@ -174,6 +186,31 @@ namespace Unity.Android.Logcat
             settings.CaptureOutputDirectory = full.StartsWith(project, StringComparison.OrdinalIgnoreCase)
                 ? full.Substring(project.Length)
                 : full;
+        }
+
+        /// <summary>
+        /// What to override of the device recorder's own defaults. Each is off until
+        /// it is ticked, because the device's answer is the right one until someone
+        /// has a reason to disagree with it.
+        /// </summary>
+        void DoRecordingGUI(AndroidLogcatSettings settings)
+        {
+            settings.VideoTimeLimitEnabled = EditorGUILayout.BeginToggleGroup(Styles.videoTimeLimit,
+                settings.VideoTimeLimitEnabled);
+            settings.VideoTimeLimit = (uint)EditorGUILayout.IntSlider(" ", (int)settings.VideoTimeLimit, 1, 180);
+            EditorGUILayout.EndToggleGroup();
+
+            settings.VideoSizeEnabled = EditorGUILayout.BeginToggleGroup(Styles.videoSize,
+                settings.VideoSizeEnabled);
+            settings.VideoSizeX = (uint)EditorGUILayout.IntSlider("Width", (int)settings.VideoSizeX, 100, 7680);
+            settings.VideoSizeY = (uint)EditorGUILayout.IntSlider("Height", (int)settings.VideoSizeY, 100, 7680);
+            EditorGUILayout.EndToggleGroup();
+
+            settings.VideoBitRateEnabled = EditorGUILayout.BeginToggleGroup(Styles.videoBitRate,
+                settings.VideoBitRateEnabled);
+            settings.VideoBitRateK = (ulong)Mathf.Max(1,
+                EditorGUILayout.IntField("Kbps", (int)settings.VideoBitRateK));
+            EditorGUILayout.EndToggleGroup();
         }
 
         /// <summary>

@@ -271,12 +271,16 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal readonly struct CaptureAction
         {
-            internal readonly GUIContent Label;
+            /// <summary>
+            /// Asked on every repaint, so one button can say what it does next -
+            /// recording starts and stops from the same place.
+            /// </summary>
+            internal readonly Func<GUIContent> Label;
             internal readonly Action Action;
             /// <summary>Asked on every repaint. Null is a button that is always enabled.</summary>
             internal readonly Func<bool> Enabled;
 
-            internal CaptureAction(GUIContent label, Action action, Func<bool> enabled = null)
+            internal CaptureAction(Func<GUIContent> label, Action action, Func<bool> enabled = null)
             {
                 Label = label;
                 Action = action;
@@ -1582,7 +1586,7 @@ namespace Unity.Android.Logcat
                 var enabled = capture.Action != null && (capture.Enabled == null || capture.Enabled());
                 EditorGUI.BeginDisabledGroup(!enabled);
                 if (GUI.Button(new Rect(rc.x, y, ButtonRowWidth(rc), height),
-                    capture.Label, EditorStyles.miniButton))
+                    capture.Label(), EditorStyles.miniButton))
                 {
                     capture.Action();
                 }

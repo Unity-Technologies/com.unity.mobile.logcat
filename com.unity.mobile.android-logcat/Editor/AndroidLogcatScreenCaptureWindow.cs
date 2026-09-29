@@ -12,14 +12,6 @@ namespace Unity.Android.Logcat
     {
         class Styles
         {
-            // Note: Info acquired from adb shell screenrecord --help
-            public static GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
-            public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
-            public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit rate (in Kbps), the default is 2000Kbps.");
-            public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
-            public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
-            public static GUIContent Open = new GUIContent("Open", "Open the recorded video.");
-            public static GUIContent SaveAs = new GUIContent("Save As", "Save the recorded video as a file on your computer.");
             static readonly GUIContent kMore = EditorGUIUtility.IconContent("_Menu");
             public static GUIContent Advanced = kMore != null && kMore.image != null
                 ? new GUIContent(kMore.image)
@@ -29,13 +21,11 @@ namespace Unity.Android.Logcat
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
                 + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS.");
-            public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
-            public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
-        }
-        internal enum Mode
-        {
-            Screenshot,
-            Video
+            public static GUIContent TakeRecording = new GUIContent("Take Recording",
+                "Record the device screen while watching it. The recording is taken on the device "
+                + "and is added to the list when it stops. Leaving the live view stops it.");
+            public static GUIContent StopRecording = new GUIContent("Stop Recording",
+                "Stop recording and add the recording to the list.");
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -43,7 +33,6 @@ namespace Unity.Android.Logcat
 
         private AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
         private AndroidLogcatCaptureVideo m_CaptureVideo;
-        private AndroidLogcatVideoPlayer m_VideoPlayer;
         private AndroidLogcatLiveStream m_LiveStream;
 
         private AndroidLogcatDeviceSelection m_DeviceSelection;
@@ -52,33 +41,13 @@ namespace Unity.Android.Logcat
         private AndroidLogcatScreenshotList m_ScreenshotList;
         private AndroidLogcatStatusBar m_StatusBar;
 
-        // Recording the screen will join this.
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
 
-        // Fixed, so that what follows it does not move when the mode changes.
-        const float kModeDropdownWidth = 90;
         const float kAdvancedMenuWidth = 26;
 
-        private bool IsCapturing
-        {
-            get
-            {
-                var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
-                switch (mode)
-                {
-                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing || m_LiveStream.IsStreaming;
-                    case Mode.Video: return m_CaptureVideo.IsRecording;
-                    default:
-                        throw new NotImplementedException(mode.ToString());
-                }
-            }
-        }
-
-        /// <summary>
-        /// The recording of the selected device. Only video has one: a screenshot is
-        /// opened and saved from its own row in the list.
-        /// </summary>
-        private string VideoPath => m_CaptureVideo.GetVideoPath(m_DeviceSelection.SelectedDevice);
+        /// <summary>Anything the device is doing for this window, for the progress icon.</summary>
+        private bool IsCapturing =>
+            m_CaptureScreenshot.IsCapturing || m_CaptureVideo.IsRecording || m_LiveStream.IsStreaming;
 
         // Alongside the Logcat window's own entry, and reachable without opening that
         // window first - the Screen Capture window is useful on its own. A device with
@@ -102,7 +71,6 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
             m_LiveStream.StreamChanged += ReportStream;
-            m_VideoPlayer = new AndroidLogcatVideoPlayer();
             m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime, Repaint);
             // Nothing here connects to anything, so the bar carries the message alone.
             m_StatusBar = new AndroidLogcatStatusBar() { ShowConnection = false };
@@ -111,15 +79,14 @@ namespace Unity.Android.Logcat
             // appear. Each says for itself when it can run.
             m_CaptureActions = new[]
             {
-                new AndroidLogcatLiveStream.CaptureAction(Styles.TakeScreenshot, QueueScreenCapture,
-                    () => CanCaptureScreenshot)
+                new AndroidLogcatLiveStream.CaptureAction(() => Styles.TakeScreenshot,
+                    QueueScreenCapture, () => CanCaptureScreenshot),
+                // One button that starts and stops: a recording is running or it is
+                // not, and two buttons would leave one of them dead most of the time.
+                new AndroidLogcatLiveStream.CaptureAction(
+                    () => m_CaptureVideo.IsRecording ? Styles.StopRecording : Styles.TakeRecording,
+                    ToggleRecording, () => CanRecord)
             };
-
-            // Settings saved while the removed LiveStream mode was selected still hold
-            // its value, which is now out of range and would throw in the switches above.
-            var captureSettings = m_Runtime.UserSettings.CaptureSettings;
-            if (!Enum.IsDefined(typeof(Mode), captureSettings.Mode))
-                captureSettings.Mode = Mode.Screenshot;
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
@@ -130,9 +97,7 @@ namespace Unity.Android.Logcat
 
             m_LastDeviceUsedForAssets = device;
 
-            m_VideoPlayer.Play(m_CaptureVideo.GetVideoPath(device));
-
-            // The screenshots are not tied to a device, so losing one keeps the view.
+            // The captures are not tied to a device, so losing one keeps the view.
             if (string.IsNullOrEmpty(m_Runtime.CaptureScreenshot.SelectedImagePath))
                 m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
 
@@ -141,9 +106,10 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
-            // The live stream is owned by the runtime, so it would otherwise keep
-            // mirroring the device after the window that was showing it is gone - and
-            // keep reporting to a status bar that is gone with it.
+            // The live stream and the recorder are owned by the runtime, so they would
+            // otherwise carry on after the window that was showing them is gone - and
+            // keep reporting to a status bar that is gone with it. Dropping the
+            // selection ends both.
             m_ScreenshotList?.Deselect();
 
             if (m_LiveStream != null)
@@ -152,11 +118,8 @@ namespace Unity.Android.Logcat
                 m_LiveStream = null;
             }
 
-            if (m_VideoPlayer != null)
-            {
-                m_VideoPlayer.Dispose();
-                m_VideoPlayer = null;
-            }
+            m_ScreenshotList?.Dispose();
+
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;
 
@@ -170,6 +133,32 @@ namespace Unity.Android.Logcat
         /// <summary>Whether a screenshot can be taken right now.</summary>
         private bool CanCaptureScreenshot =>
             m_DeviceSelection.SelectedDevice != null && !m_CaptureScreenshot.IsCapturing;
+
+        /// <summary>
+        /// Whether a recording can be started or stopped. Stopping is always allowed
+        /// once one is running, whatever happened to the device since.
+        /// </summary>
+        private bool CanRecord =>
+            m_CaptureVideo.IsRecording || m_DeviceSelection.SelectedDevice != null;
+
+        private void ToggleRecording()
+        {
+            if (m_CaptureVideo.IsRecording)
+            {
+                m_CaptureVideo.StopRecording();
+                return;
+            }
+
+            // Whatever the bar said about the last capture is about to be out of date.
+            m_StatusBar.Message = string.Empty;
+
+            var settings = m_Runtime.Settings;
+            m_CaptureVideo.StartRecording(m_DeviceSelection.SelectedDevice, OnVideoCompleted,
+                settings.VideoTimeLimitEnabled ? TimeSpan.FromSeconds(settings.VideoTimeLimit) : (TimeSpan?)null,
+                settings.VideoSizeEnabled ? settings.VideoSizeX : (uint?)null,
+                settings.VideoSizeEnabled ? settings.VideoSizeY : (uint?)null,
+                settings.VideoBitRateEnabled ? settings.VideoBitRateK * 1000 : (ulong?)null);
+        }
 
         private void QueueScreenCapture()
         {
@@ -250,12 +239,9 @@ namespace Unity.Android.Logcat
 
         void CaptureScreenshotFromShortcut()
         {
-            // The same conditions the Capture button draws itself with: it is disabled
-            // without a device and while a capture is in flight, and in Video mode it
-            // records video instead, which this shortcut is not for.
+            // The same conditions the button draws itself with: no device, or a
+            // capture already in flight.
             if (m_Runtime == null || m_DeviceSelection == null)
-                return;
-            if (m_Runtime.UserSettings.CaptureSettings.Mode != Mode.Screenshot)
                 return;
             if (!CanCaptureScreenshot)
                 return;
@@ -283,29 +269,16 @@ namespace Unity.Android.Logcat
 
         void OnVideoCompleted(AndroidLogcatCaptureVideo.Result result, string videoPath)
         {
-            ReportSaved("Video", result == AndroidLogcatCaptureVideo.Result.Success ? videoPath : null);
+            var recorded = result == AndroidLogcatCaptureVideo.Result.Success;
+            ReportSaved("Recording", recorded ? videoPath : null);
 
-            if (result == AndroidLogcatCaptureVideo.Result.Success)
-                m_VideoPlayer.Play(videoPath);
+            // The list is counted from a cached scan, which knows nothing of a file
+            // the recorder has just written.
+            m_CaptureScreenshot.InvalidateScreenshots();
+            if (recorded)
+                m_ScreenshotList.Select(videoPath);
+
             Repaint();
-        }
-
-        void DoModeGUI()
-        {
-            var settings = m_Runtime.UserSettings.CaptureSettings;
-            var mode = (Mode)EditorGUILayout.EnumPopup(settings.Mode, AndroidLogcatStyles.toolbarPopup,
-                GUILayout.Width(kModeDropdownWidth));
-            if (mode == settings.Mode)
-                return;
-
-            settings.Mode = mode;
-
-            // The list, and with it the Live row, is only drawn in Screenshot mode.
-            // Leaving that mode has to stop the stream, or the server carries on
-            // mirroring the device's display for a window that no longer shows it -
-            // and Video mode would happily start a recording alongside it.
-            if (mode != Mode.Screenshot)
-                m_ScreenshotList.Deselect();
         }
 
         /// <summary>
@@ -341,13 +314,6 @@ namespace Unity.Android.Logcat
             GUILayout.Space(5);
             DoPreviewGUI();
 
-            // Video mode's settings take only the height they need, so the bar would
-            // sit under the last control rather than at the bottom of the window.
-            // Screenshot mode claims what is left for the list and the preview, and
-            // must not be made to share it.
-            if (m_Runtime.UserSettings.CaptureSettings.Mode == Mode.Video)
-                GUILayout.FlexibleSpace();
-
             m_StatusBar?.DoGUI();
 
             EditorGUILayout.EndVertical();
@@ -360,21 +326,14 @@ namespace Unity.Android.Logcat
             DoProgressGUI();
             m_DeviceSelection.DoGUI();
 
-            DoModeGUI();
-            DoCaptureGUI();
-
-            // Remove this once Live view is reimplemented in Video mode, or the button is moved to the video player.
-            if (m_Runtime.UserSettings.CaptureSettings.Mode == Mode.Video)
-            {
-                DoOpenGUI();
-                DoSaveAsGUI();
-            }
-
             GUILayout.FlexibleSpace();
             DoAdvancedMenuGUI();
 
             EditorGUILayout.EndHorizontal();
 
+            // The line along the bottom of the toolbar is drawn by the controls, not by
+            // the toolbar - its own background is shorter than this row - so it stops
+            // wherever the row is empty. One line across the row closes it.
             var toolbarRect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.Repaint)
             {
@@ -407,81 +366,6 @@ namespace Unity.Android.Logcat
                 Repaint();
         }
 
-        private void DoCaptureGUI()
-        {
-            EditorGUI.BeginDisabledGroup(m_DeviceSelection.SelectedDevice == null);
-            switch (m_Runtime.UserSettings.CaptureSettings.Mode)
-            {
-                case Mode.Screenshot:
-                    // Taking a screenshot lives in the live view, beside the screen it
-                    // captures - see DoScreenshotGUI.
-                    break;
-                case Mode.Video:
-                    if (m_CaptureVideo.IsRecording)
-                    {
-                        if (GUILayout.Button(Styles.StopVideo, AndroidLogcatStyles.toolbarButton))
-                        {
-                            m_CaptureVideo.StopRecording();
-                        }
-                    }
-                    else
-                    {
-                        if (GUILayout.Button(Styles.CaptureVideo, AndroidLogcatStyles.toolbarButton))
-                        {
-                            TimeSpan? timeLimit = null;
-                            uint? videoSizeX = null;
-                            uint? videoSizeY = null;
-                            ulong? bitRate = null;
-                            string displayId = null;
-                            var vs = m_Runtime.UserSettings.CaptureVideoSettings;
-
-                            if (vs.TimeLimitEnabled)
-                            {
-                                timeLimit = TimeSpan.FromSeconds(vs.TimeLimit);
-                            }
-                            if (vs.VideoSizeEnabled)
-                            {
-                                videoSizeX = vs.VideoSizeX;
-                                videoSizeY = vs.VideoSizeY;
-                            }
-
-                            if (vs.BitRateEnabled)
-                                bitRate = vs.BitRateK * 1000;
-                            if (vs.DisplayIdEnabled && !string.IsNullOrEmpty(vs.DisplayId))
-                                displayId = vs.DisplayId;
-
-                            m_StatusBar.Message = string.Empty;
-                            m_CaptureVideo.StartRecording(m_DeviceSelection.SelectedDevice, OnVideoCompleted, timeLimit, videoSizeX, videoSizeY, bitRate, displayId);
-                        }
-                    }
-                    break;
-            }
-            EditorGUI.EndDisabledGroup();
-        }
-
-        private void DoOpenGUI()
-        {
-            EditorGUI.BeginDisabledGroup(!File.Exists(VideoPath));
-            if (GUILayout.Button(Styles.Open, AndroidLogcatStyles.toolbarButton))
-                AndroidLogcatUtilities.OpenFile(VideoPath);
-            EditorGUI.EndDisabledGroup();
-        }
-
-        private void DoSaveAsGUI()
-        {
-            EditorGUI.BeginDisabledGroup(!File.Exists(VideoPath));
-            if (GUILayout.Button(Styles.SaveAs, AndroidLogcatStyles.toolbarButton))
-            {
-                var settings = m_Runtime.UserSettings.CaptureSettings;
-                settings.SaveFileAs(settings.Mode, VideoPath, "Save Screen Capture");
-            }
-            EditorGUI.EndDisabledGroup();
-        }
-
-        /// <summary>
-        /// The list of saved screenshots on the left, the selected one on the right, a
-        /// draggable splitter between them.
-        /// </summary>
         private void DoScreenshotGUI(Rect rc)
         {
             // Drawn with or without a device: these are files on this machine, and
@@ -504,122 +388,20 @@ namespace Unity.Android.Logcat
             else if (!m_ScreenshotList.DoPreviewGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null
-                    ? "No screenshot to show. Select one from the list."
-                    : "No screenshot to show. Select Capture to take one.";
+                    ? "No capture to show. Select one from the list."
+                    : "No capture to show. Select Live, then Take Screenshot or Take Recording.";
                 EditorGUI.HelpBox(imageRect, message, MessageType.Info);
             }
         }
 
         private void DoPreviewGUI()
         {
-            switch (m_Runtime.UserSettings.CaptureSettings.Mode)
-            {
-                case Mode.Screenshot:
-                    {
-                        // Claimed from the layout rather than offset by a hardcoded
-                        // toolbar height, which left a gap when the two disagreed.
-                        var rc = GUILayoutUtility.GetRect(0, 0,
-                            GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-                        DoScreenshotGUI(rc);
-                    }
-                    break;
-                case Mode.Video:
-                    // Unlike the saved screenshots, a recording belongs to the device it
-                    // was taken from and is kept per device, so there is nothing to show
-                    // while none is selected.
-                    if (m_DeviceSelection.SelectedDevice == null)
-                    {
-                        EditorGUILayout.HelpBox(
-                            "No device selected. Connect a device, then select it from the device list.",
-                            MessageType.Info);
-                        break;
-                    }
-
-                    if (Unsupported.IsDeveloperMode())
-                        m_CaptureVideo.DoDebuggingGUI();
-                    DoVideoSettingsGUI();
-                    GUILayout.Space(5);
-                    if (IsCapturing)
-                    {
-                        EditorGUILayout.HelpBox($"Recording{new String('.', (int)(Time.realtimeSinceStartup * 3) % 4 + 1)}\nClick Stop to stop the recording.", MessageType.Info);
-                        break;
-                    }
-                    if (m_CaptureVideo.Errors.Length > 0)
-                    {
-                        DoVideoErrorsGUI();
-                    }
-                    else
-                    {
-                        m_VideoPlayer.DoGUI(position);
-                        if (m_VideoPlayer.IsPlaying())
-                            Repaint();
-                    }
-                    break;
-                default:
-                    break;
-            }
+            // Claimed from the layout rather than offset by a hardcoded toolbar
+            // height, which left a gap when the two disagreed.
+            var rc = GUILayoutUtility.GetRect(0, 0,
+                GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            DoScreenshotGUI(rc);
         }
 
-        void DoVideoSettingsGUI()
-        {
-            var rs = m_Runtime.UserSettings.CaptureVideoSettings;
-            var width = 100;
-            EditorGUILayout.LabelField("Toggle to override recorder settings", EditorStyles.boldLabel);
-
-            // Time Limit
-            EditorGUILayout.BeginHorizontal();
-            rs.TimeLimitEnabled = GUILayout.Toggle(rs.TimeLimitEnabled, Styles.TimeLimit, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
-            EditorGUI.BeginDisabledGroup(!rs.TimeLimitEnabled);
-            rs.TimeLimit = (uint)EditorGUILayout.IntSlider((int)rs.TimeLimit, 1, 180);
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
-
-            // Video Size
-            EditorGUILayout.BeginHorizontal();
-            rs.VideoSizeEnabled = GUILayout.Toggle(rs.VideoSizeEnabled, Styles.VideoSize, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
-            EditorGUI.BeginDisabledGroup(!rs.VideoSizeEnabled);
-            rs.VideoSizeX = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeX, 100, 7680);
-            rs.VideoSizeY = (uint)EditorGUILayout.IntSlider((int)rs.VideoSizeY, 100, 7680);
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
-
-            // Bit Rate
-            EditorGUILayout.BeginHorizontal();
-            rs.BitRateEnabled = GUILayout.Toggle(rs.BitRateEnabled, Styles.BitRate, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
-            EditorGUI.BeginDisabledGroup(!rs.BitRateEnabled);
-            rs.BitRateK = Math.Max(1, (uint)EditorGUILayout.IntField(GUIContent.none, (int)rs.BitRateK));
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
-
-            // Display Id
-            EditorGUILayout.BeginHorizontal();
-            rs.DisplayIdEnabled = GUILayout.Toggle(rs.DisplayIdEnabled, Styles.DisplayId, AndroidLogcatStyles.toolbarButton, GUILayout.Width(width));
-            EditorGUI.BeginDisabledGroup(!rs.DisplayIdEnabled);
-            Color? oldColor = null;
-            if (rs.DisplayIdEnabled && string.IsNullOrEmpty(rs.DisplayId))
-            {
-                oldColor = GUI.color;
-                GUI.color = Color.red;
-            }
-
-            rs.DisplayId = EditorGUILayout.TextField(GUIContent.none, rs.DisplayId);
-
-            if (oldColor != null)
-                GUI.color = (Color)oldColor;
-
-            EditorGUI.EndDisabledGroup();
-            EditorGUILayout.EndHorizontal();
-        }
-
-        void DoVideoErrorsGUI()
-        {
-            var boxRect = GUILayoutUtility.GetLastRect();
-            var oldColor = GUI.color;
-            GUI.color = Color.grey;
-            GUI.Box(new Rect(0, boxRect.y + boxRect.height, Screen.width, Screen.height), GUIContent.none);
-            GUI.color = oldColor;
-            EditorGUILayout.Space(20);
-            EditorGUILayout.HelpBox(m_CaptureVideo.Errors, MessageType.Error);
-        }
     }
 }

@@ -61,6 +61,18 @@ The default, `Library/AndroidLogcat/Screenshots`, is local to your machine and i
 
 Changing the folder takes effect immediately. Captures already written stay where they are, and the [Capture list](screen-capture-window-reference.md#capture-list) shows what is in the new folder.
 
+### Recording
+
+Use the **Recording** settings to override what the device's own recorder would choose. Each is off until you enable it, which is when the device decides for itself.
+
+|**Setting**|**Description**|
+|---|---|
+|**Time Limit**|Specifies how long a recording runs, in seconds, between 1 and 180. The device stops a recording after 180 seconds either way.|
+|**Video Size**|Specifies the width and height of the recording in pixels. The default is the device's display resolution.|
+|**Bit Rate**|Specifies the bit rate of the recording, in Kbps.|
+
+These settings apply when a recording starts.
+
 ### Live Stream
 
 Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
