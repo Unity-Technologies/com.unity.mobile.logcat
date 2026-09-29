@@ -20,6 +20,11 @@ namespace Unity.Android.Logcat
             public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
             public static GUIContent Open = new GUIContent("Open", "Open the recorded video.");
             public static GUIContent SaveAs = new GUIContent("Save As", "Save the recorded video as a file on your computer.");
+            static readonly GUIContent kMore = EditorGUIUtility.IconContent("_Menu");
+            public static GUIContent Advanced = kMore != null && kMore.image != null
+                ? new GUIContent(kMore.image)
+                : new GUIContent("...");
+
             public static GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
@@ -52,6 +57,7 @@ namespace Unity.Android.Logcat
 
         // Fixed, so that what follows it does not move when the mode changes.
         const float kModeDropdownWidth = 90;
+        const float kAdvancedMenuWidth = 26;
 
         private bool IsCapturing
         {
@@ -364,7 +370,34 @@ namespace Unity.Android.Logcat
                 DoSaveAsGUI();
             }
 
+            GUILayout.FlexibleSpace();
+            DoAdvancedMenuGUI();
+
             EditorGUILayout.EndHorizontal();
+
+            var toolbarRect = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.Repaint)
+            {
+                EditorGUI.DrawRect(new Rect(toolbarRect.x, toolbarRect.yMax - 1, toolbarRect.width, 1),
+                    EditorGUIUtility.isProSkin ? new Color(0.14f, 0.14f, 0.14f) : new Color(0.6f, 0.6f, 0.6f));
+            }
+        }
+
+        /// <summary>
+        /// The settings this window has, reached the way the Package Manager's toolbar
+        /// reaches its own: a menu at the right hand end of the toolbar.
+        /// </summary>
+        private void DoAdvancedMenuGUI()
+        {
+            var rect = GUILayoutUtility.GetRect(Styles.Advanced, AndroidLogcatStyles.toolbarButton,
+                GUILayout.Width(kAdvancedMenuWidth));
+            if (!GUI.Button(rect, Styles.Advanced, AndroidLogcatStyles.toolbarButton))
+                return;
+
+            var menu = new GenericMenu();
+            menu.AddItem(EditorGUIUtility.TrTextContent("Preferences"), false,
+                () => SettingsService.OpenUserPreferences(AndroidLogcatSettingsProvider.kSettingsPath));
+            menu.DropDown(rect);
         }
 
         private void DoProgressGUI()
