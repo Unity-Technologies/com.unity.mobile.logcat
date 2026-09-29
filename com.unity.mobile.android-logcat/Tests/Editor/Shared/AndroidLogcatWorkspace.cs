@@ -31,6 +31,18 @@ namespace Unity.Android.Logcat
             return result;
         }
 
+        /// <summary>
+        /// Whether the job this runs in has a device attached. Stated by the job rather
+        /// than inferred from ANDROID_DEVICE_CONNECTION, which only holds something
+        /// when the device is reached over the network - a device on a usb cable looked
+        /// like no device at all, and every test that needs one was quietly ignored.
+        /// </summary>
+        public static bool IsAndroidDeviceAvailable()
+        {
+            var value = Environment.GetEnvironmentVariable("ANDROID_DEVICE_AVAILABLE");
+            return value == "1" || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string GetAritfactsPath()
         {
             if (!Workspace.IsRunningOnBuildServer())

@@ -20,13 +20,6 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
                 { 
                     IsReleasing = true 
                 },
-                PackJobOptions = new PackJobOptions()
-                { 
-                    Dependencies = new List<Dependency>()
-                    {
-                        new("format", "check_formatting") 
-                    }
-                },
                 CustomChecks = new HashSet<Dependency>() 
                 { 
                     new Dependency("upm-ci", "test_all_trigger") 

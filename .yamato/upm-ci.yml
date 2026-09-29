@@ -5,20 +5,26 @@ test_platforms:
     type: Unity::VM
     image: package-ci/win10:v4
     flavor: b1.large
+    model:
     move_alias: move
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor
   - name: mac
     type: Unity::VM::osx
-    image: package-ci/macos-13:v4
+    image: package-ci/macos-13-arm64:v4.90.0
     flavor: m1.mac
+    model: M1
     move_alias: mv
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor --arch arm64
   - name: linux
     type: Unity::VM
     image: package-ci/ubuntu-22.04:v4
     flavor: b1.large
+    model:
     move_alias: mv
     utr_cmd: UnifiedTestRunner
+    install_editor_command: -c editor
 test_module_support:
   - name: android
     install_command: -c android
@@ -35,12 +41,11 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
     type: {{ platform.type }}
     image: {{ platform.image }}
     flavor: {{ platform.flavor}}
+    {% if platform.model %}model: {{ platform.model }}{% endif %}
   commands:
-    - npm install upm-ci-utils@stable -g --registry https://artifactory.prd.cds.internal.unity3d.com/artifactory/api/npm/upm-npm
-    - unity-downloader-cli -u {{ editor.version }} -c editor {{ module_support.install_command }} --wait
-    - {{ platform.move_alias }} ./disable_tests_csc.rsp ./com.unity.mobile.android-logcat/Tests/Editor/Integration/csc.rsp
-    - upm-ci package test --package-path ./com.unity.mobile.android-logcat --unity-version .Editor
-    - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --artifacts_path=upm-ci~/test-results/editor-android/
+    - unity-downloader-cli -u {{ editor.version }} {{ platform.install_editor_command }} {{ module_support.install_command }} --wait
+    - python .yamato/use-packed-package.py TestProjects/SampleProject1 com.unity.mobile.android-logcat
+    - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/SampleProject1" --extra-editor-arg=-buildTarget --extra-editor-arg=Android --artifacts_path=upm-ci~/test-results/editor-android/
     - {{ platform.utr_cmd }}  --suite=editor --editor-location=.Editor --testproject="TestProjects/TestWarnings" --artifacts_path=upm-ci~/test-results/editor-warnings-android/
   artifacts:
     {{ platform.name }}_{{ editor.version }}_{{ module_support.name }}_logs:
@@ -54,26 +59,14 @@ test_{{ platform.name }}_{{ editor.version }}_{{ module_support.name }}:
 
 test_all_trigger:
   name: Tests Trigger
-  agent:
-    type: Unity::VM
-    image: package-ci/win10:stable
-    flavor: b1.large
-  commands:
-    - dir
   triggers:
     cancel_old_ci: true
     pull_requests:
       - targets:
           only:
             - "master"
-  artifacts:
-    logs:
-      paths:
-        - "upm-ci~/test-results/**/*"
-    packages:
-      paths:
-        - "upm-ci~/packages/**/*"
   dependencies:
+    - .yamato/format.yml#check_formatting
     - .yamato/wrench/package-pack-jobs.yml#package_pack_-_mobile_android-logcat
     {% for editor in test_editors %}
     - .yamato/upm-integration-ci.yml#test_integration_{{ editor.version }}
