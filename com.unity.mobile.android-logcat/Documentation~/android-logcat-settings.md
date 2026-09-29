@@ -51,7 +51,7 @@ Use the **Max Exited Packages** setting to specify the maximum number for the ap
 
 ## Capture Settings
 
-Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The line underneath the field shows the folder it currently resolves to.
+Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The note underneath the field spells out where that is at the moment, which a relative path does not show on its own.
 
 A relative path starts at your project folder, which is how the default `Library/AndroidLogcat/Screenshots` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
 
