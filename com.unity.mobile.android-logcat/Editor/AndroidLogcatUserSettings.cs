@@ -89,6 +89,15 @@ namespace Unity.Android.Logcat
             internal string LastScreenshotSaveLocation;
         }
 
+        [Serializable]
+        internal class CommandsSettingsData
+        {
+            [SerializeField]
+            internal List<AndroidLogcatCommandEntry> Favorites = new List<AndroidLogcatCommandEntry>();
+            [SerializeField]
+            internal List<AndroidLogcatCommandEntry> GeneralCommands = new List<AndroidLogcatCommandEntry>();
+        }
+
         [SerializeField]
         private string m_SelectedDeviceId;
         [SerializeField]
@@ -116,6 +125,8 @@ namespace Unity.Android.Logcat
         private QueryLayoutSettings m_QueryLayoutSettings;
         [SerializeField]
         private InputSettings m_InputSettings;
+        [SerializeField]
+        private CommandsSettingsData m_CommandsSettings;
 
         [SerializeField]
         private AutoScroll m_AutoScroll;
@@ -178,6 +189,7 @@ namespace Unity.Android.Logcat
         public ScreenCaptureSettings CaptureSettings { set => m_ScreenCaptureSettings = value; get => m_ScreenCaptureSettings; }
         public QueryLayoutSettings LayoutSettings { set => m_QueryLayoutSettings = value; get => m_QueryLayoutSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
+        public CommandsSettingsData CommandsSettings { set => m_CommandsSettings = value; get => m_CommandsSettings; }
 
         public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
@@ -360,6 +372,8 @@ namespace Unity.Android.Logcat
                 SendText = string.Empty,
                 TargetProcess = new ProcessInformation()
             };
+
+            m_CommandsSettings = new CommandsSettingsData();
         }
 
         internal void ResetCaptureVideoSettings()
