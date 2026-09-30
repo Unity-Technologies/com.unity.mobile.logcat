@@ -7,6 +7,9 @@ import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Injects key events and typed text into the device.
  * <p>
@@ -25,6 +28,10 @@ public final class KeyInjector {
     private final int displayId;
 
     private KeyCharacterMap characterMap;
+
+    // When each held key went down. A KeyEvent carries that time on every later event
+    // for the same key, so an app can tell how long the key was held from its up.
+    private final Map<Integer, Long> downTimes = new HashMap<>();
 
     public KeyInjector(InputManagerWrapper inputManager, int displayId) {
         this.inputManager = inputManager;
@@ -51,8 +58,19 @@ public final class KeyInjector {
         }
 
         long now = SystemClock.uptimeMillis();
+        long downTime;
+        if (keyAction == KeyEvent.ACTION_DOWN) {
+            Long held = downTimes.get(keyCode);
+            // A repeat belongs to the press that started it.
+            downTime = held != null ? held : now;
+            downTimes.put(keyCode, downTime);
+        } else {
+            Long held = downTimes.remove(keyCode);
+            downTime = held != null ? held : now;
+        }
+
         KeyEvent event = new KeyEvent(
-            now, // downTime
+            downTime,
             now, // eventTime
             keyAction,
             keyCode,
