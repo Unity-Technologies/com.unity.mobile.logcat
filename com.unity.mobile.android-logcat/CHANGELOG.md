@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changes & Improvements:
  - Unity 6.0 or later is required.
+ - Tools->Open Terminal is now supported on Linux Editor.
+ - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements

@@ -317,7 +317,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory });
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory, UseShellExecute = true });
                     break;
                 case RuntimePlatform.OSXEditor:
                     var pathsToCheck = new[]
@@ -335,9 +335,137 @@ namespace Unity.Android.Logcat
                     }
 
                     throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n", pathsToCheck)));
+                case RuntimePlatform.LinuxEditor:
+                    OpenLinuxTerminal(workingDirectory);
+                    break;
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        private static void OpenLinuxTerminal(string workingDirectory)
+        {
+            // Terminal command lines, including the arguments used to set the working directory where supported.
+            // Terminals without such arguments inherit the working directory from ProcessStartInfo.
+            // Arguments are passed via ArgumentList, so paths containing spaces or quotes are preserved.
+            var terminals = new List<string[]>();
+
+            var userTerminal = SplitCommandLine(Environment.GetEnvironmentVariable("TERMINAL"));
+            if (userTerminal.Length > 0)
+                terminals.Add(userTerminal);
+
+            terminals.Add(new[] { "x-terminal-emulator" });
+            terminals.Add(new[] { "gnome-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "konsole", "--workdir", workingDirectory });
+            terminals.Add(new[] { "xfce4-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "mate-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "tilix", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "alacritty", "--working-directory", workingDirectory });
+            terminals.Add(new[] { "kitty", "--directory", workingDirectory });
+            terminals.Add(new[] { "xterm" });
+
+            foreach (var terminal in terminals)
+            {
+                var path = FindExecutableInPath(terminal[0]);
+                if (path == null)
+                    continue;
+
+                var startInfo = new System.Diagnostics.ProcessStartInfo(path)
+                {
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = false
+                };
+                foreach (var arg in terminal.Skip(1))
+                    startInfo.ArgumentList.Add(arg);
+
+                System.Diagnostics.Process.Start(startInfo);
+                return;
+            }
+
+            throw new Exception(string.Format("Failed to launch terminal, tried following terminals:\n{0}", string.Join("\n", terminals.Select(t => t[0]))));
+        }
+
+        /// <summary>
+        /// Splits a command line like 'wezterm start' or '"/opt/my term/bin/term" -e' into executable and arguments, without invoking a shell.
+        /// Supports single quotes, double quotes and backslash escapes.
+        /// </summary>
+        internal static string[] SplitCommandLine(string commandLine)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(commandLine))
+                return result.ToArray();
+
+            var current = new System.Text.StringBuilder();
+            var hasToken = false;
+            char quote = '\0';
+            for (int i = 0; i < commandLine.Length; i++)
+            {
+                var c = commandLine[i];
+                if (quote == '\'')
+                {
+                    if (c == '\'')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\\' && i + 1 < commandLine.Length)
+                {
+                    current.Append(commandLine[++i]);
+                    hasToken = true;
+                }
+                else if (quote == '"')
+                {
+                    if (c == '"')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\'' || c == '"')
+                {
+                    quote = c;
+                    hasToken = true;
+                }
+                else if (char.IsWhiteSpace(c))
+                {
+                    if (hasToken)
+                    {
+                        result.Add(current.ToString());
+                        current.Clear();
+                        hasToken = false;
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                    hasToken = true;
+                }
+            }
+
+            if (hasToken)
+                result.Add(current.ToString());
+
+            return result.ToArray();
+        }
+
+        private static string FindExecutableInPath(string executable)
+        {
+            if (Path.IsPathRooted(executable))
+                return File.Exists(executable) ? executable : null;
+
+            var paths = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(paths))
+                return null;
+
+            foreach (var dir in paths.Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                var fullPath = Path.Combine(dir, executable);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
 
         public static Version ParseVersionLegacy(string versionString)
