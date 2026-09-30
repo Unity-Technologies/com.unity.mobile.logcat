@@ -68,10 +68,14 @@ public final class InputManagerWrapper {
      * display, which is wrong when capturing any other one. The setter is hidden API, so
      * a device without it means input on secondary displays does not work - the video
      * stream is unaffected, hence a warning rather than a failure.
+     *
+     * @return false when the event could not be aimed, in which case it must not be
+     *         injected: it would act on the default display, which is not the one the
+     *         user is looking at.
      */
-    public static void setDisplayId(InputEvent event, int displayId) {
+    public static boolean setDisplayId(InputEvent event, int displayId) {
         if (setDisplayIdUnavailable) {
-            return;
+            return false;
         }
         Class<?> eventClass = event.getClass();
         try {
@@ -83,9 +87,11 @@ public final class InputManagerWrapper {
                 setDisplayIdMethods.put(eventClass, method);
             }
             method.invoke(event, displayId);
+            return true;
         } catch (ReflectiveOperationException | IllegalArgumentException e) {
             setDisplayIdUnavailable = true;
-            Logger.w("setDisplayId is unavailable, input will go to the default display", e);
+            Logger.w("setDisplayId is unavailable, input to other displays will be dropped", e);
+            return false;
         }
     }
 
@@ -121,8 +127,8 @@ public final class InputManagerWrapper {
      */
     public boolean inject(InputEvent event, int displayId) {
         try {
-            if (displayId != 0) {
-                setDisplayId(event, displayId);
+            if (displayId != 0 && !setDisplayId(event, displayId)) {
+                return false;
             }
             return injectInputEvent(event);
         } finally {
