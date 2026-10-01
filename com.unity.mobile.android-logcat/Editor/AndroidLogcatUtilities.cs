@@ -297,22 +297,6 @@ namespace Unity.Android.Logcat
         const int kGradleProgressUpdateMs = 200;
 
         /// <summary>
-        /// Runs a Gradle task in a project directory and says whether it succeeded,
-        /// logging its output either way.
-        /// <para>
-        /// The JDK and SDK come from Unity's own External Tools settings rather than
-        /// from the environment: the Editor may not have inherited a shell environment
-        /// at all, the one it did inherit is not necessarily the one this build wants,
-        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
-        /// is run through <c>sh</c> off Windows, so that this does not depend on its
-        /// executable bit, which is invisible to anyone working from Windows.
-        /// </para>
-        /// <para>
-        /// Blocking, behind a progress bar. This is a developer action - there is no
-        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
-        /// </para>
-        /// </summary>
-        /// <summary>
         /// Kills a process and whatever it started. Gradle runs behind a launcher
         /// script and does its work in a daemon, so killing only the process we started
         /// leaves the build running.
@@ -344,6 +328,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Runs a Gradle task in a project directory and says whether it succeeded,
+        /// logging its output either way.
+        /// <para>
+        /// The JDK and SDK come from Unity's own External Tools settings rather than
+        /// from the environment: the Editor may not have inherited a shell environment
+        /// at all, the one it did inherit is not necessarily the one this build wants,
+        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
+        /// is run through <c>sh</c> off Windows, so that this does not depend on its
+        /// executable bit, which is invisible to anyone working from Windows.
+        /// </para>
+        /// <para>
+        /// Blocking, behind a progress bar. This is a developer action - there is no
+        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
+        /// </para>
+        /// </summary>
         internal static bool RunGradle(string projectDirectory, string task)
         {
             if (string.IsNullOrEmpty(projectDirectory) || !Directory.Exists(projectDirectory))

@@ -63,6 +63,7 @@ public final class ScreenStreamer implements Closeable {
 
     private long lastFrameNs;
     private Bitmap paddedBitmap;
+    private ByteBuffer paddingBuffer;
     private Bitmap frameBitmap;
     private Canvas frameCanvas;
     private final JpegBuffer jpeg = new JpegBuffer();
@@ -152,6 +153,13 @@ public final class ScreenStreamer implements Closeable {
 
     private void startSession(DisplayInfo info) throws IOException {
         synchronized (sessionLock) {
+            if (stopped) {
+                // close() can land between the poll loop deciding to restart after a
+                // rotation and this: the handler the session would be driven by is
+                // already gone, and a session started now would never be torn down.
+                return;
+            }
+
             displaySize = info.getSize();
             videoSize = info.getSize().limit(options.getMaxSize());
             int width = videoSize.getWidth();
@@ -294,9 +302,18 @@ public final class ScreenStreamer implements Closeable {
         Bitmap padded = obtainPaddedBitmap(paddedWidth, height);
         buffer.rewind();
         int required = padded.getRowBytes() * height;
-        if (buffer.remaining() < required) {
-            Logger.w("Frame plane is " + buffer.remaining() + " bytes, expected " + required + "; skipping frame");
-            return;
+        int available = buffer.remaining();
+        if (available < required) {
+            // A plane only has to hold the visible pixels of its last row - the
+            // padding that follows every other row may be missing from it. The
+            // bitmap wants a full row either way, so the frame is copied into one
+            // that has it rather than dropped.
+            int minimum = rowStride * (height - 1) + width * pixelStride;
+            if (available < minimum) {
+                Logger.w("Frame plane is " + available + " bytes, expected " + minimum + "; skipping frame");
+                return;
+            }
+            buffer = padToFullRows(buffer, required);
         }
         padded.copyPixelsFromBuffer(buffer);
 
@@ -325,6 +342,26 @@ public final class ScreenStreamer implements Closeable {
 
         statsFrames++;
         statsBytes += jpeg.size();
+    }
+
+    /**
+     * Copies a plane whose last row stops at its last visible pixel into a buffer of
+     * whole rows, which is what {@link Bitmap#copyPixelsFromBuffer} expects. Reused
+     * between frames: this runs per frame on the devices that need it at all.
+     */
+    private ByteBuffer padToFullRows(ByteBuffer source, int required) {
+        if (paddingBuffer == null || paddingBuffer.capacity() < required) {
+            paddingBuffer = ByteBuffer.allocateDirect(required);
+        }
+
+        paddingBuffer.clear();
+        paddingBuffer.limit(required);
+        paddingBuffer.put(source);
+        while (paddingBuffer.hasRemaining()) {
+            paddingBuffer.put((byte) 0);
+        }
+        paddingBuffer.rewind();
+        return paddingBuffer;
     }
 
     private Bitmap obtainPaddedBitmap(int width, int height) {

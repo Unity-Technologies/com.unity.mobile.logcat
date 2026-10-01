@@ -17,6 +17,11 @@ import java.util.function.Supplier;
  * Scaling here, against the display size the capture session is currently using, means
  * a touch always lands where the user pointed even if the display changed size in the
  * meantime.
+ * <p>
+ * One finger at a time: the Editor drives this from a mouse and only ever sends pointer
+ * 0. Real multi-touch would need every active pointer in a single event, with
+ * ACTION_POINTER_DOWN and ACTION_POINTER_UP from the second finger onwards - a second
+ * ACTION_DOWN as sent here replaces the first gesture rather than adding to it.
  */
 public final class TouchInjector {
     public static final int ACTION_DOWN = 0;
