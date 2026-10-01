@@ -153,6 +153,13 @@ public final class ScreenStreamer implements Closeable {
 
     private void startSession(DisplayInfo info) throws IOException {
         synchronized (sessionLock) {
+            if (stopped) {
+                // close() can land between the poll loop deciding to restart after a
+                // rotation and this: the handler the session would be driven by is
+                // already gone, and a session started now would never be torn down.
+                return;
+            }
+
             displaySize = info.getSize();
             videoSize = info.getSize().limit(options.getMaxSize());
             int width = videoSize.getWidth();

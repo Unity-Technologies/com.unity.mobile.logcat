@@ -83,6 +83,7 @@ public final class Server {
         ScreenStreamer streamer = null;
         try {
             socket = accept(serverSocket, options.getConnectTimeoutMs());
+            rejectUnlessAdb(socket);
             Logger.d("Client connected");
 
             Protocol protocol = new Protocol(socket.getOutputStream());
@@ -128,6 +129,24 @@ public final class Server {
      * server whose Editor died does not sit on the device forever. A timeout of 0
      * waits indefinitely.
      */
+    // Process.ROOT_UID and Process.SHELL_UID, which are hidden API.
+    private static final int ROOT_UID = 0;
+    private static final int SHELL_UID = 2000;
+
+    /**
+     * An abstract socket carries no filesystem permissions, so anything running on the
+     * device can reach it - and a client of this one gets the screen and the ability to
+     * inject input. Only adb's forwarded connections are meant to: adbd runs as
+     * {@code shell}, or as root on a userdebug build, while an app always has a uid of
+     * its own from 10000 up.
+     */
+    private static void rejectUnlessAdb(LocalSocket socket) throws IOException {
+        int uid = socket.getPeerCredentials().getUid();
+        if (uid != ROOT_UID && uid != SHELL_UID) {
+            throw new IOException("Rejected a connection from uid " + uid + ", only adb may connect");
+        }
+    }
+
     private static LocalSocket accept(LocalServerSocket serverSocket, int timeoutMs) throws IOException {
         if (timeoutMs <= 0) {
             return serverSocket.accept();
