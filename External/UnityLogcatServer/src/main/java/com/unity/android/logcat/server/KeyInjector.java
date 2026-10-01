@@ -7,6 +7,7 @@ import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 
+import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,10 +16,18 @@ import java.util.Map;
  * <p>
  * There are two paths on purpose. Named keys - Back, Enter, the arrows - arrive as an
  * Android keycode and become a {@link KeyEvent} directly. Typed characters arrive as
- * text and are turned into key events by {@link KeyCharacterMap}, which is what makes
- * punctuation, shifted characters and non-US layouts work: the Editor sends the
+ * text and are turned into key events by {@link KeyCharacterMap}: the Editor sends the
  * character the user actually produced and lets the device work out which keystrokes
  * would have produced it, instead of the Editor trying to map every layout itself.
+ * <p>
+ * How far that reaches is the device's keyboard layout's decision. ASCII is typed
+ * directly. An accented character is typed the way a keyboard with dead keys types it,
+ * as the accent followed by the base letter, which works only for the accents that
+ * layout has a dead key for - a Pixel's {@code Virtual.kcm} has five: grave, acute,
+ * circumflex, tilde and diaeresis, so a caron or an ogonek cannot be typed at all.
+ * Nor can anything outside the Latin script. Those characters are skipped and
+ * reported, and the rest of the text still arrives; sending them would need the
+ * device's clipboard rather than its keyboard.
  */
 public final class KeyInjector {
     public static final int ACTION_DOWN = 0;
@@ -95,16 +104,76 @@ public final class KeyInjector {
         }
 
         KeyEvent[] events = characterMap.getEvents(text.toCharArray());
-        if (events == null) {
-            // The virtual keyboard layout cannot produce one of these characters. There
-            // is no keystroke sequence to fall back to, so say so and move on.
-            Logger.w("Cannot type '" + text + "' with the virtual keyboard layout");
+        if (events != null) {
+            for (KeyEvent event : events) {
+                inject(event);
+            }
             return;
+        }
+
+        // getEvents gives up on the whole array when a single character cannot be
+        // typed, so the fallback goes character by character: one 'a' the keyboard has
+        // never heard of no longer costs the rest of the message.
+        StringBuilder skipped = null;
+        for (char c : text.toCharArray()) {
+            if (injectChar(c)) {
+                continue;
+            }
+            if (skipped == null) {
+                skipped = new StringBuilder();
+            }
+            skipped.append(c);
+        }
+
+        if (skipped != null) {
+            Logger.w("Cannot type '" + skipped + "' with the virtual keyboard layout");
+        }
+    }
+
+    /** @return false when there is no way to type this character. */
+    private boolean injectChar(char c) {
+        KeyEvent[] events = characterMap.getEvents(new char[] { c });
+        if (events == null) {
+            char[] composed = decompose(c);
+            events = composed == null ? null : characterMap.getEvents(composed);
+        }
+        if (events == null) {
+            return false;
         }
 
         for (KeyEvent event : events) {
             inject(event);
         }
+        return true;
+    }
+
+    /**
+     * The keystrokes that type an accented character on a keyboard with dead keys: the
+     * accent, then the letter it belongs to.
+     * <p>
+     * Unicode already knows how every accented character is built, so the pair comes
+     * from a canonical decomposition rather than from a table of our own. The accent
+     * has to be the combining form, U+0301 and not U+00B4 - that is what a dead key on
+     * the device's keyboard layout produces, while the spacing form matches no key at
+     * all.
+     *
+     * @return null when the character is not an accented letter.
+     */
+    private static char[] decompose(char c) {
+        String decomposed = Normalizer.normalize(String.valueOf(c), Normalizer.Form.NFD);
+        if (decomposed.length() != 2) {
+            return null;
+        }
+
+        char base = decomposed.charAt(0);
+        char accent = decomposed.charAt(1);
+        // Combining Diacritical Marks. Any other decomposition is not something a dead
+        // key types.
+        if (accent < '\u0300' || accent > '\u036F') {
+            return null;
+        }
+
+        return new char[] { accent, base };
     }
 
     private void inject(KeyEvent event) {
