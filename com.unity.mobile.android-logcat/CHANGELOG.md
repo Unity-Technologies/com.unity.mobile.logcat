@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - The details beside a selected screenshot show the device, its Android version and display size, along with the image size, the file size and when it was captured. The device details read `Undefined` for a screenshot saved without them.
  - The screenshot and the live view can be zoomed with Ctrl+Wheel (Cmd+Wheel on macOS), and the zoomed image moved with a Ctrl+middle mouse button drag or with the scrollbars that appear.
  - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags, the scroll wheel and typing are sent to the device as touch, scroll and key events, and Ctrl+A, Ctrl+C and Ctrl+V (Cmd on macOS) select all, copy and paste on the device using its own clipboard, and Back / Home / Overview buttons sit beside the image with the stream details. 
- 
+ - Tools->Open Terminal is now supported on Linux Editor.
+ - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
+
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
  - Periodic device queries no longer occur when no devices are connected and Logcat window is unfocused.
