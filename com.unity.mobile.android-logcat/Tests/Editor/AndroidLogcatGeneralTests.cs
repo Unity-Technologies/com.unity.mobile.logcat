@@ -87,6 +87,43 @@ class AndroidLogcatGeneralTests
     }
 
     /// <summary>
+    /// A capture reserves its name before the file exists, so that a second one queued
+    /// behind it cannot take the same number. Changing the captures folder while one is
+    /// in flight must not carry that reservation into the new folder's listing.
+    /// </summary>
+    [Test]
+    public void AReservationIsListedOnlyInTheFolderItWasMadeIn()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        var first = CreateCapturesFolder();
+        var second = CreateCapturesFolder();
+        try
+        {
+            var directory = first;
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+            var device = new AndroidLogcatFakeDevice90("unittest-device");
+
+            var reserved = captureScreenshot.AllocateImagePath(device);
+            StringAssert.StartsWith(first, reserved, "The reservation belongs to the folder in use");
+            Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
+                "A capture in flight is listed, so the next one cannot reuse its number");
+
+            // As changing the setting does, which rescans on the next listing.
+            directory = second;
+
+            Assert.IsFalse(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
+                "A reservation made in another folder has nothing to do with this one");
+        }
+        finally
+        {
+            System.IO.Directory.Delete(first, true);
+            System.IO.Directory.Delete(second, true);
+            runtime.Shutdown();
+        }
+    }
+
+    /// <summary>
     /// A rename moves the details with the image. When something else already holds
     /// the name the details would take, the rename is refused rather than leaving the
     /// image under one name and its details under another.

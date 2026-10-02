@@ -139,8 +139,9 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Reserves the next free path, <c>&lt;device_id&gt;_&lt;number&gt;.png</c> under
         /// the capture directory, and makes sure it exists - adb pull will not create it.
+        /// <para>Internal rather than private so a test can reserve without a device.</para>
         /// </summary>
-        private string AllocateImagePath(IAndroidLogcatDevice device)
+        internal string AllocateImagePath(IAndroidLogcatDevice device)
         {
             var directory = m_Directory();
             Directory.CreateDirectory(directory);
@@ -232,6 +233,10 @@ namespace Unity.Android.Logcat
             {
                 if (File.Exists(reserved))
                     continue;
+                // A capture queued before the captures folder was changed reserved its
+                // name in the folder of the day, which is not this one.
+                if (!IsIn(directory, reserved))
+                    continue;
 
                 var name = Path.GetFileNameWithoutExtension(reserved);
                 var separator = name.LastIndexOf('_');
@@ -241,6 +246,13 @@ namespace Unity.Android.Logcat
 
             screenshots.Sort(CompareScreenshots);
             return screenshots;
+        }
+
+        static bool IsIn(string directory, string path)
+        {
+            var parent = Path.GetDirectoryName(path);
+            return parent != null && string.Equals(parent.Replace("\\", "/"), directory,
+                StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
