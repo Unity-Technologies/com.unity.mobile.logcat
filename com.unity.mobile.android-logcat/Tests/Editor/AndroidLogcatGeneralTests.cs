@@ -11,6 +11,18 @@ using Unity.Android.Logcat;
 class AndroidLogcatGeneralTests
 {
     /// <summary>
+    /// A captures folder of the calling test's own. The configured one belongs to
+    /// whoever is running the tests, and holds their captures.
+    /// </summary>
+    static string CreateCapturesFolder()
+    {
+        var directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+            "AndroidLogcatTests", Guid.NewGuid().ToString("N")).Replace("\\", "/");
+        System.IO.Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    /// <summary>
     /// The screenshots folder is an ordinary directory, so files can appear in it or
     /// change without the Editor having done anything, and a cached listing cannot
     /// notice by itself. This is the API underneath the Screen Capture window's
@@ -30,11 +42,8 @@ class AndroidLogcatGeneralTests
             // Built directly rather than taken from the runtime: the test runtime has
             // no screen capture service, and the two calls used here only read the
             // directory - nothing is queued, so nothing needs a device or a dispatcher.
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
-
-            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-            System.IO.Directory.CreateDirectory(directory);
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
 
             var first = System.IO.Path.Combine(directory, "unittest-device_1.png").Replace("\\", "/");
             var second = System.IO.Path.Combine(directory, "unittest-device_2.png").Replace("\\", "/");
@@ -68,11 +77,7 @@ class AndroidLogcatGeneralTests
             }
             finally
             {
-                foreach (var path in new[] { first, second })
-                {
-                    if (System.IO.File.Exists(path))
-                        System.IO.File.Delete(path);
-                }
+                System.IO.Directory.Delete(directory, true);
             }
         }
         finally
@@ -93,11 +98,8 @@ class AndroidLogcatGeneralTests
         runtime.Initialize();
         try
         {
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
-
-            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-            System.IO.Directory.CreateDirectory(directory);
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
 
             var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
             var taken = System.IO.Path.Combine(directory, "unittest-rename-taken.json").Replace("\\", "/");
@@ -122,11 +124,7 @@ class AndroidLogcatGeneralTests
             }
             finally
             {
-                foreach (var path in new[] { image, taken, renamed })
-                {
-                    if (System.IO.File.Exists(path))
-                        System.IO.File.Delete(path);
-                }
+                System.IO.Directory.Delete(directory, true);
             }
         }
         finally
@@ -364,8 +362,7 @@ class AndroidLogcatGeneralTests
     [Test]
     public void ScreenshotInfoRoundTripsAndFollowsTheImage()
     {
-        var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-        System.IO.Directory.CreateDirectory(directory);
+        var directory = CreateCapturesFolder();
 
         var image = System.IO.Path.Combine(directory, "unittest-info_1.png").Replace("\\", "/");
         var renamed = System.IO.Path.Combine(directory, "unittest-info-renamed.png").Replace("\\", "/");
@@ -426,9 +423,7 @@ class AndroidLogcatGeneralTests
         }
         finally
         {
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(image));
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(renamed));
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(foreign));
+            System.IO.Directory.Delete(directory, true);
         }
     }
 

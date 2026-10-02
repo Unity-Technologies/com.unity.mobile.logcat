@@ -14,6 +14,43 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
 {
     private string VideoPathOnHost => Runtime.CaptureVideo.GetVideoPath(Device);
 
+    // These tests take captures and clear the folder between them, so they get one of
+    // their own rather than whatever the machine running them has configured. It sits
+    // with the rest of the test output - LocalTestResults, or the artifacts path on a
+    // build agent - which is where anyone looking at a failure is already looking.
+    private string m_CapturesFolder;
+
+    [OneTimeSetUp]
+    protected void RedirectCaptures()
+    {
+        m_CapturesFolder = Runtime.Settings.CaptureOutputDirectory;
+        Runtime.Settings.CaptureOutputDirectory =
+            Path.Combine(Workspace.GetAritfactsPath(), "Captures").Replace("\\", "/");
+        Runtime.CaptureScreenshot.InvalidateScreenshots();
+        Log($"Captures go to '{AndroidLogcatUtilities.GetCapturesDirectory(Runtime.Settings)}'");
+    }
+
+    [OneTimeTearDown]
+    protected void RestoreCaptures()
+    {
+        // Resolved before the setting goes back, and removed whole: what is in there
+        // was all written by these tests.
+        var folder = AndroidLogcatUtilities.GetCapturesDirectory(Runtime.Settings);
+
+        Runtime.Settings.CaptureOutputDirectory = m_CapturesFolder;
+        Runtime.CaptureScreenshot.InvalidateScreenshots();
+
+        try
+        {
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to remove '{folder}': {ex.Message}");
+        }
+    }
+
     [SetUp]
     protected void Init()
     {
@@ -33,8 +70,9 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
         SafeDeleteOnHost(VideoPathOnHost);
 
-        // Start from an empty folder. Leftovers from an earlier run are still listed,
-        // and they carry another device's prefix or a name a test is about to reuse.
+        // Start from an empty folder - the fixture's own, so this takes nothing with
+        // it that these tests did not write. Leftovers from an earlier run are still
+        // listed, and they carry another device's prefix or a name a test reuses.
         foreach (var screenshot in Runtime.CaptureScreenshot.GetScreenshots().ToArray())
             Runtime.CaptureScreenshot.DeleteScreenshot(screenshot.Path);
     }
