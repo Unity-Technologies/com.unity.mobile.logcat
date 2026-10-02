@@ -49,7 +49,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatDeviceSelection m_DeviceSelection;
         private IAndroidLogcatDevice m_LastDeviceUsedForAssets;
 
-        private AndroidLogcatScreenshotList m_ScreenshotList;
+        private AndroidLogcatCaptureList m_CaptureList;
         private AndroidLogcatStatusBar m_StatusBar;
 
         // Recording the screen will join this.
@@ -103,7 +103,7 @@ namespace Unity.Android.Logcat
             m_LiveStream = m_Runtime.LiveStream;
             m_LiveStream.StreamChanged += ReportStream;
             m_VideoPlayer = new AndroidLogcatVideoPlayer();
-            m_ScreenshotList = new AndroidLogcatScreenshotList(m_Runtime, Repaint);
+            m_CaptureList = new AndroidLogcatCaptureList(m_Runtime, Repaint);
             // Nothing here connects to anything, so the bar carries the message alone.
             m_StatusBar = new AndroidLogcatStatusBar() { ShowConnection = false };
 
@@ -136,7 +136,7 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(m_Runtime.CaptureScreenshot.SelectedImagePath))
                 m_Runtime.CaptureScreenshot.LoadImage(m_Runtime.CaptureScreenshot.GetLatestImagePath(device));
 
-            m_ScreenshotList.OnDeviceChanged(m_DeviceSelection.SelectedDevice);
+            m_CaptureList.OnDeviceChanged(m_DeviceSelection.SelectedDevice);
         }
 
         private void OnDisable()
@@ -144,7 +144,7 @@ namespace Unity.Android.Logcat
             // The live stream is owned by the runtime, so it would otherwise keep
             // mirroring the device after the window that was showing it is gone - and
             // keep reporting to a status bar that is gone with it.
-            m_ScreenshotList?.Deselect();
+            m_CaptureList?.Deselect();
 
             if (m_LiveStream != null)
             {
@@ -172,7 +172,7 @@ namespace Unity.Android.Logcat
         /// live view and nowhere else, so the shortcut goes where the button goes.
         /// </summary>
         private bool CanCaptureScreenshot =>
-            m_ScreenshotList != null && m_ScreenshotList.LiveSelected
+            m_CaptureList != null && m_CaptureList.LiveSelected
             && m_DeviceSelection.SelectedDevice != null && !m_CaptureScreenshot.IsCapturing;
 
         private void QueueScreenCapture()
@@ -271,13 +271,13 @@ namespace Unity.Android.Logcat
             // details file only when the capture is integrated here. Selecting the row
             // in between loads one without the other, and the preview would keep that
             // for as long as the selection does not change.
-            m_ScreenshotList?.InvalidatePreview();
+            m_CaptureList?.InvalidatePreview();
 
             // Set after the capture was integrated, so this is the new screenshot -
             // and empty when the capture failed, where the error is reported already.
             var captured = m_CaptureScreenshot.SelectedImagePath;
             ReportSaved("Screenshot", captured);
-            m_ScreenshotList?.Flash(captured);
+            m_CaptureList?.Flash(captured);
 
             var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
@@ -309,7 +309,7 @@ namespace Unity.Android.Logcat
             // mirroring the device's display for a window that no longer shows it -
             // and Video mode would happily start a recording alongside it.
             if (mode != Mode.Screenshot)
-                m_ScreenshotList.Deselect();
+                m_CaptureList.Deselect();
         }
 
         /// <summary>
@@ -325,7 +325,7 @@ namespace Unity.Android.Logcat
                 return;
 
             m_CaptureScreenshot.InvalidateScreenshots();
-            m_ScreenshotList?.InvalidatePreview();
+            m_CaptureList?.InvalidatePreview();
             Repaint();
         }
 
@@ -492,9 +492,9 @@ namespace Unity.Android.Logcat
             // they outlive the device they came from. What needs a device - Capture,
             // the live view - disables itself.
             // The list draws itself and the splitter, and hands back what is left.
-            var imageRect = m_ScreenshotList.DoGUI(rc, m_DeviceSelection.SelectedDevice);
+            var imageRect = m_CaptureList.DoGUI(rc, m_DeviceSelection.SelectedDevice);
 
-            if (m_ScreenshotList.LiveSelected)
+            if (m_CaptureList.LiveSelected)
             {
                 // The developer-mode details are drawn by DoGUI, in the info column.
                 m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice, Repaint, m_CaptureActions);
@@ -505,7 +505,7 @@ namespace Unity.Android.Logcat
             }
             // The list draws the image, not AndroidLogcatCaptureScreenshot: its texture
             // is the last capture rather than the selected row.
-            else if (!m_ScreenshotList.DoPreviewGUI(imageRect))
+            else if (!m_CaptureList.DoPreviewGUI(imageRect))
             {
                 var message = m_DeviceSelection.SelectedDevice == null
                     ? "No screenshot to show. Select one from the list."

@@ -7,8 +7,9 @@ using UnityEngine;
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// The list of saved screenshots, with the live stream as its first row, and the
-    /// splitter that separates it from whatever is being shown on the right.
+    /// The captures taken from a device - screenshots, and recordings once there are
+    /// any - with the Live button above them, and the splitter that separates the
+    /// column from whatever is being shown on the right.
     /// <para>
     /// One per window rather than one per runtime: the scroll position, the splitter
     /// width and which row is selected are all view state, while
@@ -16,7 +17,7 @@ namespace Unity.Android.Logcat
     /// and the image itself stay there; this only decides what to look at.
     /// </para>
     /// </summary>
-    internal class AndroidLogcatScreenshotList
+    internal class AndroidLogcatCaptureList
     {
         static class Styles
         {
@@ -146,7 +147,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool LiveSelected => m_LiveSelected;
 
-        internal AndroidLogcatScreenshotList(AndroidLogcatRuntimeBase runtime, Action repaint)
+        internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime, Action repaint)
         {
             m_Runtime = runtime;
             m_CaptureScreenshot = runtime.CaptureScreenshot;
@@ -156,8 +157,8 @@ namespace Unity.Android.Logcat
             // Settings saved before the width existed deserialize it as 0, which would
             // collapse the list to nothing.
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            if (settings.ScreenshotListWidth < kMinWidth)
-                settings.ScreenshotListWidth = kDefaultWidth;
+            if (settings.CaptureListWidth < kMinWidth)
+                settings.CaptureListWidth = kDefaultWidth;
         }
 
         /// <summary>
@@ -344,7 +345,7 @@ namespace Unity.Android.Logcat
         internal Rect DoGUI(Rect rc, IAndroidLogcatDevice device)
         {
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            var width = Mathf.Min(settings.ScreenshotListWidth,
+            var width = Mathf.Min(settings.CaptureListWidth,
                 Mathf.Max(0, rc.width - kSplitterWidth - kMinPreviewWidth));
 
             // The fade runs on a clock, and a clock only moves here if something
@@ -369,7 +370,7 @@ namespace Unity.Android.Logcat
             if (m_Splitter.DoGUI(splitterRect, ref width))
             {
                 if (!Mathf.Approximately(width, before))
-                    settings.ScreenshotListWidth = width;
+                    settings.CaptureListWidth = width;
                 m_Repaint();
             }
 
