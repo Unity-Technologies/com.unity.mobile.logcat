@@ -79,6 +79,9 @@ namespace Unity.Android.Logcat
         const float kIconMargin = 2;
         // Air between the Live button and the captures under it.
         const float kGroupGap = 5;
+        // How long a new capture's row is lit, and how bright it starts.
+        const double kFlashSeconds = 0.6;
+        const float kFlashStrength = 0.6f;
 
         readonly AndroidLogcatRuntimeBase m_Runtime;
         readonly AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
@@ -106,6 +109,13 @@ namespace Unity.Android.Logcat
         int m_KnownCount = -1;
         // Whether the one-off "what should this window open on" decision has been made.
         bool m_InitialSelectionDone;
+
+        // The capture that has just landed, lit until m_FlashUntil. The window is
+        // showing the device rather than the list when one arrives, so the row is what
+        // says where it went.
+        string m_FlashPath;
+        double m_FlashUntil;
+        bool m_FlashNeedsScroll;
 
         // Which row is being renamed, and the text so far. The field is focused once,
         // the frame after it first appears.
@@ -174,6 +184,21 @@ namespace Unity.Android.Logcat
         internal void InvalidatePreview()
         {
             DestroyPreview();
+        }
+
+        /// <summary>
+        /// Lights a row, for a capture that has just been taken. The selection is left
+        /// alone: it was taken from the live view, which is worth staying on.
+        /// </summary>
+        internal void Flash(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            m_FlashPath = path;
+            m_FlashUntil = EditorApplication.timeSinceStartup + kFlashSeconds;
+            m_FlashNeedsScroll = true;
+            m_Repaint();
         }
 
         /// <summary>
@@ -322,6 +347,17 @@ namespace Unity.Android.Logcat
             var width = Mathf.Min(settings.ScreenshotListWidth,
                 Mathf.Max(0, rc.width - kSplitterWidth - kMinPreviewWidth));
 
+            // The fade runs on a clock, and a clock only moves here if something
+            // repaints. Expired centrally rather than in the row, which is not drawn
+            // at all while it is scrolled out of sight.
+            if (m_FlashPath != null)
+            {
+                if (EditorApplication.timeSinceStartup >= m_FlashUntil)
+                    m_FlashPath = null;
+                else
+                    m_Repaint();
+            }
+
             var listRect = new Rect(rc.x, rc.y, width, rc.height);
             var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
 
@@ -407,6 +443,15 @@ namespace Unity.Android.Logcat
             var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
             var hasFocus = GUIUtility.keyboardControl == controlId;
 
+            // A row that cannot be seen cannot say anything.
+            if (m_FlashNeedsScroll && m_FlashPath != null)
+            {
+                m_FlashNeedsScroll = false;
+                var flashed = IndexOf(captures, m_FlashPath);
+                if (flashed >= 0)
+                    ScrollIntoView(flashed, rowHeight, inner.height);
+            }
+
             // Acted on after the loop: a menu has to be positioned in window
             // coordinates rather than the scroll view's, and answering it can
             // invalidate the cached list that is being iterated here.
@@ -426,6 +471,12 @@ namespace Unity.Android.Logcat
                     EditorGUI.DrawRect(rowRect, hasFocus
                         ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
                         : new Color(0.30f, 0.30f, 0.30f, 0.85f));
+                }
+
+                if (Event.current.type == EventType.Repaint && path == m_FlashPath)
+                {
+                    var left = (float)((m_FlashUntil - EditorApplication.timeSinceStartup) / kFlashSeconds);
+                    EditorGUI.DrawRect(rowRect, new Color(1, 1, 1, Mathf.Clamp01(left) * kFlashStrength));
                 }
 
                 var iconRect = new Rect(rowRect.x + 4, rowRect.y + (rowRect.height - kIconSize) * 0.5f,

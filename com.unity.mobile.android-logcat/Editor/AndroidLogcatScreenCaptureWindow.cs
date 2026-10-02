@@ -275,7 +275,9 @@ namespace Unity.Android.Logcat
 
             // Set after the capture was integrated, so this is the new screenshot -
             // and empty when the capture failed, where the error is reported already.
-            ReportSaved("Screenshot", m_CaptureScreenshot.SelectedImagePath);
+            var captured = m_CaptureScreenshot.SelectedImagePath;
+            ReportSaved("Screenshot", captured);
+            m_ScreenshotList?.Flash(captured);
 
             var texture = m_CaptureScreenshot.ImageTexture;
             if (texture != null)
