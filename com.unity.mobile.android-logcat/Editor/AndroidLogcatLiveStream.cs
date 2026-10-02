@@ -1339,6 +1339,13 @@ namespace Unity.Android.Logcat
             // trip "GUI id mismatch" warnings.
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
+            var showingStream = m_Errors.Length == 0 && selectedDevice != null && m_Texture != null;
+            // A drag that was under way when the stream died has no mouse up coming:
+            // the image that handles one is not drawn any more, so the touch would stay
+            // down and the window would go on holding the mouse.
+            if (m_TouchDown && !showingStream)
+                ReleaseTouch(controlId);
+
             if (m_Errors.Length > 0)
                 DoErrorsGUI(rc, selectedDevice);
             // Before the texture, not after it: a device that goes away stops the
