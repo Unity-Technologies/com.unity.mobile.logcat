@@ -32,7 +32,7 @@ The toolbar contains options to control the Screen Capture tool.
 | ----------------------- | ------------------------------------------------------------ |
 | **Device Selector**     | Specifies the Android device to capture the screen of.       |
 | **Screen Capture Mode** | Specifies the screen capture mode to use. The options are: <br/>&#8226; **Screenshot**: Switches the Screen Capture tool to screenshot mode. Take screenshots with **Take Screenshot** in the [Live view details](#live-view-details). <br/>&#8226; **Video**: Switches the Screen Capture tool to video mode. When you click **Capture**, the Screen Capture tool begins capturing a video of the selected device. When you click **Stop**, the Screen capture tool finishes capturing the video and displays it in the [Capture preview](#capture-preview). |
-| **Capture**             | Begins video recording.<br/>This option only appears in video mode. To take a screenshot, use **Take Screenshot** in the [Live view details](#live-view-details), or press Ctrl+Shift+S (Cmd+Shift+S on macOS) while this window has focus. |
+| **Capture**             | Begins video recording.<br/>This option only appears in video mode. To take a screenshot, use **Take Screenshot** in the [Live view details](#live-view-details), or press Ctrl+Shift+S (Cmd+Shift+S on macOS) while the live view is showing. |
 | **Stop**                | Stops video recording.<br/>This option only appears while the Screen Capture tool is recording a video. |
 | **Open**                | Opens the video using the application associated with the `.mp4` file extension.<br/>This option only appears in video mode. To open a screenshot, right-click its row in the [Capture list](#capture-list). |
 | **Save As**             | Saves the video as a file on your computer.<br/>This option only appears in video mode. To save a screenshot, right-click its row in the [Capture list](#capture-list); its details file is saved next to the copy. |
@@ -147,7 +147,7 @@ Below them, **Device Rotation** turns the device's screen:
 
 On a foldable, **Device Fold** follows: **Fold**, **Unfold**, and **Half** on a device that reports half open as a state of its own, hold the device that way whatever its hinge is doing - which is how the other display is reached without touching the device. **Auto** hands it back to the hinge. The row does not appear for a device that does not fold.
 
-**Take Screenshot**, at the bottom, captures the device screen and adds it to the [Capture list](#capture-list). The screenshot is taken on the device rather than copied from the stream, so it is full resolution whatever the stream is scaled down to. Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same while this window has focus.
+**Take Screenshot**, at the bottom, captures the device screen and adds it to the [Capture list](#capture-list). The screenshot is taken on the device rather than copied from the stream, so it is full resolution whatever the stream is scaled down to. Ctrl+Shift+S (Cmd+Shift+S on macOS) does the same while this window has focus and the **Live** row is selected - the shortcut follows the button, so it does nothing while a saved capture is on screen.
 
 For how to interact with the device and how to change the size, quality and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
 

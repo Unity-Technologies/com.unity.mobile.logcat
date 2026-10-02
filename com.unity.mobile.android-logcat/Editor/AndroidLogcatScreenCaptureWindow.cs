@@ -28,7 +28,7 @@ namespace Unity.Android.Logcat
             public static GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
-                + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS.");
+                + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS, while this view is showing.");
             public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
             public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
@@ -167,9 +167,13 @@ namespace Unity.Android.Logcat
             m_Runtime = null;
         }
 
-        /// <summary>Whether a screenshot can be taken right now.</summary>
+        /// <summary>
+        /// Whether a screenshot can be taken right now. Take Screenshot is drawn in the
+        /// live view and nowhere else, so the shortcut goes where the button goes.
+        /// </summary>
         private bool CanCaptureScreenshot =>
-            m_DeviceSelection.SelectedDevice != null && !m_CaptureScreenshot.IsCapturing;
+            m_ScreenshotList != null && m_ScreenshotList.LiveSelected
+            && m_DeviceSelection.SelectedDevice != null && !m_CaptureScreenshot.IsCapturing;
 
         private void QueueScreenCapture()
         {
@@ -250,9 +254,7 @@ namespace Unity.Android.Logcat
 
         void CaptureScreenshotFromShortcut()
         {
-            // The same conditions the Capture button draws itself with: it is disabled
-            // without a device and while a capture is in flight, and in Video mode it
-            // records video instead, which this shortcut is not for.
+            // The button's own conditions, plus the mode: Video mode has no live view.
             if (m_Runtime == null || m_DeviceSelection == null)
                 return;
             if (m_Runtime.UserSettings.CaptureSettings.Mode != Mode.Screenshot)
