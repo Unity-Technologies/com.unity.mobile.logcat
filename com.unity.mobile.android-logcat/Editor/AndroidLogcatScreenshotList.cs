@@ -773,13 +773,13 @@ namespace Unity.Android.Logcat
                     BeginRename((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.Delete:
-                {
-                    // Read again rather than carried in the menu item: the menu is
-                    // answered long after it was opened.
-                    var captures = m_CaptureScreenshot.GetScreenshots();
-                    ConfirmAndDelete(captures, SelectedInOrder(captures), m_SelectedDevice);
-                    break;
-                }
+                    {
+                        // Read again rather than carried in the menu item: the menu is
+                        // answered long after it was opened.
+                        var captures = m_CaptureScreenshot.GetScreenshots();
+                        ConfirmAndDelete(captures, SelectedInOrder(captures), m_SelectedDevice);
+                        break;
+                    }
                 case ScreenshotContextMenu.SelectAll:
                     SelectAll(m_CaptureScreenshot.GetScreenshots(), m_SelectedDevice);
                     break;
