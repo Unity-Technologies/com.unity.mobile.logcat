@@ -125,15 +125,6 @@ public final class Server {
     }
 
     /**
-     * Waits for the Editor to connect, giving up after {@code timeoutMs} so that a
-     * server whose Editor died does not sit on the device forever. A timeout of 0
-     * waits indefinitely.
-     */
-    // Process.ROOT_UID and Process.SHELL_UID, which are hidden API.
-    private static final int ROOT_UID = 0;
-    private static final int SHELL_UID = 2000;
-
-    /**
      * An abstract socket carries no filesystem permissions, so anything running on the
      * device can reach it - and a client of this one gets the screen and the ability to
      * inject input. Only adb's forwarded connections are meant to: adbd runs as
@@ -142,11 +133,16 @@ public final class Server {
      */
     private static void rejectUnlessAdb(LocalSocket socket) throws IOException {
         int uid = socket.getPeerCredentials().getUid();
-        if (uid != ROOT_UID && uid != SHELL_UID) {
+        if (uid != android.os.Process.ROOT_UID && uid != android.os.Process.SHELL_UID) {
             throw new IOException("Rejected a connection from uid " + uid + ", only adb may connect");
         }
     }
 
+    /**
+     * Waits for the Editor to connect, giving up after {@code timeoutMs} so that a
+     * server whose Editor died does not sit on the device forever. A timeout of 0
+     * waits indefinitely.
+     */
     private static LocalSocket accept(LocalServerSocket serverSocket, int timeoutMs) throws IOException {
         if (timeoutMs <= 0) {
             return serverSocket.accept();
