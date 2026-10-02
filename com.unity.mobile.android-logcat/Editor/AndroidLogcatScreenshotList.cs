@@ -363,9 +363,13 @@ namespace Unity.Android.Logcat
 
             DoColumnGUI(listRect, device);
 
+            // Clamped to the window, so storing it unmoved would shrink a saved width
+            // that this window is too narrow to show.
+            var before = width;
             if (m_Splitter.DoGUI(splitterRect, ref width))
             {
-                settings.ScreenshotListWidth = width;
+                if (!Mathf.Approximately(width, before))
+                    settings.ScreenshotListWidth = width;
                 m_Repaint();
             }
 
@@ -562,6 +566,20 @@ namespace Unity.Android.Logcat
             m_Selected.RemoveWhere(path => IndexOf(captures, path) < 0);
             if (m_SelectionAnchor != null && !m_Selected.Contains(m_SelectionAnchor))
                 m_SelectionAnchor = null;
+        }
+
+        /// <summary>
+        /// Points the selection at a renamed row: it is held by path, and the old one
+        /// would match nothing.
+        /// </summary>
+        void FollowRename(string path, string renamed)
+        {
+            if (string.IsNullOrEmpty(renamed) || !m_Selected.Remove(path))
+                return;
+
+            m_Selected.Add(renamed);
+            if (m_SelectionAnchor == path)
+                m_SelectionAnchor = renamed;
         }
 
         static int IndexOf(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures, string path)
@@ -786,7 +804,8 @@ namespace Unity.Android.Logcat
 
             // An unchanged or unusable name is not an error; the row just goes back to
             // showing what it showed before.
-            m_CaptureScreenshot.RenameScreenshot(path, name);
+            if (m_CaptureScreenshot.RenameScreenshot(path, name, out var renamed))
+                FollowRename(path, renamed);
             m_Repaint();
         }
 
@@ -963,23 +982,22 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            var delta = 0;
-            switch (e.keyCode)
-            {
-                case KeyCode.UpArrow: delta = -1; break;
-                case KeyCode.DownArrow: delta = 1; break;
-                case KeyCode.Home: delta = -captures.Count; break;
-                case KeyCode.End: delta = captures.Count; break;
-                default: return;
-            }
-
             if (captures.Count == 0)
                 return;
 
-            // No selection yet: Down starts at the top, Up at the bottom.
-            var next = selectedRow < 0
-                ? (delta > 0 ? 0 : captures.Count - 1)
-                : Mathf.Clamp(selectedRow + delta, 0, captures.Count - 1);
+            var last = captures.Count - 1;
+            int next;
+            switch (e.keyCode)
+            {
+                // With nothing selected, Down starts at the top and Up at the bottom.
+                case KeyCode.Home: next = 0; break;
+                case KeyCode.End: next = last; break;
+                case KeyCode.UpArrow: next = selectedRow < 0 ? last : selectedRow - 1; break;
+                case KeyCode.DownArrow: next = selectedRow < 0 ? 0 : selectedRow + 1; break;
+                default: return;
+            }
+
+            next = Mathf.Clamp(next, 0, last);
 
             if (next != selectedRow)
             {

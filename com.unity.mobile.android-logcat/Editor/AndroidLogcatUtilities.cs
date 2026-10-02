@@ -200,9 +200,34 @@ namespace Unity.Android.Logcat
         public static string GetCapturesDirectory(AndroidLogcatSettings settings = null)
         {
             var configured = settings != null ? settings.CaptureOutputDirectory : null;
+            return TryResolveCapturesDirectory(configured, out var resolved)
+                ? resolved
+                : ResolveCapturesDirectory(AndroidLogcatSettings.kDefaultCaptureOutputDirectory);
+        }
+
+        /// <summary>
+        /// Where a configured captures folder resolves to, or false when it resolves
+        /// nowhere. The setting is free text, and this runs from OnGUI.
+        /// </summary>
+        public static bool TryResolveCapturesDirectory(string configured, out string resolved)
+        {
             if (string.IsNullOrEmpty(configured))
                 configured = AndroidLogcatSettings.kDefaultCaptureOutputDirectory;
 
+            try
+            {
+                resolved = ResolveCapturesDirectory(configured);
+                return true;
+            }
+            catch (Exception)
+            {
+                resolved = null;
+                return false;
+            }
+        }
+
+        static string ResolveCapturesDirectory(string configured)
+        {
             var path = Path.IsPathRooted(configured)
                 ? configured
                 : Path.Combine(ProjectDirectory(), configured);

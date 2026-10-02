@@ -270,6 +270,13 @@ namespace Unity.Android.Logcat
         /// <returns>False if the name is unusable or the move failed, which is logged.</returns>
         public bool RenameScreenshot(string path, string newName)
         {
+            return RenameScreenshot(path, newName, out _);
+        }
+
+        /// <param name="renamed">Where the capture ended up, empty when it did not move.</param>
+        public bool RenameScreenshot(string path, string newName, out string renamed)
+        {
+            renamed = string.Empty;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return false;
 
@@ -288,7 +295,10 @@ namespace Unity.Android.Logcat
             var directory = Path.GetDirectoryName(path);
             var target = Path.Combine(directory, newName + GetImageExtension()).Replace("\\", "/");
             if (target == path)
+            {
+                renamed = path;
                 return true;
+            }
 
             if (File.Exists(target))
             {
@@ -325,6 +335,7 @@ namespace Unity.Android.Logcat
             if (m_SelectedImagePath == path)
                 m_SelectedImagePath = target;
 
+            renamed = target;
             return true;
         }
 
@@ -374,12 +385,26 @@ namespace Unity.Android.Logcat
             if (device == null)
                 return;
 
+            // The folder is a setting, so it may not be usable - reported like any
+            // other capture failure rather than thrown out of the button.
+            string imagePath;
+            try
+            {
+                imagePath = AllocateImagePath(device);
+            }
+            catch (Exception ex)
+            {
+                m_Error = $"Could not use the captures folder '{m_Directory()}'.\n{ex.Message}";
+                onCompleted?.Invoke();
+                return;
+            }
+
             m_Runtime.Dispatcher.Schedule(
                 new AndroidLogcatCaptureScreenCaptureInput()
                 {
                     adb = m_Runtime.Tools.ADB,
                     // Allocated here on the main thread, before the task is scheduled.
-                    imagePath = AllocateImagePath(device),
+                    imagePath = imagePath,
                     deviceId = device.Id,
                     device = device,
                     onCompleted = onCompleted

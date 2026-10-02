@@ -153,10 +153,22 @@ namespace Unity.Android.Logcat
             else
                 settings.CaptureOutputDirectory = folder;
 
-            EditorGUILayout.HelpBox(
-                "The path can be relative to the project folder, or an absolute path. " +
-                $"Captures are written to '{AndroidLogcatUtilities.GetCapturesDirectory(settings)}'.",
-                MessageType.None);
+            if (AndroidLogcatUtilities.TryResolveCapturesDirectory(settings.CaptureOutputDirectory,
+                out var resolved))
+            {
+                EditorGUILayout.HelpBox(
+                    "The path can be relative to the project folder, or an absolute path. " +
+                    $"Captures are written to '{resolved}'.",
+                    MessageType.None);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "This path cannot be used. Remove any quotes or characters a folder name " +
+                    $"cannot contain. Captures go to '{AndroidLogcatUtilities.GetCapturesDirectory(null)}' " +
+                    "until it is fixed.",
+                    MessageType.Warning);
+            }
         }
 
         /// <summary>

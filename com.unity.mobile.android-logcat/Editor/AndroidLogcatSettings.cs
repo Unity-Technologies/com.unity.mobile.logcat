@@ -156,10 +156,6 @@ namespace Unity.Android.Logcat
             }
         }
         /// <summary>
-        /// Longest side of the live stream, in pixels. The device display is scaled down
-        /// to fit, which is what keeps the bandwidth and the encoding cost down.
-        /// </summary>
-        /// <summary>
         /// Where screenshots, and later videos, are written. A relative path starts at
         /// the project folder; empty falls back to
         /// <see cref="kDefaultCaptureOutputDirectory"/>.
