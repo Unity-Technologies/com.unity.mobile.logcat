@@ -20,6 +20,33 @@ namespace Unity.Android.Logcat
         Rotate270 = 3
     }
 
+    /// <summary>
+    /// The states a foldable reports to Android, as `cmd device_state print-states`
+    /// lists them. Their numbers are the device's own, so they are asked for rather
+    /// than assumed.
+    /// </summary>
+    internal readonly struct FoldStates
+    {
+        internal static readonly FoldStates None = new FoldStates(-1, -1, -1);
+
+        internal readonly int Folded;
+        internal readonly int Half;
+        internal readonly int Unfolded;
+
+        internal FoldStates(int folded, int half, int unfolded)
+        {
+            Folded = folded;
+            Half = half;
+            Unfolded = unfolded;
+        }
+
+        /// <summary>Folded and unfolded are what a foldable has to report to be one.</summary>
+        internal bool Supported => Folded >= 0 && Unfolded >= 0;
+
+        /// <summary>Half open is a state of its own on some devices, and absent on others.</summary>
+        internal bool HasHalf => Half >= 0;
+    }
+
     internal abstract class IAndroidLogcatDevice
     {
         internal IAndroidLogcatActivityManager m_ActivityManager;
@@ -89,6 +116,18 @@ namespace Unity.Android.Logcat
         /// hands the rotation back to the accelerometer.
         /// </summary>
         internal abstract void SetRotation(AndroidDeviceRotation rotation);
+
+        /// <summary>
+        /// Which states this device folds between, or <see cref="FoldStates.None"/>
+        /// for a device that does not fold.
+        /// </summary>
+        internal abstract FoldStates QueryFoldStates();
+
+        /// <summary>
+        /// Holds the device in one of the states <see cref="QueryFoldStates"/> reports.
+        /// A negative identifier hands it back to the device's own sensors.
+        /// </summary>
+        internal abstract void SetDeviceState(int identifier);
 
         protected void ParseDisplaySize(string input, out Vector2 displaySize, out Vector2? overridenDisplaySize)
         {
@@ -314,6 +353,61 @@ namespace Unity.Android.Logcat
             {
                 AndroidLogcatInternalLog.Log(ex.Message);
             }
+        }
+
+        // identifier=0, name='CLOSED' - one line of `cmd device_state print-states`.
+        static readonly Regex DeviceStateRegex =
+            new Regex(@"identifier=(?<id>\d+), name='(?<name>[^']+)'");
+
+        internal override FoldStates QueryFoldStates()
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return FoldStates.None;
+
+            string output;
+            try
+            {
+                output = m_ADB.Run(new[] { $"-s {Id}", "shell", "cmd", "device_state", "print-states" },
+                    "Failed to query the device's states");
+            }
+            catch (Exception ex)
+            {
+                // Every device without the service answers this way, so it is not an
+                // error - it is how a device says it does not fold.
+                AndroidLogcatInternalLog.Log($"Failed to query the device's states: {ex.Message}");
+                return FoldStates.None;
+            }
+
+            var folded = -1;
+            var half = -1;
+            var unfolded = -1;
+            foreach (Match match in DeviceStateRegex.Matches(output))
+            {
+                var name = match.Groups["name"].Value.ToUpperInvariant();
+                var id = int.Parse(match.Groups["id"].Value, CultureInfo.InvariantCulture);
+
+                // Matched by name, because the numbers differ between devices. Half
+                // open is checked first: its name holds OPEN as well.
+                if (half < 0 && name.Contains("HALF"))
+                    half = id;
+                else if (folded < 0 && name.Contains("CLOS"))
+                    folded = id;
+                else if (unfolded < 0 && name.Contains("OPEN"))
+                    unfolded = id;
+            }
+
+            return new FoldStates(folded, half, unfolded);
+        }
+
+        internal override void SetDeviceState(int identifier)
+        {
+            if (m_Device == null || State != DeviceState.Connected)
+                return;
+
+            var state = identifier < 0 ? "reset" : identifier.ToString(CultureInfo.InvariantCulture);
+            var args = $"-s {Id} shell cmd device_state state {state}";
+            AndroidLogcatInternalLog.Log($"adb {args}");
+            m_ADB.Run(new[] { args }, $"Failed to set the device state to '{state}'");
         }
 
         internal override void SetRotation(AndroidDeviceRotation rotation)

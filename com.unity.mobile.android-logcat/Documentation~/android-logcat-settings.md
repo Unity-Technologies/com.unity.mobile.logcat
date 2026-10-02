@@ -7,6 +7,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Message Colors](#message-colors)
 * [Memory Window](#memory-window)
 * [Packages](#packages)
+* [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
 
@@ -47,6 +48,32 @@ Use the **Request Interval ms** setting to specify a time interval to request me
 
 
 Use the **Max Exited Packages** setting to specify the maximum number for the applications selected in the Package Selector that are now closed. This allows you to restrict the number of entries in the Package Selector dropdown for closed applications to prevent overpopulating the dropdown.
+
+## Capture Settings
+
+Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The note underneath the field spells out where that is at the moment, which a relative path does not show on its own.
+
+A relative path starts at your project folder, which is how the default `Library/AndroidLogcat/Screenshots` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
+
+Select **Browse...** to pick a folder. A folder inside the project is stored relative to it, and one outside it is stored as an absolute path.
+
+The default, `Library/AndroidLogcat/Screenshots`, is local to your machine and is not part of a build, and Unity deletes `Library` from time to time, so choose a folder of your own for captures you want to keep.
+
+Changing the folder takes effect immediately. Captures already written stay where they are, and the [Capture list](screen-capture-window-reference.md#capture-list) shows what is in the new folder.
+
+### Live Stream
+
+Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
+
+|**Setting**|**Description**|
+|---|---|
+|**Max Size**|Specifies the longest side of the streamed image in pixels, between 256 and 2048. The device's display is scaled down to fit. The default value is 1024.|
+|**JPEG Quality**|Specifies the quality of each streamed frame, between 1 and 100. Lower values produce smaller frames and use less bandwidth. The default value is 70.|
+|**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 120. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
+
+These settings apply when a stream starts. To apply them to a stream that is already running, turn **Live** off and on again in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list).
+
+Use the **Reset** button in this section to restore the three Live Stream settings without changing any other setting.
 
 ## Stacktrace Regex
 

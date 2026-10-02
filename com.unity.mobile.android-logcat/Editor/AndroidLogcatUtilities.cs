@@ -88,6 +88,234 @@ namespace Unity.Android.Logcat
             return name;
         }
 
+        /// <summary>
+        /// What the OS calls its file browser, for menu items that reveal a file in it.
+        /// </summary>
+        public static string RevealInFileBrowserLabel
+        {
+            get
+            {
+                switch (Application.platform)
+                {
+                    case RuntimePlatform.OSXEditor: return "Show In Finder";
+                    case RuntimePlatform.LinuxEditor: return "Show In File Manager";
+                    default: return "Show In Explorer";
+                }
+            }
+        }
+
+        /// <summary>Selects a file in the OS file browser, rather than opening it.</summary>
+        public static void RevealInFileBrowser(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            UnityEditor.EditorUtility.RevealInFinder(path);
+        }
+
+        /// <summary>Opens a file with whatever the OS uses for its type.</summary>
+        public static void OpenFile(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            switch (Application.platform)
+            {
+                case RuntimePlatform.OSXEditor:
+                    // Application.OpenURL on a plain path does nothing useful on macOS.
+                    System.Diagnostics.Process.Start("open", path);
+                    break;
+                default:
+                    Application.OpenURL(path);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Asks where to put a copy of <paramref name="sourcePath"/> and copies it there.
+        /// The extension offered in the dialog comes from the source file, so callers do
+        /// not have to know it.
+        /// </summary>
+        /// <returns>
+        /// The directory saved into, so the caller can remember it, or null if the dialog
+        /// was cancelled or the copy failed. A failure is logged.
+        /// </returns>
+        public static string SaveFileAs(string sourcePath, string title, string startDirectory)
+        {
+            if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath))
+                return null;
+
+            var extension = Path.GetExtension(sourcePath);
+            var path = UnityEditor.EditorUtility.SaveFilePanel(title, startDirectory,
+                Path.GetFileName(sourcePath),
+                string.IsNullOrEmpty(extension) ? string.Empty : extension.Substring(1));
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            try
+            {
+                File.Copy(sourcePath, path, true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogErrorFormat("Failed to save '{0}' as '{1}'.\n{2}", sourcePath, path, ex.Message);
+                return null;
+            }
+
+            // A screenshot's details file goes with the copy. Nothing to do for a
+            // file that has none, which is every video.
+            AndroidLogcatScreenshotInfo.CopyBeside(sourcePath, path);
+
+            return Path.GetFullPath(Path.GetDirectoryName(path));
+        }
+
+        /// <summary>
+        /// Copies a capture into a folder, keeping its name, and takes its details file
+        /// along with it. Overwrites what is there: the caller has already asked.
+        /// </summary>
+        /// <returns>False if the copy failed, which is logged.</returns>
+        public static bool CopyInto(string sourcePath, string directory)
+        {
+            var target = Path.Combine(directory, Path.GetFileName(sourcePath)).Replace("\\", "/");
+            try
+            {
+                File.Copy(sourcePath, target, true);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to copy '{sourcePath}' to '{target}'.\n{ex.Message}");
+                return false;
+            }
+
+            AndroidLogcatScreenshotInfo.CopyBeside(sourcePath, target);
+            return true;
+        }
+
+        /// <summary>
+        /// The folder captures are written to - screenshots today, videos later.
+        /// Settings can point it anywhere: a relative path starts at the project
+        /// folder, an absolute one is where it says. A settings object that is null,
+        /// or holds nothing, is the default described above.
+        /// </summary>
+        public static string GetCapturesDirectory(AndroidLogcatSettings settings = null)
+        {
+            var configured = settings != null ? settings.CaptureOutputDirectory : null;
+            return TryResolveCapturesDirectory(configured, out var resolved)
+                ? resolved
+                : ResolveCapturesDirectory(AndroidLogcatSettings.kDefaultCaptureOutputDirectory);
+        }
+
+        /// <summary>
+        /// Where a configured captures folder resolves to, or false when it resolves
+        /// nowhere. The setting is free text, and this runs from OnGUI.
+        /// </summary>
+        public static bool TryResolveCapturesDirectory(string configured, out string resolved)
+        {
+            if (string.IsNullOrEmpty(configured))
+                configured = AndroidLogcatSettings.kDefaultCaptureOutputDirectory;
+
+            try
+            {
+                resolved = ResolveCapturesDirectory(configured);
+                return true;
+            }
+            catch (Exception)
+            {
+                resolved = null;
+                return false;
+            }
+        }
+
+        static string ResolveCapturesDirectory(string configured)
+        {
+            var path = Path.IsPathRooted(configured)
+                ? configured
+                : Path.Combine(ProjectDirectory(), configured);
+            return Path.GetFullPath(path).Replace("\\", "/");
+        }
+
+        /// <summary>The folder holding Assets, which is what a project path starts at.</summary>
+        public static string ProjectDirectory()
+        {
+            return Path.GetFullPath(Path.Combine(Application.dataPath, "..")).Replace("\\", "/");
+        }
+
+        /// <summary>
+        /// Where the Layout Viewer keeps its screenshot. Its own directory, not the one
+        /// above: that capture belongs to the layout it was queried with and is replaced
+        /// by the next query, so it has no business in the saved screenshot list.
+        /// </summary>
+        public static string GetLayoutViewerDirectory()
+        {
+            return GetCaptureDirectory("LayoutViewer");
+        }
+
+        static string GetCaptureDirectory(string name)
+        {
+            var path = Path.Combine(ProjectDirectory(), "Library", "AndroidLogcat", name);
+            return Path.GetFullPath(path).Replace("\\", "/");
+        }
+
+
+        internal static string ResolvePath(params string[] relativeParts)
+        {
+            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                typeof(AndroidLogcatUtilities).Assembly);
+            if (package == null)
+                return null;
+
+            var parts = new string[relativeParts.Length + 1];
+            parts[0] = package.resolvedPath;
+            Array.Copy(relativeParts, 0, parts, 1, relativeParts.Length);
+            return Path.GetFullPath(Path.Combine(parts));
+        }
+
+        /// <summary>
+        /// The path with the project folder stripped off, for showing in the UI. A
+        /// screenshot's absolute path is mostly project folder, which in a tooltip is
+        /// wide enough to cover the rows around it.
+        /// </summary>
+        public static string ProjectRelativePath(string path)
+        {
+            return ProjectRelativePath(path, GetProjectDirectory());
+        }
+
+        /// <summary>
+        /// The same, against a given project folder rather than this project's, so that
+        /// it can be exercised with paths from a platform other than the one running.
+        /// </summary>
+        internal static string ProjectRelativePath(string path, string projectDirectory)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+
+            // Trailing slash trimmed so that the separator check below has a separator
+            // to find, whatever shape the folder was handed over in.
+            var project = projectDirectory.Replace("\\", "/").TrimEnd('/');
+            var normalized = path.Replace("\\", "/");
+
+            if (normalized.Length > project.Length + 1
+                && normalized[project.Length] == '/'
+                && normalized.StartsWith(project, StringComparison.OrdinalIgnoreCase))
+                return normalized.Substring(project.Length + 1);
+
+            // Not under the project - a screenshot opened from elsewhere, say - so there
+            // is nothing to strip and the whole path is the most useful thing to show.
+            return normalized;
+        }
+
+        static string s_ProjectDirectory;
+
+        /// <summary>
+        /// The folder that holds Assets, cached: tooltips are built per row per repaint,
+        /// and the project does not move while the Editor is running.
+        /// </summary>
+        static string GetProjectDirectory()
+        {
+            if (s_ProjectDirectory == null)
+                s_ProjectDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, "..")).Replace("\\", "/");
+            return s_ProjectDirectory;
+        }
 
         // Long enough for a first run, which downloads Gradle itself.
         const int kGradleTimeoutMs = 5 * 60 * 1000;
@@ -498,7 +726,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory, UseShellExecute = true });
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { UseShellExecute = true, WorkingDirectory = workingDirectory });
                     break;
                 case RuntimePlatform.OSXEditor:
                     var pathsToCheck = new[]
