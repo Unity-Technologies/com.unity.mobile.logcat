@@ -89,6 +89,187 @@ namespace Unity.Android.Logcat
         }
 
 
+        // Long enough for a first run, which downloads Gradle itself.
+        const int kGradleTimeoutMs = 5 * 60 * 1000;
+        const int kGradleProgressUpdateMs = 200;
+
+        /// <summary>
+        /// Kills a process and whatever it started. Gradle runs behind a launcher
+        /// script and does its work in a daemon, so killing only the process we started
+        /// leaves the build running.
+        /// </summary>
+        static void KillProcessTree(System.Diagnostics.Process process)
+        {
+            try
+            {
+                if (Application.platform == RuntimePlatform.WindowsEditor)
+                {
+                    var killer = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "taskkill",
+                        Arguments = $"/T /F /PID {process.Id}",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                    killer?.WaitForExit(5000);
+                    killer?.Dispose();
+                }
+                else
+                {
+                    process.Kill();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to stop Gradle.\n{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Runs a Gradle task in a project directory and says whether it succeeded,
+        /// logging its output either way.
+        /// <para>
+        /// The JDK and SDK come from Unity's own External Tools settings rather than
+        /// from the environment: the Editor may not have inherited a shell environment
+        /// at all, the one it did inherit is not necessarily the one this build wants,
+        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
+        /// is run through <c>sh</c> off Windows, so that this does not depend on its
+        /// executable bit, which is invisible to anyone working from Windows.
+        /// </para>
+        /// <para>
+        /// Blocking, behind a progress bar. This is a developer action - there is no
+        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
+        /// </para>
+        /// </summary>
+        internal static bool RunGradle(string projectDirectory, string task)
+        {
+            if (string.IsNullOrEmpty(projectDirectory) || !Directory.Exists(projectDirectory))
+            {
+                Debug.LogError($"No Gradle project at '{projectDirectory}'.");
+                return false;
+            }
+
+            string androidHome;
+            string javaHome;
+            try
+            {
+                androidHome = AndroidBridge.AndroidExternalToolsSettings.sdkRootPath;
+                javaHome = AndroidBridge.AndroidExternalToolsSettings.jdkRootPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Could not read the Android SDK and JDK locations from " +
+                    $"Preferences > External Tools.\n{ex.Message}");
+                return false;
+            }
+
+            var windows = Application.platform == RuntimePlatform.WindowsEditor;
+
+            var process = new System.Diagnostics.Process();
+            var si = process.StartInfo;
+            si.WorkingDirectory = projectDirectory;
+            si.FileName = windows ? Path.Combine(projectDirectory, "gradlew.bat") : "sh";
+            si.Arguments = windows ? task : $"gradlew {task}";
+            // Left unset when a path is not configured, rather than pointed at nothing:
+            // Gradle then falls back to local.properties or an inherited variable, which
+            // is a better answer than a directory that does not exist.
+            if (!string.IsNullOrEmpty(javaHome) && Directory.Exists(javaHome))
+                si.EnvironmentVariables["JAVA_HOME"] = javaHome;
+            if (!string.IsNullOrEmpty(androidHome) && Directory.Exists(androidHome))
+                si.EnvironmentVariables["ANDROID_HOME"] = androidHome;
+            si.UseShellExecute = false;
+            si.CreateNoWindow = true;
+            si.RedirectStandardOutput = true;
+            si.RedirectStandardError = true;
+
+            var output = new System.Text.StringBuilder();
+            // What Gradle said last, which is the only sign of progress it gives while
+            // a build runs.
+            var lastLine = string.Empty;
+
+            try
+            {
+                var title = $"Running Gradle in {Path.GetFileName(projectDirectory)}";
+                var command = $"{si.FileName} {si.Arguments}";
+                EditorUtility.DisplayProgressBar(title, command, 0);
+
+                System.Diagnostics.DataReceivedEventHandler record = (s, e) =>
+                {
+                    if (string.IsNullOrEmpty(e.Data))
+                        return;
+                    // Straight to Editor.log as it arrives: the collected log is only
+                    // reported once the build is over, which is no help while watching
+                    // one that is stuck.
+                    Console.WriteLine(e.Data);
+                    lock (output)
+                    {
+                        output.AppendLine(e.Data);
+                        lastLine = e.Data;
+                    }
+                };
+
+                process.OutputDataReceived += record;
+                process.ErrorDataReceived += record;
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                var started = DateTime.Now;
+                while (!process.WaitForExit(kGradleProgressUpdateMs))
+                {
+                    string message;
+                    lock (output)
+                        message = string.IsNullOrEmpty(lastLine) ? command : lastLine;
+
+                    var elapsed = DateTime.Now - started;
+                    // Gradle reports no progress of its own, so the bar only says the
+                    // build is still alive - it fills over ten seconds and starts over.
+                    var progress = (float)(elapsed.TotalSeconds % 10.0) / 10.0f;
+
+                    if (EditorUtility.DisplayCancelableProgressBar(title, message, progress))
+                    {
+                        KillProcessTree(process);
+                        Debug.LogWarning($"'gradlew {task}' was cancelled.");
+                        return false;
+                    }
+
+                    if (elapsed.TotalMilliseconds >= kGradleTimeoutMs)
+                    {
+                        KillProcessTree(process);
+                        Debug.LogError($"Gradle did not finish within {kGradleTimeoutMs / 1000} s.");
+                        return false;
+                    }
+                }
+
+                // The redirected output is read on other threads, and the wait above
+                // only waits for the process: this one waits for that output too.
+                process.WaitForExit();
+
+                string log;
+                lock (output)
+                    log = output.ToString();
+                AndroidLogcatInternalLog.Log(log);
+
+                if (process.ExitCode != 0)
+                {
+                    Debug.LogError($"'gradlew {task}' failed with exit code {process.ExitCode}.\n{log}");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to run Gradle in '{projectDirectory}'.\n{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                process.Dispose();
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>

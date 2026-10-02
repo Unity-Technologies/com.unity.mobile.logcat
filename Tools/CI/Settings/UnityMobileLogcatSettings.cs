@@ -20,6 +20,15 @@ public class UnityMobileLogcatSettings : AnnotatedSettingsBase
                 { 
                     IsReleasing = true 
                 },
+                PackJobOptions = new PackJobOptions()
+                {
+                    Dependencies = new List<Dependency>()
+                    {
+                        // External~/unity-logcat-server.jar is a build output and is not
+                        // committed, so it has to be built before the package is packed.
+                        new("build-server-jar", "build_server_jar")
+                    }
+                },
                 CustomChecks = new HashSet<Dependency>() 
                 { 
                     new Dependency("upm-ci", "test_all_trigger") 
