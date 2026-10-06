@@ -492,10 +492,6 @@ namespace Unity.Android.Logcat
                 m_SocketName = "unity_logcat_server_" + sessionId;
                 m_ServerDevicePath = $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}-{sessionId}.jar";
 
-                // Before anything else, because a dark screen produces no frames at all
-                // and the wait for the first one would just time out.
-                device.WakeUp();
-
                 // Before pushing ours, so it cannot sweep away what it is about to push.
                 RemoveStaleServerJars(device);
 
@@ -521,9 +517,14 @@ namespace Unity.Android.Logcat
                     displayId);
                 m_ForwardedPort = SetupPortForward(device, m_SocketName);
 
-                // Connecting is retried until the server has created its socket, so it
-                // happens on the reader thread rather than stalling the main thread.
-                m_ReaderThread = new Thread(() => ReadFrames(session))
+                // Off the main thread: connecting retries until the server's socket
+                // exists, and waking is one more adb round trip. A dark screen produces
+                // no frames, and waking is itself the first one.
+                m_ReaderThread = new Thread(() =>
+                {
+                    device.WakeUp();
+                    ReadFrames(session);
+                })
                 {
                     Name = "AndroidLogcatLiveStream",
                     IsBackground = true
