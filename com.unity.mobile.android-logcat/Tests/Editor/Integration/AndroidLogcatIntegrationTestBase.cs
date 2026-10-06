@@ -26,6 +26,10 @@ internal class AndroidLogcatIntegrationTestBase
     private void Tick()
     {
         m_Ticks++;
+
+        // Frames are decoded where they are drawn, and in a test nothing draws. The
+        // live stream tests wait on the texture, so this stands in for the window.
+        m_Runtime?.LiveStream?.ApplyPendingFrame();
     }
 
     [OneTimeSetUp]

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Profiling;
 using UnityEditor;
 using UnityEngine;
 
@@ -69,6 +70,8 @@ namespace Unity.Android.Logcat
                 }
             }
         }
+
+        static readonly ProfilerMarker k_LoadPreview = new ProfilerMarker("AndroidLogcat.LoadPreview");
 
         internal const float kDefaultWidth = 220;
         const float kMinWidth = 150;
@@ -307,7 +310,11 @@ namespace Unity.Android.Logcat
                 return;
 
             var texture = new Texture2D(2, 2);
-            if (texture.LoadImage(File.ReadAllBytes(path)))
+            bool loaded;
+            using (k_LoadPreview.Auto())
+                loaded = texture.LoadImage(File.ReadAllBytes(path));
+
+            if (loaded)
             {
                 m_PreviewTexture = texture;
                 m_PreviewDetails = new PreviewDetails(texture, new FileInfo(path),

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Profiling;
 using UnityEditor;
 using System.IO;
 
@@ -39,6 +40,8 @@ namespace Unity.Android.Logcat
         private readonly bool m_KeepHistory;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
+        static readonly ProfilerMarker k_LoadCapture = new ProfilerMarker("AndroidLogcat.LoadCapture");
+
         private string m_Error;
         private Rect m_ScreenshotDrawingRect;
 
@@ -533,7 +536,11 @@ namespace Unity.Android.Logcat
             var imageData = File.ReadAllBytes(imagePath);
 
             m_ImageTexture = new Texture2D(2, 2);
-            if (!m_ImageTexture.LoadImage(imageData))
+            bool loaded;
+            using (k_LoadCapture.Auto())
+                loaded = m_ImageTexture.LoadImage(imageData);
+
+            if (!loaded)
                 return;
         }
 

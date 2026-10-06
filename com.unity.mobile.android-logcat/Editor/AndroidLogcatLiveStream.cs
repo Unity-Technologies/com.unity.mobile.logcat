@@ -8,6 +8,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using Unity.Profiling;
 using UnityEditor;
 using UnityEngine;
 
@@ -431,6 +432,8 @@ namespace Unity.Android.Logcat
             int? maxFps = null,
             string displayId = null)
         {
+            using var profilerScope = k_StartStream.Auto();
+
             if (device == null)
                 throw new InvalidOperationException("No device selected");
             if (IsStreaming)
@@ -551,6 +554,8 @@ namespace Unity.Android.Logcat
         /// </summary>
         void Shutdown(Result result)
         {
+            using var profilerScope = k_StopStream.Auto();
+
             var session = m_Session;
             m_Session = null;
             if (session != null)
@@ -605,7 +610,7 @@ namespace Unity.Android.Logcat
                 ShowServerLogcat();
             }
 
-            ApplyPendingFrame();
+            UpdateStats();
 
             var error = m_ReaderError;
             if (!string.IsNullOrEmpty(error))
@@ -630,14 +635,36 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void ApplyPendingFrame()
+        // Named so they can be found by typing "AndroidLogcat" into the Profiler's
+        // search box. The two lifecycle ones talk to adb and block the main thread,
+        // which is what makes them worth watching alongside the per-frame cost.
+        static readonly ProfilerMarker k_DecodeFrame = new ProfilerMarker("AndroidLogcat.DecodeFrame");
+        static readonly ProfilerMarker k_DrawStream = new ProfilerMarker("AndroidLogcat.DrawLiveStream");
+        static readonly ProfilerMarker k_StartStream = new ProfilerMarker("AndroidLogcat.StartLiveStream");
+        static readonly ProfilerMarker k_StopStream = new ProfilerMarker("AndroidLogcat.StopLiveStream");
+
+        /// <summary>Whether a frame is waiting to be decoded.</summary>
+        internal bool HasPendingFrame
+        {
+            get
+            {
+                lock (m_FrameLock)
+                    return m_PendingFrame != null;
+            }
+        }
+
+        /// <summary>
+        /// Decodes the newest frame the reader has delivered, if there is one. Called
+        /// from the GUI rather than from Update: decoding costs about as much as the
+        /// drawing does, and a window nobody is looking at should pay neither. Frames
+        /// that arrive meanwhile are not queued - the reader keeps only the newest.
+        /// </summary>
+        internal void ApplyPendingFrame()
         {
             byte[] frame;
             int size;
             int width, height;
             int displayWidth, displayHeight;
-            long bytes;
-            int frames;
 
             lock (m_FrameLock)
             {
@@ -649,8 +676,6 @@ namespace Unity.Android.Logcat
                 height = m_PendingHeight;
                 displayWidth = m_PendingDisplayWidth;
                 displayHeight = m_PendingDisplayHeight;
-                bytes = m_ReceivedBytes;
-                frames = m_ReceivedFrames;
             }
 
             if (frame != null)
@@ -663,7 +688,11 @@ namespace Unity.Android.Logcat
                 // Decoded through a span rather than the byte[] overload, which would
                 // take the whole buffer: a reused buffer is usually larger than the
                 // frame sitting in it.
-                if (ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size)))
+                bool decoded;
+                using (k_DecodeFrame.Auto())
+                    decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+
+                if (decoded)
                 {
                     var resized = m_FrameWidth != width || m_FrameHeight != height
                         || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight;
@@ -682,6 +711,21 @@ namespace Unity.Android.Logcat
                 // Returned whether or not it decoded - a frame this thread could not
                 // read is still a buffer the reader can fill.
                 ReturnFrameBuffer(frame);
+            }
+        }
+
+        /// <summary>
+        /// Frames per second and bandwidth, which are counted by the reader and are
+        /// worth reporting whether or not anything is drawing them.
+        /// </summary>
+        void UpdateStats()
+        {
+            long bytes;
+            int frames;
+            lock (m_FrameLock)
+            {
+                bytes = m_ReceivedBytes;
+                frames = m_ReceivedFrames;
             }
 
             var now = DateTime.Now;
@@ -1339,6 +1383,11 @@ namespace Unity.Android.Logcat
             // trip "GUI id mismatch" warnings.
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
+            // Once per pass, in the event that is for changing state rather than for
+            // drawing, so the image cannot change between measuring and painting it.
+            if (Event.current.type == EventType.Layout)
+                ApplyPendingFrame();
+
             var showingStream = m_Errors.Length == 0 && selectedDevice != null && m_Texture != null;
             // A drag that was under way when the stream died has no mouse up coming:
             // the image that handles one is not drawn any more, so the touch would stay
@@ -1439,6 +1488,8 @@ namespace Unity.Android.Logcat
         /// <summary>The mirrored screen, with the stats column beside it.</summary>
         void DoStreamGUI(Rect rc, int controlId, Action repaint, IReadOnlyList<CaptureAction> captureActions)
         {
+            using var profilerScope = k_DrawStream.Auto();
+
             AndroidLogcatStatsColumn.DrawBox(rc);
 
             // The info column is reserved before the image is fitted, so that the image

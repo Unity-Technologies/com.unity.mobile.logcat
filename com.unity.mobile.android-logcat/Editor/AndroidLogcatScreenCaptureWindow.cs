@@ -66,7 +66,7 @@ namespace Unity.Android.Logcat
                 var mode = m_Runtime.UserSettings.CaptureSettings.Mode;
                 switch (mode)
                 {
-                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing || m_LiveStream.IsStreaming;
+                    case Mode.Screenshot: return m_CaptureScreenshot.IsCapturing;
                     case Mode.Video: return m_CaptureVideo.IsRecording;
                     default:
                         throw new NotImplementedException(mode.ToString());
@@ -313,6 +313,17 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// Runs whether or not the window is visible, which is what makes a frame that
+        /// arrived while nothing was drawing ask for a repaint - and the repaint is what
+        /// decodes it. A window that is not showing gets no repaint and does no work.
+        /// </summary>
+        void Update()
+        {
+            if (m_LiveStream != null && m_LiveStream.HasPendingFrame)
+                Repaint();
+        }
+
+        /// <summary>
         /// The screenshots folder is an ordinary directory that the user can add to,
         /// delete from or overwrite behind the Editor's back. Nothing inside the Editor
         /// can notice that, so the listing and the loaded image are both dropped when
@@ -498,10 +509,6 @@ namespace Unity.Android.Logcat
             {
                 // The developer-mode details are drawn by DoGUI, in the info column.
                 m_LiveStream.DoGUI(imageRect, m_DeviceSelection.SelectedDevice, Repaint, m_CaptureActions);
-                // Frames arrive on the runtime's update, not on GUI events, so the window
-                // has to keep repainting to show them.
-                if (m_LiveStream.IsStreaming)
-                    Repaint();
             }
             // The list draws the image, not AndroidLogcatCaptureScreenshot: its texture
             // is the last capture rather than the selected row.
