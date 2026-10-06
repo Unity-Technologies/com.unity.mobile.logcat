@@ -155,7 +155,7 @@ For how to interact with the device and how to change the size, quality and fram
 
 The bar along the bottom of the window reports what the window last did:
 
-* Where a capture was written, for example `Screenshot saved to Library/AndroidLogcat/Screenshots/<device id>_1.png`. A path inside your project is shown relative to it.
+* Where a capture was written, for example `Screenshot saved to UserSettings/AndroidLogcat/Captures/<device id>_1.png`. A path inside your project is shown relative to it.
 * What the live view is streaming, once its first frame arrives, for example `Live stream: Google Pixel 7 Pro (36081FDH3002Q8), 1080x2340 scaled to 232x512, up to 15 fps`. It is reported again when the streamed size changes, which happens when the device is rotated or a foldable is opened, and `Live stream stopped` when it ends.
 
 Videos are written to a temporary file that the next recording from the same device replaces, so use **Save As** to keep one. Screenshots are kept until you delete them.

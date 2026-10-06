@@ -28,7 +28,7 @@ namespace Unity.Android.Logcat
         // Where captures go unless told otherwise, relative to the project. Library is
         // local to the machine and outside any build, which suits output that is cheap
         // to produce again.
-        internal const string kDefaultCaptureOutputDirectory = "Library/AndroidLogcat/Screenshots";
+        internal const string kDefaultCaptureOutputDirectory = "UserSettings/AndroidLogcat/Captures";
 
         internal static readonly string[] kAddressResolveRegex =
         {
