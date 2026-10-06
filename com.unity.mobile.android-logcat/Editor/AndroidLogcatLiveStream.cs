@@ -1716,6 +1716,25 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Hands the fold state back to the hinge. An override set here lasts until it
+        /// is reset or the device reboots, so a closing window drops it.
+        /// </summary>
+        internal void ResetFoldState(IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return;
+
+            try
+            {
+                device.SetDeviceState(-1);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to reset the device state: {InnermostMessage(ex)}");
+            }
+        }
+
         void SetRotation(AndroidDeviceRotation rotation)
         {
             try

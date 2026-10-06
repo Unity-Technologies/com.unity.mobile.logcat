@@ -146,11 +146,9 @@ namespace Unity.Android.Logcat
             // keep reporting to a status bar that is gone with it.
             m_CaptureList?.Deselect();
 
+            // Unsubscribed but kept, since OnDestroy still has undoing to do.
             if (m_LiveStream != null)
-            {
                 m_LiveStream.StreamChanged -= ReportStream;
-                m_LiveStream = null;
-            }
 
             if (m_VideoPlayer != null)
             {
@@ -310,6 +308,13 @@ namespace Unity.Android.Logcat
             // and Video mode would happily start a recording alongside it.
             if (mode != Mode.Screenshot)
                 m_CaptureList.Deselect();
+        }
+
+        /// <summary>Closed for good: a domain reload gets OnDisable and comes back.</summary>
+        void OnDestroy()
+        {
+            m_LiveStream?.ResetFoldState(m_LastDeviceUsedForAssets);
+            m_LiveStream = null;
         }
 
         /// <summary>
