@@ -119,16 +119,7 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return;
 
-            switch (Application.platform)
-            {
-                case RuntimePlatform.OSXEditor:
-                    // Application.OpenURL on a plain path does nothing useful on macOS.
-                    System.Diagnostics.Process.Start("open", path);
-                    break;
-                default:
-                    Application.OpenURL(path);
-                    break;
-            }
+            UnityEditor.EditorUtility.OpenWithDefaultApp(path);
         }
 
         /// <summary>
