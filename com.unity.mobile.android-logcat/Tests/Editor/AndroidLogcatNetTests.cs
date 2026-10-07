@@ -114,7 +114,7 @@ class AndroidLogcatNetTests
             "Unity",
             "System"
         };
-        
+
         var errors = new StringBuilder();
         foreach (var file in logcatAssembly.sourceFiles)
         {
