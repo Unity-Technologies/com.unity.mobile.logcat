@@ -185,6 +185,14 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Home = new GUIContent("●", "Send Home key event");
             internal static readonly GUIContent Recents = new GUIContent("■", "Send Overview key event");
 
+            internal static readonly GUIContent SideButtons = new GUIContent("Side Buttons",
+                "The buttons on the side of the device, which the mirrored screen cannot reach.");
+            internal static readonly GUIContent Power = new GUIContent("Power",
+                "Send Power key event. This turns the screen off, and the frames stop with it " +
+                "until it is pressed again.");
+            internal static readonly GUIContent VolumeUp = new GUIContent("Vol +", "Send Volume Up key event");
+            internal static readonly GUIContent VolumeDown = new GUIContent("Vol -", "Send Volume Down key event");
+
             internal static readonly GUIContent Fold = new GUIContent("Fold",
                 "Hold the device folded, whatever its hinge is doing.");
             internal static readonly GUIContent FoldHalf = new GUIContent("Half",
@@ -1533,10 +1541,38 @@ namespace Unity.Android.Logcat
 
             y += kNavigationSpacing;
             DoNavigationGUI(rc, ref y);
+            DoSideButtonsGUI(rc, ref y);
             DoRotationGUI(rc, ref y);
             DoFoldGUI(rc, ref y);
             DoCaptureActionsGUI(rc, ref y, captureActions);
             DoDebuggingGUI(rc, kLabelWidth, ref y);
+        }
+
+        /// <summary>
+        /// The device's own hardware buttons. Power and volume are not on the screen, so
+        /// a mirrored screen is no way to reach them.
+        /// </summary>
+        void DoSideButtonsGUI(Rect rc, ref float y)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + height * 2 > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.SideButtons, EditorStyles.miniBoldLabel);
+            y += height;
+
+            EditorGUI.BeginDisabledGroup(!CanSendInput);
+
+            var width = Mathf.Floor(ButtonRowWidth(rc) / 3);
+            if (GUI.Button(new Rect(rc.x, y, width, height), Styles.Power, EditorStyles.miniButtonLeft))
+                SendKeyPress(AndroidKeyCode.POWER);
+            if (GUI.Button(new Rect(rc.x + width, y, width, height), Styles.VolumeUp, EditorStyles.miniButtonMid))
+                SendKeyPress(AndroidKeyCode.VOLUME_UP);
+            if (GUI.Button(new Rect(rc.x + width * 2, y, width, height), Styles.VolumeDown, EditorStyles.miniButtonRight))
+                SendKeyPress(AndroidKeyCode.VOLUME_DOWN);
+
+            EditorGUI.EndDisabledGroup();
+            y += height;
         }
 
         /// <summary>

@@ -135,6 +135,14 @@ Below the properties are the device navigation buttons, which work while the liv
 | **●**      | Sends the Home key.                                          |
 | **■**      | Sends the Overview (recent apps) key.                        |
 
+Under them, **Side Buttons** sends what the mirrored screen cannot reach:
+
+| **Button**  | **Description**                                              |
+| ----------- | ------------------------------------------------------------ |
+| **Power**   | Sends the Power key, which turns the screen off. The device sends no frames while its screen is off, so the view stops updating until you select it again. |
+| **Vol +**   | Sends the Volume Up key.                                     |
+| **Vol -**   | Sends the Volume Down key.                                   |
+
 Below them, **Device Rotation** turns the device's screen:
 
 | **Button**  | **Description**                                              |
