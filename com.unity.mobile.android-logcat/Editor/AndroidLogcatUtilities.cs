@@ -89,6 +89,187 @@ namespace Unity.Android.Logcat
         }
 
 
+        // Long enough for a first run, which downloads Gradle itself.
+        const int kGradleTimeoutMs = 5 * 60 * 1000;
+        const int kGradleProgressUpdateMs = 200;
+
+        /// <summary>
+        /// Kills a process and whatever it started. Gradle runs behind a launcher
+        /// script and does its work in a daemon, so killing only the process we started
+        /// leaves the build running.
+        /// </summary>
+        static void KillProcessTree(System.Diagnostics.Process process)
+        {
+            try
+            {
+                if (Application.platform == RuntimePlatform.WindowsEditor)
+                {
+                    var killer = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "taskkill",
+                        Arguments = $"/T /F /PID {process.Id}",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                    killer?.WaitForExit(5000);
+                    killer?.Dispose();
+                }
+                else
+                {
+                    process.Kill();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to stop Gradle.\n{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Runs a Gradle task in a project directory and says whether it succeeded,
+        /// logging its output either way.
+        /// <para>
+        /// The JDK and SDK come from Unity's own External Tools settings rather than
+        /// from the environment: the Editor may not have inherited a shell environment
+        /// at all, the one it did inherit is not necessarily the one this build wants,
+        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
+        /// is run through <c>sh</c> off Windows, so that this does not depend on its
+        /// executable bit, which is invisible to anyone working from Windows.
+        /// </para>
+        /// <para>
+        /// Blocking, behind a progress bar. This is a developer action - there is no
+        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
+        /// </para>
+        /// </summary>
+        internal static bool RunGradle(string projectDirectory, string task)
+        {
+            if (string.IsNullOrEmpty(projectDirectory) || !Directory.Exists(projectDirectory))
+            {
+                Debug.LogError($"No Gradle project at '{projectDirectory}'.");
+                return false;
+            }
+
+            string androidHome;
+            string javaHome;
+            try
+            {
+                androidHome = AndroidBridge.AndroidExternalToolsSettings.sdkRootPath;
+                javaHome = AndroidBridge.AndroidExternalToolsSettings.jdkRootPath;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("Could not read the Android SDK and JDK locations from " +
+                    $"Preferences > External Tools.\n{ex.Message}");
+                return false;
+            }
+
+            var windows = Application.platform == RuntimePlatform.WindowsEditor;
+
+            var process = new System.Diagnostics.Process();
+            var si = process.StartInfo;
+            si.WorkingDirectory = projectDirectory;
+            si.FileName = windows ? Path.Combine(projectDirectory, "gradlew.bat") : "sh";
+            si.Arguments = windows ? task : $"gradlew {task}";
+            // Left unset when a path is not configured, rather than pointed at nothing:
+            // Gradle then falls back to local.properties or an inherited variable, which
+            // is a better answer than a directory that does not exist.
+            if (!string.IsNullOrEmpty(javaHome) && Directory.Exists(javaHome))
+                si.EnvironmentVariables["JAVA_HOME"] = javaHome;
+            if (!string.IsNullOrEmpty(androidHome) && Directory.Exists(androidHome))
+                si.EnvironmentVariables["ANDROID_HOME"] = androidHome;
+            si.UseShellExecute = false;
+            si.CreateNoWindow = true;
+            si.RedirectStandardOutput = true;
+            si.RedirectStandardError = true;
+
+            var output = new System.Text.StringBuilder();
+            // What Gradle said last, which is the only sign of progress it gives while
+            // a build runs.
+            var lastLine = string.Empty;
+
+            try
+            {
+                var title = $"Running Gradle in {Path.GetFileName(projectDirectory)}";
+                var command = $"{si.FileName} {si.Arguments}";
+                EditorUtility.DisplayProgressBar(title, command, 0);
+
+                System.Diagnostics.DataReceivedEventHandler record = (s, e) =>
+                {
+                    if (string.IsNullOrEmpty(e.Data))
+                        return;
+                    // Straight to Editor.log as it arrives: the collected log is only
+                    // reported once the build is over, which is no help while watching
+                    // one that is stuck.
+                    Console.WriteLine(e.Data);
+                    lock (output)
+                    {
+                        output.AppendLine(e.Data);
+                        lastLine = e.Data;
+                    }
+                };
+
+                process.OutputDataReceived += record;
+                process.ErrorDataReceived += record;
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                var started = DateTime.Now;
+                while (!process.WaitForExit(kGradleProgressUpdateMs))
+                {
+                    string message;
+                    lock (output)
+                        message = string.IsNullOrEmpty(lastLine) ? command : lastLine;
+
+                    var elapsed = DateTime.Now - started;
+                    // Gradle reports no progress of its own, so the bar only says the
+                    // build is still alive - it fills over ten seconds and starts over.
+                    var progress = (float)(elapsed.TotalSeconds % 10.0) / 10.0f;
+
+                    if (EditorUtility.DisplayCancelableProgressBar(title, message, progress))
+                    {
+                        KillProcessTree(process);
+                        Debug.LogWarning($"'gradlew {task}' was cancelled.");
+                        return false;
+                    }
+
+                    if (elapsed.TotalMilliseconds >= kGradleTimeoutMs)
+                    {
+                        KillProcessTree(process);
+                        Debug.LogError($"Gradle did not finish within {kGradleTimeoutMs / 1000} s.");
+                        return false;
+                    }
+                }
+
+                // The redirected output is read on other threads, and the wait above
+                // only waits for the process: this one waits for that output too.
+                process.WaitForExit();
+
+                string log;
+                lock (output)
+                    log = output.ToString();
+                AndroidLogcatInternalLog.Log(log);
+
+                if (process.ExitCode != 0)
+                {
+                    Debug.LogError($"'gradlew {task}' failed with exit code {process.ExitCode}.\n{log}");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to run Gradle in '{projectDirectory}'.\n{ex.Message}");
+                return false;
+            }
+            finally
+            {
+                process.Dispose();
+                EditorUtility.ClearProgressBar();
+            }
+        }
+
         /// <summary>
         /// Get the top activity on the given device.
         /// </summary>
@@ -317,7 +498,7 @@ namespace Unity.Android.Logcat
             switch (Application.platform)
             {
                 case RuntimePlatform.WindowsEditor:
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory });
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe") { WorkingDirectory = workingDirectory, UseShellExecute = true });
                     break;
                 case RuntimePlatform.OSXEditor:
                     var pathsToCheck = new[]
@@ -335,9 +516,137 @@ namespace Unity.Android.Logcat
                     }
 
                     throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n", pathsToCheck)));
+                case RuntimePlatform.LinuxEditor:
+                    OpenLinuxTerminal(workingDirectory);
+                    break;
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        private static void OpenLinuxTerminal(string workingDirectory)
+        {
+            // Terminal command lines, including the arguments used to set the working directory where supported.
+            // Terminals without such arguments inherit the working directory from ProcessStartInfo.
+            // Arguments are passed via ArgumentList, so paths containing spaces or quotes are preserved.
+            var terminals = new List<string[]>();
+
+            var userTerminal = SplitCommandLine(Environment.GetEnvironmentVariable("TERMINAL"));
+            if (userTerminal.Length > 0)
+                terminals.Add(userTerminal);
+
+            terminals.Add(new[] { "x-terminal-emulator" });
+            terminals.Add(new[] { "gnome-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "konsole", "--workdir", workingDirectory });
+            terminals.Add(new[] { "xfce4-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "mate-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "tilix", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "alacritty", "--working-directory", workingDirectory });
+            terminals.Add(new[] { "kitty", "--directory", workingDirectory });
+            terminals.Add(new[] { "xterm" });
+
+            foreach (var terminal in terminals)
+            {
+                var path = FindExecutableInPath(terminal[0]);
+                if (path == null)
+                    continue;
+
+                var startInfo = new System.Diagnostics.ProcessStartInfo(path)
+                {
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = false
+                };
+                foreach (var arg in terminal.Skip(1))
+                    startInfo.ArgumentList.Add(arg);
+
+                System.Diagnostics.Process.Start(startInfo);
+                return;
+            }
+
+            throw new Exception(string.Format("Failed to launch terminal, tried following terminals:\n{0}", string.Join("\n", terminals.Select(t => t[0]))));
+        }
+
+        /// <summary>
+        /// Splits a command line like 'wezterm start' or '"/opt/my term/bin/term" -e' into executable and arguments, without invoking a shell.
+        /// Supports single quotes, double quotes and backslash escapes.
+        /// </summary>
+        internal static string[] SplitCommandLine(string commandLine)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(commandLine))
+                return result.ToArray();
+
+            var current = new System.Text.StringBuilder();
+            var hasToken = false;
+            char quote = '\0';
+            for (int i = 0; i < commandLine.Length; i++)
+            {
+                var c = commandLine[i];
+                if (quote == '\'')
+                {
+                    if (c == '\'')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\\' && i + 1 < commandLine.Length)
+                {
+                    current.Append(commandLine[++i]);
+                    hasToken = true;
+                }
+                else if (quote == '"')
+                {
+                    if (c == '"')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\'' || c == '"')
+                {
+                    quote = c;
+                    hasToken = true;
+                }
+                else if (char.IsWhiteSpace(c))
+                {
+                    if (hasToken)
+                    {
+                        result.Add(current.ToString());
+                        current.Clear();
+                        hasToken = false;
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                    hasToken = true;
+                }
+            }
+
+            if (hasToken)
+                result.Add(current.ToString());
+
+            return result.ToArray();
+        }
+
+        private static string FindExecutableInPath(string executable)
+        {
+            if (Path.IsPathRooted(executable))
+                return File.Exists(executable) ? executable : null;
+
+            var paths = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(paths))
+                return null;
+
+            foreach (var dir in paths.Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                var fullPath = Path.Combine(dir, executable);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
 
         public static Version ParseVersionLegacy(string versionString)

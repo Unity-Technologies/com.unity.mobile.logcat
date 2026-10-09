@@ -1,0 +1,283 @@
+// Build for the Unity Logcat on-device screen streaming server.
+//
+// The server is not an Android application: it has no manifest, no resources and
+// no activity. It is a plain set of classes, dexed and archived into a jar, which
+// is pushed to the device and executed by app_process as the `shell` user:
+//
+//   adb push unity-logcat-server.jar /data/local/tmp/
+//   adb shell CLASSPATH=/data/local/tmp/unity-logcat-server.jar \
+//       app_process / com.unity.android.logcat.server.Server
+//
+// Because of that, this uses the plain `java-library` plugin plus an explicit d8
+// step instead of the Android Gradle Plugin. AGP would build an APK (which would
+// then have to be renamed to a jar), pull in a large dependency tree and require
+// network access to the `google()` repository - none of which buys us anything.
+//
+//   ./gradlew dexJar   -> build/outputs/unity-logcat-server.jar
+//   ./gradlew pushJar  -> pushes it to the connected device
+//   ./gradlew runJar   -> pushes and runs it (foreground, for manual testing)
+
+plugins {
+    id 'java-library'
+}
+
+// ---------------------------------------------------------------------------
+// Android SDK discovery
+// ---------------------------------------------------------------------------
+
+def androidPlatform = project.property('androidPlatform')
+def androidBuildTools = project.property('androidBuildTools')
+def androidMinApi = project.property('androidMinApi')
+
+def sdkHelp = """Android SDK not found. Point the build at one of:
+
+  * External/UnityLogcatServer/local.properties  containing  sdk.dir=<path to sdk>
+  * the ANDROID_HOME environment variable
+  * the ANDROID_SDK_ROOT environment variable
+
+A Unity installation with Android support ships one, typically at
+<Unity>/Editor/Data/PlaybackEngines/AndroidPlayer/SDK.
+
+The build needs platforms/android-${androidPlatform}/android.jar
+and build-tools/${androidBuildTools}/d8."""
+
+def resolveSdkDir = {
+    def localProperties = file('local.properties')
+    if (localProperties.exists()) {
+        def props = new Properties()
+        localProperties.withInputStream { props.load(it) }
+        def dir = props.getProperty('sdk.dir')
+        if (dir) {
+            return file(dir)
+        }
+    }
+    for (name in ['ANDROID_HOME', 'ANDROID_SDK_ROOT']) {
+        def dir = System.getenv(name)
+        if (dir) {
+            // Gradle resolves a relative path against the project directory, not
+            // against wherever the build was invoked from, and with a daemon there is
+            // no useful "invoked from" anyway. A relative value is therefore almost
+            // certainly not the directory the caller meant, so say that rather than
+            // reporting a missing SDK at some path they never typed.
+            def f = new File(dir)
+            if (!f.isAbsolute()) {
+                throw new GradleException("$name is set to a relative path, '$dir'.\n"
+                    + "It has to be absolute: Gradle would resolve it against "
+                    + project.projectDir + ", not against the directory you ran from.")
+            }
+            return f
+        }
+    }
+    return null
+}
+
+// Everything below resolves the SDK lazily, so that tasks which do not need it
+// (`gradlew tasks`, `gradlew clean`) still work on a machine without one.
+def sdkFile = { String relativePath ->
+    def sdkDir = resolveSdkDir()
+    if (sdkDir == null || !sdkDir.isDirectory()) {
+        throw new GradleException(sdkHelp)
+    }
+    def f = new File(sdkDir, relativePath)
+    if (!f.exists()) {
+        throw new GradleException("Not found: " + f + "\n\n" + sdkHelp)
+    }
+    return f
+}
+
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def androidJar = { sdkFile("platforms/android-${androidPlatform}/android.jar") }
+// Needed on the compile classpath because we replace the bootclasspath with
+// android.jar, which does not carry the JDK lambda metafactory stubs.
+def lambdaStubs = { sdkFile("build-tools/${androidBuildTools}/core-lambda-stubs.jar") }
+def d8 = { sdkFile("build-tools/${androidBuildTools}/d8" + (isWindows ? '.bat' : '')) }
+def adb = { sdkFile('platform-tools/adb' + (isWindows ? '.exe' : '')) }
+
+// ---------------------------------------------------------------------------
+// Compilation
+// ---------------------------------------------------------------------------
+
+def generatedSrcDir = layout.buildDirectory.dir('generated/sources/buildconfig')
+
+// Values the Editor side also needs to agree on live in gradle.properties and are
+// baked into the jar, so a protocol mismatch is detectable at runtime instead of
+// being two constants that silently drift apart.
+def generateBuildConfig = tasks.register('generateBuildConfig') {
+    description = 'Generates BuildConfig.java from gradle.properties'
+    def outDir = generatedSrcDir
+    def protocolVersion = project.property('serverProtocolVersion')
+    def socketName = project.property('serverSocketName')
+    inputs.property('protocolVersion', protocolVersion)
+    inputs.property('socketName', socketName)
+    outputs.dir(outDir)
+    doLast {
+        def pkgDir = new File(outDir.get().asFile, 'com/unity/android/logcat/server')
+        pkgDir.mkdirs()
+        new File(pkgDir, 'BuildConfig.java').text = [
+            '// Generated by build.gradle from gradle.properties. Do not edit.',
+            'package com.unity.android.logcat.server;',
+            '',
+            'public final class BuildConfig {',
+            '    public static final int PROTOCOL_VERSION = ' + protocolVersion + ';',
+            '    public static final String DEFAULT_SOCKET_NAME = "' + socketName + '";',
+            '',
+            '    private BuildConfig() {',
+            '    }',
+            '}',
+            ''
+        ].join('\n')
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir generatedSrcDir
+        }
+    }
+}
+
+tasks.named('compileJava', JavaCompile) {
+    dependsOn generateBuildConfig
+    options.encoding = 'UTF-8'
+    // Compile against android.jar rather than the JDK class library, so reaching
+    // for a desktop-only API is a compile error instead of a crash on device.
+    options.bootstrapClasspath = files(androidJar)
+    classpath = files(lambdaStubs)
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+    options.compilerArgs << '-Xlint:deprecation' << '-Xlint:unchecked'
+}
+
+def classesJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+
+jar {
+    // Intermediate artifact only: plain .class files, not runnable on a device.
+    archiveFileName = 'unity-logcat-server-classes.jar'
+}
+
+// ---------------------------------------------------------------------------
+// Dexing: the actual deliverable
+//
+// These are typed Exec tasks whose command line is filled in at execution time,
+// because the SDK is resolved lazily and because Gradle 9 removed the
+// `project.exec {}` method that an ad-hoc task would otherwise have used.
+// ---------------------------------------------------------------------------
+
+def serverJarName = 'unity-logcat-server.jar'
+def outputJar = layout.buildDirectory.file("outputs/${serverJarName}")
+
+def dexJar = tasks.register('dexJar', Exec) {
+    group = 'build'
+    description = 'Dexes the compiled classes into build/outputs/unity-logcat-server.jar'
+    // Declaring the jar as an input is also what makes this run after it.
+    inputs.file(classesJar)
+    outputs.file(outputJar)
+    // d8 is a launcher script, and both of its forms have to be pointed at a JVM:
+    // the Windows .bat resolves java through JAVA_HOME, while the shell script on
+    // macOS and Linux simply runs `java`. Neither is a given - a CI agent whose only
+    // JDK lives inside a Unity installation has no JAVA_HOME set and no java on PATH -
+    // so both are handed the JVM Gradle is already running on, which is also always a
+    // path the platform's own shell understands.
+    def javaHome = System.getProperty('java.home')
+    // Matched to however the inherited variable is spelled, so Windows does not end up
+    // carrying both Path and PATH.
+    def pathName = System.getenv().keySet().find { it.equalsIgnoreCase('PATH') } ?: 'PATH'
+    environment 'JAVA_HOME', javaHome
+    environment pathName, new File(javaHome, 'bin').absolutePath +
+        File.pathSeparator + (System.getenv(pathName) ?: '')
+    doFirst {
+        def out = outputJar.get().asFile
+        out.parentFile.mkdirs()
+        // d8 writes an archive containing classes.dex when --output ends in .jar.
+        commandLine d8(),
+            '--release',
+            '--min-api', androidMinApi,
+            '--lib', androidJar(),
+            '--output', out,
+            classesJar.get().asFile
+    }
+    doLast {
+        def out = outputJar.get().asFile
+        logger.lifecycle("Server jar: " + out + " (" + out.length() + " bytes)")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Post-build: place the jar where the package can ship it
+//
+// A folder whose name ends in "~" is included in the published package but not
+// imported as an asset, so the jar needs no .meta file and never enters the
+// AssetDatabase. The Editor reads it straight off disk to push it to a device.
+// ---------------------------------------------------------------------------
+
+def packageExternalDir = file('../../com.unity.mobile.android-logcat/External~')
+
+// Copies by hand rather than with a Copy task: Gradle creates a Copy task's
+// destination directory before any task action runs, so a guard against writing
+// to the wrong place can never see it missing.
+def copyJarToPackage = tasks.register('copyJarToPackage') {
+    group = 'build'
+    description = "Copies the server jar into the package's External~ folder"
+    dependsOn dexJar
+    def destination = new File(packageExternalDir, serverJarName)
+    inputs.file(outputJar)
+    outputs.file(destination)
+    doLast {
+        // package.json is the marker: it says the destination really is the logcat
+        // package, and unlike a directory it is not something Gradle can create on
+        // our behalf. Catches this project being moved relative to the package
+        // instead of scattering an External~ folder somewhere unrelated.
+        def packageDir = packageExternalDir.parentFile
+        if (!new File(packageDir, 'package.json').isFile()) {
+            throw new GradleException("No Unity package found at " + packageDir
+                + "\nExpected this project to sit at <repo>/External/UnityLogcatServer,"
+                + " alongside <repo>/com.unity.mobile.android-logcat.")
+        }
+
+        packageExternalDir.mkdirs()
+        java.nio.file.Files.copy(
+            outputJar.get().asFile.toPath(),
+            destination.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        logger.lifecycle("Copied to: " + destination)
+    }
+}
+
+// Attached to dexJar rather than to assemble, so that every route which produces
+// the jar - dexJar, assemble, pushJar, runJar - also refreshes the copy the
+// package ships. Otherwise the two silently drift apart.
+dexJar.configure {
+    finalizedBy copyJarToPackage
+}
+
+tasks.named('assemble') {
+    dependsOn dexJar
+}
+
+// ---------------------------------------------------------------------------
+// Developer conveniences. The Editor does its own push/run at runtime; these
+// exist so the server can be exercised without an Editor in the loop.
+// ---------------------------------------------------------------------------
+
+def devicePath = project.property('serverDevicePath')
+
+def pushJar = tasks.register('pushJar', Exec) {
+    group = 'verification'
+    description = "Pushes the server jar to ${devicePath} on the connected device"
+    dependsOn dexJar
+    doFirst {
+        commandLine adb(), 'push', outputJar.get().asFile, devicePath
+    }
+}
+
+tasks.register('runJar', Exec) {
+    group = 'verification'
+    description = 'Runs the server on the connected device in the foreground (Ctrl+C to stop)'
+    dependsOn pushJar
+    doFirst {
+        def serverArgs = project.findProperty('serverArgs') ?: 'log_level=debug'
+        commandLine adb(), 'shell',
+            "CLASSPATH=${devicePath} app_process / com.unity.android.logcat.server.Server ${serverArgs}"
+    }
+}

@@ -1,0 +1,78 @@
+package com.unity.android.logcat.server;
+
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
+/**
+ * Wire format written to the socket. All integers are big endian, matching
+ * {@link DataOutputStream}.
+ *
+ * <pre>
+ * Stream header, once, 20 bytes:
+ *   u32  magic            'U' 'L' 'S' '1' (0x554C5331)
+ *   u32  protocolVersion  BuildConfig.PROTOCOL_VERSION
+ *   u32  codec            CODEC_MJPEG
+ *   u32  flags            FLAG_CONTROL_SUPPORTED if touch can be injected
+ *   u32  serverPid        this process on the device, so the Editor can name it
+ *
+ * Frame, repeated, 28 byte header + payload:
+ *   u64  ptsUs            microseconds since the first frame
+ *   u32  width            pixels of the streamed image
+ *   u32  height           pixels of the streamed image
+ *   u32  displayWidth     pixels of the display it was captured from
+ *   u32  displayHeight    pixels of the display it was captured from
+ *   u32  payloadSize      bytes of encoded frame that follow
+ *   u8[] payload
+ * </pre>
+ *
+ * All four sizes travel with every frame because they change when the device is
+ * rotated or folded, and the server starts a new capture session without saying so
+ * on the socket. The reader is therefore never told out of band that the geometry
+ * moved - it just reads the next frame.
+ */
+public final class Protocol {
+    public static final int MAGIC = 0x554C5331;
+    public static final int CODEC_MJPEG = 1;
+
+    /**
+     * Set when the server can inject input, so the Editor can tell "control is off"
+     * from "control is impossible on this device" and say so instead of quietly
+     * dropping every touch.
+     */
+    public static final int FLAG_CONTROL_SUPPORTED = 1;
+
+    private final DataOutputStream out;
+    private long firstFrameNs = -1;
+
+    public Protocol(OutputStream stream) {
+        this.out = new DataOutputStream(new BufferedOutputStream(stream, 64 * 1024));
+    }
+
+    public void writeStreamHeader(int codec, int flags, int serverPid) throws IOException {
+        out.writeInt(MAGIC);
+        out.writeInt(BuildConfig.PROTOCOL_VERSION);
+        out.writeInt(codec);
+        out.writeInt(flags);
+        out.writeInt(serverPid);
+        out.flush();
+    }
+
+    public void writeFrame(long captureNs, int width, int height, int displayWidth, int displayHeight,
+                           byte[] payload, int payloadSize) throws IOException {
+        if (firstFrameNs < 0) {
+            firstFrameNs = captureNs;
+        }
+        out.writeLong((captureNs - firstFrameNs) / 1000L);
+        out.writeInt(width);
+        out.writeInt(height);
+        out.writeInt(displayWidth);
+        out.writeInt(displayHeight);
+        out.writeInt(payloadSize);
+        out.write(payload, 0, payloadSize);
+        // Flushed per frame: this is a live stream, buffering a frame to fill the
+        // buffer would just add latency.
+        out.flush();
+    }
+}
