@@ -338,6 +338,9 @@ namespace Unity.Android.Logcat
                 case ToolsContextMenu.LayoutViewer:
                     AndroidLogcatLayoutViewerWindow.ShowWindow();
                     break;
+                case ToolsContextMenu.Commands:
+                    AndroidLogcatCommandsWindow.ShowWindow();
+                    break;
                 case ToolsContextMenu.WindowMemory:
                     m_Runtime.UserSettings.ExtraWindowState.Type = ExtraWindow.Memory;
                     break;
@@ -363,6 +366,7 @@ namespace Unity.Android.Logcat
                 contextMenu.Add(ToolsContextMenu.StacktraceUtility, "Stacktrace Utility");
                 if (Unsupported.IsDeveloperMode())
                     contextMenu.Add(ToolsContextMenu.LayoutViewer, "Experimental/Layout Viewer");
+                contextMenu.Add(ToolsContextMenu.Commands, "Commands");
                 var b = m_Runtime.UserSettings.ExtraWindowState.Type;
                 contextMenu.Add(ToolsContextMenu.WindowMemory, "Window/Memory", b == ExtraWindow.Memory);
                 contextMenu.Add(ToolsContextMenu.WindowInputs, "Window/Inputs", b == ExtraWindow.Inputs);
