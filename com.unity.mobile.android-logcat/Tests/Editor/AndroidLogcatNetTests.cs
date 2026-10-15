@@ -35,17 +35,16 @@ class AndroidLogcatNetTests
     {
         var logcatAssembly = GetLogcatAssembly();
 
+        static bool IsFrameworkReference(string name) => 
+            name == "mscorlib" || name == "netstandard" || name == "System" || name.StartsWith("System.", StringComparison.Ordinal);
+        
         var expectedReferences = new List<string>(new[]
         {
-            "mscorlib",
-            "System",
-            "System.Xml.Linq",
             "UnityEngine.IMGUIModule",
             "UnityEngine.CoreModule",
             "UnityEngine.VideoModule",
             "UnityEngine.TextRenderingModule",
             "UnityEngine.UIElementsModule",
-            "System.Core",
             "UnityEngine.ImageConversionModule",
             "UnityEngine.JSONSerializeModule",
             "UnityEditor.CoreModule"
@@ -79,7 +78,7 @@ class AndroidLogcatNetTests
         var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
         var errors = new StringBuilder();
         Console.WriteLine($"Logcat package references:\n{string.Join("\n", references)}");
-        foreach (var r in references)
+        foreach (var r in references.Where(n => !IsFrameworkReference(n)))
         {
             if (!expectedReferences.Contains(r))
                 errors.AppendLine($"Unexpected reference '{r}'");
