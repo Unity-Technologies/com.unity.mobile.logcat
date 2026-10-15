@@ -35,9 +35,9 @@ class AndroidLogcatNetTests
     {
         var logcatAssembly = GetLogcatAssembly();
 
-        static bool IsFrameworkReference(string name) => 
+        static bool IsFrameworkReference(string name) =>
             name == "mscorlib" || name == "netstandard" || name == "System" || name.StartsWith("System.", StringComparison.Ordinal);
-        
+
         var expectedReferences = new List<string>(new[]
         {
             "UnityEngine.IMGUIModule",
