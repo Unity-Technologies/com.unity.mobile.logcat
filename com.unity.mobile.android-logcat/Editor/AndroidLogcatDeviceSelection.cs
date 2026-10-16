@@ -10,6 +10,10 @@ namespace Unity.Android.Logcat
     /// </summary>
     class AndroidLogcatDeviceSelection : IDisposable
     {
+        // Fixed, so that everything to the right of it stays put when the selected
+        // device changes - device names differ wildly in length.
+        const float kWidth = 250;
+
         AndroidLogcatRuntimeBase m_Runtime;
         IAndroidLogcatDevice[] m_Devices;
         int m_SelectedDeviceIdx;
@@ -85,7 +89,9 @@ namespace Unity.Android.Logcat
         {
             var currentSelectedDevice = SelectedDevice == null ? "No device" : SelectedDevice.ShortDisplayName;
 
-            GUILayout.Label(new GUIContent(currentSelectedDevice, "Select android device"), AndroidLogcatStyles.toolbarPopup);
+            // The name is in the tooltip as well, since a long one is clipped.
+            GUILayout.Label(new GUIContent(currentSelectedDevice, $"{currentSelectedDevice}\nSelect android device"),
+                AndroidLogcatStyles.toolbarPopup, GUILayout.Width(kWidth));
 
             var rect = GUILayoutUtility.GetLastRect();
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))

@@ -17,6 +17,19 @@ namespace Unity.Android.Logcat
         // Since querying memory from device is a lengthy operation, here's a cap 500 ms, setting it too low  will make memory request to be delayed
         internal static int kMinMemoryRequestIntervalMS = 500;
 
+        // Live stream settings, as default/min/max. The server accepts wider values than
+        // these, but a stream is only as useful as the link can carry and every frame is
+        // JPEG encoded on the device, so this is the range the sliders offer and what a
+        // hand edited settings file is held to.
+        internal static readonly SettingsRange kLiveStreamMaxSize = new SettingsRange(1024, 256, 2048);
+        internal static readonly SettingsRange kLiveStreamQuality = new SettingsRange(70, 1, 100);
+        internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 120);
+
+        // Where captures go unless told otherwise, relative to the project. Library is
+        // local to the machine and outside any build, which suits output that is cheap
+        // to produce again.
+        internal const string kDefaultCaptureOutputDirectory = "UserSettings/AndroidLogcat/Captures";
+
         internal static readonly string[] kAddressResolveRegex =
         {
             @"\s*#\d{2}\s*pc\s(?<address>[a-fA-F0-9xX]+).*\/(?<abi>\S+)\/(?<libName>lib.*)\.so(?:.*\(BuildId:\s*(?<buildId>\S+)\))?",
@@ -56,6 +69,20 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private int m_MaxExitedPackagesToShow;
+
+        // A relative path starts at the project folder, an absolute one is where it
+        // says - see AndroidLogcatUtilities.GetCapturesDirectory.
+        [SerializeField]
+        private string m_CaptureOutputDirectory;
+
+        [SerializeField]
+        private int m_LiveStreamMaxSize;
+
+        [SerializeField]
+        private int m_LiveStreamQuality;
+
+        [SerializeField]
+        private int m_LiveStreamMaxFps;
 
         internal int MemoryRequestIntervalMS
         {
@@ -128,6 +155,80 @@ namespace Unity.Android.Logcat
                 return m_MaxExitedPackagesToShow;
             }
         }
+        /// <summary>
+        /// Where screenshots, and later videos, are written. A relative path starts at
+        /// the project folder; empty falls back to
+        /// <see cref="kDefaultCaptureOutputDirectory"/>.
+        /// </summary>
+        internal string CaptureOutputDirectory
+        {
+            set
+            {
+                var corrected = string.IsNullOrEmpty(value) ? string.Empty : value.Trim().Replace("\\", "/");
+                if (m_CaptureOutputDirectory == corrected)
+                    return;
+                m_CaptureOutputDirectory = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_CaptureOutputDirectory ?? string.Empty;
+            }
+        }
+
+        internal int LiveStreamMaxSize
+        {
+            set
+            {
+                var corrected = kLiveStreamMaxSize.Clamp(value);
+                if (m_LiveStreamMaxSize == corrected)
+                    return;
+                m_LiveStreamMaxSize = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_LiveStreamMaxSize;
+            }
+        }
+
+        /// <summary>JPEG quality of the live stream, 1 to 100.</summary>
+        internal int LiveStreamQuality
+        {
+            set
+            {
+                var corrected = kLiveStreamQuality.Clamp(value);
+                if (m_LiveStreamQuality == corrected)
+                    return;
+                m_LiveStreamQuality = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_LiveStreamQuality;
+            }
+        }
+
+        /// <summary>
+        /// Frame rate cap of the live stream. A mirrored display only produces a frame
+        /// when the screen changes, so this is a ceiling rather than a rate.
+        /// </summary>
+        internal int LiveStreamMaxFps
+        {
+            set
+            {
+                var corrected = kLiveStreamMaxFps.Clamp(value);
+                if (m_LiveStreamMaxFps == corrected)
+                    return;
+                m_LiveStreamMaxFps = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_LiveStreamMaxFps;
+            }
+        }
+
         internal Font MessageFont
         {
             set
@@ -208,6 +309,8 @@ namespace Unity.Android.Logcat
             m_MessageFont = AssetDatabase.LoadAssetAtPath<Font>("Packages/com.unity.mobile.android-logcat/Editor/Fonts/consola.ttf");
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;
+            m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
+            ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
 
@@ -225,6 +328,28 @@ namespace Unity.Android.Logcat
             ResetSymbolExtensions();
 
             InvokeOnSettingsChanged();
+        }
+
+        /// <summary>
+        /// Just the live stream settings, for the Reset button beside them, so that
+        /// putting the stream back to its defaults does not take the message colours,
+        /// fonts and regexes with it.
+        /// </summary>
+        internal void ResetLiveStreamSettings()
+        {
+            ResetLiveStreamFields();
+            InvokeOnSettingsChanged();
+        }
+
+        /// <summary>
+        /// The fields on their own, so that <see cref="Reset"/> keeps raising one change
+        /// notification for the lot rather than one per section.
+        /// </summary>
+        private void ResetLiveStreamFields()
+        {
+            m_LiveStreamMaxSize = kLiveStreamMaxSize.Default;
+            m_LiveStreamQuality = kLiveStreamQuality.Default;
+            m_LiveStreamMaxFps = kLiveStreamMaxFps.Default;
         }
 
         internal void ResetStacktraceResolveRegex()
@@ -313,6 +438,14 @@ namespace Unity.Android.Logcat
             var defaultColumnData = GetColumns();
             if (m_ColumnData == null || m_ColumnData.Length != defaultColumnData.Length)
                 m_ColumnData = defaultColumnData;
+
+            // Settings saved before the live stream existed deserialize these as 0, and a
+            // hand edited file can hold anything. Filling them in here is why adding them
+            // did not need a kVersion bump, which would have reset colours, fonts and
+            // regexes along with them.
+            m_LiveStreamMaxSize = kLiveStreamMaxSize.OrDefault(m_LiveStreamMaxSize);
+            m_LiveStreamQuality = kLiveStreamQuality.OrDefault(m_LiveStreamQuality);
+            m_LiveStreamMaxFps = kLiveStreamMaxFps.OrDefault(m_LiveStreamMaxFps);
         }
 
         internal static AndroidLogcatSettings Load()
