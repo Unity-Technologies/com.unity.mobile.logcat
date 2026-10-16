@@ -415,6 +415,11 @@ namespace Unity.Android.Logcat
             if (m_Device == null || State != DeviceState.Connected)
                 return;
 
+            // The window manager's own switch, which is what the settings below reach
+            // indirectly. Not on every Android version, hence the fallback.
+            if (SetRotationWithWindowManager(rotation))
+                return;
+
             // user_rotation is only obeyed while auto rotation is off, so the two
             // settings are one operation: turn the accelerometer off and pin the
             // rotation, or turn it back on and leave the pinned value alone.
@@ -422,6 +427,35 @@ namespace Unity.Android.Logcat
             PutSystemSetting("accelerometer_rotation", auto ? 1 : 0);
             if (!auto)
                 PutSystemSetting("user_rotation", (int)rotation);
+        }
+
+        /// <summary>
+        /// <c>wm user-rotation free</c>, or <c>lock &lt;rotation&gt;</c>. It prints
+        /// nothing when it works, and "Unknown command" on a version without it.
+        /// </summary>
+        /// <returns>false when the command is unavailable or was refused.</returns>
+        bool SetRotationWithWindowManager(AndroidDeviceRotation rotation)
+        {
+            var mode = rotation == AndroidDeviceRotation.Auto
+                ? "free"
+                : $"lock {(int)rotation}";
+            var args = $"-s {Id} shell wm user-rotation {mode}";
+            AndroidLogcatInternalLog.Log($"adb {args}");
+
+            try
+            {
+                var output = m_ADB.Run(new[] { args }, "Failed to set the user rotation").Trim();
+                if (output.Length == 0)
+                    return true;
+
+                AndroidLogcatInternalLog.Log(output);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log(ex.Message);
+            }
+
+            return false;
         }
 
         void PutSystemSetting(string name, int value)
