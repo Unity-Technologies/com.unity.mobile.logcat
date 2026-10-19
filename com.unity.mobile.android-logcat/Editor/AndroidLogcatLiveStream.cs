@@ -598,13 +598,21 @@ namespace Unity.Android.Logcat
             // parked in a read, so the join below does not have to wait it out.
             CloseConnection();
 
-            var thread = m_ReaderThread;
+            // Taken before the fields are cleared: what reaps them runs after this
+            // method has returned, and must not read a field a restart has reused.
+            var reader = m_ReaderThread;
+            var process = m_ServerProcess;
+            var device = m_Device;
+            var port = m_ForwardedPort;
+            var jar = m_ServerDevicePath;
             m_ReaderThread = null;
-            if (thread != null && !thread.Join(TimeSpan.FromSeconds(2)))
-                AndroidLogcatInternalLog.Log("Live stream reader thread did not stop in time");
+            m_ServerProcess = null;
+            m_Device = null;
+            m_ForwardedPort = -1;
+            m_ServerDevicePath = null;
 
-            // With the reader gone, and this being the main thread, nothing can still be
-            // holding a buffer - and once the stream is over they are only memory. A
+            // Safe without the reader joined: it drops what it read once m_Session has
+            // moved on. Once the stream is over the buffers are only memory, and a
             // frame off a big display is worth a couple of MB.
             lock (m_FrameLock)
             {
@@ -613,18 +621,48 @@ namespace Unity.Android.Logcat
                 m_FreeFrameBuffers.Clear();
             }
 
-            KillServerProcess();
-            RemovePortForward();
-            RemoveServerJar();
-
             if (result == Result.Failure)
+            {
+                // The server's last words are the error report, so it is reaped before
+                // the log is read. Nobody is waiting on a stream that already failed.
+                CleanUp(reader, process, device, port, jar);
                 AppendServerLog();
+            }
+            else
+            {
+                CleanUpInBackground(reader, process, device, port, jar);
+            }
 
-            m_Device = null;
             var callback = m_OnStopLiveStream;
             m_OnStopLiveStream = null;
             callback?.Invoke(result);
             StreamChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Reaps the reader, the server and the two things the session left on the
+        /// device. Off the main thread: it costs the best part of a second, none of it
+        /// shows, and the view switch that asked for it should not wait.
+        /// </summary>
+        void CleanUpInBackground(Thread reader, Process process, IAndroidLogcatDevice device,
+            int port, string jarPath)
+        {
+            new Thread(() => CleanUp(reader, process, device, port, jarPath))
+            {
+                Name = "AndroidLogcatLiveStreamCleanup",
+                IsBackground = true
+            }.Start();
+        }
+
+        void CleanUp(Thread reader, Process process, IAndroidLogcatDevice device,
+            int port, string jarPath)
+        {
+            if (reader != null && !reader.Join(TimeSpan.FromSeconds(2)))
+                AndroidLogcatInternalLog.Log("Live stream reader thread did not stop in time");
+
+            KillServerProcess(process);
+            RemovePortForward(device, port);
+            DeleteOnDevice(device, jarPath);
         }
 
         void Update()
@@ -1209,10 +1247,8 @@ namespace Unity.Android.Logcat
             }, $"Failed to kill the live stream server (pid {m_ServerPid})");
         }
 
-        void KillServerProcess()
+        static void KillServerProcess(Process process)
         {
-            var process = m_ServerProcess;
-            m_ServerProcess = null;
             if (process == null)
                 return;
 
@@ -1256,18 +1292,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Deletes this session's jar from the device. Unlinking it is safe even if the
-        /// server somehow outlived us - the file stays alive for whoever has it open -
-        /// and skipping it would leave 17 KB behind on the device per stream.
-        /// </summary>
-        void RemoveServerJar()
-        {
-            var path = m_ServerDevicePath;
-            m_ServerDevicePath = null;
-            DeleteOnDevice(m_Device, path);
-        }
-
-        /// <summary>
         /// Deletes files on the device, one path or a glob, and never fails: tidying up
         /// is not worth losing a stream over, and what is left behind if it does fail is
         /// a small file in a temporary folder.
@@ -1305,15 +1329,9 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void RemovePortForward()
+        void RemovePortForward(IAndroidLogcatDevice device, int port)
         {
-            if (m_ForwardedPort <= 0)
-                return;
-
-            var port = m_ForwardedPort;
-            var device = m_Device;
-            m_ForwardedPort = -1;
-            if (device == null)
+            if (port <= 0 || device == null)
                 return;
 
             RunAdbQuietly(new[]
