@@ -529,12 +529,22 @@ namespace Unity.Android.Logcat
                     Event.current.Use();
                 }
 
+                // On the press, so the row is drawn selected before the menu opens
+                // over it. Not consumed: the ContextClick is made from this event.
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 1
+                    && rowRect.Contains(Event.current.mousePosition) && path != m_RenamingPath
+                    && !m_Selected.Contains(path))
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    SelectOnly(path, device);
+                }
+
                 if (Event.current.type == EventType.ContextClick
                     && rowRect.Contains(Event.current.mousePosition))
                 {
                     GUIUtility.keyboardControl = controlId;
                     // A click inside the selection acts on the whole of it; one
-                    // outside moves the selection there first, as everywhere else.
+                    // outside moves the selection there first.
                     if (!m_Selected.Contains(path))
                         SelectOnly(path, device);
 
