@@ -370,9 +370,11 @@ namespace Unity.Android.Logcat
         int m_DisplayHeight;
         // Where the display actually is, and where the user asked it to be. An app
         // that pins its orientation keeps the first from following the second, and the
-        // gap between them is what the view turns by.
+        // gap between them is what the view turns by. Which device was asked is kept
+        // alongside, because the request outlives both the stream and m_Device.
         int m_DisplayRotation;
         AndroidDeviceRotation m_RequestedRotation = AndroidDeviceRotation.Auto;
+        string m_RotationDeviceId;
         double m_Fps;
         double m_Mbps;
         DateTime m_StatsTime;
@@ -464,6 +466,14 @@ namespace Unity.Android.Logcat
                 m_ServerLog.Clear();
             DestroyTexture();
 
+            // A rotation lock outlives the stream on the device, so the view keeps what
+            // was asked of it across a restart. Another device has its own lock.
+            if (m_RotationDeviceId != device.Id)
+            {
+                m_RotationDeviceId = device.Id;
+                m_RequestedRotation = AndroidDeviceRotation.Auto;
+            }
+
             m_Device = device;
             m_OnStopLiveStream = onStopLiveStream;
             var session = new ReaderSession();
@@ -483,7 +493,6 @@ namespace Unity.Android.Logcat
             m_DisplayWidth = 0;
             m_DisplayHeight = 0;
             m_DisplayRotation = 0;
-            m_RequestedRotation = AndroidDeviceRotation.Auto;
             m_Fps = 0;
             m_Mbps = 0;
             m_StatsTime = DateTime.Now;
