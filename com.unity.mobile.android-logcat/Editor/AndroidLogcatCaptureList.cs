@@ -558,6 +558,15 @@ namespace Unity.Android.Logcat
 
             GUI.EndScrollView();
 
+            // Deselect when clicking on empty space
+            if (Event.current.type == EventType.MouseDown && Event.current.button == 0
+                && inner.Contains(Event.current.mousePosition) && m_RenamingPath == null)
+            {
+                GUIUtility.keyboardControl = controlId;
+                DeselectAll();
+                Event.current.Use();
+            }
+
             HandleKeys(controlId, captures, rowHeight, inner.height, device);
 
             if (menuPath != null)
@@ -656,6 +665,18 @@ namespace Unity.Android.Logcat
             m_Selected.Add(path);
             m_SelectionAnchor = path;
             m_CaptureScreenshot.SelectImage(path);
+            m_Repaint();
+        }
+
+        /// <summary>Clears the selection, leaving the Live button where it is.</summary>
+        void DeselectAll()
+        {
+            if (m_Selected.Count == 0)
+                return;
+
+            m_Selected.Clear();
+            m_SelectionAnchor = null;
+            m_CaptureScreenshot.SelectImage(null);
             m_Repaint();
         }
 
