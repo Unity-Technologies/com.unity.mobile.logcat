@@ -107,11 +107,11 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 1;
+        const int kProtocolVersion = 2;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
-        // ptsUs + width + height + displayWidth + displayHeight + payloadSize
-        const int kFrameHeaderSize = 28;
+        // ptsUs + width + height + displayWidth + displayHeight + rotation + payloadSize
+        const int kFrameHeaderSize = 32;
 
         // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
         // injection, so touch messages will actually do something.
@@ -211,14 +211,16 @@ namespace Unity.Android.Logcat
                 "two displays are reached from here. Only for devices that fold.");
 
             internal static readonly GUIContent DeviceRotation = new GUIContent("Device Rotation",
-                "Rotate the device itself. Auto hands the rotation back to its accelerometer.");
+                "Rotate the device itself. An app that pins its orientation does not turn with " +
+                "it, and the view turns instead so that the rotation is still visible. Auto " +
+                "hands the rotation back to its accelerometer.");
             internal static readonly GUIContent[] Rotations =
             {
                 new GUIContent("Auto", "Let the device rotate with its accelerometer again"),
-                new GUIContent("0°", "Lock the device to its natural orientation"),
-                new GUIContent("90°", "Lock the device rotated 90°"),
-                new GUIContent("180°", "Lock the device rotated 180°"),
-                new GUIContent("270°", "Lock the device rotated 270°")
+                new GUIContent("0°", "Lock the device to its natural orientation, top edge up"),
+                new GUIContent("90°", "Lock the device a quarter turn counter-clockwise, top edge to the left"),
+                new GUIContent("180°", "Lock the device upside down, top edge down"),
+                new GUIContent("270°", "Lock the device a quarter turn clockwise, top edge to the right")
             };
 
             internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
@@ -322,6 +324,7 @@ namespace Unity.Android.Logcat
         int m_PendingHeight;
         int m_PendingDisplayWidth;
         int m_PendingDisplayHeight;
+        int m_PendingRotation;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -357,11 +360,19 @@ namespace Unity.Android.Logcat
         bool m_ControlWriteFailed;
 
         Texture2D m_Texture;
+        // The frame turned, when the view owes the device a rotation it would not do
+        // itself. Null whenever the frame is shown as it arrived.
+        RenderTexture m_TurnedTexture;
         int m_FrameWidth;
         int m_FrameHeight;
         // What the frames were scaled down from. Zero until the first one arrives.
         int m_DisplayWidth;
         int m_DisplayHeight;
+        // Where the display actually is, and where the user asked it to be. An app
+        // that pins its orientation keeps the first from following the second, and the
+        // gap between them is what the view turns by.
+        int m_DisplayRotation;
+        AndroidDeviceRotation m_RequestedRotation = AndroidDeviceRotation.Auto;
         double m_Fps;
         double m_Mbps;
         DateTime m_StatsTime;
@@ -471,6 +482,8 @@ namespace Unity.Android.Logcat
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
             m_DisplayHeight = 0;
+            m_DisplayRotation = 0;
+            m_RequestedRotation = AndroidDeviceRotation.Auto;
             m_Fps = 0;
             m_Mbps = 0;
             m_StatsTime = DateTime.Now;
@@ -673,7 +686,7 @@ namespace Unity.Android.Logcat
             byte[] frame;
             int size;
             int width, height;
-            int displayWidth, displayHeight;
+            int displayWidth, displayHeight, rotation;
 
             lock (m_FrameLock)
             {
@@ -685,6 +698,7 @@ namespace Unity.Android.Logcat
                 height = m_PendingHeight;
                 displayWidth = m_PendingDisplayWidth;
                 displayHeight = m_PendingDisplayHeight;
+                rotation = m_PendingRotation;
             }
 
             if (frame != null)
@@ -704,12 +718,14 @@ namespace Unity.Android.Logcat
                 if (decoded)
                 {
                     var resized = m_FrameWidth != width || m_FrameHeight != height
-                        || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight;
+                        || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight
+                        || m_DisplayRotation != rotation;
 
                     m_FrameWidth = width;
                     m_FrameHeight = height;
                     m_DisplayWidth = displayWidth;
                     m_DisplayHeight = displayHeight;
+                    m_DisplayRotation = rotation;
 
                     // The first frame counts as a resize, since everything was zero
                     // until it arrived.
@@ -950,7 +966,8 @@ namespace Unity.Android.Logcat
                     var height = ReadInt32BE(header, 12);
                     var displayWidth = ReadInt32BE(header, 16);
                     var displayHeight = ReadInt32BE(header, 20);
-                    var size = ReadInt32BE(header, 24);
+                    var rotation = ReadInt32BE(header, 24);
+                    var size = ReadInt32BE(header, 28);
 
                     if (size <= 0 || size > kMaxFrameSize)
                         throw new IOException($"Frame size {size} is out of range, the stream is out of sync");
@@ -976,6 +993,7 @@ namespace Unity.Android.Logcat
                         m_PendingHeight = height;
                         m_PendingDisplayWidth = displayWidth;
                         m_PendingDisplayHeight = displayHeight;
+                        m_PendingRotation = rotation;
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }
@@ -1341,6 +1359,7 @@ namespace Unity.Android.Logcat
 
         void DestroyTexture()
         {
+            ReleaseTurnedTexture();
             if (m_Texture == null)
                 return;
             UnityEngine.Object.DestroyImmediate(m_Texture);
@@ -1507,17 +1526,101 @@ namespace Unity.Android.Logcat
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             var aspect = (float)m_Texture.width / m_Texture.height;
+            // A quarter turn swaps which way round the image has to be fitted.
+            if ((ViewQuarterTurns & 1) != 0)
+                aspect = 1f / aspect;
 
             var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
             {
                 HandleTouchInput(controlId, videoRect);
-                GUI.DrawTexture(videoRect, m_Texture);
+                DrawFrame(videoRect);
             }, repaint);
 
             HandleKeyboardInput(controlId);
 
             if (statsWidth > 0)
                 DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
+        }
+
+        /// <summary>
+        /// Quarter turns the view adds on top of what the device is doing, so that
+        /// asking a device to rotate is visible even when the app in front of it
+        /// refuses to. Zero once the device has honoured the request, which is what
+        /// keeps a rotation it accepted from being applied twice.
+        /// </summary>
+        int ViewQuarterTurns
+        {
+            get
+            {
+                if (m_RequestedRotation == AndroidDeviceRotation.Auto)
+                    return 0;
+                return (((int)m_RequestedRotation - m_DisplayRotation) % 4 + 4) % 4;
+            }
+        }
+
+        /// <summary>
+        /// Draws the frame turned into the box the viewer fitted for it. The texture
+        /// is blitted into that box untransposed and the matrix turns it, which is why
+        /// nothing here has to resample.
+        /// </summary>
+        void DrawFrame(Rect videoRect)
+        {
+            // Nothing below draws outside a repaint, and the turning is not free.
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            var turns = ViewQuarterTurns;
+            GUI.DrawTexture(videoRect, turns == 0 ? (Texture)m_Texture : TurnedFrame(turns));
+        }
+
+        /// <summary>
+        /// The frame turned into a texture of its own.
+        /// <para>
+        /// Turned here rather than by rotating <see cref="GUI.matrix"/> around the
+        /// image, which would cost nothing at all: inside the viewer's scroll view a
+        /// turned matrix is clipped twice, by the view's rect and by that rect turned,
+        /// and a quarter turn of a rectangle leaves only the square where the two
+        /// overlap.
+        /// </para>
+        /// </summary>
+        Texture TurnedFrame(int turns)
+        {
+            var sideways = (turns & 1) != 0;
+            var width = sideways ? m_Texture.height : m_Texture.width;
+            var height = sideways ? m_Texture.width : m_Texture.height;
+
+            if (m_TurnedTexture == null || m_TurnedTexture.width != width || m_TurnedTexture.height != height)
+            {
+                ReleaseTurnedTexture();
+                m_TurnedTexture = new RenderTexture(width, height, 0);
+            }
+
+            var previous = RenderTexture.active;
+            Graphics.SetRenderTarget(m_TurnedTexture);
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, width, height, 0);
+            // Counter-clockwise: one rotation step is the device turned counter-
+            // clockwise, and the image is stuck to the device.
+            var centre = new Vector3(width * 0.5f, height * 0.5f, 0);
+            GL.MultMatrix(Matrix4x4.TRS(centre, Quaternion.Euler(0, 0, turns * -90f), Vector3.one)
+                * Matrix4x4.Translate(-centre));
+            Graphics.DrawTexture(
+                new Rect((width - m_Texture.width) * 0.5f, (height - m_Texture.height) * 0.5f,
+                    m_Texture.width, m_Texture.height),
+                m_Texture);
+            GL.PopMatrix();
+            Graphics.SetRenderTarget(previous);
+
+            return m_TurnedTexture;
+        }
+
+        void ReleaseTurnedTexture()
+        {
+            if (m_TurnedTexture == null)
+                return;
+            m_TurnedTexture.Release();
+            UnityEngine.Object.DestroyImmediate(m_TurnedTexture);
+            m_TurnedTexture = null;
         }
 
         void DoStatsGUI(Rect rc, IReadOnlyList<CaptureAction> captureActions)
@@ -1776,6 +1879,7 @@ namespace Unity.Android.Logcat
             try
             {
                 m_Device.SetRotation(rotation);
+                m_RequestedRotation = rotation;
             }
             catch (Exception ex)
             {
@@ -1936,12 +2040,23 @@ namespace Unity.Android.Logcat
         /// rejected: a swipe that overshoots the edge of the view should still read as a
         /// swipe to the edge of the screen. GUI y grows downward and so does the device
         /// y, so there is nothing to flip.
+        /// <para>
+        /// The view may be turned, in which case the point is turned back: the device
+        /// knows nothing about how its screen is being shown.
+        /// </para>
         /// </summary>
-        static Vector2 PositionOnScreen(Rect videoRect, Vector2 mousePosition)
+        Vector2 PositionOnScreen(Rect videoRect, Vector2 mousePosition)
         {
-            return new Vector2(
-                Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width),
-                Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height));
+            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
+            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
+
+            switch (ViewQuarterTurns)
+            {
+                case 1: return new Vector2(1f - y, x);
+                case 2: return new Vector2(1f - x, 1f - y);
+                case 3: return new Vector2(y, 1f - x);
+                default: return new Vector2(x, y);
+            }
         }
 
         void SendTouchMessage(TouchAction action, float x, float y)
