@@ -10,6 +10,8 @@ The live view mirrors the device's display into the Unity Editor. Unlike a scree
 2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify the device to view.
 3. In the [Capture list](screen-capture-window-reference.md#capture-list), select the **Live** row. The Screen Capture tool starts streaming and displays the device's screen in the [Capture preview](screen-capture-window-reference.md#capture-preview).
 
+![The Device Screen Capture window showing a device's screen live, with the device controls beside it](images/device-screen-capture-live-view.png)
+
 The stream stops when you select another row in the list, close the window, or disconnect the device. Selecting a different device restarts the stream against the newly selected one.
 
 The device only sends a frame when its screen changes, so **Frame Rate** in the [Live view details](screen-capture-window-reference.md#live-view-details) drops to almost nothing while the device shows a still screen. This is expected: the last frame stays on display.
@@ -29,8 +31,13 @@ While the live view is streaming, the Screen Capture tool sends your input to th
 | Escape                                     | Sends the Back key.                                           |
 | Ctrl+A, Ctrl+C, Ctrl+V (Cmd on macOS)      | Select all, copy and paste on the device, using the device's own clipboard. |
 | The **◄**, **●** and **■** buttons          | Sends the Back, Home and Overview keys. Useful on a device that uses gesture navigation, where the mirrored image has no navigation bar to tap. |
+| The **Power**, **Vol +** and **Vol -** buttons | Sends the Power, Volume Up and Volume Down keys, which the mirrored screen has no way to reach. The device sends no frames while its screen is off. |
+| The **Device Rotation** buttons            | Turns the device's screen, or hands the rotation back to the device's accelerometer with **Auto**. |
+| The **Device Fold** buttons                | Folds and unfolds a foldable device, which is how its other display is reached. These buttons appear only for a device that folds. |
 
 Other Ctrl and Cmd combinations are left to the Unity Editor, so its own shortcuts keep working while the image has focus. Ctrl and the wheel zoom the view instead of scrolling the device: refer to [Zoom into the image](screen-capture-window-reference.md#zoom-into-the-image).
+
+An app that pins its orientation does not turn with the device. When that happens, the live view turns the image instead, so the rotation is still visible. The device's own screen stays as the app drew it.
 
 > [!NOTE]
 > Nothing is exchanged between the device's clipboard and your computer's. Ctrl+C copies on the device, and Ctrl+V pastes what was copied there.
