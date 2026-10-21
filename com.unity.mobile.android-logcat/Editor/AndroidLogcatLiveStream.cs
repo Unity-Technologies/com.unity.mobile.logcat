@@ -164,7 +164,7 @@ namespace Unity.Android.Logcat
         static class Styles
         {
             internal static readonly GUIContent DisplaySize = new GUIContent("Display Size",
-                "Resolution of the display being mirrored, as the frames report it. The streamed " +
+                "Resolution of the display being mirrored, as the view is showing it. The streamed " +
                 "image is this scaled down to fit Max Size, so the two rows together say how much " +
                 "detail the stream is giving up.");
             internal static readonly GUIContent StreamSize = new GUIContent("Stream Size",
@@ -1552,12 +1552,12 @@ namespace Unity.Android.Logcat
             var statsWidth = IsStreaming ? AndroidLogcatStatsColumn.WidthFor(rc) : 0;
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            var aspect = (float)m_Texture.width / m_Texture.height;
-            // A quarter turn swaps which way round the image has to be fitted.
-            if ((ViewQuarterTurns & 1) != 0)
-                aspect = 1f / aspect;
+            // The turned frame is what gets drawn, so its size is what the view fits.
+            var frameSize = (ViewQuarterTurns & 1) != 0
+                ? new Vector2(m_Texture.height, m_Texture.width)
+                : new Vector2(m_Texture.width, m_Texture.height);
 
-            var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
+            var imageBox = m_Viewer.DoGUI(imageArea, frameSize, videoRect =>
             {
                 HandleTouchInput(controlId, videoRect);
                 DrawFrame(videoRect);
@@ -1586,10 +1586,14 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Draws the frame turned into the box the viewer fitted for it. The texture
-        /// is blitted into that box untransposed and the matrix turns it, which is why
-        /// nothing here has to resample.
+        /// A size the way the view is showing it, which a turn transposes.
         /// </summary>
+        string ShownSize(int width, int height)
+        {
+            return (ViewQuarterTurns & 1) != 0 ? $"{height}x{width}" : $"{width}x{height}";
+        }
+
+        /// <summary>Draws the frame, turned if the view owes the device a turn.</summary>
         void DrawFrame(Rect videoRect)
         {
             // Nothing below draws outside a repaint, and the turning is not free.
@@ -1657,8 +1661,8 @@ namespace Unity.Android.Logcat
 
             // A row reading 0x0 says less than no row at all.
             if (m_DisplayWidth > 0 && m_DisplayHeight > 0)
-                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, $"{m_DisplayWidth}x{m_DisplayHeight}");
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, ShownSize(m_DisplayWidth, m_DisplayHeight));
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.StreamSize, ShownSize(m_FrameWidth, m_FrameHeight));
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
             // Listed whether or not it works: without the row there is nothing in the

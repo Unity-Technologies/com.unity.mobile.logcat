@@ -82,14 +82,14 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Draws an image of the given aspect ratio into <paramref name="area"/> and
+        /// Draws an image of the given size into <paramref name="area"/> and
         /// returns the box it is seen through, for laying out whatever sits beside it.
         /// <paramref name="drawContents"/> is handed the image rect, which is only
         /// meaningful inside the scroll view - the same space the live view reads the
         /// mouse in. <paramref name="repaint"/> covers the views that are not already
         /// repainting, a stopped stream or a screenshot.
         /// </summary>
-        internal Rect DoGUI(Rect area, float aspect, Action<Rect> drawContents, Action repaint)
+        internal Rect DoGUI(Rect area, Vector2 imageSize, Action<Rect> drawContents, Action repaint)
         {
             // Allocated on every pass whatever the state, so that the ids handed out
             // after it do not shift between the Layout and Repaint passes.
@@ -103,11 +103,11 @@ namespace Unity.Android.Logcat
             // Both before the scroll view, so neither it nor the contents see these
             // events first: the live view forwards a plain wheel to the device, and the
             // scroll view would scroll on it.
-            var box = ViewBox(area, aspect, out _);
-            HandleZoom(area, aspect, box, repaint);
-            HandlePan(controlId, area, aspect, box, repaint);
+            var box = ViewBox(area, imageSize, out _);
+            HandleZoom(area, imageSize, box, repaint);
+            HandlePan(controlId, area, imageSize, box, repaint);
 
-            box = ViewBox(area, aspect, out var image);
+            box = ViewBox(area, imageSize, out var image);
             var content = new Rect(0, 0, image.x, image.y);
 
             m_Scroll = GUI.BeginScrollView(box, m_Scroll, content);
@@ -127,10 +127,13 @@ namespace Unity.Android.Logcat
         /// the area: at 100% that is exactly the fitted image, and a zoomed portrait
         /// screen keeps the scrollbar against its edge rather than across the letterbox.
         /// </summary>
-        Rect ViewBox(Rect area, float aspect, out Vector2 image)
+        Rect ViewBox(Rect area, Vector2 imageSize, out Vector2 image)
         {
-            var fitted = FitRect(area, aspect);
-            image = new Vector2(fitted.width, fitted.height) * m_Zoom;
+            var fitted = FitRect(area, imageSize.x / imageSize.y);
+            // Fitted, but never enlarged: a frame blown up past its own size only
+            // gets softer, and a turned screen is wide enough to invite it.
+            var scale = imageSize.x > 0 ? Mathf.Min(1.0f, fitted.width / imageSize.x) : 1.0f;
+            image = imageSize * scale * m_Zoom;
 
             // Room for whichever scrollbar the image is about to need.
             var want = image;
@@ -166,7 +169,7 @@ namespace Unity.Android.Logcat
         /// <paramref name="pointer"/> where it is. Positive deltas zoom out, matching
         /// the wheel. Returns false when the zoom was already at the end of its range.
         /// </summary>
-        internal bool ZoomAt(Rect area, float aspect, Vector2 pointer, float wheelDelta)
+        internal bool ZoomAt(Rect area, Vector2 imageSize, Vector2 pointer, float wheelDelta)
         {
             if (area.width <= 0 || area.height <= 0)
                 return false;
@@ -176,7 +179,7 @@ namespace Unity.Android.Logcat
             if (Mathf.Approximately(zoom, m_Zoom))
                 return false;
 
-            var box = ViewBox(area, aspect, out var image);
+            var box = ViewBox(area, imageSize, out var image);
             if (image.x <= 0 || image.y <= 0)
             {
                 m_Zoom = zoom;
@@ -191,22 +194,22 @@ namespace Unity.Android.Logcat
 
             // The box moves as well as the image, growing until it fills the area, so
             // the same point is somewhere else on screen even before scrolling.
-            var zoomedBox = ViewBox(area, aspect, out var zoomedImage);
+            var zoomedBox = ViewBox(area, imageSize, out var zoomedImage);
             m_Scroll = new Vector2(
                 pointOnImage.x * zoomedImage.x - (pointer.x - zoomedBox.x),
                 pointOnImage.y * zoomedImage.y - (pointer.y - zoomedBox.y));
-            ClampScroll(area, aspect);
+            ClampScroll(area, imageSize);
             return true;
         }
 
         /// <summary>Moves the image with the mouse, so the view moves the other way.</summary>
-        internal void Pan(Rect area, float aspect, Vector2 mouseDelta)
+        internal void Pan(Rect area, Vector2 imageSize, Vector2 mouseDelta)
         {
             m_Scroll -= mouseDelta;
-            ClampScroll(area, aspect);
+            ClampScroll(area, imageSize);
         }
 
-        void HandleZoom(Rect area, float aspect, Rect box, Action repaint)
+        void HandleZoom(Rect area, Vector2 imageSize, Rect box, Action repaint)
         {
             var e = Event.current;
             if (e.type != EventType.ScrollWheel || !IsViewModifier(e))
@@ -218,11 +221,11 @@ namespace Unity.Android.Logcat
             // letting it through would scroll the view or, in the live view, the device.
             e.Use();
 
-            if (ZoomAt(area, aspect, e.mousePosition, e.delta.y))
+            if (ZoomAt(area, imageSize, e.mousePosition, e.delta.y))
                 repaint?.Invoke();
         }
 
-        void HandlePan(int controlId, Rect area, float aspect, Rect box, Action repaint)
+        void HandlePan(int controlId, Rect area, Vector2 imageSize, Rect box, Action repaint)
         {
             var e = Event.current;
 
@@ -250,7 +253,7 @@ namespace Unity.Android.Logcat
                         break;
                     // The modifier is deliberately not rechecked: letting go of Ctrl
                     // halfway through a drag should not abandon it.
-                    Pan(area, aspect, e.delta);
+                    Pan(area, imageSize, e.delta);
                     e.Use();
                     repaint?.Invoke();
                     break;
@@ -280,9 +283,9 @@ namespace Unity.Android.Logcat
             return (e.modifiers & (EventModifiers.Control | EventModifiers.Command)) != 0;
         }
 
-        void ClampScroll(Rect area, float aspect)
+        void ClampScroll(Rect area, Vector2 imageSize)
         {
-            var box = ViewBox(area, aspect, out var image);
+            var box = ViewBox(area, imageSize, out var image);
 
             // The scrollbars sit inside the box, so each takes a strip off what is left.
             var visible = new Vector2(

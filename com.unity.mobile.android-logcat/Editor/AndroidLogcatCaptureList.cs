@@ -230,7 +230,7 @@ namespace Unity.Android.Logcat
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             var imageBox = m_Viewer.DoGUI(imageArea,
-                (float)m_PreviewTexture.width / m_PreviewTexture.height,
+                new Vector2(m_PreviewTexture.width, m_PreviewTexture.height),
                 imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
 
             DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
