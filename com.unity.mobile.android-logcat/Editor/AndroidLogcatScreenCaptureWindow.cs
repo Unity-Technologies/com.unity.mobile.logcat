@@ -177,7 +177,8 @@ namespace Unity.Android.Logcat
         {
             // Whatever the bar said about the last one is about to be out of date.
             m_StatusBar.Message = string.Empty;
-            m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, OnScreenshotCompleted);
+            m_CaptureScreenshot.QueueScreenCapture(m_DeviceSelection.SelectedDevice, OnScreenshotCompleted,
+                m_LiveStream?.ViewQuarterTurns ?? 0);
         }
 
         /// <summary>

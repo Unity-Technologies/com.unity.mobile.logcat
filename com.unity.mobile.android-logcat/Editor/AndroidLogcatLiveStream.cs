@@ -1575,7 +1575,7 @@ namespace Unity.Android.Logcat
         /// refuses to. Zero once the device has honoured the request, which is what
         /// keeps a rotation it accepted from being applied twice.
         /// </summary>
-        int ViewQuarterTurns
+        internal int ViewQuarterTurns
         {
             get
             {
