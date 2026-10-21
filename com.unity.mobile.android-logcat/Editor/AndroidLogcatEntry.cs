@@ -1,7 +1,9 @@
 using System;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     class LogcatEntry
     {
         [Flags]

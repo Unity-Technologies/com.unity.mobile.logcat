@@ -10,16 +10,16 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxCachedMessageCount = new GUIContent("Max Cached Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of cached messages affects the performing of filtering. 0 - no limit.");
-            public static GUIContent maxDisplayedMessageCount = new GUIContent("Max Displayed Messages", "The maximum number of messages which are shown in the list, cannot be bigger than cached message count. 0 - no limit.");
-            public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
-            public static GUIContent fontSize = new GUIContent("Font Size");
-            public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
-            public static GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
+            public static readonly GUIContent maxCachedMessageCount = new GUIContent("Max Cached Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of cached messages affects the performing of filtering. 0 - no limit.");
+            public static readonly GUIContent maxDisplayedMessageCount = new GUIContent("Max Displayed Messages", "The maximum number of messages which are shown in the list, cannot be bigger than cached message count. 0 - no limit.");
+            public static readonly GUIContent font = new GUIContent("Font", "Font used for displaying messages");
+            public static readonly GUIContent fontSize = new GUIContent("Font Size");
+            public static readonly GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
+            public static readonly GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
 
-            public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
+            public static readonly GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
-            public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
+            public static readonly GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;

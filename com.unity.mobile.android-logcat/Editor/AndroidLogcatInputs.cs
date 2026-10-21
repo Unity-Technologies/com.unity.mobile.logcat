@@ -1,6 +1,7 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
@@ -9,6 +10,7 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatInputs
     {
+        [NoAutoStaticsCleanup]
         class KeyResult
         {
             internal AndroidKeyCode Key { get; }

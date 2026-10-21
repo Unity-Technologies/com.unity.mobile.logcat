@@ -8,7 +8,7 @@ namespace Unity.Android.Logcat
         internal static readonly string kSettingsPath = "Project/Analysis/Android Logcat Settings";
         class Styles
         {
-            public static GUIContent symbolPaths = new GUIContent("Symbol Paths", "Configure symbol paths, used for resolving stack traces.");
+            public static readonly GUIContent symbolPaths = new GUIContent("Symbol Paths", "Configure symbol paths, used for resolving stack traces.");
         }
 
         private AndroidLogcatSymbolList m_SymbolList;
