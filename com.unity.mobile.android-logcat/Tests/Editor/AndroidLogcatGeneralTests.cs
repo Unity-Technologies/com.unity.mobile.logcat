@@ -310,10 +310,10 @@ class AndroidLogcatGeneralTests
             AndroidLogcatUtilities.ProjectRelativePath(windows + "/" + screenshot, windows));
         StringAssert.AreEqualIgnoringCase(screenshot,
             AndroidLogcatUtilities.ProjectRelativePath(
-                @"C:\Users\tomas\Projects\MyProject\UserSettings\AndroidLogcat\Captures\device_1.png", windows));
+                @"C:\Users\tomas\Projects\MyProject\AndroidLogcat\Captures\device_1.png", windows));
         StringAssert.AreEqualIgnoringCase(screenshot,
             AndroidLogcatUtilities.ProjectRelativePath(
-                @"c:\users\tomas\projects\myproject\UserSettings\AndroidLogcat\Captures\device_1.png", windows));
+                @"c:\users\tomas\projects\myproject\AndroidLogcat\Captures\device_1.png", windows));
 
         // macOS, and Linux with it: rooted at / with no drive, and project folders with
         // spaces in them are the norm rather than the exception.
