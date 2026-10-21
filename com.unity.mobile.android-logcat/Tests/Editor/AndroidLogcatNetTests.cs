@@ -104,13 +104,20 @@ class AndroidLogcatNetTests
     public void ValidateUsingStatements()
     {
         var logcatAssembly = GetLogcatAssembly();
-        var usingStatementRegex = new Regex(@"using\s+(?<RootNamespace>[a-zA-Z]+)\.*\S*;");
+        var usingStatementRegex = new Regex(@"using\s+(?<Namespace>(?<RootNamespace>[a-zA-Z]+)\.*\S*);");
 
-        var expectedNamespaces = new[]
+        // Any namespace under these roots is allowed
+        var expectedRootNamespaces = new[]
         {
             "UnityEditor",
             "UnityEngine",
-            "System"
+            "System",
+        };
+
+        // Only these exact namespaces are allowed
+        var expectedNamespaces = new[]
+        {
+            "Unity.Scripting.LifecycleManagement",
         };
 
         var errors = new StringBuilder();
@@ -120,10 +127,11 @@ class AndroidLogcatNetTests
             var result = usingStatementRegex.Matches(contents);
             foreach (Match r in result)
             {
-                var namezpace = r.Groups["RootNamespace"].Value;
-                if (!expectedNamespaces.Contains(namezpace))
+                var rootNamespace = r.Groups["RootNamespace"].Value;
+                var namezpace = r.Groups["Namespace"].Value;
+                if (!expectedRootNamespaces.Contains(rootNamespace) && !expectedNamespaces.Contains(namezpace))
                 {
-                    errors.AppendLine($"Unexpected 'using {namezpace}...;' in {file}");
+                    errors.AppendLine($"Unexpected 'using {namezpace};' in {file}");
                 }
             }
         }
