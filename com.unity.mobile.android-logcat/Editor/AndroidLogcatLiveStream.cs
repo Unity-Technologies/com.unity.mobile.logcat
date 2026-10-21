@@ -1552,13 +1552,17 @@ namespace Unity.Android.Logcat
             var statsWidth = IsStreaming ? AndroidLogcatStatsColumn.WidthFor(rc) : 0;
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            // The turned frame is what gets drawn, so its size is what the view fits.
-            var frameSize = (ViewQuarterTurns & 1) != 0
-                ? new Vector2(m_Texture.height, m_Texture.width)
-                : new Vector2(m_Texture.width, m_Texture.height);
+            // A square the frame sits inside, so that turning the view neither resizes
+            // the image nor moves the column beside it: a device that turns in the hand
+            // does not change size either.
+            var side = Mathf.Max(m_Texture.width, m_Texture.height);
 
-            var imageBox = m_Viewer.DoGUI(imageArea, frameSize, videoRect =>
+            var imageBox = m_Viewer.DoGUI(imageArea, new Vector2(side, side), box =>
             {
+                // The frame's own shape within that square. Touches are read from it
+                // rather than from the square, so the bands beside it are not the
+                // device.
+                var videoRect = AndroidLogcatImageViewer.FitRect(box, FrameAspect);
                 HandleTouchInput(controlId, videoRect);
                 DrawFrame(videoRect);
             }, repaint);
@@ -1582,6 +1586,16 @@ namespace Unity.Android.Logcat
                 if (m_RequestedRotation == AndroidDeviceRotation.Auto)
                     return 0;
                 return (((int)m_RequestedRotation - m_DisplayRotation) % 4 + 4) % 4;
+            }
+        }
+
+        /// <summary>The frame's shape as the view shows it, which a turn transposes.</summary>
+        float FrameAspect
+        {
+            get
+            {
+                var aspect = (float)m_Texture.width / m_Texture.height;
+                return (ViewQuarterTurns & 1) != 0 ? 1.0f / aspect : aspect;
             }
         }
 

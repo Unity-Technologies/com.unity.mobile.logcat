@@ -149,7 +149,8 @@ namespace Unity.Android.Logcat
                 size.x, size.y);
         }
 
-        static Rect FitRect(Rect container, float aspect)
+        /// <summary>The largest rect of that shape, centred in the container.</summary>
+        internal static Rect FitRect(Rect container, float aspect)
         {
             if (container.width <= 0 || container.height <= 0 || aspect <= 0)
                 return container;

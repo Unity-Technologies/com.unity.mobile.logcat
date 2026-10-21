@@ -229,9 +229,14 @@ namespace Unity.Android.Logcat
             var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc, m_PreviewDetails.Values);
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            var imageBox = m_Viewer.DoGUI(imageArea,
-                new Vector2(m_PreviewTexture.width, m_PreviewTexture.height),
-                imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
+            // A square, as the live view uses, so that moving between a portrait and a
+            // landscape capture does not resize the view or move the column beside it.
+            var side = Mathf.Max(m_PreviewTexture.width, m_PreviewTexture.height);
+            var aspect = (float)m_PreviewTexture.width / m_PreviewTexture.height;
+
+            var imageBox = m_Viewer.DoGUI(imageArea, new Vector2(side, side),
+                box => GUI.DrawTexture(AndroidLogcatImageViewer.FitRect(box, aspect), m_PreviewTexture),
+                m_Repaint);
 
             DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox));
             return true;
