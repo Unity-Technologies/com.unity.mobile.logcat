@@ -473,32 +473,32 @@ class AndroidLogcatGeneralTests
     {
         var viewer = new AndroidLogcatImageViewer();
         var area = new Rect(0, 0, 400, 300);
-        // The area's own size, so the image fills it at 100% and is not capped.
-        var imageSize = new Vector2(400, 300);
+        // The area's own shape, so the image fills it at 100%.
+        const float aspect = 4.0f / 3.0f;
 
         Assert.AreEqual(AndroidLogcatImageViewer.kMinZoom, viewer.Zoom, 0.0001f,
             "Expected to start at 100%");
         Assert.IsFalse(viewer.IsZoomed);
 
         // A notch of the wheel is a delta of 3, and scrolling up reports it negative.
-        Assert.IsTrue(viewer.ZoomAt(area, imageSize, area.center, -3.0f), "Expected one notch to zoom in");
+        Assert.IsTrue(viewer.ZoomAt(area, aspect, area.center, -3.0f), "Expected one notch to zoom in");
         Assert.Greater(viewer.Zoom, AndroidLogcatImageViewer.kMinZoom);
         Assert.IsTrue(viewer.IsZoomed);
 
         for (var notch = 0; notch < 100; notch++)
-            viewer.ZoomAt(area, imageSize, area.center, -3.0f);
+            viewer.ZoomAt(area, aspect, area.center, -3.0f);
 
         Assert.AreEqual(AndroidLogcatImageViewer.kMaxZoom, viewer.Zoom, 0.0001f,
             "Expected to stop at 4000%");
-        Assert.IsFalse(viewer.ZoomAt(area, imageSize, area.center, -3.0f),
+        Assert.IsFalse(viewer.ZoomAt(area, aspect, area.center, -3.0f),
             "Expected no change once the zoom is at its maximum");
 
         for (var notch = 0; notch < 100; notch++)
-            viewer.ZoomAt(area, imageSize, area.center, 3.0f);
+            viewer.ZoomAt(area, aspect, area.center, 3.0f);
 
         Assert.AreEqual(AndroidLogcatImageViewer.kMinZoom, viewer.Zoom, 0.0001f,
             "Expected to stop at 100%");
-        Assert.IsFalse(viewer.ZoomAt(area, imageSize, area.center, 3.0f),
+        Assert.IsFalse(viewer.ZoomAt(area, aspect, area.center, 3.0f),
             "Expected no change once the zoom is at its minimum");
         Assert.IsFalse(viewer.IsZoomed);
         Assert.AreEqual(Vector2.zero, viewer.Scroll,
@@ -510,12 +510,12 @@ class AndroidLogcatGeneralTests
     {
         var viewer = new AndroidLogcatImageViewer();
         var area = new Rect(0, 0, 400, 300);
-        var imageSize = new Vector2(400, 300);
+        const float aspect = 4.0f / 3.0f;
         // The quarter point of the area, and so of the image in it.
         var pointer = new Vector2(100, 75);
 
         // Four notches double the zoom, so twelve wheel units is exactly 200%.
-        Assert.IsTrue(viewer.ZoomAt(area, imageSize, pointer, -12.0f));
+        Assert.IsTrue(viewer.ZoomAt(area, aspect, pointer, -12.0f));
         Assert.AreEqual(2.0f, viewer.Zoom, 0.0001f);
 
         // (100,75) of the 400x300 area is (200,150) of the 800x600 it has become, and
@@ -533,19 +533,19 @@ class AndroidLogcatGeneralTests
     {
         var viewer = new AndroidLogcatImageViewer();
         var area = new Rect(0, 0, 400, 300);
-        var imageSize = new Vector2(400, 300);
+        const float aspect = 4.0f / 3.0f;
 
         // Nothing to move at 100%: the image is exactly the area.
-        viewer.Pan(area, imageSize, new Vector2(-50, -50));
+        viewer.Pan(area, aspect, new Vector2(-50, -50));
         Assert.AreEqual(Vector2.zero, viewer.Scroll);
 
-        viewer.ZoomAt(area, imageSize, area.min, -12.0f);
+        viewer.ZoomAt(area, aspect, area.min, -12.0f);
         Assert.AreEqual(Vector2.zero, viewer.Scroll,
             "Zooming in on the top left corner should have nothing scrolled out of view yet");
 
         // Far past the end of the image: the far corner has to be reachable, and the
         // image must not carry on off the view.
-        viewer.Pan(area, imageSize, new Vector2(-10000, -10000));
+        viewer.Pan(area, aspect, new Vector2(-10000, -10000));
         Assert.GreaterOrEqual(viewer.Scroll.x, area.width * (viewer.Zoom - 1.0f),
             "Expected to be able to reach the right edge of the image");
         Assert.GreaterOrEqual(viewer.Scroll.y, area.height * (viewer.Zoom - 1.0f),
@@ -556,7 +556,7 @@ class AndroidLogcatGeneralTests
             "Expected not to be able to drag the image out of the view");
 
         // And back, which stops at the near corner rather than going past it.
-        viewer.Pan(area, imageSize, new Vector2(10000, 10000));
+        viewer.Pan(area, aspect, new Vector2(10000, 10000));
         Assert.AreEqual(Vector2.zero, viewer.Scroll);
     }
 

@@ -1552,17 +1552,13 @@ namespace Unity.Android.Logcat
             var statsWidth = IsStreaming ? AndroidLogcatStatsColumn.WidthFor(rc) : 0;
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            // A square the frame sits inside, so that turning the view neither resizes
-            // the image nor moves the column beside it: a device that turns in the hand
-            // does not change size either.
-            var side = Mathf.Max(m_Texture.width, m_Texture.height);
+            var aspect = (float)m_Texture.width / m_Texture.height;
+            // A quarter turn swaps which way round the image has to be fitted.
+            if ((ViewQuarterTurns & 1) != 0)
+                aspect = 1f / aspect;
 
-            var imageBox = m_Viewer.DoGUI(imageArea, new Vector2(side, side), box =>
+            var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
             {
-                // The frame's own shape within that square. Touches are read from it
-                // rather than from the square, so the bands beside it are not the
-                // device.
-                var videoRect = AndroidLogcatImageViewer.FitRect(box, FrameAspect);
                 HandleTouchInput(controlId, videoRect);
                 DrawFrame(videoRect);
             }, repaint);
@@ -1589,25 +1585,17 @@ namespace Unity.Android.Logcat
             }
         }
 
-        /// <summary>The frame's shape as the view shows it, which a turn transposes.</summary>
-        float FrameAspect
-        {
-            get
-            {
-                var aspect = (float)m_Texture.width / m_Texture.height;
-                return (ViewQuarterTurns & 1) != 0 ? 1.0f / aspect : aspect;
-            }
-        }
-
-        /// <summary>
-        /// A size the way the view is showing it, which a turn transposes.
-        /// </summary>
+        /// <summary>A size the way the view is showing it, which a turn transposes.</summary>
         string ShownSize(int width, int height)
         {
             return (ViewQuarterTurns & 1) != 0 ? $"{height}x{width}" : $"{width}x{height}";
         }
 
-        /// <summary>Draws the frame, turned if the view owes the device a turn.</summary>
+        /// <summary>
+        /// Draws the frame turned into the box the viewer fitted for it. The texture
+        /// is blitted into that box untransposed and the matrix turns it, which is why
+        /// nothing here has to resample.
+        /// </summary>
         void DrawFrame(Rect videoRect)
         {
             // Nothing below draws outside a repaint, and the turning is not free.
