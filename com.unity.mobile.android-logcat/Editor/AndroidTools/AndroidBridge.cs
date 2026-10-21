@@ -8,8 +8,8 @@ using UnityEditor;
 using Object = System.Object;
 #if UNITY_6000_5_OR_NEWER
 using UnityEngine.Assemblies;
-using Unity.Scripting.LifecycleManagement;
 #endif
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
