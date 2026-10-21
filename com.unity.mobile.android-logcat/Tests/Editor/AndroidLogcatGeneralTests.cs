@@ -301,7 +301,7 @@ class AndroidLogcatGeneralTests
     [Test]
     public void ProjectRelativePathTests()
     {
-        const string screenshot = "UserSettings/AndroidLogcat/Captures/device_1.png";
+        const string screenshot = "AndroidLogcat/Captures/device_1.png";
 
         // Windows, where paths come in with backslashes and in whatever case the caller
         // happened to use - hence the case insensitive comparison in the function.

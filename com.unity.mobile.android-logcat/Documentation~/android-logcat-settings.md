@@ -53,11 +53,11 @@ Use the **Max Exited Packages** setting to specify the maximum number for the ap
 
 Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The note underneath the field spells out where that is at the moment, which a relative path does not show on its own.
 
-A relative path starts at your project folder, which is how the default `UserSettings/AndroidLogcat/Captures` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
+A relative path starts at your project folder, which is how the default `AndroidLogcat/Captures` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
 
 Select **Browse...** to pick a folder. A folder inside the project is stored relative to it, and one outside it is stored as an absolute path.
 
-The default, `UserSettings/AndroidLogcat/Captures`, is local to your machine and is not part of a build. `UserSettings` is yours rather than the project's - it survives deleting `Library`, and Unity's own `.gitignore` keeps it out of source control - so captures left there stay until you delete them, though they do not travel with the project.
+The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Assets`. It is outside `Assets`, so captures are never imported and are not part of a build, and it survives deleting `Library`, so captures stay until you delete them. It is not covered by Unity's own `.gitignore`, so add it to yours if you do not want captures in source control.
 
 Changing the folder takes effect immediately. Captures already written stay where they are, and the [Capture list](screen-capture-window-reference.md#capture-list) shows what is in the new folder.
 
