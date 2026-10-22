@@ -110,6 +110,7 @@ class AndroidLogcatNetTests
         {
             "UnityEditor",
             "UnityEngine",
+            "Unity",
             "System"
         };
 
