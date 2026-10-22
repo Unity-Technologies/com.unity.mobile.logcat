@@ -1,5 +1,6 @@
 using System;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -13,6 +14,7 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatImageViewer
     {
+        [NoAutoStaticsCleanup]
         static class Styles
         {
             static readonly string kModifier =

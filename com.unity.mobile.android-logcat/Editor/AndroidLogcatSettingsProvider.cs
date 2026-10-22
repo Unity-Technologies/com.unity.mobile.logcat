@@ -11,30 +11,30 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent maxCachedMessageCount = new GUIContent("Max Cached Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of cached messages affects the performing of filtering. 0 - no limit.");
-            public static GUIContent maxDisplayedMessageCount = new GUIContent("Max Displayed Messages", "The maximum number of messages which are shown in the list, cannot be bigger than cached message count. 0 - no limit.");
-            public static GUIContent font = new GUIContent("Font", "Font used for displaying messages");
-            public static GUIContent fontSize = new GUIContent("Font Size");
-            public static GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
-            public static GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
+            public static readonly GUIContent maxCachedMessageCount = new GUIContent("Max Cached Messages", "The maximum number of unfiltered messages which are kept in the cache and are used when filtering messages. The number of cached messages affects the performing of filtering. 0 - no limit.");
+            public static readonly GUIContent maxDisplayedMessageCount = new GUIContent("Max Displayed Messages", "The maximum number of messages which are shown in the list, cannot be bigger than cached message count. 0 - no limit.");
+            public static readonly GUIContent font = new GUIContent("Font", "Font used for displaying messages");
+            public static readonly GUIContent fontSize = new GUIContent("Font Size");
+            public static readonly GUIContent stactraceRegex = new GUIContent("Stacktrace Regex", "Configure regex used for resolving function address and library name");
+            public static readonly GUIContent symbolExtensions = new GUIContent("Symbol Extensions", "Specify which file extension to append while looking for symbol files.");
 
-            public static GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
+            public static readonly GUIContent requestIntervalMS = new GUIContent("Request Interval ms",
                 $"How often to request memory dump from the device? The minimum value is {AndroidLogcatSettings.kMinMemoryRequestIntervalMS} ms");
-            public static GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
+            public static readonly GUIContent maxExitedPackageToShow = new GUIContent("Max Exited Packages", "The maximum number of packages in package selection which have exited.");
 
-            public static GUIContent capturesFolder = new GUIContent("Captures Folder",
+            public static readonly GUIContent capturesFolder = new GUIContent("Captures Folder",
                 "Where screenshots are written. A relative path starts at the project folder; empty "
                 + $"means {AndroidLogcatSettings.kDefaultCaptureOutputDirectory}, which is local to "
                 + "this machine and not part of a build.");
-            public static GUIContent browse = new GUIContent("Browse...", "Pick the captures folder.");
+            public static readonly GUIContent browse = new GUIContent("Browse...", "Pick the captures folder.");
 
-            public static GUIContent liveStreamMaxSize = new GUIContent("Max Size",
+            public static readonly GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
-            public static GUIContent liveStreamQuality = new GUIContent("JPEG Quality",
+            public static readonly GUIContent liveStreamQuality = new GUIContent("JPEG Quality",
                 "Quality of each streamed frame. Lower means a smaller frame and less bandwidth.");
-            public static GUIContent liveStreamReset = new GUIContent("Reset",
+            public static readonly GUIContent liveStreamReset = new GUIContent("Reset",
                 $"Put Max Size, JPEG Quality and Max Frame Rate back to {AndroidLogcatSettings.kLiveStreamMaxSize.Default}, {AndroidLogcatSettings.kLiveStreamQuality.Default} and {AndroidLogcatSettings.kLiveStreamMaxFps.Default}, leaving every other setting alone.");
-            public static GUIContent liveStreamMaxFps = new GUIContent("Max Frame Rate",
+            public static readonly GUIContent liveStreamMaxFps = new GUIContent("Max Frame Rate",
                 "Ceiling on frames per second. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
         }
 

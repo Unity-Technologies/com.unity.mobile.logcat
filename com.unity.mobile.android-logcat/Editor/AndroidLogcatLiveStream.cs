@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using Unity.Profiling;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -34,6 +35,7 @@ namespace Unity.Android.Logcat
     /// because Texture2D can only be touched there.
     /// </para>
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatLiveStream
     {
         internal enum Result

@@ -25,7 +25,7 @@ namespace Unity.Android.Logcat
 
     abstract class AndroidLogcatDeviceQueryBase
     {
-        internal static Regex kDeviceInfoRegex = new Regex(@"(?<id>^\S+)\s+(?<state>\S+$)");
+        internal static readonly Regex kDeviceInfoRegex = new Regex(@"(?<id>^\S+)\s+(?<state>\S+$)");
 
         protected IAndroidLogcatDevice m_SelectedDevice;
         protected Dictionary<string, IAndroidLogcatDevice> m_Devices = new Dictionary<string, IAndroidLogcatDevice>();

@@ -4,9 +4,11 @@ using System.Linq;
 using UnityEngine;
 using System.Text;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatInternalLog : EditorWindow
     {
         const int MaxInternalLogMessages = 10000;

@@ -22,9 +22,9 @@ namespace Unity.Android.Logcat
 
         class Styles
         {
-            public static GUIContent QueryUIHierarchy = new GUIContent("Query UI Layout");
-            public static GUIContent SaveUIHierarchy = new GUIContent("Save Layout");
-            public static GUIContent SaveScreenshot = new GUIContent("Save Screenshot");
+            public static readonly GUIContent QueryUIHierarchy = new GUIContent("Query UI Layout");
+            public static readonly GUIContent SaveUIHierarchy = new GUIContent("Save Layout");
+            public static readonly GUIContent SaveScreenshot = new GUIContent("Save Screenshot");
         }
 
         AndroidLogcatRuntimeBase m_Runtime;

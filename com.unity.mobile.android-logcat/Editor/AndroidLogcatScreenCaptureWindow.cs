@@ -13,24 +13,24 @@ namespace Unity.Android.Logcat
         class Styles
         {
             // Note: Info acquired from adb shell screenrecord --help
-            public static GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
-            public static GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
-            public static GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit rate (in Kbps), the default is 2000Kbps.");
-            public static GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
-            public static GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
-            public static GUIContent Open = new GUIContent("Open", "Open the recorded video.");
-            public static GUIContent SaveAs = new GUIContent("Save As", "Save the recorded video as a file on your computer.");
+            public static readonly GUIContent TimeLimit = new GUIContent("Time Limit", "Toggle to override time limit (in seconds), by default - time limit is 180 seconds.");
+            public static readonly GUIContent VideoSize = new GUIContent("Video Size", "Toggle to override video size, by default - device's main display resolution is used.");
+            public static readonly GUIContent BitRate = new GUIContent("Bit Rate", "Toggle to overide bit rate (in Kbps), the default is 2000Kbps.");
+            public static readonly GUIContent DisplayId = new GUIContent("Display Id", "Toggle to overide the display to record, the default is primary display, enter 'adb shell dumpsys SurfaceFlinger--display - id' in the terminal for valid display IDs. If empty string is provided primary display will be used.");
+            public static readonly GUIContent ShowInfo = new GUIContent("Show Info", "Display video information.");
+            public static readonly GUIContent Open = new GUIContent("Open", "Open the recorded video.");
+            public static readonly GUIContent SaveAs = new GUIContent("Save As", "Save the recorded video as a file on your computer.");
             static readonly GUIContent kMore = EditorGUIUtility.IconContent("_Menu");
-            public static GUIContent Advanced = kMore != null && kMore.image != null
+            public static readonly GUIContent Advanced = kMore != null && kMore.image != null
                 ? new GUIContent(kMore.image)
                 : new GUIContent("...");
 
-            public static GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
+            public static readonly GUIContent TakeScreenshot = new GUIContent("Take Screenshot",
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
                 + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS, while this view is showing.");
-            public static GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
-            public static GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
+            public static readonly GUIContent CaptureVideo = new GUIContent("Capture", "Record the video from the android device, click Stop afterwards to stop the recording.");
+            public static readonly GUIContent StopVideo = new GUIContent("Stop", "Stop the recording.");
         }
         internal enum Mode
         {

@@ -12,10 +12,10 @@ namespace Unity.Android.Logcat
         // This will force settings to be reset
         private const int kVersion = 1;
 
-        internal static string kSettingsName = "AndroidLogcatSettings" + kVersion;
+        internal static readonly string kSettingsName = "AndroidLogcatSettings" + kVersion;
 
         // Since querying memory from device is a lengthy operation, here's a cap 500 ms, setting it too low  will make memory request to be delayed
-        internal static int kMinMemoryRequestIntervalMS = 500;
+        internal const int kMinMemoryRequestIntervalMS = 500;
 
         // Live stream settings, as default/min/max. The server accepts wider values than
         // these, but a stream is only as useful as the link can carry and every frame is

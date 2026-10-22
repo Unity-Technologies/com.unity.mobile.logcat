@@ -4,8 +4,10 @@ using System.IO;
 using System.Linq;
 using Unity.Android.Logcat;
 using UnityEngine;
+using Unity.Scripting.LifecycleManagement;
 
 
+[NoAutoStaticsCleanup]
 internal class AndroidLogcatInitializationTests : AndroidLogcatRuntimeTestBase
 {
     // We need this for AndroidLogcatTestConsoleWindow
