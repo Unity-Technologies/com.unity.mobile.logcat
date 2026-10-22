@@ -135,7 +135,7 @@ Below the properties are the device navigation buttons, which work while the liv
 | **●**      | Sends the Home key.                                          |
 | **■**      | Sends the Overview (recent apps) key.                        |
 
-Under them, **Side Buttons** sends what the mirrored screen cannot reach:
+**Side Buttons** sends what the mirrored screen cannot reach:
 
 | **Button**  | **Description**                                              |
 | ----------- | ------------------------------------------------------------ |
