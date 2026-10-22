@@ -5,10 +5,12 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal static class AndroidLogcatUtilities
     {
         internal static readonly string kAbiArm64 = "arm64-v8a";

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Unity.Profiling;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -20,6 +21,7 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatCaptureList
     {
+        [NoAutoStaticsCleanup]
         static class Styles
         {
             internal static readonly GUIContent Live = new GUIContent("Live",
