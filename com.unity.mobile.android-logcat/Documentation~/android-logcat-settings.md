@@ -7,7 +7,8 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Message Colors](#message-colors)
 * [Memory Window](#memory-window)
 * [Packages](#packages)
-* [Live Stream](#live-stream)
+* [Capture Settings](capture-settings)
+    * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
 
