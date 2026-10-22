@@ -52,9 +52,11 @@ Use the **Max Exited Packages** setting to specify the maximum number for the ap
 
 ## Capture Settings
 
-Use **Captures Folder** to choose where captures are written. Screenshots are written straight into it, under the name of the device they came from. The note underneath the field spells out where that is at the moment, which a relative path does not show on its own.
+Use **Captures Folder** to choose where Unity saves screenshots. Unity names each screenshot after the device name that captured it. The note underneath the field displays the path of the folder.
 
-A relative path starts at your project folder, which is how the default `AndroidLogcat/Captures` is written, and follows the project when it moves or is opened on another machine. An absolute path is used as it stands, for captures kept outside the project.
+The **Captures Folder** setting accepts a relative or an absolute path:
+* A relative path starts at your project folder. The default value `AndroidLogcat/Captures` is a relative path. This path remains valid when you move the project or open it on another computer. A relative path doesn't display complete path on its own.
+* An absolute path is used for screenshots saved outside the project.
 
 Select **Browse...** to pick a folder. A folder inside the project is stored relative to it, and one outside it is stored as an absolute path.
 
