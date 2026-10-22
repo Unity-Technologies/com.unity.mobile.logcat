@@ -7,7 +7,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Message Colors](#message-colors)
 * [Memory Window](#memory-window)
 * [Packages](#packages)
-* [Capture Settings](capture-settings)
+* [Capture Settings](#capture-settings)
     * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
@@ -52,17 +52,17 @@ Use the **Max Exited Packages** setting to specify the maximum number for the ap
 
 ## Capture Settings
 
-Use **Captures Folder** to choose where Unity saves screenshots. Unity names each screenshot after the device name that captured it. The note underneath the field displays the path of the folder.
+Use **Captures Folder** to choose where Unity saves screenshots. Unity names each screenshot after the ID of the device that captured it. The note under the field displays the full path of the folder.
 
 The **Captures Folder** setting accepts a relative or an absolute path:
-* A relative path starts at your project folder. The default value `AndroidLogcat/Captures` is a relative path. This path remains valid when you move the project or open it on another computer. A relative path doesn't display complete path on its own.
+* A relative path starts at your project folder. The default value `AndroidLogcat/Captures` is a relative path. This path remains valid when you move the project or open it on another computer.
 * An absolute path is used for screenshots saved outside the project.
 
-Select **Browse...** to pick a folder. A folder inside the project is stored relative to it, and one outside it is stored as an absolute path.
+To choose a folder, select **Browse...**. If the folder is inside the project, Unity stores it as a relative path. If the folder is outside the project, Unity stores it as an absolute path.
 
-The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Assets`. It is outside `Assets`, so captures are never imported and are not part of a build, and it survives deleting `Library`, so captures stay until you delete them. It is not covered by Unity's own `.gitignore`, so add it to yours if you do not want captures in source control.
+The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Assets`. It is outside `Assets`, so Unity doesn't import captures or include them in a build. Deleting the `Library` folder doesn't remove the captures folder. Captures in this folder remain until you delete them. Unity's own `.gitignore` file doesn't cover the captures folder. If you don't want captures in source control, add the captures folder to your own `.gitignore` file.
 
-Changing the folder takes effect immediately. Captures already written stay where they are, and the [Capture list](screen-capture-window-reference.md#capture-list) shows what is in the new folder.
+Changing the folder takes effect immediately. Unity doesn't move existing captures to the new folder: they stay in the old folder, and the [Capture list](screen-capture-window-reference.md#capture-list) displays only the captures in the new folder. To keep using earlier captures, move them to the new folder yourself, together with their `.json` files.
 
 ### Live Stream
 
