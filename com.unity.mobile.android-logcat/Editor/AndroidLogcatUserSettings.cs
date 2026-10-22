@@ -29,7 +29,7 @@ namespace Unity.Android.Logcat
         {
             /// <summary>Width of the saved screenshot list, left of the splitter.</summary>
             [SerializeField]
-            internal float ScreenshotListWidth;
+            internal float CaptureListWidth;
             [SerializeField]
             private string m_LastSaveLocation;
 
@@ -338,7 +338,7 @@ namespace Unity.Android.Logcat
         {
             m_ScreenCaptureSettings = new ScreenCaptureSettings
             {
-                ScreenshotListWidth = AndroidLogcatScreenshotList.kDefaultWidth
+                CaptureListWidth = AndroidLogcatCaptureList.kDefaultWidth
             };
         }
 

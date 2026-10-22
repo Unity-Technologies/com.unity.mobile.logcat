@@ -11,6 +11,18 @@ using Unity.Android.Logcat;
 class AndroidLogcatGeneralTests
 {
     /// <summary>
+    /// A captures folder of the calling test's own. The configured one belongs to
+    /// whoever is running the tests, and holds their captures.
+    /// </summary>
+    static string CreateCapturesFolder()
+    {
+        var directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+            "AndroidLogcatTests", Guid.NewGuid().ToString("N")).Replace("\\", "/");
+        System.IO.Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    /// <summary>
     /// The screenshots folder is an ordinary directory, so files can appear in it or
     /// change without the Editor having done anything, and a cached listing cannot
     /// notice by itself. This is the API underneath the Screen Capture window's
@@ -30,11 +42,8 @@ class AndroidLogcatGeneralTests
             // Built directly rather than taken from the runtime: the test runtime has
             // no screen capture service, and the two calls used here only read the
             // directory - nothing is queued, so nothing needs a device or a dispatcher.
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
-
-            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-            System.IO.Directory.CreateDirectory(directory);
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
 
             var first = System.IO.Path.Combine(directory, "unittest-device_1.png").Replace("\\", "/");
             var second = System.IO.Path.Combine(directory, "unittest-device_2.png").Replace("\\", "/");
@@ -68,15 +77,48 @@ class AndroidLogcatGeneralTests
             }
             finally
             {
-                foreach (var path in new[] { first, second })
-                {
-                    if (System.IO.File.Exists(path))
-                        System.IO.File.Delete(path);
-                }
+                System.IO.Directory.Delete(directory, true);
             }
         }
         finally
         {
+            runtime.Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// A capture reserves its name before the file exists, so that a second one queued
+    /// behind it cannot take the same number. Changing the captures folder while one is
+    /// in flight must not carry that reservation into the new folder's listing.
+    /// </summary>
+    [Test]
+    public void AReservationIsListedOnlyInTheFolderItWasMadeIn()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        var first = CreateCapturesFolder();
+        var second = CreateCapturesFolder();
+        try
+        {
+            var directory = first;
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+            var device = new AndroidLogcatFakeDevice90("unittest-device");
+
+            var reserved = captureScreenshot.AllocateImagePath(device);
+            StringAssert.StartsWith(first, reserved, "The reservation belongs to the folder in use");
+            Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
+                "A capture in flight is listed, so the next one cannot reuse its number");
+
+            // As changing the setting does, which rescans on the next listing.
+            directory = second;
+
+            Assert.IsFalse(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
+                "A reservation made in another folder has nothing to do with this one");
+        }
+        finally
+        {
+            System.IO.Directory.Delete(first, true);
+            System.IO.Directory.Delete(second, true);
             runtime.Shutdown();
         }
     }
@@ -93,11 +135,8 @@ class AndroidLogcatGeneralTests
         runtime.Initialize();
         try
         {
-            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime,
-                () => AndroidLogcatUtilities.GetCapturesDirectory(), true);
-
-            var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-            System.IO.Directory.CreateDirectory(directory);
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
 
             var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
             var taken = System.IO.Path.Combine(directory, "unittest-rename-taken.json").Replace("\\", "/");
@@ -122,11 +161,7 @@ class AndroidLogcatGeneralTests
             }
             finally
             {
-                foreach (var path in new[] { image, taken, renamed })
-                {
-                    if (System.IO.File.Exists(path))
-                        System.IO.File.Delete(path);
-                }
+                System.IO.Directory.Delete(directory, true);
             }
         }
         finally
@@ -266,7 +301,7 @@ class AndroidLogcatGeneralTests
     [Test]
     public void ProjectRelativePathTests()
     {
-        const string screenshot = "Library/AndroidLogcat/Screenshots/device_1.png";
+        const string screenshot = "AndroidLogcat/Captures/device_1.png";
 
         // Windows, where paths come in with backslashes and in whatever case the caller
         // happened to use - hence the case insensitive comparison in the function.
@@ -275,10 +310,10 @@ class AndroidLogcatGeneralTests
             AndroidLogcatUtilities.ProjectRelativePath(windows + "/" + screenshot, windows));
         StringAssert.AreEqualIgnoringCase(screenshot,
             AndroidLogcatUtilities.ProjectRelativePath(
-                @"C:\Users\tomas\Projects\MyProject\Library\AndroidLogcat\Screenshots\device_1.png", windows));
+                @"C:\Users\tomas\Projects\MyProject\AndroidLogcat\Captures\device_1.png", windows));
         StringAssert.AreEqualIgnoringCase(screenshot,
             AndroidLogcatUtilities.ProjectRelativePath(
-                @"c:\users\tomas\projects\myproject\Library\AndroidLogcat\Screenshots\device_1.png", windows));
+                @"c:\users\tomas\projects\myproject\AndroidLogcat\Captures\device_1.png", windows));
 
         // macOS, and Linux with it: rooted at / with no drive, and project folders with
         // spaces in them are the norm rather than the exception.
@@ -364,8 +399,7 @@ class AndroidLogcatGeneralTests
     [Test]
     public void ScreenshotInfoRoundTripsAndFollowsTheImage()
     {
-        var directory = AndroidLogcatUtilities.GetCapturesDirectory();
-        System.IO.Directory.CreateDirectory(directory);
+        var directory = CreateCapturesFolder();
 
         var image = System.IO.Path.Combine(directory, "unittest-info_1.png").Replace("\\", "/");
         var renamed = System.IO.Path.Combine(directory, "unittest-info-renamed.png").Replace("\\", "/");
@@ -426,9 +460,7 @@ class AndroidLogcatGeneralTests
         }
         finally
         {
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(image));
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(renamed));
-            System.IO.File.Delete(AndroidLogcatScreenshotInfo.PathFor(foreign));
+            System.IO.Directory.Delete(directory, true);
         }
     }
 

@@ -5,10 +5,12 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine.UIElements;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal static class AndroidLogcatUtilities
     {
         internal static readonly string kAbiArm64 = "arm64-v8a";
@@ -119,16 +121,7 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return;
 
-            switch (Application.platform)
-            {
-                case RuntimePlatform.OSXEditor:
-                    // Application.OpenURL on a plain path does nothing useful on macOS.
-                    System.Diagnostics.Process.Start("open", path);
-                    break;
-                default:
-                    Application.OpenURL(path);
-                    break;
-            }
+            UnityEditor.EditorUtility.OpenWithDefaultApp(path);
         }
 
         /// <summary>
@@ -200,9 +193,34 @@ namespace Unity.Android.Logcat
         public static string GetCapturesDirectory(AndroidLogcatSettings settings = null)
         {
             var configured = settings != null ? settings.CaptureOutputDirectory : null;
+            return TryResolveCapturesDirectory(configured, out var resolved)
+                ? resolved
+                : ResolveCapturesDirectory(AndroidLogcatSettings.kDefaultCaptureOutputDirectory);
+        }
+
+        /// <summary>
+        /// Where a configured captures folder resolves to, or false when it resolves
+        /// nowhere. The setting is free text, and this runs from OnGUI.
+        /// </summary>
+        public static bool TryResolveCapturesDirectory(string configured, out string resolved)
+        {
             if (string.IsNullOrEmpty(configured))
                 configured = AndroidLogcatSettings.kDefaultCaptureOutputDirectory;
 
+            try
+            {
+                resolved = ResolveCapturesDirectory(configured);
+                return true;
+            }
+            catch (Exception)
+            {
+                resolved = null;
+                return false;
+            }
+        }
+
+        static string ResolveCapturesDirectory(string configured)
+        {
             var path = Path.IsPathRooted(configured)
                 ? configured
                 : Path.Combine(ProjectDirectory(), configured);
@@ -297,22 +315,6 @@ namespace Unity.Android.Logcat
         const int kGradleProgressUpdateMs = 200;
 
         /// <summary>
-        /// Runs a Gradle task in a project directory and says whether it succeeded,
-        /// logging its output either way.
-        /// <para>
-        /// The JDK and SDK come from Unity's own External Tools settings rather than
-        /// from the environment: the Editor may not have inherited a shell environment
-        /// at all, the one it did inherit is not necessarily the one this build wants,
-        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
-        /// is run through <c>sh</c> off Windows, so that this does not depend on its
-        /// executable bit, which is invisible to anyone working from Windows.
-        /// </para>
-        /// <para>
-        /// Blocking, behind a progress bar. This is a developer action - there is no
-        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
-        /// </para>
-        /// </summary>
-        /// <summary>
         /// Kills a process and whatever it started. Gradle runs behind a launcher
         /// script and does its work in a daemon, so killing only the process we started
         /// leaves the build running.
@@ -344,6 +346,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Runs a Gradle task in a project directory and says whether it succeeded,
+        /// logging its output either way.
+        /// <para>
+        /// The JDK and SDK come from Unity's own External Tools settings rather than
+        /// from the environment: the Editor may not have inherited a shell environment
+        /// at all, the one it did inherit is not necessarily the one this build wants,
+        /// and a user who pointed Unity at their own SDK or JDK means it. The wrapper
+        /// is run through <c>sh</c> off Windows, so that this does not depend on its
+        /// executable bit, which is invisible to anyone working from Windows.
+        /// </para>
+        /// <para>
+        /// Blocking, behind a progress bar. This is a developer action - there is no
+        /// hot path here - and a Gradle build wants the Editor to sit still anyway.
+        /// </para>
+        /// </summary>
         internal static bool RunGradle(string projectDirectory, string task)
         {
             if (string.IsNullOrEmpty(projectDirectory) || !Directory.Exists(projectDirectory))
@@ -719,9 +737,137 @@ namespace Unity.Android.Logcat
                     }
 
                     throw new Exception(string.Format("Failed to launch Terminal app, tried following paths:\n{0}", string.Join("\n", pathsToCheck)));
+                case RuntimePlatform.LinuxEditor:
+                    OpenLinuxTerminal(workingDirectory);
+                    break;
                 default:
                     throw new Exception("Don't know how to open terminal on " + Application.platform.ToString());
             }
+        }
+
+        private static void OpenLinuxTerminal(string workingDirectory)
+        {
+            // Terminal command lines, including the arguments used to set the working directory where supported.
+            // Terminals without such arguments inherit the working directory from ProcessStartInfo.
+            // Arguments are passed via ArgumentList, so paths containing spaces or quotes are preserved.
+            var terminals = new List<string[]>();
+
+            var userTerminal = SplitCommandLine(Environment.GetEnvironmentVariable("TERMINAL"));
+            if (userTerminal.Length > 0)
+                terminals.Add(userTerminal);
+
+            terminals.Add(new[] { "x-terminal-emulator" });
+            terminals.Add(new[] { "gnome-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "konsole", "--workdir", workingDirectory });
+            terminals.Add(new[] { "xfce4-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "mate-terminal", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "tilix", "--working-directory=" + workingDirectory });
+            terminals.Add(new[] { "alacritty", "--working-directory", workingDirectory });
+            terminals.Add(new[] { "kitty", "--directory", workingDirectory });
+            terminals.Add(new[] { "xterm" });
+
+            foreach (var terminal in terminals)
+            {
+                var path = FindExecutableInPath(terminal[0]);
+                if (path == null)
+                    continue;
+
+                var startInfo = new System.Diagnostics.ProcessStartInfo(path)
+                {
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = false
+                };
+                foreach (var arg in terminal.Skip(1))
+                    startInfo.ArgumentList.Add(arg);
+
+                System.Diagnostics.Process.Start(startInfo);
+                return;
+            }
+
+            throw new Exception(string.Format("Failed to launch terminal, tried following terminals:\n{0}", string.Join("\n", terminals.Select(t => t[0]))));
+        }
+
+        /// <summary>
+        /// Splits a command line like 'wezterm start' or '"/opt/my term/bin/term" -e' into executable and arguments, without invoking a shell.
+        /// Supports single quotes, double quotes and backslash escapes.
+        /// </summary>
+        internal static string[] SplitCommandLine(string commandLine)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(commandLine))
+                return result.ToArray();
+
+            var current = new System.Text.StringBuilder();
+            var hasToken = false;
+            char quote = '\0';
+            for (int i = 0; i < commandLine.Length; i++)
+            {
+                var c = commandLine[i];
+                if (quote == '\'')
+                {
+                    if (c == '\'')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\\' && i + 1 < commandLine.Length)
+                {
+                    current.Append(commandLine[++i]);
+                    hasToken = true;
+                }
+                else if (quote == '"')
+                {
+                    if (c == '"')
+                        quote = '\0';
+                    else
+                        current.Append(c);
+                }
+                else if (c == '\'' || c == '"')
+                {
+                    quote = c;
+                    hasToken = true;
+                }
+                else if (char.IsWhiteSpace(c))
+                {
+                    if (hasToken)
+                    {
+                        result.Add(current.ToString());
+                        current.Clear();
+                        hasToken = false;
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                    hasToken = true;
+                }
+            }
+
+            if (hasToken)
+                result.Add(current.ToString());
+
+            return result.ToArray();
+        }
+
+        private static string FindExecutableInPath(string executable)
+        {
+            if (Path.IsPathRooted(executable))
+                return File.Exists(executable) ? executable : null;
+
+            var paths = Environment.GetEnvironmentVariable("PATH");
+            if (string.IsNullOrEmpty(paths))
+                return null;
+
+            foreach (var dir in paths.Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrEmpty(dir))
+                    continue;
+                var fullPath = Path.Combine(dir, executable);
+                if (File.Exists(fullPath))
+                    return fullPath;
+            }
+
+            return null;
         }
 
         public static Version ParseVersionLegacy(string versionString)

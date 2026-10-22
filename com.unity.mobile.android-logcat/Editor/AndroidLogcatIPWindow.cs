@@ -6,7 +6,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatIPWindow : EditorWindow
     {
-        internal static Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
+        internal static readonly Regex kIPRegex = new Regex(@"src\s+(?<ip>\d+\.\d+\.\d+\.\d+)");
         private AndroidLogcatRuntimeBase m_Runtime;
         internal string m_IpString;
         internal string m_PortString;

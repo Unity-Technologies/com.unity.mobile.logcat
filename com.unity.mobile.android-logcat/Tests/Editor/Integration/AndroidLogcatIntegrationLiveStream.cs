@@ -282,16 +282,28 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
         Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
 
         // Frames only say the screen moved. This says the characters arrived, and
-        // arrived as typed - uiautomator will not dump while the window is still
-        // animating, hence the retries.
-        var contents = string.Empty;
-        for (var attempt = 0; attempt < 3 && !contents.Contains(typed); attempt++)
-        {
-            if (attempt > 0)
-                yield return WaitFor(1.0, "Waiting for the search field to settle");
-            contents = DumpWindowContents();
-        }
-        StringAssert.Contains(typed, contents, "Expected the injected text in the focused field");
+        // arrived as typed.
+        yield return WaitForWindowContents(typed);
+        StringAssert.Contains(typed, m_WindowContents,
+            "Expected the injected text in the focused field");
+
+        // A character the device's keyboard cannot produce - no stock layout has a dead
+        // key for an ogonek - must cost only itself. The server retries text character
+        // by character for exactly this reason: one of these used to take the whole
+        // message with it, everything typable in it included.
+        var mixed = "unity" + UnityEngine.Random.Range(1000, 10000);
+        framesBefore = Runtime.LiveStream.FramesReceived;
+        Runtime.LiveStream.SendText("\u0105" + mixed);
+
+        yield return WaitForMoreFrames("Waiting for the screen to react to the mixed text",
+            framesBefore, 2);
+        Assert.AreEqual(string.Empty, Runtime.LiveStream.Errors);
+
+        // Passes either way: a layout that can type the ogonek puts it in front, and the
+        // typable part has to arrive regardless.
+        yield return WaitForWindowContents(mixed);
+        StringAssert.Contains(mixed, m_WindowContents,
+            "Expected the typable part of the text to arrive, with only the rest dropped");
 
         ReportArtifact("after-keys.png", Runtime.LiveStream.Texture);
 
@@ -394,6 +406,29 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
             kDefaultTimeout,
             () => $"Frames before {framesBefore}, now {Runtime.LiveStream.FramesReceived}. " +
                 $"{Runtime.LiveStream.Errors}");
+    }
+
+    /// <summary>
+    /// What the last <see cref="WaitForWindowContents"/> dumped. A field because a
+    /// coroutine cannot hand anything back.
+    /// </summary>
+    private string m_WindowContents = string.Empty;
+
+    /// <summary>
+    /// Dumps the device's windows until <paramref name="expected"/> shows up in them,
+    /// or three attempts have gone by. uiautomator will not dump while a window is
+    /// still animating, and a field that was just typed into may not have redrawn yet,
+    /// hence the retries.
+    /// </summary>
+    private IEnumerator WaitForWindowContents(string expected)
+    {
+        m_WindowContents = string.Empty;
+        for (var attempt = 0; attempt < 3 && !m_WindowContents.Contains(expected); attempt++)
+        {
+            if (attempt > 0)
+                yield return WaitFor(1.0, "Waiting for the search field to settle");
+            m_WindowContents = DumpWindowContents();
+        }
     }
 
     /// <summary>What the device's windows hold right now, as uiautomator's xml.</summary>

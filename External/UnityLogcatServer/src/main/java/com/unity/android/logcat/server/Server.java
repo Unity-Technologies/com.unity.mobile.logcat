@@ -83,6 +83,7 @@ public final class Server {
         ScreenStreamer streamer = null;
         try {
             socket = accept(serverSocket, options.getConnectTimeoutMs());
+            rejectUnlessAdb(socket);
             Logger.d("Client connected");
 
             Protocol protocol = new Protocol(socket.getOutputStream());
@@ -120,6 +121,20 @@ public final class Server {
                 streamer.close();
             }
             closeQuietly(serverSocket);
+        }
+    }
+
+    /**
+     * An abstract socket carries no filesystem permissions, so anything running on the
+     * device can reach it - and a client of this one gets the screen and the ability to
+     * inject input. Only adb's forwarded connections are meant to: adbd runs as
+     * {@code shell}, or as root on a userdebug build, while an app always has a uid of
+     * its own from 10000 up.
+     */
+    private static void rejectUnlessAdb(LocalSocket socket) throws IOException {
+        int uid = socket.getPeerCredentials().getUid();
+        if (uid != android.os.Process.ROOT_UID && uid != android.os.Process.SHELL_UID) {
+            throw new IOException("Rejected a connection from uid " + uid + ", only adb may connect");
         }
     }
 

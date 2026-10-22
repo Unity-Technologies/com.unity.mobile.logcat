@@ -14,7 +14,7 @@
     * [Capture a screenshot](screen-capture-screenshot.md)
     * [Capture a video](screen-capture-video.md)
     * [View the device screen live](screen-capture-live-stream.md)
-  * [Stacktace Utility](stacktrace-utility.md)
+  * [Stacktrace Utility](stacktrace-utility.md)
     * [Stacktrace Utility window reference](stacktrace-utility-window-reference.md)
     * [Set up Stacktrace Utility](stacktrace-utility-set-up.md)
     * [Resolve a stacktrace](stacktrace-utility-resolve.md) 

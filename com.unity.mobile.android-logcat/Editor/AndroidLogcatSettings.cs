@@ -12,10 +12,10 @@ namespace Unity.Android.Logcat
         // This will force settings to be reset
         private const int kVersion = 1;
 
-        internal static string kSettingsName = "AndroidLogcatSettings" + kVersion;
+        internal static readonly string kSettingsName = "AndroidLogcatSettings" + kVersion;
 
         // Since querying memory from device is a lengthy operation, here's a cap 500 ms, setting it too low  will make memory request to be delayed
-        internal static int kMinMemoryRequestIntervalMS = 500;
+        internal const int kMinMemoryRequestIntervalMS = 500;
 
         // Live stream settings, as default/min/max. The server accepts wider values than
         // these, but a stream is only as useful as the link can carry and every frame is
@@ -28,7 +28,7 @@ namespace Unity.Android.Logcat
         // Where captures go unless told otherwise, relative to the project. Library is
         // local to the machine and outside any build, which suits output that is cheap
         // to produce again.
-        internal const string kDefaultCaptureOutputDirectory = "Library/AndroidLogcat/Screenshots";
+        internal const string kDefaultCaptureOutputDirectory = "AndroidLogcat/Captures";
 
         internal static readonly string[] kAddressResolveRegex =
         {
@@ -172,10 +172,6 @@ namespace Unity.Android.Logcat
                 return m_MaxExitedPackagesToShow;
             }
         }
-        /// <summary>
-        /// Longest side of the live stream, in pixels. The device display is scaled down
-        /// to fit, which is what keeps the bandwidth and the encoding cost down.
-        /// </summary>
         /// <summary>
         /// Where screenshots, and later videos, are written. A relative path starts at
         /// the project folder; empty falls back to

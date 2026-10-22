@@ -242,10 +242,28 @@ Scroll, 9 bytes:
 
 Keys and text are separate on purpose. A named key - Back, Enter, an arrow - has no
 character to type and goes as a keycode. Typed characters go as text and are turned
-into key events on the device by `KeyCharacterMap`, which is what makes punctuation,
-shifted characters and non-US layouts work: the Editor sends the character the user
-actually produced and the device works out which keystrokes would produce it, rather
-than the Editor trying to model every layout.
+into key events on the device by `KeyCharacterMap`: the Editor sends the character the
+user actually produced and the device works out which keystrokes would produce it,
+rather than the Editor trying to model every layout.
+
+How far that reaches is the device's keyboard layout's decision, and it is worth
+knowing where the edge is. ASCII, punctuation and shifted characters included, is typed
+directly. An accented character is typed the way a keyboard with dead keys types it, as
+the accent followed by the base letter; the pair comes from the character's canonical
+Unicode decomposition, and the accent is sent in its combining form, U+0301 rather than
+U+00B4, because that is what a dead key produces.
+
+That only works for the accents the layout actually has a dead key for. A Pixel's
+`Virtual.kcm` has five, all on Alt: grave, acute, circumflex, tilde and diaeresis. So
+`a` with an acute accent types, while a caron or an ogonek - and therefore most of
+Lithuanian, Czech or Polish - does not, and neither does anything outside the Latin
+script. `adb shell input text` fails on the same characters for the same reason; this
+is the keyboard layout's limit, not the server's.
+
+`getEvents` refuses the whole array when a single character is unavailable, so text is
+retried character by character: everything typable arrives and only the characters that
+cannot be typed are dropped, named together in one warning. Typing those would need the
+device's clipboard instead of its keyboard.
 
 A scroll carries a position because that is what decides which view receives it,
 and its magnitude is fixed point so that a trackpad's fractions survive without

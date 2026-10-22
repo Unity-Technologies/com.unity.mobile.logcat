@@ -35,17 +35,16 @@ class AndroidLogcatNetTests
     {
         var logcatAssembly = GetLogcatAssembly();
 
+        static bool IsFrameworkReference(string name) =>
+            name == "mscorlib" || name == "netstandard" || name == "System" || name.StartsWith("System.", StringComparison.Ordinal);
+
         var expectedReferences = new List<string>(new[]
         {
-            "mscorlib",
-            "System",
-            "System.Xml.Linq",
             "UnityEngine.IMGUIModule",
             "UnityEngine.CoreModule",
             "UnityEngine.VideoModule",
             "UnityEngine.TextRenderingModule",
             "UnityEngine.UIElementsModule",
-            "System.Core",
             "UnityEngine.ImageConversionModule",
             "UnityEngine.JSONSerializeModule",
             "UnityEditor.CoreModule"
@@ -62,11 +61,16 @@ class AndroidLogcatNetTests
             });
         };
 #endif
-
-#if UNITY_7000_0_OR_NEWER
+#if UNITY_6000_5_OR_NEWER
         expectedReferences.AddRange(new[]
         {
-            "Unity.Scripting",
+            "Unity.Scripting"
+        });
+#endif
+
+#if UNITY_6000_7_OR_NEWER
+        expectedReferences.AddRange(new[]
+        {
             "UnityEngine.ScriptingModule",
             "UnityEngine.UICommonModule",
         });
@@ -79,7 +83,7 @@ class AndroidLogcatNetTests
         var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
         var errors = new StringBuilder();
         Console.WriteLine($"Logcat package references:\n{string.Join("\n", references)}");
-        foreach (var r in references)
+        foreach (var r in references.Where(n => !IsFrameworkReference(n)))
         {
             if (!expectedReferences.Contains(r))
                 errors.AppendLine($"Unexpected reference '{r}'");
@@ -105,13 +109,21 @@ class AndroidLogcatNetTests
     public void ValidateUsingStatements()
     {
         var logcatAssembly = GetLogcatAssembly();
-        var usingStatementRegex = new Regex(@"using\s+(?<RootNamespace>[a-zA-Z]+)\.*\S*;");
+        var usingStatementRegex = new Regex(@"using\s+(?<Namespace>(?<RootNamespace>[a-zA-Z]+)\.*\S*);");
 
-        var expectedNamespaces = new[]
+        // Any namespace under these roots is allowed
+        var expectedRootNamespaces = new[]
         {
             "UnityEditor",
             "UnityEngine",
-            "System"
+            "System",
+        };
+
+        // Only these exact namespaces are allowed
+        var expectedNamespaces = new[]
+        {
+            "Unity.Profiling",
+            "Unity.Scripting.LifecycleManagement",
         };
 
         var errors = new StringBuilder();
@@ -121,10 +133,11 @@ class AndroidLogcatNetTests
             var result = usingStatementRegex.Matches(contents);
             foreach (Match r in result)
             {
-                var namezpace = r.Groups["RootNamespace"].Value;
-                if (!expectedNamespaces.Contains(namezpace))
+                var rootNamespace = r.Groups["RootNamespace"].Value;
+                var namezpace = r.Groups["Namespace"].Value;
+                if (!expectedRootNamespaces.Contains(rootNamespace) && !expectedNamespaces.Contains(namezpace))
                 {
-                    errors.AppendLine($"Unexpected 'using {namezpace}...;' in {file}");
+                    errors.AppendLine($"Unexpected 'using {namezpace};' in {file}");
                 }
             }
         }

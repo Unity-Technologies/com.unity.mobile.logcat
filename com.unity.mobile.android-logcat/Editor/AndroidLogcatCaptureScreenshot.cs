@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Unity.Profiling;
 using UnityEditor;
 using System.IO;
 
@@ -14,6 +15,7 @@ namespace Unity.Android.Logcat
             internal string imagePath;
             internal string deviceId;
             internal IAndroidLogcatDevice device;
+            internal int quarterTurns;
             internal Action onCompleted;
         }
 
@@ -26,6 +28,7 @@ namespace Unity.Android.Logcat
             internal string deviceId;
             internal string error;
             internal AndroidLogcatScreenshotInfo info;
+            internal int quarterTurns;
             internal Action onCompleted;
         }
 
@@ -39,6 +42,8 @@ namespace Unity.Android.Logcat
         private readonly bool m_KeepHistory;
         private Texture2D m_ImageTexture = null;
         private int m_CaptureCount;
+        static readonly ProfilerMarker k_LoadCapture = new ProfilerMarker("AndroidLogcat.LoadCapture");
+
         private string m_Error;
         private Rect m_ScreenshotDrawingRect;
 
@@ -139,8 +144,9 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// Reserves the next free path, <c>&lt;device_id&gt;_&lt;number&gt;.png</c> under
         /// the capture directory, and makes sure it exists - adb pull will not create it.
+        /// <para>Internal rather than private so a test can reserve without a device.</para>
         /// </summary>
-        private string AllocateImagePath(IAndroidLogcatDevice device)
+        internal string AllocateImagePath(IAndroidLogcatDevice device)
         {
             return AllocatePath(device, GetImageExtension());
         }
@@ -249,6 +255,10 @@ namespace Unity.Android.Logcat
             {
                 if (File.Exists(reserved))
                     continue;
+                // A capture queued before the captures folder was changed reserved its
+                // name in the folder of the day, which is not this one.
+                if (!IsIn(directory, reserved))
+                    continue;
 
                 var name = Path.GetFileNameWithoutExtension(reserved);
                 var separator = name.LastIndexOf('_');
@@ -258,6 +268,13 @@ namespace Unity.Android.Logcat
 
             screenshots.Sort(CompareScreenshots);
             return screenshots;
+        }
+
+        static bool IsIn(string directory, string path)
+        {
+            var parent = Path.GetDirectoryName(path);
+            return parent != null && string.Equals(parent.Replace("\\", "/"), directory,
+                StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -287,6 +304,13 @@ namespace Unity.Android.Logcat
         /// <returns>False if the name is unusable or the move failed, which is logged.</returns>
         public bool RenameScreenshot(string path, string newName)
         {
+            return RenameScreenshot(path, newName, out _);
+        }
+
+        /// <param name="renamed">Where the capture ended up, empty when it did not move.</param>
+        public bool RenameScreenshot(string path, string newName, out string renamed)
+        {
+            renamed = string.Empty;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return false;
 
@@ -305,7 +329,10 @@ namespace Unity.Android.Logcat
             var directory = Path.GetDirectoryName(path);
             var target = Path.Combine(directory, newName + GetImageExtension()).Replace("\\", "/");
             if (target == path)
+            {
+                renamed = path;
                 return true;
+            }
 
             if (File.Exists(target))
             {
@@ -342,6 +369,7 @@ namespace Unity.Android.Logcat
             if (m_SelectedImagePath == path)
                 m_SelectedImagePath = target;
 
+            renamed = target;
             return true;
         }
 
@@ -400,19 +428,39 @@ namespace Unity.Android.Logcat
             m_KeepHistory = keepHistory;
         }
 
-        public void QueueScreenCapture(IAndroidLogcatDevice device, Action onCompleted)
+        /// <param name="quarterTurns">
+        /// How far the live view is turning the device's screen, so that the capture
+        /// can be turned to match it. Taken when the capture is asked for rather than
+        /// when it lands, which is what the user was looking at.
+        /// </param>
+        public void QueueScreenCapture(IAndroidLogcatDevice device, Action onCompleted, int quarterTurns = 0)
         {
             if (device == null)
                 return;
+
+            // The folder is a setting, so it may not be usable - reported like any
+            // other capture failure rather than thrown out of the button.
+            string imagePath;
+            try
+            {
+                imagePath = AllocateImagePath(device);
+            }
+            catch (Exception ex)
+            {
+                m_Error = $"Could not use the captures folder '{m_Directory()}'.\n{ex.Message}";
+                onCompleted?.Invoke();
+                return;
+            }
 
             m_Runtime.Dispatcher.Schedule(
                 new AndroidLogcatCaptureScreenCaptureInput()
                 {
                     adb = m_Runtime.Tools.ADB,
                     // Allocated here on the main thread, before the task is scheduled.
-                    imagePath = AllocateImagePath(device),
+                    imagePath = imagePath,
                     deviceId = device.Id,
                     device = device,
+                    quarterTurns = quarterTurns,
                     onCompleted = onCompleted
                 },
                 ExecuteScreenCapture,
@@ -435,8 +483,71 @@ namespace Unity.Android.Logcat
                 // Read here because it asks the device; written on the main thread,
                 // where JsonUtility is safe to call.
                 info = result ? AndroidLogcatScreenshotInfo.Create(i.device) : null,
+                quarterTurns = i.quarterTurns,
                 onCompleted = i.onCompleted
             };
+        }
+
+        /// <summary>Rewrites the file turned, to match what the live view showed.</summary>
+        static bool TurnImageFile(string path, int quarterTurns)
+        {
+            var source = new Texture2D(2, 2);
+            Texture2D turned = null;
+            try
+            {
+                if (!source.LoadImage(File.ReadAllBytes(path)))
+                    return false;
+
+                var pixels = Turn(source.GetPixels32(), source.width, source.height,
+                    quarterTurns, out var width, out var height);
+                turned = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                turned.SetPixels32(pixels);
+                turned.Apply();
+                File.WriteAllBytes(path, turned.EncodeToPNG());
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to turn '{path}': {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+                if (turned != null)
+                    UnityEngine.Object.DestroyImmediate(turned);
+            }
+        }
+
+        /// <summary>
+        /// Turns the pixels counter-clockwise, the way the live view turns the frame.
+        /// GetPixels32 hands out rows from the bottom up, so the turn is worked out in
+        /// top-down coordinates and converted back on the way into the destination.
+        /// </summary>
+        static Color32[] Turn(Color32[] source, int sourceWidth, int sourceHeight,
+            int quarterTurns, out int width, out int height)
+        {
+            var sideways = (quarterTurns & 1) != 0;
+            width = sideways ? sourceHeight : sourceWidth;
+            height = sideways ? sourceWidth : sourceHeight;
+
+            var turned = new Color32[source.Length];
+            for (var row = 0; row < sourceHeight; row++)
+            {
+                for (var x = 0; x < sourceWidth; x++)
+                {
+                    var y = sourceHeight - 1 - row;
+                    int tx, ty;
+                    switch (quarterTurns)
+                    {
+                        case 1: tx = y; ty = sourceWidth - 1 - x; break;
+                        case 2: tx = sourceWidth - 1 - x; ty = sourceHeight - 1 - y; break;
+                        default: tx = sourceHeight - 1 - y; ty = x; break;
+                    }
+                    turned[(height - 1 - ty) * width + tx] = source[row * sourceWidth + x];
+                }
+            }
+            return turned;
         }
 
         static void DeleteQuietly(string path)
@@ -465,6 +576,16 @@ namespace Unity.Android.Logcat
             // never will. Only this one is released - reservations for captures still
             // in flight have to stand, which is why they do not live in the cache.
             m_ReservedPaths.Remove(captureResult.reservedPath);
+
+            // The device captures its display as it is, which is not what the view was
+            // showing if the app in front of it pinned its orientation.
+            if (captureResult.quarterTurns != 0 && !string.IsNullOrEmpty(captureResult.imagePath)
+                && TurnImageFile(captureResult.imagePath, captureResult.quarterTurns)
+                && captureResult.info != null && (captureResult.quarterTurns & 1) != 0)
+            {
+                var info = captureResult.info;
+                (info.displayWidth, info.displayHeight) = (info.displayHeight, info.displayWidth);
+            }
 
             captureResult.info?.Save(captureResult.imagePath);
 
@@ -527,7 +648,11 @@ namespace Unity.Android.Logcat
             var imageData = File.ReadAllBytes(imagePath);
 
             m_ImageTexture = new Texture2D(2, 2);
-            if (!m_ImageTexture.LoadImage(imageData))
+            bool loaded;
+            using (k_LoadCapture.Auto())
+                loaded = m_ImageTexture.LoadImage(imageData);
+
+            if (!loaded)
                 return;
         }
 

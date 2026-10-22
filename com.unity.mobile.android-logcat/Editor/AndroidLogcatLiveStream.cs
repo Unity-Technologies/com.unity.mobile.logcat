@@ -8,7 +8,9 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using Unity.Profiling;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -33,6 +35,7 @@ namespace Unity.Android.Logcat
     /// because Texture2D can only be touched there.
     /// </para>
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatLiveStream
     {
         internal enum Result
@@ -106,11 +109,11 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 1;
+        const int kProtocolVersion = 2;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
-        // ptsUs + width + height + displayWidth + displayHeight + payloadSize
-        const int kFrameHeaderSize = 28;
+        // ptsUs + width + height + displayWidth + displayHeight + rotation + payloadSize
+        const int kFrameHeaderSize = 32;
 
         // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
         // injection, so touch messages will actually do something.
@@ -163,7 +166,7 @@ namespace Unity.Android.Logcat
         static class Styles
         {
             internal static readonly GUIContent DisplaySize = new GUIContent("Display Size",
-                "Resolution of the display being mirrored, as the frames report it. The streamed " +
+                "Resolution of the display being mirrored, as the view is showing it. The streamed " +
                 "image is this scaled down to fit Max Size, so the two rows together say how much " +
                 "detail the stream is giving up.");
             internal static readonly GUIContent StreamSize = new GUIContent("Stream Size",
@@ -184,6 +187,14 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent Home = new GUIContent("●", "Send Home key event");
             internal static readonly GUIContent Recents = new GUIContent("■", "Send Overview key event");
 
+            internal static readonly GUIContent SideButtons = new GUIContent("Side Buttons",
+                "The buttons on the side of the device, which the mirrored screen cannot reach.");
+            internal static readonly GUIContent Power = new GUIContent("Power",
+                "Send Power key event. This turns the screen off, and the frames stop with it " +
+                "until it is pressed again.");
+            internal static readonly GUIContent VolumeUp = new GUIContent("Vol +", "Send Volume Up key event");
+            internal static readonly GUIContent VolumeDown = new GUIContent("Vol -", "Send Volume Down key event");
+
             internal static readonly GUIContent Fold = new GUIContent("Fold",
                 "Hold the device folded, whatever its hinge is doing.");
             internal static readonly GUIContent FoldHalf = new GUIContent("Half",
@@ -202,14 +213,16 @@ namespace Unity.Android.Logcat
                 "two displays are reached from here. Only for devices that fold.");
 
             internal static readonly GUIContent DeviceRotation = new GUIContent("Device Rotation",
-                "Rotate the device itself. Auto hands the rotation back to its accelerometer.");
+                "Rotate the device itself. An app that pins its orientation does not turn with " +
+                "it, and the view turns instead so that the rotation is still visible. Auto " +
+                "hands the rotation back to its accelerometer.");
             internal static readonly GUIContent[] Rotations =
             {
                 new GUIContent("Auto", "Let the device rotate with its accelerometer again"),
-                new GUIContent("0°", "Lock the device to its natural orientation"),
-                new GUIContent("90°", "Lock the device rotated 90°"),
-                new GUIContent("180°", "Lock the device rotated 180°"),
-                new GUIContent("270°", "Lock the device rotated 270°")
+                new GUIContent("0°", "Lock the device to its natural orientation, top edge up"),
+                new GUIContent("90°", "Lock the device a quarter turn counter-clockwise, top edge to the left"),
+                new GUIContent("180°", "Lock the device upside down, top edge down"),
+                new GUIContent("270°", "Lock the device a quarter turn clockwise, top edge to the right")
             };
 
             internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
@@ -317,6 +330,7 @@ namespace Unity.Android.Logcat
         int m_PendingHeight;
         int m_PendingDisplayWidth;
         int m_PendingDisplayHeight;
+        int m_PendingRotation;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -352,11 +366,21 @@ namespace Unity.Android.Logcat
         bool m_ControlWriteFailed;
 
         Texture2D m_Texture;
+        // The frame turned, when the view owes the device a rotation it would not do
+        // itself. Null whenever the frame is shown as it arrived.
+        RenderTexture m_TurnedTexture;
         int m_FrameWidth;
         int m_FrameHeight;
         // What the frames were scaled down from. Zero until the first one arrives.
         int m_DisplayWidth;
         int m_DisplayHeight;
+        // Where the display actually is, and where the user asked it to be. An app
+        // that pins its orientation keeps the first from following the second, and the
+        // gap between them is what the view turns by. Which device was asked is kept
+        // alongside, because the request outlives both the stream and m_Device.
+        int m_DisplayRotation;
+        AndroidDeviceRotation m_RequestedRotation = AndroidDeviceRotation.Auto;
+        string m_RotationDeviceId;
         double m_Fps;
         double m_Mbps;
         DateTime m_StatsTime;
@@ -435,6 +459,8 @@ namespace Unity.Android.Logcat
             int? maxFps = null,
             string displayId = null)
         {
+            using var profilerScope = k_StartStream.Auto();
+
             if (device == null)
                 throw new InvalidOperationException("No device selected");
             if (IsStreaming)
@@ -445,6 +471,14 @@ namespace Unity.Android.Logcat
             lock (m_ServerLog)
                 m_ServerLog.Clear();
             DestroyTexture();
+
+            // A rotation lock outlives the stream on the device, so the view keeps what
+            // was asked of it across a restart. Another device has its own lock.
+            if (m_RotationDeviceId != device.Id)
+            {
+                m_RotationDeviceId = device.Id;
+                m_RequestedRotation = AndroidDeviceRotation.Auto;
+            }
 
             m_Device = device;
             m_OnStopLiveStream = onStopLiveStream;
@@ -464,6 +498,7 @@ namespace Unity.Android.Logcat
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
             m_DisplayHeight = 0;
+            m_DisplayRotation = 0;
             m_Fps = 0;
             m_Mbps = 0;
             m_StatsTime = DateTime.Now;
@@ -493,10 +528,6 @@ namespace Unity.Android.Logcat
                 m_SocketName = "unity_logcat_server_" + sessionId;
                 m_ServerDevicePath = $"{kServerDeviceFolder}/{kServerDeviceNamePrefix}-{sessionId}.jar";
 
-                // Before anything else, because a dark screen produces no frames at all
-                // and the wait for the first one would just time out.
-                device.WakeUp();
-
                 // Before pushing ours, so it cannot sweep away what it is about to push.
                 RemoveStaleServerJars(device);
 
@@ -522,9 +553,14 @@ namespace Unity.Android.Logcat
                     displayId);
                 m_ForwardedPort = SetupPortForward(device, m_SocketName);
 
-                // Connecting is retried until the server has created its socket, so it
-                // happens on the reader thread rather than stalling the main thread.
-                m_ReaderThread = new Thread(() => ReadFrames(session))
+                // Off the main thread: connecting retries until the server's socket
+                // exists, and waking is one more adb round trip. A dark screen produces
+                // no frames, and waking is itself the first one.
+                m_ReaderThread = new Thread(() =>
+                {
+                    device.WakeUp();
+                    ReadFrames(session);
+                })
                 {
                     Name = "AndroidLogcatLiveStream",
                     IsBackground = true
@@ -555,6 +591,8 @@ namespace Unity.Android.Logcat
         /// </summary>
         void Shutdown(Result result)
         {
+            using var profilerScope = k_StopStream.Auto();
+
             var session = m_Session;
             m_Session = null;
             if (session != null)
@@ -566,13 +604,21 @@ namespace Unity.Android.Logcat
             // parked in a read, so the join below does not have to wait it out.
             CloseConnection();
 
-            var thread = m_ReaderThread;
+            // Taken before the fields are cleared: what reaps them runs after this
+            // method has returned, and must not read a field a restart has reused.
+            var reader = m_ReaderThread;
+            var process = m_ServerProcess;
+            var device = m_Device;
+            var port = m_ForwardedPort;
+            var jar = m_ServerDevicePath;
             m_ReaderThread = null;
-            if (thread != null && !thread.Join(TimeSpan.FromSeconds(2)))
-                AndroidLogcatInternalLog.Log("Live stream reader thread did not stop in time");
+            m_ServerProcess = null;
+            m_Device = null;
+            m_ForwardedPort = -1;
+            m_ServerDevicePath = null;
 
-            // With the reader gone, and this being the main thread, nothing can still be
-            // holding a buffer - and once the stream is over they are only memory. A
+            // Safe without the reader joined: it drops what it read once m_Session has
+            // moved on. Once the stream is over the buffers are only memory, and a
             // frame off a big display is worth a couple of MB.
             lock (m_FrameLock)
             {
@@ -581,18 +627,48 @@ namespace Unity.Android.Logcat
                 m_FreeFrameBuffers.Clear();
             }
 
-            KillServerProcess();
-            RemovePortForward();
-            RemoveServerJar();
-
             if (result == Result.Failure)
+            {
+                // The server's last words are the error report, so it is reaped before
+                // the log is read. Nobody is waiting on a stream that already failed.
+                CleanUp(reader, process, device, port, jar);
                 AppendServerLog();
+            }
+            else
+            {
+                CleanUpInBackground(reader, process, device, port, jar);
+            }
 
-            m_Device = null;
             var callback = m_OnStopLiveStream;
             m_OnStopLiveStream = null;
             callback?.Invoke(result);
             StreamChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Reaps the reader, the server and the two things the session left on the
+        /// device. Off the main thread: it costs the best part of a second, none of it
+        /// shows, and the view switch that asked for it should not wait.
+        /// </summary>
+        void CleanUpInBackground(Thread reader, Process process, IAndroidLogcatDevice device,
+            int port, string jarPath)
+        {
+            new Thread(() => CleanUp(reader, process, device, port, jarPath))
+            {
+                Name = "AndroidLogcatLiveStreamCleanup",
+                IsBackground = true
+            }.Start();
+        }
+
+        void CleanUp(Thread reader, Process process, IAndroidLogcatDevice device,
+            int port, string jarPath)
+        {
+            if (reader != null && !reader.Join(TimeSpan.FromSeconds(2)))
+                AndroidLogcatInternalLog.Log("Live stream reader thread did not stop in time");
+
+            KillServerProcess(process);
+            RemovePortForward(device, port);
+            DeleteOnDevice(device, jarPath);
         }
 
         void Update()
@@ -609,7 +685,7 @@ namespace Unity.Android.Logcat
                 ShowServerLogcat();
             }
 
-            ApplyPendingFrame();
+            UpdateStats();
 
             var error = m_ReaderError;
             if (!string.IsNullOrEmpty(error))
@@ -634,14 +710,36 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void ApplyPendingFrame()
+        // Named so they can be found by typing "AndroidLogcat" into the Profiler's
+        // search box. The two lifecycle ones talk to adb and block the main thread,
+        // which is what makes them worth watching alongside the per-frame cost.
+        static readonly ProfilerMarker k_DecodeFrame = new ProfilerMarker("AndroidLogcat.DecodeFrame");
+        static readonly ProfilerMarker k_DrawStream = new ProfilerMarker("AndroidLogcat.DrawLiveStream");
+        static readonly ProfilerMarker k_StartStream = new ProfilerMarker("AndroidLogcat.StartLiveStream");
+        static readonly ProfilerMarker k_StopStream = new ProfilerMarker("AndroidLogcat.StopLiveStream");
+
+        /// <summary>Whether a frame is waiting to be decoded.</summary>
+        internal bool HasPendingFrame
+        {
+            get
+            {
+                lock (m_FrameLock)
+                    return m_PendingFrame != null;
+            }
+        }
+
+        /// <summary>
+        /// Decodes the newest frame the reader has delivered, if there is one. Called
+        /// from the GUI rather than from Update: decoding costs about as much as the
+        /// drawing does, and a window nobody is looking at should pay neither. Frames
+        /// that arrive meanwhile are not queued - the reader keeps only the newest.
+        /// </summary>
+        internal void ApplyPendingFrame()
         {
             byte[] frame;
             int size;
             int width, height;
-            int displayWidth, displayHeight;
-            long bytes;
-            int frames;
+            int displayWidth, displayHeight, rotation;
 
             lock (m_FrameLock)
             {
@@ -653,8 +751,7 @@ namespace Unity.Android.Logcat
                 height = m_PendingHeight;
                 displayWidth = m_PendingDisplayWidth;
                 displayHeight = m_PendingDisplayHeight;
-                bytes = m_ReceivedBytes;
-                frames = m_ReceivedFrames;
+                rotation = m_PendingRotation;
             }
 
             if (frame != null)
@@ -667,15 +764,21 @@ namespace Unity.Android.Logcat
                 // Decoded through a span rather than the byte[] overload, which would
                 // take the whole buffer: a reused buffer is usually larger than the
                 // frame sitting in it.
-                if (ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size)))
+                bool decoded;
+                using (k_DecodeFrame.Auto())
+                    decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+
+                if (decoded)
                 {
                     var resized = m_FrameWidth != width || m_FrameHeight != height
-                        || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight;
+                        || m_DisplayWidth != displayWidth || m_DisplayHeight != displayHeight
+                        || m_DisplayRotation != rotation;
 
                     m_FrameWidth = width;
                     m_FrameHeight = height;
                     m_DisplayWidth = displayWidth;
                     m_DisplayHeight = displayHeight;
+                    m_DisplayRotation = rotation;
 
                     // The first frame counts as a resize, since everything was zero
                     // until it arrived.
@@ -686,6 +789,21 @@ namespace Unity.Android.Logcat
                 // Returned whether or not it decoded - a frame this thread could not
                 // read is still a buffer the reader can fill.
                 ReturnFrameBuffer(frame);
+            }
+        }
+
+        /// <summary>
+        /// Frames per second and bandwidth, which are counted by the reader and are
+        /// worth reporting whether or not anything is drawing them.
+        /// </summary>
+        void UpdateStats()
+        {
+            long bytes;
+            int frames;
+            lock (m_FrameLock)
+            {
+                bytes = m_ReceivedBytes;
+                frames = m_ReceivedFrames;
             }
 
             var now = DateTime.Now;
@@ -901,7 +1019,8 @@ namespace Unity.Android.Logcat
                     var height = ReadInt32BE(header, 12);
                     var displayWidth = ReadInt32BE(header, 16);
                     var displayHeight = ReadInt32BE(header, 20);
-                    var size = ReadInt32BE(header, 24);
+                    var rotation = ReadInt32BE(header, 24);
+                    var size = ReadInt32BE(header, 28);
 
                     if (size <= 0 || size > kMaxFrameSize)
                         throw new IOException($"Frame size {size} is out of range, the stream is out of sync");
@@ -927,6 +1046,7 @@ namespace Unity.Android.Logcat
                         m_PendingHeight = height;
                         m_PendingDisplayWidth = displayWidth;
                         m_PendingDisplayHeight = displayHeight;
+                        m_PendingRotation = rotation;
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }
@@ -1133,10 +1253,8 @@ namespace Unity.Android.Logcat
             }, $"Failed to kill the live stream server (pid {m_ServerPid})");
         }
 
-        void KillServerProcess()
+        static void KillServerProcess(Process process)
         {
-            var process = m_ServerProcess;
-            m_ServerProcess = null;
             if (process == null)
                 return;
 
@@ -1180,18 +1298,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Deletes this session's jar from the device. Unlinking it is safe even if the
-        /// server somehow outlived us - the file stays alive for whoever has it open -
-        /// and skipping it would leave 17 KB behind on the device per stream.
-        /// </summary>
-        void RemoveServerJar()
-        {
-            var path = m_ServerDevicePath;
-            m_ServerDevicePath = null;
-            DeleteOnDevice(m_Device, path);
-        }
-
-        /// <summary>
         /// Deletes files on the device, one path or a glob, and never fails: tidying up
         /// is not worth losing a stream over, and what is left behind if it does fail is
         /// a small file in a temporary folder.
@@ -1229,15 +1335,9 @@ namespace Unity.Android.Logcat
             }
         }
 
-        void RemovePortForward()
+        void RemovePortForward(IAndroidLogcatDevice device, int port)
         {
-            if (m_ForwardedPort <= 0)
-                return;
-
-            var port = m_ForwardedPort;
-            var device = m_Device;
-            m_ForwardedPort = -1;
-            if (device == null)
+            if (port <= 0 || device == null)
                 return;
 
             RunAdbQuietly(new[]
@@ -1292,6 +1392,7 @@ namespace Unity.Android.Logcat
 
         void DestroyTexture()
         {
+            ReleaseTurnedTexture();
             if (m_Texture == null)
                 return;
             UnityEngine.Object.DestroyImmediate(m_Texture);
@@ -1342,6 +1443,18 @@ namespace Unity.Android.Logcat
             // frames would shift control ids between the Layout and Repaint passes and
             // trip "GUI id mismatch" warnings.
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
+
+            // Once per pass, in the event that is for changing state rather than for
+            // drawing, so the image cannot change between measuring and painting it.
+            if (Event.current.type == EventType.Layout)
+                ApplyPendingFrame();
+
+            var showingStream = m_Errors.Length == 0 && selectedDevice != null && m_Texture != null;
+            // A drag that was under way when the stream died has no mouse up coming:
+            // the image that handles one is not drawn any more, so the touch would stay
+            // down and the window would go on holding the mouse.
+            if (m_TouchDown && !showingStream)
+                ReleaseTouch(controlId);
 
             if (m_Errors.Length > 0)
                 DoErrorsGUI(rc, selectedDevice);
@@ -1436,6 +1549,8 @@ namespace Unity.Android.Logcat
         /// <summary>The mirrored screen, with the stats column beside it.</summary>
         void DoStreamGUI(Rect rc, int controlId, Action repaint, IReadOnlyList<CaptureAction> captureActions)
         {
+            using var profilerScope = k_DrawStream.Auto();
+
             AndroidLogcatStatsColumn.DrawBox(rc);
 
             // The info column is reserved before the image is fitted, so that the image
@@ -1444,17 +1559,107 @@ namespace Unity.Android.Logcat
             var imageArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             var aspect = (float)m_Texture.width / m_Texture.height;
+            // A quarter turn swaps which way round the image has to be fitted.
+            if ((ViewQuarterTurns & 1) != 0)
+                aspect = 1f / aspect;
 
             var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
             {
                 HandleTouchInput(controlId, videoRect);
-                GUI.DrawTexture(videoRect, m_Texture);
+                DrawFrame(videoRect);
             }, repaint);
 
             HandleKeyboardInput(controlId);
 
             if (statsWidth > 0)
                 DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
+        }
+
+        /// <summary>
+        /// Quarter turns the view adds on top of what the device is doing, so that
+        /// asking a device to rotate is visible even when the app in front of it
+        /// refuses to. Zero once the device has honoured the request, which is what
+        /// keeps a rotation it accepted from being applied twice.
+        /// </summary>
+        internal int ViewQuarterTurns
+        {
+            get
+            {
+                if (m_RequestedRotation == AndroidDeviceRotation.Auto)
+                    return 0;
+                return (((int)m_RequestedRotation - m_DisplayRotation) % 4 + 4) % 4;
+            }
+        }
+
+        /// <summary>A size the way the view is showing it, which a turn transposes.</summary>
+        string ShownSize(int width, int height)
+        {
+            return (ViewQuarterTurns & 1) != 0 ? $"{height}x{width}" : $"{width}x{height}";
+        }
+
+        /// <summary>
+        /// Draws the frame turned into the box the viewer fitted for it. The texture
+        /// is blitted into that box untransposed and the matrix turns it, which is why
+        /// nothing here has to resample.
+        /// </summary>
+        void DrawFrame(Rect videoRect)
+        {
+            // Nothing below draws outside a repaint, and the turning is not free.
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            var turns = ViewQuarterTurns;
+            GUI.DrawTexture(videoRect, turns == 0 ? (Texture)m_Texture : TurnedFrame(turns));
+        }
+
+        /// <summary>
+        /// The frame turned into a texture of its own.
+        /// <para>
+        /// Turned here rather than by rotating <see cref="GUI.matrix"/> around the
+        /// image, which would cost nothing at all: inside the viewer's scroll view a
+        /// turned matrix is clipped twice, by the view's rect and by that rect turned,
+        /// and a quarter turn of a rectangle leaves only the square where the two
+        /// overlap.
+        /// </para>
+        /// </summary>
+        Texture TurnedFrame(int turns)
+        {
+            var sideways = (turns & 1) != 0;
+            var width = sideways ? m_Texture.height : m_Texture.width;
+            var height = sideways ? m_Texture.width : m_Texture.height;
+
+            if (m_TurnedTexture == null || m_TurnedTexture.width != width || m_TurnedTexture.height != height)
+            {
+                ReleaseTurnedTexture();
+                m_TurnedTexture = new RenderTexture(width, height, 0);
+            }
+
+            var previous = RenderTexture.active;
+            Graphics.SetRenderTarget(m_TurnedTexture);
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, width, height, 0);
+            // Counter-clockwise: one rotation step is the device turned counter-
+            // clockwise, and the image is stuck to the device.
+            var centre = new Vector3(width * 0.5f, height * 0.5f, 0);
+            GL.MultMatrix(Matrix4x4.TRS(centre, Quaternion.Euler(0, 0, turns * -90f), Vector3.one)
+                * Matrix4x4.Translate(-centre));
+            Graphics.DrawTexture(
+                new Rect((width - m_Texture.width) * 0.5f, (height - m_Texture.height) * 0.5f,
+                    m_Texture.width, m_Texture.height),
+                m_Texture);
+            GL.PopMatrix();
+            Graphics.SetRenderTarget(previous);
+
+            return m_TurnedTexture;
+        }
+
+        void ReleaseTurnedTexture()
+        {
+            if (m_TurnedTexture == null)
+                return;
+            m_TurnedTexture.Release();
+            UnityEngine.Object.DestroyImmediate(m_TurnedTexture);
+            m_TurnedTexture = null;
         }
 
         void DoStatsGUI(Rect rc, IReadOnlyList<CaptureAction> captureActions)
@@ -1464,8 +1669,8 @@ namespace Unity.Android.Logcat
 
             // A row reading 0x0 says less than no row at all.
             if (m_DisplayWidth > 0 && m_DisplayHeight > 0)
-                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, $"{m_DisplayWidth}x{m_DisplayHeight}");
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.StreamSize, $"{m_FrameWidth}x{m_FrameHeight}");
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, ShownSize(m_DisplayWidth, m_DisplayHeight));
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.StreamSize, ShownSize(m_FrameWidth, m_FrameHeight));
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FrameRate, $"{m_Fps:0.0} fps");
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Bandwidth, $"{m_Mbps:0.00} Mbps");
             // Listed whether or not it works: without the row there is nothing in the
@@ -1478,10 +1683,38 @@ namespace Unity.Android.Logcat
 
             y += kNavigationSpacing;
             DoNavigationGUI(rc, ref y);
+            DoSideButtonsGUI(rc, ref y);
             DoRotationGUI(rc, ref y);
             DoFoldGUI(rc, ref y);
             DoCaptureActionsGUI(rc, ref y, captureActions);
             DoDebuggingGUI(rc, kLabelWidth, ref y);
+        }
+
+        /// <summary>
+        /// The device's own hardware buttons. Power and volume are not on the screen, so
+        /// a mirrored screen is no way to reach them.
+        /// </summary>
+        void DoSideButtonsGUI(Rect rc, ref float y)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + height * 2 > rc.yMax)
+                return;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.SideButtons, EditorStyles.miniBoldLabel);
+            y += height;
+
+            EditorGUI.BeginDisabledGroup(!CanSendInput);
+
+            var width = Mathf.Floor(ButtonRowWidth(rc) / 3);
+            if (GUI.Button(new Rect(rc.x, y, width, height), Styles.Power, EditorStyles.miniButtonLeft))
+                SendKeyPress(AndroidKeyCode.POWER);
+            if (GUI.Button(new Rect(rc.x + width, y, width, height), Styles.VolumeUp, EditorStyles.miniButtonMid))
+                SendKeyPress(AndroidKeyCode.VOLUME_UP);
+            if (GUI.Button(new Rect(rc.x + width * 2, y, width, height), Styles.VolumeDown, EditorStyles.miniButtonRight))
+                SendKeyPress(AndroidKeyCode.VOLUME_DOWN);
+
+            EditorGUI.EndDisabledGroup();
+            y += height;
         }
 
         /// <summary>
@@ -1661,11 +1894,31 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Hands the fold state back to the hinge. An override set here lasts until it
+        /// is reset or the device reboots, so a closing window drops it.
+        /// </summary>
+        internal void ResetFoldState(IAndroidLogcatDevice device)
+        {
+            if (device == null)
+                return;
+
+            try
+            {
+                device.SetDeviceState(-1);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to reset the device state: {InnermostMessage(ex)}");
+            }
+        }
+
         void SetRotation(AndroidDeviceRotation rotation)
         {
             try
             {
                 m_Device.SetRotation(rotation);
+                m_RequestedRotation = rotation;
             }
             catch (Exception ex)
             {
@@ -1826,12 +2079,23 @@ namespace Unity.Android.Logcat
         /// rejected: a swipe that overshoots the edge of the view should still read as a
         /// swipe to the edge of the screen. GUI y grows downward and so does the device
         /// y, so there is nothing to flip.
+        /// <para>
+        /// The view may be turned, in which case the point is turned back: the device
+        /// knows nothing about how its screen is being shown.
+        /// </para>
         /// </summary>
-        static Vector2 PositionOnScreen(Rect videoRect, Vector2 mousePosition)
+        Vector2 PositionOnScreen(Rect videoRect, Vector2 mousePosition)
         {
-            return new Vector2(
-                Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width),
-                Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height));
+            var x = Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width);
+            var y = Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height);
+
+            switch (ViewQuarterTurns)
+            {
+                case 1: return new Vector2(1f - y, x);
+                case 2: return new Vector2(1f - x, 1f - y);
+                case 3: return new Vector2(y, 1f - x);
+                default: return new Vector2(x, y);
+            }
         }
 
         void SendTouchMessage(TouchAction action, float x, float y)

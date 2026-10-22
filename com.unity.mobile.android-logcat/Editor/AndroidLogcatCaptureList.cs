@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Profiling;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// The list of saved screenshots, with the live stream as its first row, and the
-    /// splitter that separates it from whatever is being shown on the right.
+    /// The captures taken from a device - screenshots, and recordings once there are
+    /// any - with the Live button above them, and the splitter that separates the
+    /// column from whatever is being shown on the right.
     /// <para>
     /// One per window rather than one per runtime: the scroll position, the splitter
     /// width and which row is selected are all view state, while
@@ -16,8 +19,9 @@ namespace Unity.Android.Logcat
     /// and the image itself stay there; this only decides what to look at.
     /// </para>
     /// </summary>
-    internal class AndroidLogcatScreenshotList
+    internal class AndroidLogcatCaptureList
     {
+        [NoAutoStaticsCleanup]
         static class Styles
         {
             internal static readonly GUIContent Live = new GUIContent("Live",
@@ -75,6 +79,8 @@ namespace Unity.Android.Logcat
             }
         }
 
+        static readonly ProfilerMarker k_LoadPreview = new ProfilerMarker("AndroidLogcat.LoadPreview");
+
         internal const float kDefaultWidth = 220;
         const float kMinWidth = 150;
         const float kMaxWidth = 400;
@@ -85,6 +91,9 @@ namespace Unity.Android.Logcat
         const float kIconMargin = 2;
         // Air between the Live button and the captures under it.
         const float kGroupGap = 5;
+        // How long a new capture's row is lit, and how bright it starts.
+        const double kFlashSeconds = 0.6;
+        const float kFlashStrength = 0.6f;
 
         readonly AndroidLogcatRuntimeBase m_Runtime;
         readonly AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
@@ -112,6 +121,13 @@ namespace Unity.Android.Logcat
         int m_KnownCount = -1;
         // Whether the one-off "what should this window open on" decision has been made.
         bool m_InitialSelectionDone;
+
+        // The capture that has just landed, lit until m_FlashUntil. The window is
+        // showing the device rather than the list when one arrives, so the row is what
+        // says where it went.
+        string m_FlashPath;
+        double m_FlashUntil;
+        bool m_FlashNeedsScroll;
 
         // Which row is being renamed, and the text so far. The field is focused once,
         // the frame after it first appears.
@@ -146,7 +162,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool LiveSelected => m_LiveSelected;
 
-        internal AndroidLogcatScreenshotList(AndroidLogcatRuntimeBase runtime, Action repaint)
+        internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime, Action repaint)
         {
             m_Runtime = runtime;
             m_CaptureScreenshot = runtime.CaptureScreenshot;
@@ -156,8 +172,8 @@ namespace Unity.Android.Logcat
             // Settings saved before the width existed deserialize it as 0, which would
             // collapse the list to nothing.
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            if (settings.ScreenshotListWidth < kMinWidth)
-                settings.ScreenshotListWidth = kDefaultWidth;
+            if (settings.CaptureListWidth < kMinWidth)
+                settings.CaptureListWidth = kDefaultWidth;
         }
 
         /// <summary>
@@ -201,6 +217,21 @@ namespace Unity.Android.Logcat
         internal void InvalidatePreview()
         {
             DestroyPreview();
+        }
+
+        /// <summary>
+        /// Lights a row, for a capture that has just been taken. The selection is left
+        /// alone: it was taken from the live view, which is worth staying on.
+        /// </summary>
+        internal void Flash(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            m_FlashPath = path;
+            m_FlashUntil = EditorApplication.timeSinceStartup + kFlashSeconds;
+            m_FlashNeedsScroll = true;
+            m_Repaint();
         }
 
         /// <summary>
@@ -374,7 +405,11 @@ namespace Unity.Android.Logcat
             }
 
             var texture = new Texture2D(2, 2);
-            if (texture.LoadImage(File.ReadAllBytes(path)))
+            bool loaded;
+            using (k_LoadPreview.Auto())
+                loaded = texture.LoadImage(File.ReadAllBytes(path));
+
+            if (loaded)
             {
                 m_PreviewTexture = texture;
                 m_PreviewDetails = new PreviewDetails(texture, new FileInfo(path),
@@ -422,17 +457,32 @@ namespace Unity.Android.Logcat
         internal Rect DoGUI(Rect rc, IAndroidLogcatDevice device)
         {
             var settings = m_Runtime.UserSettings.CaptureSettings;
-            var width = Mathf.Min(settings.ScreenshotListWidth,
+            var width = Mathf.Min(settings.CaptureListWidth,
                 Mathf.Max(0, rc.width - kSplitterWidth - kMinPreviewWidth));
+
+            // The fade runs on a clock, and a clock only moves here if something
+            // repaints. Expired centrally rather than in the row, which is not drawn
+            // at all while it is scrolled out of sight.
+            if (m_FlashPath != null)
+            {
+                if (EditorApplication.timeSinceStartup >= m_FlashUntil)
+                    m_FlashPath = null;
+                else
+                    m_Repaint();
+            }
 
             var listRect = new Rect(rc.x, rc.y, width, rc.height);
             var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
 
             DoColumnGUI(listRect, device);
 
+            // Clamped to the window, so storing it unmoved would shrink a saved width
+            // that this window is too narrow to show.
+            var before = width;
             if (m_Splitter.DoGUI(splitterRect, ref width))
             {
-                settings.ScreenshotListWidth = width;
+                if (!Mathf.Approximately(width, before))
+                    settings.CaptureListWidth = width;
                 m_Repaint();
             }
 
@@ -510,6 +560,15 @@ namespace Unity.Android.Logcat
             var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
             var hasFocus = GUIUtility.keyboardControl == controlId;
 
+            // A row that cannot be seen cannot say anything.
+            if (m_FlashNeedsScroll && m_FlashPath != null)
+            {
+                m_FlashNeedsScroll = false;
+                var flashed = IndexOf(captures, m_FlashPath);
+                if (flashed >= 0)
+                    ScrollIntoView(flashed, rowHeight, inner.height);
+            }
+
             // Acted on after the loop: a menu has to be positioned in window
             // coordinates rather than the scroll view's, and answering it can
             // invalidate the cached list that is being iterated here.
@@ -529,6 +588,12 @@ namespace Unity.Android.Logcat
                     EditorGUI.DrawRect(rowRect, hasFocus
                         ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
                         : new Color(0.30f, 0.30f, 0.30f, 0.85f));
+                }
+
+                if (Event.current.type == EventType.Repaint && path == m_FlashPath)
+                {
+                    var left = (float)((m_FlashUntil - EditorApplication.timeSinceStartup) / kFlashSeconds);
+                    EditorGUI.DrawRect(rowRect, new Color(1, 1, 1, Mathf.Clamp01(left) * kFlashStrength));
                 }
 
                 var iconRect = new Rect(rowRect.x + 4, rowRect.y + (rowRect.height - kIconSize) * 0.5f,
@@ -569,12 +634,22 @@ namespace Unity.Android.Logcat
                     Event.current.Use();
                 }
 
+                // On the press, so the row is drawn selected before the menu opens
+                // over it. Not consumed: the ContextClick is made from this event.
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 1
+                    && rowRect.Contains(Event.current.mousePosition) && path != m_RenamingPath
+                    && !m_Selected.Contains(path))
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    SelectOnly(path, device);
+                }
+
                 if (Event.current.type == EventType.ContextClick
                     && rowRect.Contains(Event.current.mousePosition))
                 {
                     GUIUtility.keyboardControl = controlId;
                     // A click inside the selection acts on the whole of it; one
-                    // outside moves the selection there first, as everywhere else.
+                    // outside moves the selection there first.
                     if (!m_Selected.Contains(path))
                         SelectOnly(path, device);
 
@@ -587,6 +662,15 @@ namespace Unity.Android.Logcat
             }
 
             GUI.EndScrollView();
+
+            // Deselect when clicking on empty space
+            if (Event.current.type == EventType.MouseDown && Event.current.button == 0
+                && inner.Contains(Event.current.mousePosition) && m_RenamingPath == null)
+            {
+                GUIUtility.keyboardControl = controlId;
+                DeselectAll();
+                Event.current.Use();
+            }
 
             HandleKeys(controlId, captures, rowHeight, inner.height, device);
 
@@ -614,6 +698,20 @@ namespace Unity.Android.Logcat
             m_Selected.RemoveWhere(path => IndexOf(captures, path) < 0);
             if (m_SelectionAnchor != null && !m_Selected.Contains(m_SelectionAnchor))
                 m_SelectionAnchor = null;
+        }
+
+        /// <summary>
+        /// Points the selection at a renamed row: it is held by path, and the old one
+        /// would match nothing.
+        /// </summary>
+        void FollowRename(string path, string renamed)
+        {
+            if (string.IsNullOrEmpty(renamed) || !m_Selected.Remove(path))
+                return;
+
+            m_Selected.Add(renamed);
+            if (m_SelectionAnchor == path)
+                m_SelectionAnchor = renamed;
         }
 
         static int IndexOf(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures, string path)
@@ -683,6 +781,18 @@ namespace Unity.Android.Logcat
             m_Selected.Add(path);
             m_SelectionAnchor = path;
             m_CaptureScreenshot.SelectImage(path);
+            m_Repaint();
+        }
+
+        /// <summary>Clears the selection, leaving the Live button where it is.</summary>
+        void DeselectAll()
+        {
+            if (m_Selected.Count == 0)
+                return;
+
+            m_Selected.Clear();
+            m_SelectionAnchor = null;
+            m_CaptureScreenshot.SelectImage(null);
             m_Repaint();
         }
 
@@ -849,7 +959,8 @@ namespace Unity.Android.Logcat
 
             // An unchanged or unusable name is not an error; the row just goes back to
             // showing what it showed before.
-            m_CaptureScreenshot.RenameScreenshot(path, name);
+            if (m_CaptureScreenshot.RenameScreenshot(path, name, out var renamed))
+                FollowRename(path, renamed);
             m_Repaint();
         }
 
@@ -887,13 +998,13 @@ namespace Unity.Android.Logcat
                     BeginRename((string)item.UserData);
                     break;
                 case ScreenshotContextMenu.Delete:
-                {
-                    // Read again rather than carried in the menu item: the menu is
-                    // answered long after it was opened.
-                    var captures = m_CaptureScreenshot.GetScreenshots();
-                    ConfirmAndDelete(captures, SelectedInOrder(captures), m_SelectedDevice);
-                    break;
-                }
+                    {
+                        // Read again rather than carried in the menu item: the menu is
+                        // answered long after it was opened.
+                        var captures = m_CaptureScreenshot.GetScreenshots();
+                        ConfirmAndDelete(captures, SelectedInOrder(captures), m_SelectedDevice);
+                        break;
+                    }
                 case ScreenshotContextMenu.SelectAll:
                     SelectAll(m_CaptureScreenshot.GetScreenshots(), m_SelectedDevice);
                     break;
@@ -1022,23 +1133,22 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            var delta = 0;
-            switch (e.keyCode)
-            {
-                case KeyCode.UpArrow: delta = -1; break;
-                case KeyCode.DownArrow: delta = 1; break;
-                case KeyCode.Home: delta = -captures.Count; break;
-                case KeyCode.End: delta = captures.Count; break;
-                default: return;
-            }
-
             if (captures.Count == 0)
                 return;
 
-            // No selection yet: Down starts at the top, Up at the bottom.
-            var next = selectedRow < 0
-                ? (delta > 0 ? 0 : captures.Count - 1)
-                : Mathf.Clamp(selectedRow + delta, 0, captures.Count - 1);
+            var last = captures.Count - 1;
+            int next;
+            switch (e.keyCode)
+            {
+                // With nothing selected, Down starts at the top and Up at the bottom.
+                case KeyCode.Home: next = 0; break;
+                case KeyCode.End: next = last; break;
+                case KeyCode.UpArrow: next = selectedRow < 0 ? last : selectedRow - 1; break;
+                case KeyCode.DownArrow: next = selectedRow < 0 ? 0 : selectedRow + 1; break;
+                default: return;
+            }
+
+            next = Mathf.Clamp(next, 0, last);
 
             if (next != selectedRow)
             {

@@ -32,12 +32,18 @@ public final class Size {
      * still read as a swipe to the edge of the screen.
      */
     public float pixelX(float normalized) {
-        return clamp01(normalized) * width;
+        return clamp01(normalized) * lastPixel(width);
     }
 
     /** The same down the display. */
     public float pixelY(float normalized) {
-        return clamp01(normalized) * height;
+        return clamp01(normalized) * lastPixel(height);
+    }
+
+    // 1 maps to the last pixel of the display rather than to the first one past it,
+    // which is outside its bounds and would hit nothing.
+    private static int lastPixel(int size) {
+        return size > 0 ? size - 1 : 0;
     }
 
     private static float clamp01(float value) {

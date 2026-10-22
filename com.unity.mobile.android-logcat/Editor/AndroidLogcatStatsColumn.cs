@@ -49,13 +49,15 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// The column's rect, against the image rather than the right edge of the area:
-        /// the image is centred in what is left over, so the gap beside it varies.
+        /// The column's rect: beside the image, because the image is centred in what is
+        /// left over and the gap beside it varies, but as tall as the area rather than
+        /// as tall as the image. A landscape device leaves a short image in a tall
+        /// window, and the rows below the fold would simply not be drawn.
         /// </summary>
         internal static Rect RectBeside(Rect area, Rect imageBox)
         {
-            return new Rect(imageBox.xMax + kMargin, imageBox.y,
-                Mathf.Max(0, area.xMax - imageBox.xMax - kMargin), imageBox.height);
+            return new Rect(imageBox.xMax + kMargin, area.y,
+                Mathf.Max(0, area.xMax - imageBox.xMax - kMargin), area.height);
         }
 
         internal static void Row(Rect rc, float labelWidth, ref float y, GUIContent name, string value,

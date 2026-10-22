@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using System;
 using System.Threading;
 using UnityEngine.Profiling;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatDispatcher
     {
         private class IntegrationTask
