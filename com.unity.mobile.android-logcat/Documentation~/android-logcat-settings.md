@@ -7,6 +7,8 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Message Colors](#message-colors)
 * [Memory Window](#memory-window)
 * [Packages](#packages)
+* [Capture Settings](#capture-settings)
+    * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
 
@@ -47,6 +49,34 @@ Use the **Request Interval ms** setting to specify a time interval to request me
 
 
 Use the **Max Exited Packages** setting to specify the maximum number for the applications selected in the Package Selector that are now closed. This allows you to restrict the number of entries in the Package Selector dropdown for closed applications to prevent overpopulating the dropdown.
+
+## Capture Settings
+
+Use **Captures Folder** to choose where Unity saves screenshots. Unity names each screenshot after the ID of the device that captured it. The note under the field displays the full path of the folder.
+
+The **Captures Folder** setting accepts a relative or an absolute path:
+* A relative path starts at your project folder. The default value `AndroidLogcat/Captures` is a relative path. This path remains valid when you move the project or open it on another computer.
+* An absolute path is used for screenshots saved outside the project.
+
+To choose a folder, select **Browse...**. If the folder is inside the project, Unity stores it as a relative path. If the folder is outside the project, Unity stores it as an absolute path.
+
+The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Assets`. It is outside `Assets`, so Unity doesn't import captures or include them in a build. Deleting the `Library` folder doesn't remove the captures folder. Captures in this folder remain until you delete them. Unity's own `.gitignore` file doesn't cover the captures folder. If you don't want captures in source control, add the captures folder to your own `.gitignore` file.
+
+Changing the folder takes effect immediately. Unity doesn't move existing captures to the new folder: they stay in the old folder, and the [Capture list](screen-capture-window-reference.md#capture-list) displays only the captures in the new folder. To keep using earlier captures, move them to the new folder yourself, together with their `.json` files.
+
+### Live Stream
+
+Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
+
+|**Setting**|**Description**|
+|---|---|
+|**Max Size**|Specifies the longest side of the streamed image in pixels, between 256 and 2048. The device's display is scaled down to fit. The default value is 1024.|
+|**JPEG Quality**|Specifies the quality of each streamed frame, between 1 and 100. Lower values produce smaller frames and use less bandwidth. The default value is 70.|
+|**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 120. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
+
+These settings apply when a stream starts. To apply them to a stream that is already running, turn **Live** off and on again in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list).
+
+Use the **Reset** button in this section to restore the three Live Stream settings without changing any other setting.
 
 ## Stacktrace Regex
 

@@ -122,6 +122,7 @@ class AndroidLogcatNetTests
         // Only these exact namespaces are allowed
         var expectedNamespaces = new[]
         {
+            "Unity.Profiling",
             "Unity.Scripting.LifecycleManagement",
         };
 

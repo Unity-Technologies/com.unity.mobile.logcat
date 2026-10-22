@@ -51,8 +51,8 @@ namespace Unity.Android.Logcat
 
         public const int kStatusBarFontSize = 13;
         public const int kLStatusBarFixedHeight = kStatusBarFontSize + 5;
-        public static readonly GUIStyle statusBarBackground = new GUIStyle("AppToolbar") { fixedHeight = kStatusBarFontSize };
-        public static readonly GUIStyle statusLabel = new GUIStyle("AppToolbar") { fontSize = kStatusBarFontSize, fixedHeight = kLStatusBarFixedHeight, richText = true };
+        public static readonly GUIStyle statusBarBackground = new GUIStyle("toolbar") { fixedHeight = kLStatusBarFixedHeight };
+        public static readonly GUIStyle statusLabel = new GUIStyle("label") { fontSize = kStatusBarFontSize, fixedHeight = kLStatusBarFixedHeight, richText = true };
 
         public const int kTagEntryFontSize = 11;
         public const int kTagEntryFixedHeight = kTagEntryFontSize + 7;
