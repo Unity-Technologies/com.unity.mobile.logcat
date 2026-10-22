@@ -61,11 +61,16 @@ class AndroidLogcatNetTests
             });
         };
 #endif
+#if UNITY_6000_5_OR_NEWER
+        expectedReferences.AddRange(new[]
+        {
+            "Unity.Scripting"
+        });
+#endif
 
 #if UNITY_6000_7_OR_NEWER
         expectedReferences.AddRange(new[]
         {
-            "Unity.Scripting",
             "UnityEngine.ScriptingModule",
             "UnityEngine.UICommonModule",
         });
