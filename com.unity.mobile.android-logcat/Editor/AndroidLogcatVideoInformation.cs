@@ -5,21 +5,141 @@ using System.IO;
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// When each frame of an MP4 recording appears, read from the file itself.
+    /// The frames of a recording as the file has them, and how they line up with what
+    /// VideoPlayer can show. Nothing here plays anything.
     /// <para>
     /// screenrecord only writes a frame when the screen changes, so the gaps between
     /// frames vary from a few milliseconds to seconds. VideoPlayer numbers frames as if
     /// the rate were constant - time times the average rate - so its frame numbers skip
     /// and repeat, and stepping by one of them can land on the same image or jump past
-    /// several. The file's own timing table says where every real frame starts.
+    /// several. The file's own timing table says where every real frame starts, and the
+    /// frame numbers here are indices into it.
     /// </para>
     /// </summary>
-    internal static class AndroidLogcatMp4Timing
+    internal class AndroidLogcatVideoInformation
     {
+        readonly double[] m_FrameTimes;
+
+        // Worked out for one frame rate at a time, which is the player's and does not
+        // change while a video is open.
+        double m_ShowableRate;
+        long[] m_Showable;
+
+        AndroidLogcatVideoInformation(double[] frameTimes)
+        {
+            m_FrameTimes = frameTimes;
+        }
+
+        /// <summary>
+        /// Reads <paramref name="path"/>. Null when the file cannot be read or is not
+        /// laid out as expected - the caller falls back to VideoPlayer's own numbering.
+        /// </summary>
+        internal static AndroidLogcatVideoInformation Load(string path)
+        {
+            var times = ReadFrameTimes(path);
+            return times != null ? new AndroidLogcatVideoInformation(times) : null;
+        }
+
+        internal int FrameCount => m_FrameTimes.Length;
+
+        /// <summary>When <paramref name="frame"/> starts, in seconds. Clamped to the video.</summary>
+        internal double TimeOf(long frame)
+        {
+            return m_FrameTimes[Clamp(frame)];
+        }
+
+        /// <summary>
+        /// The frame whose start is nearest <paramref name="time"/>. VideoPlayer's clock
+        /// is not a frame's own start time: it runs on a constant-rate grid, frame number
+        /// over average rate, and each real frame takes the grid slot its start rounds
+        /// to. Frame 1 of a recording starting at 0.044 s is reported at 0.036 s, before
+        /// it starts - so the nearest frame, not the last one started, is the one shown.
+        /// </summary>
+        internal long FrameAt(double time)
+        {
+            var index = Array.BinarySearch(m_FrameTimes, time);
+            if (index >= 0)
+                return index;
+            var next = ~index;
+            if (next == 0)
+                return 0;
+            if (next >= m_FrameTimes.Length)
+                return m_FrameTimes.Length - 1;
+            return time - m_FrameTimes[next - 1] <= m_FrameTimes[next] - time ? next - 1 : next;
+        }
+
+        /// <summary>
+        /// The frames VideoPlayer can show at <paramref name="frameRate"/>, ascending. It
+        /// shows, for each slot of its grid, the frame starting nearest it - so two frames
+        /// closer together than one slot share it, and only one of them is ever on screen.
+        /// Back to back screen changes are common: about one frame in ten, on a typical
+        /// recording. Null until the rate is known.
+        /// </summary>
+        internal long[] Showable(double frameRate)
+        {
+            if (frameRate <= 0)
+                return null;
+            if (m_Showable != null && m_ShowableRate == frameRate)
+                return m_Showable;
+
+            var showable = new List<long>();
+            for (var i = 0; i < m_FrameTimes.Length; i++)
+            {
+                var shown = ShownFor(i, frameRate);
+                if (showable.Count == 0 || showable[showable.Count - 1] != shown)
+                    showable.Add(shown);
+            }
+            m_ShowableRate = frameRate;
+            m_Showable = showable.ToArray();
+            return m_Showable;
+        }
+
+        /// <summary>
+        /// The frame the player shows on its way to <paramref name="frame"/>: the frame
+        /// itself, unless it shares a slot with a neighbour that is shown instead. A seek
+        /// is sent there, so that it lands on the frame it says it will.
+        /// </summary>
+        internal long Snap(long frame, double frameRate)
+        {
+            var clamped = Clamp(frame);
+            return frameRate > 0 ? ShownFor(clamped, frameRate) : clamped;
+        }
+
+        /// <summary>
+        /// The next showable frame from <paramref name="from"/> in
+        /// <paramref name="direction"/>, or -1 at that end of the video. Without the rate
+        /// every frame counts as showable.
+        /// </summary>
+        internal long StepFrom(long from, int direction, double frameRate)
+        {
+            var showable = Showable(frameRate);
+            if (showable == null)
+            {
+                var to = from + direction;
+                return to >= 0 && to < m_FrameTimes.Length ? to : -1;
+            }
+
+            var index = Array.BinarySearch(showable, from);
+            var next = index >= 0
+                ? index + direction
+                : direction > 0 ? ~index : ~index - 1;
+            return next >= 0 && next < showable.Length ? showable[next] : -1;
+        }
+
+        long ShownFor(long frame, double frameRate)
+        {
+            return FrameAt(Math.Round(m_FrameTimes[frame] * frameRate) / frameRate);
+        }
+
+        long Clamp(long frame)
+        {
+            return Math.Max(0, Math.Min(m_FrameTimes.Length - 1, frame));
+        }
+
         /// <summary>
         /// The start time of every frame of the first video track, in seconds and in the
         /// order they are shown. Null when the file cannot be read or is not laid out
-        /// as expected - the caller falls back to VideoPlayer's own numbering.
+        /// as expected.
         /// </summary>
         internal static double[] ReadFrameTimes(string path)
         {

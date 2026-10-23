@@ -46,7 +46,7 @@ class AndroidLogcatVideoPlayerTests
     [Test]
     public void FrameTimesAreReadFromTheFile()
     {
-        var times = AndroidLogcatMp4Timing.ReadFrameTimes(VideoPath);
+        var times = AndroidLogcatVideoInformation.ReadFrameTimes(VideoPath);
 
         Assert.IsNotNull(times, "The recording's frame times could not be read.");
         Assert.AreEqual(kFrameCount, times.Length);
@@ -68,13 +68,87 @@ class AndroidLogcatVideoPlayerTests
         try
         {
             File.WriteAllText(path, "This is not a video.");
-            Assert.IsNull(AndroidLogcatMp4Timing.ReadFrameTimes(path));
-            Assert.IsNull(AndroidLogcatMp4Timing.ReadFrameTimes(path + ".missing"));
+            Assert.IsNull(AndroidLogcatVideoInformation.Load(path));
+            Assert.IsNull(AndroidLogcatVideoInformation.Load(path + ".missing"));
         }
         finally
         {
             File.Delete(path);
         }
+    }
+
+    // VideoPlayer's grid for this recording: its frame 1 is reported at 0.036 s.
+    const double kPlayerFrameRate = 1 / 0.036;
+
+    static AndroidLogcatVideoInformation LoadInformation()
+    {
+        var information = AndroidLogcatVideoInformation.Load(VideoPath);
+        Assert.IsNotNull(information, "The recording's frame times could not be read.");
+        return information;
+    }
+
+    [Test]
+    public void FrameAtPicksTheNearestFrame()
+    {
+        var information = LoadInformation();
+
+        // Where VideoPlayer reports frames 1 and 2, which start at 0.044 s and 0.095 s.
+        Assert.AreEqual(1, information.FrameAt(0.036));
+        Assert.AreEqual(2, information.FrameAt(0.108));
+        Assert.AreEqual(0, information.FrameAt(0));
+        Assert.AreEqual(0, information.FrameAt(-1));
+        Assert.AreEqual(kFrameCount - 1, information.FrameAt(1000));
+        for (var i = 0; i < kFrameCount; i++)
+            Assert.AreEqual(i, information.FrameAt(information.TimeOf(i)), $"Frame {i}'s own start time.");
+    }
+
+    [Test]
+    public void StepFromSkipsFramesThatShareASlot()
+    {
+        var information = LoadInformation();
+        var showable = information.Showable(kPlayerFrameRate);
+
+        var gap = -1;
+        for (var i = 0; i + 1 < showable.Length && gap < 0; i++)
+        {
+            if (showable[i + 1] - showable[i] > 1)
+                gap = i;
+        }
+        Assert.GreaterOrEqual(gap, 0, "This recording has frames close enough to share a slot.");
+
+        Assert.AreEqual(showable[gap + 1], information.StepFrom(showable[gap], 1, kPlayerFrameRate));
+        Assert.AreEqual(showable[gap], information.StepFrom(showable[gap + 1], -1, kPlayerFrameRate));
+        Assert.AreEqual(-1, information.StepFrom(showable[0], -1, kPlayerFrameRate));
+        Assert.AreEqual(-1, information.StepFrom(showable[showable.Length - 1], 1, kPlayerFrameRate));
+    }
+
+    [Test]
+    public void SnapLandsOnAShowableFrame()
+    {
+        var information = LoadInformation();
+        var showable = information.Showable(kPlayerFrameRate);
+
+        for (var i = 0; i < kFrameCount; i++)
+        {
+            var snapped = information.Snap(i, kPlayerFrameRate);
+            Assert.That(showable, Has.Member(snapped), $"Frame {i} snapped to {snapped}, which cannot be shown.");
+            Assert.LessOrEqual(Math.Abs(snapped - i), 1, $"Frame {i} snapped further than its neighbour.");
+        }
+        foreach (var frame in showable)
+            Assert.AreEqual(frame, information.Snap(frame, kPlayerFrameRate), "A showable frame snaps to itself.");
+    }
+
+    [Test]
+    public void WithoutTheFrameRateEveryFrameCounts()
+    {
+        var information = LoadInformation();
+
+        Assert.IsNull(information.Showable(0));
+        Assert.AreEqual(10, information.Snap(10, 0));
+        Assert.AreEqual(11, information.StepFrom(10, 1, 0));
+        Assert.AreEqual(9, information.StepFrom(10, -1, 0));
+        Assert.AreEqual(-1, information.StepFrom(0, -1, 0));
+        Assert.AreEqual(-1, information.StepFrom(kFrameCount - 1, 1, 0));
     }
 
     [UnityTest]
@@ -190,7 +264,7 @@ class AndroidLogcatVideoPlayerTests
         foreach (var target in new long[] { 50, 120, 10, 7, 100 })
         {
             // 50 and 10 are each in a slot with a neighbour that is shown in their place.
-            var expected = m_Player.Snap(target);
+            var expected = m_Player.Information.Snap(target, m_Player.FrameRate);
             m_Player.SeekTo(target);
             yield return WaitForPaused($"the seek to {target}");
             Assert.AreEqual(expected, m_Player.Frame, Describe());
@@ -265,7 +339,7 @@ class AndroidLogcatVideoPlayerTests
 
     long[] ShowableFrames()
     {
-        var showable = m_Player.Showable();
+        var showable = m_Player.Information?.Showable(m_Player.FrameRate);
         Assert.IsNotNull(showable, $"The player should know which frames it can show once it is open. {Describe()}");
         return showable;
     }

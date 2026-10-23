@@ -108,14 +108,10 @@ namespace Unity.Android.Logcat
         string m_Path;
         DateTime m_PathWriteTime;
 
-        // When each real frame starts, from the file - see AndroidLogcatMp4Timing.
-        // Frame numbers here are indices into it. Null when the file could not be read,
-        // and then they are VideoPlayer's own, which skip on a recording.
-        double[] m_FrameTimes;
-
-        // The frames VideoPlayer can actually show, ascending - see Showable. Worked out
-        // once the player knows its frame rate. Null before then, or without frame times.
-        long[] m_Showable;
+        // The recording's own frames. Frame numbers here are indices into them. Null
+        // when the file could not be read, and then they are VideoPlayer's own, which
+        // skip and repeat on a recording.
+        AndroidLogcatVideoInformation m_Information;
 
         Vector2 m_HistoryScroll;
 
@@ -272,15 +268,14 @@ namespace Unity.Android.Logcat
             }
 
             m_Player.Stop();
-            m_FrameTimes = null;
-            m_Showable = null;
+            m_Information = null;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
                 SetState(State.Closed, "closed");
                 return;
             }
 
-            m_FrameTimes = AndroidLogcatMp4Timing.ReadFrameTimes(path);
+            m_Information = AndroidLogcatVideoInformation.Load(path);
             m_Player.url = path;
             // There is no seek to wait for, only the first frame.
             SetState(State.PausingOnFrame, $"opened {Path.GetFileName(path)}");
@@ -320,12 +315,17 @@ namespace Unity.Android.Logcat
             ? $"{m_Player.width}x{m_Player.height}"
             : string.Empty;
 
+        internal AndroidLogcatVideoInformation Information => m_Information;
+
+        /// <summary>Zero until the video has opened.</summary>
+        internal double FrameRate => m_Player != null ? m_Player.frameRate : 0;
+
         /// <summary>
         /// Exact from the file when it could be read, otherwise VideoPlayer's estimate,
         /// which is zero until the video has opened.
         /// </summary>
-        internal long FrameCount => m_FrameTimes != null
-            ? m_FrameTimes.Length
+        internal long FrameCount => m_Information != null
+            ? m_Information.FrameCount
             : m_Player != null ? (long)m_Player.frameCount : 0;
 
         /// <summary>The frame on screen, counted from zero.</summary>
@@ -335,28 +335,8 @@ namespace Unity.Android.Logcat
             {
                 if (m_Player == null)
                     return 0;
-                return m_FrameTimes != null ? FrameAt(m_Player.time) : Math.Max(0, m_Player.frame);
+                return m_Information != null ? m_Information.FrameAt(m_Player.time) : Math.Max(0, m_Player.frame);
             }
-        }
-
-        /// <summary>
-        /// The frame whose start is nearest <paramref name="time"/>. VideoPlayer's clock
-        /// is not a frame's own start time: it runs on a constant-rate grid, frame number
-        /// over average rate, and each real frame takes the grid slot its start rounds
-        /// to. Frame 1 of a recording starting at 0.044 s is reported at 0.036 s, before
-        /// it starts - so the nearest frame, not the last one started, is the one shown.
-        /// </summary>
-        long FrameAt(double time)
-        {
-            var index = Array.BinarySearch(m_FrameTimes, time);
-            if (index >= 0)
-                return index;
-            var next = ~index;
-            if (next == 0)
-                return 0;
-            if (next >= m_FrameTimes.Length)
-                return m_FrameTimes.Length - 1;
-            return time - m_FrameTimes[next - 1] <= m_FrameTimes[next] - time ? next - 1 : next;
         }
 
         /// <summary>
@@ -365,8 +345,8 @@ namespace Unity.Android.Logcat
         /// </summary>
         void MoveTo(long frame)
         {
-            if (m_FrameTimes != null)
-                m_Player.time = m_FrameTimes[Math.Max(0, Math.Min(m_FrameTimes.Length - 1, frame))];
+            if (m_Information != null)
+                m_Player.time = m_Information.TimeOf(frame);
             else
                 m_Player.frame = frame;
         }
@@ -387,7 +367,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            var snapped = Snap(frame);
+            var snapped = m_Information != null ? m_Information.Snap(frame, FrameRate) : frame;
             if (snapped != frame)
                 Note($"{frame} shares a slot with {snapped}, which is shown instead");
             frame = snapped;
@@ -431,60 +411,10 @@ namespace Unity.Android.Logcat
         long StepTarget(int direction)
         {
             var from = m_SeekTarget >= 0 ? m_SeekTarget : Frame;
-            var showable = Showable();
-            if (showable == null)
-            {
-                var to = from + direction;
-                return to >= 0 && to < FrameCount ? to : -1;
-            }
-
-            // The next showable frame either way, which is the next frame except where
-            // two of them share a slot.
-            var index = Array.BinarySearch(showable, from);
-            var next = index >= 0
-                ? index + direction
-                : direction > 0 ? ~index : ~index - 1;
-            return next >= 0 && next < showable.Length ? showable[next] : -1;
-        }
-
-        /// <summary>
-        /// The frames VideoPlayer can show. It runs on a constant-rate grid and shows,
-        /// for each slot, the frame starting nearest it - so two frames closer together
-        /// than one slot share it, and only one of them is ever on screen. A recording
-        /// only gets a frame when the screen changes, and back to back changes are
-        /// common: about one frame in ten, on a typical one.
-        /// </summary>
-        internal long[] Showable()
-        {
-            if (m_Showable != null)
-                return m_Showable;
-            if (m_FrameTimes == null || m_Player == null || m_Player.frameRate <= 0)
-                return null;
-
-            var rate = m_Player.frameRate;
-            var showable = new List<long>();
-            for (var i = 0; i < m_FrameTimes.Length; i++)
-            {
-                var shown = FrameAt(Math.Round(m_FrameTimes[i] * rate) / rate);
-                if (showable.Count == 0 || showable[showable.Count - 1] != shown)
-                    showable.Add(shown);
-            }
-            m_Showable = showable.ToArray();
-            return m_Showable;
-        }
-
-        /// <summary>
-        /// The frame the player would show on its way to <paramref name="frame"/>: the
-        /// frame itself, unless it shares a slot with a neighbour that is shown instead.
-        /// A seek is sent there, so that it lands on the frame it says it will.
-        /// </summary>
-        internal long Snap(long frame)
-        {
-            if (Showable() == null)
-                return frame;
-            var rate = m_Player.frameRate;
-            var clamped = Math.Max(0, Math.Min(m_FrameTimes.Length - 1, frame));
-            return FrameAt(Math.Round(m_FrameTimes[clamped] * rate) / rate);
+            if (m_Information != null)
+                return m_Information.StepFrom(from, direction, FrameRate);
+            var to = from + direction;
+            return to >= 0 && to < FrameCount ? to : -1;
         }
 
         /// <summary>
@@ -647,8 +577,10 @@ namespace Unity.Android.Logcat
             var player = m_Player.isPlaying ? "playing" : m_Player.isPaused ? "paused" : "stopped";
             yield return $"Player: {player}, frame {m_Player.frame}, time {m_Player.time:0.000}s";
             yield return $"Shown: {Frame}, resume {m_ResumeFrom}, seek {m_SeekFrom} -> {m_SeekTarget}, " +
-                (m_FrameTimes != null ? $"{m_FrameTimes.Length} frame times" : "no frame times") +
-                (m_Showable != null ? $", {m_Showable.Length} showable at {m_Player.frameRate:0.###} fps" : string.Empty);
+                (m_Information != null ? $"{m_Information.FrameCount} frame times" : "no frame times") +
+                (m_Information?.Showable(FrameRate) is long[] showable
+                    ? $", {showable.Length} showable at {FrameRate:0.###} fps"
+                    : string.Empty);
         }
 
         /// <summary>
@@ -664,12 +596,12 @@ namespace Unity.Android.Logcat
             foreach (var line in DebugStatus())
                 info.AppendLine(line);
 
-            if (m_FrameTimes != null)
+            if (m_Information != null)
             {
                 var shown = Frame;
                 info.Append("Frame times around shown:");
-                for (var i = Math.Max(0, shown - 3); i <= Math.Min(m_FrameTimes.Length - 1, shown + 3); i++)
-                    info.Append($" {i}={m_FrameTimes[i]:0.000}s");
+                for (var i = Math.Max(0, shown - 3); i <= Math.Min(m_Information.FrameCount - 1, shown + 3); i++)
+                    info.Append($" {i}={m_Information.TimeOf(i):0.000}s");
                 info.AppendLine();
             }
 
