@@ -103,6 +103,23 @@ class AndroidLogcatVideoPlayerTests
     }
 
     [Test]
+    public void SlotOfIsVideoPlayersOwnFrameNumber()
+    {
+        var information = LoadInformation();
+
+        // As VideoPlayer reported them: frame 1 in slot 1, frame 2 in slot 3.
+        Assert.AreEqual(0, information.SlotOf(0, kPlayerFrameRate));
+        Assert.AreEqual(1, information.SlotOf(1, kPlayerFrameRate));
+        Assert.AreEqual(3, information.SlotOf(2, kPlayerFrameRate));
+        for (var i = 0; i < kFrameCount; i++)
+        {
+            var slot = information.SlotOf(i, kPlayerFrameRate);
+            Assert.AreEqual(information.Snap(i, kPlayerFrameRate), information.FrameAt(slot / kPlayerFrameRate),
+                $"Slot {slot} should show what frame {i} snaps to.");
+        }
+    }
+
+    [Test]
     public void StepFromSkipsFramesThatShareASlot()
     {
         var information = LoadInformation();
@@ -254,6 +271,16 @@ class AndroidLogcatVideoPlayerTests
         m_Player.Step(1);
         Assert.AreEqual(State.Paused, m_Player.CurrentState, "Stepping forward from the last frame should do nothing.");
         Assert.AreEqual(last, m_Player.Frame);
+
+        // Back from the end, twice: a video paused on its last frame counts as finished,
+        // and the seek has to survive Play starting it over.
+        var showable = ShowableFrames();
+        for (var i = showable.Length - 2; i >= showable.Length - 3; i--)
+        {
+            m_Player.Step(-1);
+            yield return WaitForPaused($"stepping back to {showable[i]}");
+            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+        }
     }
 
     [UnityTest]

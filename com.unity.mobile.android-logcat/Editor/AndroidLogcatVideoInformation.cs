@@ -126,9 +126,19 @@ namespace Unity.Android.Logcat
             return next >= 0 && next < showable.Length ? showable[next] : -1;
         }
 
+        /// <summary>
+        /// VideoPlayer's own frame number for <paramref name="frame"/>: the slot of its
+        /// constant-rate grid that the frame's start rounds to. Seeking there lands on
+        /// it - seeking to the start time instead lands on the slot after.
+        /// </summary>
+        internal long SlotOf(long frame, double frameRate)
+        {
+            return (long)Math.Round(TimeOf(frame) * frameRate);
+        }
+
         long ShownFor(long frame, double frameRate)
         {
-            return FrameAt(Math.Round(m_FrameTimes[frame] * frameRate) / frameRate);
+            return FrameAt(SlotOf(frame, frameRate) / frameRate);
         }
 
         long Clamp(long frame)

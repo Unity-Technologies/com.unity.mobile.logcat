@@ -137,6 +137,7 @@ namespace Unity.Android.Logcat
             m_Player.errorReceived += ErrorReceived;
             m_Player.seekCompleted += SeekCompleted;
             m_Player.frameReady += FrameReady;
+            m_Player.loopPointReached += LoopPointReached;
         }
 
         internal State CurrentState => m_State;
@@ -160,7 +161,12 @@ namespace Unity.Android.Logcat
                 m_SeekFrom = -1;
             }
             if (m_Player != null)
+            {
                 m_Player.sendFrameReadyEvents = state == State.SeekingToPause || state == State.PausingOnFrame;
+                // Only playback loops. Waiting for a frame past the end would otherwise
+                // wrap around and play the whole video again to reach it.
+                m_Player.isLooping = state == State.Playing || state == State.Seeking;
+            }
         }
 
         /// <summary>
@@ -195,12 +201,34 @@ namespace Unity.Android.Logcat
                 case State.Seeking:
                     SetState(State.Playing, "seek landed");
                     break;
-                // Not a reason to pause: the player reports a seek as done before it
-                // has moved, and pausing here keeps the old frame - FrameReady decides.
+                // Done is not always done: the time can still be the old one, and then
+                // FrameReady decides. When it already reads as the target, the frame is
+                // in, and no frame event may follow for it.
                 case State.SeekingToPause:
-                    Note($"seek reported done, time {source.time:0.000}s");
+                    var shown = Frame;
+                    Note($"seek reported done, time {source.time:0.000}s, shown {shown}");
+                    if (m_SeekTarget >= 0 && shown == m_SeekTarget)
+                    {
+                        source.Pause();
+                        SetState(State.Paused, $"seek landed on {shown}");
+                        m_ResumeFrom = shown;
+                    }
                     break;
             }
+        }
+
+        /// <summary>
+        /// Only reached while waiting, when nothing loops: what was being waited for is
+        /// not coming, and the last frame is the nearest there is.
+        /// </summary>
+        private void LoopPointReached(VideoPlayer source)
+        {
+            if (m_State != State.SeekingToPause && m_State != State.PausingOnFrame)
+                return;
+            var last = FrameCount - 1;
+            source.Pause();
+            SetState(State.Paused, $"reached the end, on {last}");
+            m_ResumeFrom = last;
         }
 
         /// <summary>
@@ -342,15 +370,18 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Points the player at a frame: by its start time when the times are known,
-        /// which lands on that frame and no other, or by VideoPlayer's number when not.
+        /// Points the player at a frame: by the slot of its grid the frame sits in, once
+        /// the rate is known; by the frame's start time before then; by VideoPlayer's own
+        /// number without frame times at all.
         /// </summary>
         void MoveTo(long frame)
         {
-            if (m_Information != null)
-                m_Player.time = m_Information.TimeOf(frame);
-            else
+            if (m_Information == null)
                 m_Player.frame = frame;
+            else if (FrameRate > 0)
+                m_Player.frame = m_Information.SlotOf(frame, FrameRate);
+            else
+                m_Player.time = m_Information.TimeOf(frame);
         }
 
         /// <summary>
@@ -390,9 +421,13 @@ namespace Unity.Android.Logcat
                     // Set before Play, which can land the seek straight away.
                     SetState(State.SeekingToPause, $"seek to {frame}");
                     m_SeekTarget = frame;
-                    MoveTo(frame);
+                    // Play first, seek second, as resuming does. A video paused at its
+                    // end counts as finished, and Play starts it over from the beginning
+                    // - dropping a seek made before it. The frames of that restart are
+                    // before the target, and FrameReady lets them pass.
                     if (!m_Player.isPlaying)
                         m_Player.Play();
+                    MoveTo(frame);
                     break;
             }
         }
