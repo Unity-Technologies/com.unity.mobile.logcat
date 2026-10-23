@@ -358,7 +358,8 @@ class AndroidLogcatVideoPlayerTests
 
     IEnumerator Open(string path = null)
     {
-        m_Player = new AndroidLogcatVideoPlayer();
+        // Not the Screen Capture window's, which TearDown would otherwise destroy.
+        m_Player = new AndroidLogcatVideoPlayer(nameof(AndroidLogcatVideoPlayerTests));
         m_Player.Open(path ?? VideoPath);
         Assert.AreEqual(State.PausingOnFrame, m_Player.CurrentState);
         yield return WaitForPaused("the first frame");

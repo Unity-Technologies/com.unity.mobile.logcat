@@ -117,9 +117,15 @@ namespace Unity.Android.Logcat
 
         Vector2 m_HistoryScroll;
 
-        internal AndroidLogcatVideoPlayer()
+        internal const string kDefaultName = "LogcatVideoPlayer";
+
+        /// <param name="name">
+        /// The hidden GameObject the VideoPlayer lives on. One left behind by an owner
+        /// that never got to Dispose is picked up again rather than leaked, so each
+        /// owner needs a name of its own - Dispose destroys whatever it found.
+        /// </param>
+        internal AndroidLogcatVideoPlayer(string name = kDefaultName)
         {
-            var name = "LogcatVideoPlayer";
             m_PlayerGO = GameObject.Find(name);
             if (m_PlayerGO == null)
             {
