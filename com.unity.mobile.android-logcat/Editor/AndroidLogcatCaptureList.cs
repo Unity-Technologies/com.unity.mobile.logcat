@@ -55,8 +55,6 @@ namespace Unity.Android.Logcat
                 "When the file was last written.");
             internal static readonly GUIContent VideoSize = new GUIContent("Video Size",
                 "Size of the recording in pixels.");
-            internal static readonly GUIContent Length = new GUIContent("Length",
-                "How long the recording runs.");
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
             static GUIStyle s_SelectedRow;
@@ -311,8 +309,6 @@ namespace Unity.Android.Logcat
             {
                 AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.VideoSize,
                     Undefined(m_VideoPlayer.Dimensions));
-                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Length,
-                    Undefined(m_VideoPlayer.Length));
             }
             else
             {

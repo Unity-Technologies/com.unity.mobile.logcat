@@ -169,10 +169,6 @@ namespace Unity.Android.Logcat
             ? $"{m_Player.width}x{m_Player.height}"
             : string.Empty;
 
-        internal string Length => m_Player != null && m_Player.length > 0
-            ? $"{m_Player.length:0.00} s"
-            : string.Empty;
-
         /// <summary>Zero until the video has opened.</summary>
         internal long FrameCount => m_Player != null ? (long)m_Player.frameCount : 0;
 
