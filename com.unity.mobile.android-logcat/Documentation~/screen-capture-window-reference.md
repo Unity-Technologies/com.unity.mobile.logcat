@@ -39,7 +39,7 @@ The capture list contains the **Live** button and every capture you have taken f
 | **Item**           | **Description**                                              |
 | ------------------ | ------------------------------------------------------------ |
 | **Live**           | Displays the selected device's screen live. Select **Live** to view the screen, take screenshots, and record videos. For more information, refer to [View the device screen live](screen-capture-live-stream.md). |
-| A capture          | A screenshot or a recording, named after its file without its extension, with an icon that shows which it is. Captures are saved as you take them, so every one stays until you delete it. Selecting a recording plays it in the [Capture preview](#capture-preview). |
+| A capture          | A screenshot or a recording, named after its file without its extension, with an icon that shows which it is. Captures are saved as you take them, so every one stays until you delete it. Selecting a recording opens it in the [Capture preview](#capture-preview), paused on its first frame. |
 
 Captures are stored in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>` with a `.png` or `.mp4` extension. The default folder, `AndroidLogcat/Captures`, is in your project but outside `Assets`, so it isn't part of your build. Deleting the `Library` folder doesn't delete captures.
 
@@ -95,7 +95,7 @@ This section appears beside the image while a screenshot or a recording is selec
 
 **Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** comes from the recording itself, so it displays `Undefined` until the recording has opened.
 
-A selected recording starts playing and loops. Use the play button below the properties to pause and resume it, and drag the slider under it to move to another frame, whether the recording is playing or paused. The number beside the slider is the current frame and the total number of frames.
+A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it, and drag the slider under it to move to another frame, whether the recording is playing or paused. The number beside the slider is the current frame and the total number of frames.
 
 ## Live view details
 

@@ -120,7 +120,11 @@ namespace Unity.Android.Logcat
         /// <summary>Why the current video could not be played, empty while it can.</summary>
         internal string Error { get; private set; } = string.Empty;
 
-        public void Play(string path)
+        /// <summary>
+        /// Opens a video paused on its first frame, or closes the current one when
+        /// <paramref name="path"/> is empty.
+        /// </summary>
+        public void Open(string path)
         {
             Error = string.Empty;
             EndPauseAfterSeek();
@@ -135,11 +139,19 @@ namespace Unity.Android.Logcat
                 return;
             if (m_Player == null)
             {
-                AndroidLogcatInternalLog.Log($"Cannot play '{path}', video player was not created ?");
+                AndroidLogcatInternalLog.Log($"Cannot open '{path}', video player was not created ?");
                 return;
             }
 
             m_Player.url = path;
+
+            // A paused player decodes nothing, so there would be no first frame to
+            // show. It plays until that frame is in, the way a paused seek does, and
+            // FrameReady pauses it there.
+            IsSeeking = true;
+            m_SeekLanded = true;
+            m_PauseAfterSeek = true;
+            m_Player.sendFrameReadyEvents = true;
             m_Player.Play();
         }
 

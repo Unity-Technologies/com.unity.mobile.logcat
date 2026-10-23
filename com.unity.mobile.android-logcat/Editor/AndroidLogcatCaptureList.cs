@@ -209,7 +209,7 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void InvalidatePreview()
         {
-            // Reloading a recording plays it again from the start, so one that has not
+            // Reloading a recording opens it again at the start, so one that has not
             // changed on disk is left where it was, and paused if it was.
             if (m_PreviewIsVideo && m_VideoPlayer.IsShowing(m_PreviewPath))
                 return;
@@ -391,7 +391,7 @@ namespace Unity.Android.Logcat
                 m_PreviewIsVideo = true;
                 m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
                     AndroidLogcatScreenshotInfo.Load(path));
-                m_VideoPlayer.Play(path);
+                m_VideoPlayer.Open(path);
                 return;
             }
 
@@ -422,7 +422,7 @@ namespace Unity.Android.Logcat
         void DestroyPreview()
         {
             if (m_PreviewIsVideo)
-                m_VideoPlayer.Play(null);
+                m_VideoPlayer.Open(null);
             m_PreviewIsVideo = false;
             if (m_PreviewTexture != null)
                 UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
