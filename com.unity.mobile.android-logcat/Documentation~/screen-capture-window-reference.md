@@ -95,7 +95,7 @@ This section appears beside the image while a screenshot or a recording is selec
 
 **Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** comes from the recording itself, so it displays `Undefined` until the recording has opened.
 
-A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it, and drag the slider under it to move to another frame, whether the recording is playing or paused. The number beside the slider is the current frame and the total number of frames.
+A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it. While it is paused, the buttons beside the play button go back or forward one frame. You can also drag the slider under it to move to another frame, whether the recording is playing or paused. The number beside the slider is the current frame and the total number of frames.
 
 ## Live view details
 

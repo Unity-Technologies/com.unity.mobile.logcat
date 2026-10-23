@@ -31,12 +31,18 @@ namespace Unity.Android.Logcat
                     : new GUIContent(text, tooltip);
             }
 
+            // The Animation window's previous and next frame buttons.
+            internal static readonly GUIContent StepBack = IconOrText("Animation.PrevKey", "<", "Go back one frame.");
+            internal static readonly GUIContent StepForward = IconOrText("Animation.NextKey", ">", "Go forward one frame.");
+
             internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
         }
 
         // Square-ish, sized to the icon rather than stretched across the column.
         const float kPlayButtonWidth = 32;
         const float kSeekGap = 2;
+        // Between the play toggle and the step pair, which are drawn joined.
+        const float kButtonGap = 4;
         const float kSeekPadding = 2;
         const float kDebugGap = 5;
         // Several seeks' worth, scrolled through rather than all on screen.
@@ -86,6 +92,11 @@ namespace Unity.Android.Logcat
         // jump ahead by however long it sat paused. -1 when there is nothing to undo.
         long m_ResumeFrom = -1;
 
+        // The frame a paused seek is on its way to. The player's own frame is the old
+        // one until the seek lands, and stepping from that would undo a quick second
+        // click. -1 outside a paused seek.
+        long m_SeekTarget = -1;
+
         string m_Path;
         DateTime m_PathWriteTime;
 
@@ -131,6 +142,8 @@ namespace Unity.Android.Logcat
             m_State = state;
             if (state != State.Paused)
                 m_ResumeFrom = -1;
+            if (state != State.SeekingToPause && state != State.PausingOnFrame)
+                m_SeekTarget = -1;
             if (m_Player != null)
                 m_Player.sendFrameReadyEvents = state == State.SeekingToPause || state == State.PausingOnFrame;
         }
@@ -214,6 +227,7 @@ namespace Unity.Android.Logcat
             m_Player.url = path;
             // There is no seek to wait for, only the first frame.
             SetState(State.PausingOnFrame, $"opened {Path.GetFileName(path)}");
+            m_SeekTarget = -1;
             m_Player.Play();
         }
 
@@ -276,11 +290,25 @@ namespace Unity.Android.Logcat
                 case State.PausingOnFrame:
                     // Set before Play, which can land the seek straight away.
                     SetState(State.SeekingToPause, $"seek to {frame}");
+                    m_SeekTarget = frame;
                     m_Player.frame = frame;
                     if (!m_Player.isPlaying)
                         m_Player.Play();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Steps one frame while paused, counting from where a seek still in flight is
+        /// going rather than from where the player still is. Stops at either end
+        /// rather than wrapping, so holding back stays on the first frame.
+        /// </summary>
+        private void Step(int direction)
+        {
+            var from = m_SeekTarget >= 0 ? m_SeekTarget : Frame;
+            var to = Math.Max(0, Math.Min(FrameCount - 1, from + direction));
+            if (to != from)
+                SeekTo(to);
         }
 
         /// <summary>
@@ -345,10 +373,23 @@ namespace Unity.Android.Logcat
 
             // A toggle, pressed while playing, as the inspector draws it.
             var playing = IsPlaying();
-            var width = Styles.Play.image != null ? Mathf.Min(kPlayButtonWidth, rc.width) : rc.width;
-            var buttonRect = new Rect(rc.x, y, width, height);
+            var x = rc.x;
+            var buttonRect = ButtonRect(rc, ref x, y, height, Styles.Play);
             if (GUI.Toggle(buttonRect, playing, playing ? Styles.Pause : Styles.Play, EditorStyles.miniButton) != playing)
                 TogglePlay();
+
+            // Stepping is for looking at one frame at a time, which playing moves on from.
+            var shown = m_SeekTarget >= 0 ? m_SeekTarget : Frame;
+            var canStep = !playing && m_State != State.Closed && m_State != State.Failed && FrameCount > 1;
+            x += kButtonGap;
+            EditorGUI.BeginDisabledGroup(!canStep || shown <= 0);
+            if (GUI.Button(ButtonRect(rc, ref x, y, height, Styles.StepBack), Styles.StepBack, EditorStyles.miniButtonLeft))
+                Step(-1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUI.BeginDisabledGroup(!canStep || shown >= FrameCount - 1);
+            if (GUI.Button(ButtonRect(rc, ref x, y, height, Styles.StepForward), Styles.StepForward, EditorStyles.miniButtonRight))
+                Step(1);
+            EditorGUI.EndDisabledGroup();
             y += height;
 
             // Its own row: the column is too narrow to share one with the toggle.
@@ -381,6 +422,20 @@ namespace Unity.Android.Logcat
 
             if (Unsupported.IsDeveloperMode())
                 DoDebugGUI(rc, ref y);
+        }
+
+        /// <summary>
+        /// The next button along the row: icon sized when there is an icon, as wide as
+        /// its text when the icon could not be found. Clipped to the column.
+        /// </summary>
+        static Rect ButtonRect(Rect rc, ref float x, float y, float height, GUIContent content)
+        {
+            var width = content.image != null
+                ? kPlayButtonWidth
+                : EditorStyles.miniButton.CalcSize(content).x;
+            var rect = new Rect(x, y, Mathf.Max(0, Mathf.Min(width, rc.xMax - x)), height);
+            x = rect.xMax;
+            return rect;
         }
 
         /// <summary>
