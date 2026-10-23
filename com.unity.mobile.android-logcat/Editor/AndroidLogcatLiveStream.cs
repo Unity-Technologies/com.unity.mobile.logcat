@@ -284,12 +284,16 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal readonly struct CaptureAction
         {
-            internal readonly GUIContent Label;
+            /// <summary>
+            /// Asked on every repaint, so one button can say what it does next -
+            /// recording starts and stops from the same place.
+            /// </summary>
+            internal readonly Func<GUIContent> Label;
             internal readonly Action Action;
             /// <summary>Asked on every repaint. Null is a button that is always enabled.</summary>
             internal readonly Func<bool> Enabled;
 
-            internal CaptureAction(GUIContent label, Action action, Func<bool> enabled = null)
+            internal CaptureAction(Func<GUIContent> label, Action action, Func<bool> enabled = null)
             {
                 Label = label;
                 Action = action;
@@ -566,7 +570,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.ToString());
-                AppendError(ex.Message);
+                AppendError(InnermostMessage(ex));
                 // Nothing is streaming, so unwind whatever did get set up and report
                 // through the callback instead of throwing into OnGUI.
                 Shutdown(Result.Failure);
@@ -1053,7 +1057,7 @@ namespace Unity.Android.Logcat
                 // A read failing after Stop was requested is just the connection we
                 // closed ourselves.
                 if (!session.Stop && session == m_Session)
-                    m_ReaderError = ex.Message;
+                    m_ReaderError = InnermostMessage(ex);
             }
             finally
             {
@@ -1493,7 +1497,12 @@ namespace Unity.Android.Logcat
         /// </summary>
         void DoErrorsGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
         {
-            var message = new GUIContent(m_Errors.ToString(),
+            // Reconnect is disabled without a device, and the error is what is drawn
+            // instead of the no-device message, so it has to say so itself.
+            var text = selectedDevice == null
+                ? m_Errors.ToString() + Environment.NewLine + Styles.NoDevice
+                : m_Errors.ToString();
+            var message = new GUIContent(text,
                 EditorGUIUtility.IconContent("console.erroricon").image);
 
             var buttonHeight = EditorGUIUtility.singleLineHeight;
@@ -1815,7 +1824,7 @@ namespace Unity.Android.Logcat
                 var enabled = capture.Action != null && (capture.Enabled == null || capture.Enabled());
                 EditorGUI.BeginDisabledGroup(!enabled);
                 if (GUI.Button(new Rect(rc.x, y, ButtonRowWidth(rc), height),
-                    capture.Label, EditorStyles.miniButton))
+                    capture.Label(), EditorStyles.miniButton))
                 {
                     capture.Action();
                 }

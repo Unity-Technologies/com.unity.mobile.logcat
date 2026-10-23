@@ -148,6 +148,11 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal string AllocateImagePath(IAndroidLogcatDevice device)
         {
+            return AllocatePath(device, GetImageExtension());
+        }
+
+        private string AllocatePath(IAndroidLogcatDevice device, string extension)
+        {
             var directory = m_Directory();
             Directory.CreateDirectory(directory);
 
@@ -155,7 +160,7 @@ namespace Unity.Android.Logcat
             var screenshots = GetScreenshots();
 
             if (!m_KeepHistory)
-                return AllocateSingleImagePath(directory, prefix);
+                return AllocateSingleImagePath(directory, prefix, extension);
 
             // Numbering is per device, so only this device's entries count.
             var number = 1;
@@ -165,7 +170,7 @@ namespace Unity.Android.Logcat
                     number = screenshot.Number + 1;
             }
 
-            var path = Path.Combine(directory, $"{prefix}_{number}{GetImageExtension()}").Replace("\\", "/");
+            var path = Path.Combine(directory, $"{prefix}_{number}{extension}").Replace("\\", "/");
 
             // The reservation is what stops a second capture queued before this file
             // exists from picking the same number - the list is counted from, not the
@@ -183,9 +188,9 @@ namespace Unity.Android.Logcat
         /// with everything captured before it - including a capture of another device -
         /// deleted, so the directory holds one screenshot and no more.
         /// </summary>
-        private string AllocateSingleImagePath(string directory, string prefix)
+        private string AllocateSingleImagePath(string directory, string prefix, string extension)
         {
-            var path = Path.Combine(directory, $"{prefix}_1{GetImageExtension()}").Replace("\\", "/");
+            var path = Path.Combine(directory, $"{prefix}_1{extension}").Replace("\\", "/");
 
             foreach (var screenshot in GetScreenshots())
             {
@@ -203,13 +208,25 @@ namespace Unity.Android.Logcat
             return path;
         }
 
+        /// <summary>Screenshots and recordings, which are both captures in this list.</summary>
+        private IEnumerable<string> EnumerateCaptures(string directory)
+        {
+            foreach (var file in Directory.GetFiles(directory, $"*{GetImageExtension()}"))
+                yield return file;
+            if (m_KeepHistory)
+            {
+                foreach (var file in Directory.GetFiles(directory, $"*{GetVideoExtension()}"))
+                    yield return file;
+            }
+        }
+
         private List<Screenshot> ScanScreenshots(string directory)
         {
             var screenshots = new List<Screenshot>();
             if (!Directory.Exists(directory))
                 return screenshots;
 
-            foreach (var file in Directory.GetFiles(directory, $"*{GetImageExtension()}"))
+            foreach (var file in EnumerateCaptures(directory))
             {
                 var name = Path.GetFileNameWithoutExtension(file);
 
@@ -309,8 +326,10 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
+            // A recording stays a recording: the extension is what says which it is.
+            var extension = Path.GetExtension(path);
             var directory = Path.GetDirectoryName(path);
-            var target = Path.Combine(directory, newName + GetImageExtension()).Replace("\\", "/");
+            var target = Path.Combine(directory, newName + extension).Replace("\\", "/");
             if (target == path)
             {
                 renamed = path;
@@ -320,7 +339,7 @@ namespace Unity.Android.Logcat
             if (File.Exists(target))
             {
                 UnityEngine.Debug.LogError(
-                    $"'{newName}{GetImageExtension()}' already exists. Choose a different name.");
+                    $"'{newName}{extension}' already exists. Choose a different name.");
                 return false;
             }
 
@@ -388,6 +407,30 @@ namespace Unity.Android.Logcat
         public string GetImageExtension()
         {
             return ".png";
+        }
+
+        public string GetVideoExtension()
+        {
+            return ".mp4";
+        }
+
+        /// <summary>
+        /// Reserves the next free path for a capture of this kind, the same numbering
+        /// screenshots use - a recording is a capture like any other.
+        /// </summary>
+        public string AllocateCapturePath(IAndroidLogcatDevice device, string extension)
+        {
+            return AllocatePath(device, extension);
+        }
+
+        /// <summary>
+        /// Ends a reservation made by <see cref="AllocateCapturePath"/>, once the capture
+        /// has landed or failed. Until then the scan keeps listing it with no file behind it.
+        /// </summary>
+        internal void ReleaseCapturePath(string path)
+        {
+            if (m_ReservedPaths.Remove(path))
+                InvalidateScreenshots();
         }
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime, Func<string> directory, bool keepHistory)
