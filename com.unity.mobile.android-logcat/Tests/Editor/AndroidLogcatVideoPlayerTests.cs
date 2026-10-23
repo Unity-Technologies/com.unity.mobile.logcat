@@ -111,21 +111,56 @@ class AndroidLogcatVideoPlayerTests
     {
         yield return Open();
 
+        var showable = ShowableFrames();
+
         // Across 6 to 8, where one real frame lasts as long as two to three of
         // VideoPlayer's constant-rate ones.
-        for (var expected = 1; expected <= 9; expected++)
+        for (var i = 1; i <= 9; i++)
         {
             m_Player.Step(1);
-            yield return WaitForPaused($"stepping forward to {expected}");
-            Assert.AreEqual(expected, m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping forward to {showable[i]}");
+            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
         }
 
-        for (var expected = 8; expected >= 5; expected--)
+        for (var i = 8; i >= 5; i--)
         {
             m_Player.Step(-1);
-            yield return WaitForPaused($"stepping back to {expected}");
-            Assert.AreEqual(expected, m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping back to {showable[i]}");
+            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
         }
+    }
+
+    /// <summary>
+    /// Every frame VideoPlayer can show, one step at a time, including the ones next
+    /// to a frame it cannot - which a step has to skip without going further.
+    /// </summary>
+    [UnityTest]
+    public IEnumerator StepsThroughEveryShowableFrame()
+    {
+        yield return Open();
+        var showable = ShowableFrames();
+
+        for (var i = 1; i < showable.Length; i++)
+        {
+            m_Player.Step(1);
+            yield return WaitForPaused($"stepping forward to {showable[i]}");
+            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator ShowableFramesAreMostOfThem()
+    {
+        yield return Open();
+        var showable = ShowableFrames();
+
+        Assert.AreEqual(0, showable[0]);
+        Assert.AreEqual(kFrameCount - 1, showable[showable.Length - 1]);
+        // Frames closer together than one slot of VideoPlayer's grid share it, and
+        // this recording has between 14 and 17 of those, depending on the exact rate.
+        Assert.That(showable.Length, Is.InRange(kFrameCount - 20, kFrameCount - 10), Describe());
+        for (var i = 1; i < showable.Length; i++)
+            Assert.Greater(showable[i], showable[i - 1]);
     }
 
     [UnityTest]
@@ -137,13 +172,14 @@ class AndroidLogcatVideoPlayerTests
         Assert.AreEqual(State.Paused, m_Player.CurrentState, "Stepping back from the first frame should do nothing.");
         Assert.AreEqual(0, m_Player.Frame);
 
-        m_Player.SeekTo(kFrameCount - 1);
+        var last = ShowableFrames()[ShowableFrames().Length - 1];
+        m_Player.SeekTo(last);
         yield return WaitForPaused("the seek to the last frame");
-        Assert.AreEqual(kFrameCount - 1, m_Player.Frame, Describe());
+        Assert.AreEqual(last, m_Player.Frame, Describe());
 
         m_Player.Step(1);
         Assert.AreEqual(State.Paused, m_Player.CurrentState, "Stepping forward from the last frame should do nothing.");
-        Assert.AreEqual(kFrameCount - 1, m_Player.Frame);
+        Assert.AreEqual(last, m_Player.Frame);
     }
 
     [UnityTest]
@@ -153,9 +189,11 @@ class AndroidLogcatVideoPlayerTests
 
         foreach (var target in new long[] { 50, 120, 10, 7, 100 })
         {
+            // 50 and 10 are each in a slot with a neighbour that is shown in their place.
+            var expected = m_Player.Snap(target);
             m_Player.SeekTo(target);
             yield return WaitForPaused($"the seek to {target}");
-            Assert.AreEqual(target, m_Player.Frame, Describe());
+            Assert.AreEqual(expected, m_Player.Frame, Describe());
             Assert.IsFalse(m_Player.IsPlaying(), "A seek while paused should leave the video paused.");
         }
     }
@@ -223,6 +261,13 @@ class AndroidLogcatVideoPlayerTests
         m_Player.Open(path ?? VideoPath);
         Assert.AreEqual(State.PausingOnFrame, m_Player.CurrentState);
         yield return WaitForPaused("the first frame");
+    }
+
+    long[] ShowableFrames()
+    {
+        var showable = m_Player.Showable();
+        Assert.IsNotNull(showable, $"The player should know which frames it can show once it is open. {Describe()}");
+        return showable;
     }
 
     IEnumerator WaitForPaused(string what)
