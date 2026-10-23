@@ -57,19 +57,6 @@ namespace Unity.Android.Logcat
                 "Size of the recording in pixels.");
             internal static readonly GUIContent Length = new GUIContent("Length",
                 "How long the recording runs.");
-            // The icons the video clip inspector's preview toggles between, so playing
-            // a recording looks the same as playing a clip.
-            internal static readonly GUIContent Play = IconOrText("preAudioPlayOff", "Play", "Play the recording.");
-            internal static readonly GUIContent Pause = IconOrText("preAudioPlayOn", "Pause", "Pause the recording.");
-
-            static GUIContent IconOrText(string icon, string text, string tooltip)
-            {
-                var content = EditorGUIUtility.IconContent(icon);
-                return content != null && content.image != null
-                    ? new GUIContent(content.image, tooltip)
-                    : new GUIContent(text, tooltip);
-            }
-
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
             static GUIStyle s_SelectedRow;
@@ -99,8 +86,6 @@ namespace Unity.Android.Logcat
         const float kIconMargin = 2;
         // Air between the Live button and the captures under it.
         const float kGroupGap = 5;
-        // Square-ish, sized to the icon rather than stretched across the column.
-        const float kPlayButtonWidth = 32;
         // How long a new capture's row is lit, and how bright it starts.
         const double kFlashSeconds = 0.6;
         const float kFlashStrength = 0.6f;
@@ -293,7 +278,7 @@ namespace Unity.Android.Logcat
                         videoRect => GUI.DrawTexture(videoRect, frame), m_Repaint);
                 }
 
-                if (opening || m_VideoPlayer.IsPlaying())
+                if (opening || m_VideoPlayer.IsPlaying() || m_VideoPlayer.IsSeeking)
                     m_Repaint();
             }
             else
@@ -334,27 +319,13 @@ namespace Unity.Android.Logcat
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured, details.Captured, details.CapturedInFull);
 
             if (m_PreviewIsVideo)
-                DoPlaybackGUI(rc, ref y);
+            {
+                y += kGroupGap;
+                m_VideoPlayer.DoControlsGUI(rc, ref y);
+            }
         }
 
         static string Undefined(string value) => string.IsNullOrEmpty(value) ? kUndefined : value;
-
-        void DoPlaybackGUI(Rect rc, ref float y)
-        {
-            var height = EditorGUIUtility.singleLineHeight;
-            y += kGroupGap;
-            if (y + height > rc.yMax)
-                return;
-
-            // A toggle, pressed while playing, as the inspector draws it.
-            var playing = m_VideoPlayer.IsPlaying();
-            var width = Styles.Play.image != null ? Mathf.Min(kPlayButtonWidth, rc.width) : rc.width;
-            var buttonRect = new Rect(rc.x, y, width, height);
-            if (GUI.Toggle(buttonRect, playing, playing ? Styles.Pause : Styles.Play, EditorStyles.miniButton) != playing)
-                m_VideoPlayer.TogglePlay();
-
-            y += height;
-        }
 
         /// <summary>
         /// What the details column says about the selected screenshot, worked out when
