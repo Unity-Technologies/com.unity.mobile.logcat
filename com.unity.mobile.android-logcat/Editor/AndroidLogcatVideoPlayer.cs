@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using UnityEditor;
 using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
@@ -31,15 +30,66 @@ namespace Unity.Android.Logcat
                     ? new GUIContent(content.image, tooltip)
                     : new GUIContent(text, tooltip);
             }
+
+            internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
         }
 
         // Square-ish, sized to the icon rather than stretched across the column.
         const float kPlayButtonWidth = 32;
         const float kSeekGap = 2;
         const float kSeekPadding = 2;
+        const float kDebugGap = 5;
+        // Several seeks' worth, scrolled through rather than all on screen.
+        const int kHistoryLength = 100;
+        const float kScrollbarWidth = 16;
+        // The history is only worth drawing if a few rows of it fit.
+        const int kMinHistoryRows = 3;
+
+        /// <summary>
+        /// What the player is doing, as one value rather than a set of flags that could
+        /// contradict each other. The player decodes nothing while paused, so showing a
+        /// frame without playing means playing until it is in and pausing there - which
+        /// is what the in-between states are.
+        /// </summary>
+        internal enum State
+        {
+            /// <summary>No video open.</summary>
+            Closed,
+            Playing,
+            /// <summary>Playing, with a seek on its way.</summary>
+            Seeking,
+            /// <summary>Paused when the seek was asked for: plays until it lands, then pauses on its frame.</summary>
+            SeekingToPause,
+            /// <summary>Playing only until the next frame is in, then pausing on it.</summary>
+            PausingOnFrame,
+            Paused,
+            /// <summary>The player reported an error - see <see cref="Error"/>.</summary>
+            Failed
+        }
+
+        struct Transition
+        {
+            internal DateTime Time;
+            internal State From;
+            internal State To;
+            internal string Reason;
+        }
 
         private VideoPlayer m_Player;
         private GameObject m_PlayerGO;
+
+        private State m_State = State.Closed;
+        private readonly Queue<Transition> m_History = new Queue<Transition>();
+
+        // Where a paused video stopped, for Play to start from. Paused from inside
+        // FrameReady, the player's clock carries on regardless, and resuming would
+        // jump ahead by however long it sat paused. -1 when there is nothing to undo.
+        long m_ResumeFrom = -1;
+
+        string m_Path;
+        DateTime m_PathWriteTime;
+
+        Vector2 m_HistoryScroll;
 
         internal AndroidLogcatVideoPlayer()
         {
@@ -63,43 +113,59 @@ namespace Unity.Android.Logcat
             m_Player.frameReady += FrameReady;
         }
 
+        internal State CurrentState => m_State;
+
+        /// <summary>
+        /// The one place the state changes. Frame events cost a callback per decoded
+        /// frame, so they are on only while a state is waiting for one.
+        /// </summary>
+        private void SetState(State state, string reason)
+        {
+            if (state == m_State)
+                return;
+
+            m_History.Enqueue(new Transition { Time = DateTime.Now, From = m_State, To = state, Reason = reason });
+            while (m_History.Count > kHistoryLength)
+                m_History.Dequeue();
+
+            m_State = state;
+            if (state != State.Paused)
+                m_ResumeFrom = -1;
+            if (m_Player != null)
+                m_Player.sendFrameReadyEvents = state == State.SeekingToPause || state == State.PausingOnFrame;
+        }
+
         private void ErrorReceived(VideoPlayer source, string message)
         {
             // Stop video manually, otherwise it will spam Editor console.
             AndroidLogcatInternalLog.Log($"Error received while playing video, stopping video.\n{message}");
             Error = message;
-            EndPauseAfterSeek();
             source.Stop();
+            SetState(State.Failed, "error");
         }
 
         private void SeekCompleted(VideoPlayer source)
         {
-            m_SeekLanded = true;
-            // A paused seek is not over until its frame is in - see FrameReady.
-            if (!m_PauseAfterSeek)
-                IsSeeking = false;
+            switch (m_State)
+            {
+                case State.Seeking:
+                    SetState(State.Playing, "seek landed");
+                    break;
+                // Not paused yet: the texture still holds the old frame until the next
+                // one is decoded, and pausing now would keep it.
+                case State.SeekingToPause:
+                    SetState(State.PausingOnFrame, "seek landed");
+                    break;
+            }
         }
 
-        /// <summary>
-        /// Only sent while a paused seek is waiting for its frame. Seek completion alone
-        /// is too early: the texture still holds the old frame then, and pausing there
-        /// would keep it.
-        /// </summary>
         private void FrameReady(VideoPlayer source, long frameIdx)
         {
-            if (!m_PauseAfterSeek || !m_SeekLanded)
+            if (m_State != State.PausingOnFrame)
                 return;
-            EndPauseAfterSeek();
             source.Pause();
+            SetState(State.Paused, $"frame {frameIdx} in");
             m_ResumeFrom = frameIdx;
-        }
-
-        private void EndPauseAfterSeek()
-        {
-            m_PauseAfterSeek = false;
-            IsSeeking = false;
-            if (m_Player != null)
-                m_Player.sendFrameReadyEvents = false;
         }
 
         public void Dispose()
@@ -115,6 +181,7 @@ namespace Unity.Android.Logcat
                 GameObject.DestroyImmediate(m_PlayerGO);
                 m_PlayerGO = null;
             }
+            SetState(State.Closed, "disposed");
         }
 
         /// <summary>Why the current video could not be played, empty while it can.</summary>
@@ -127,44 +194,45 @@ namespace Unity.Android.Logcat
         public void Open(string path)
         {
             Error = string.Empty;
-            EndPauseAfterSeek();
-            m_ResumeFrom = -1;
-            m_Player.Stop();
             m_Path = path;
             m_PathWriteTime = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
 
-            if (string.IsNullOrEmpty(path))
-                return;
-            if (!File.Exists(path))
-                return;
             if (m_Player == null)
             {
                 AndroidLogcatInternalLog.Log($"Cannot open '{path}', video player was not created ?");
+                SetState(State.Closed, "no player");
+                return;
+            }
+
+            m_Player.Stop();
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                SetState(State.Closed, "closed");
                 return;
             }
 
             m_Player.url = path;
-
-            // A paused player decodes nothing, so there would be no first frame to
-            // show. It plays until that frame is in, the way a paused seek does, and
-            // FrameReady pauses it there.
-            IsSeeking = true;
-            m_SeekLanded = true;
-            m_PauseAfterSeek = true;
-            m_Player.sendFrameReadyEvents = true;
+            // There is no seek to wait for, only the first frame.
+            SetState(State.PausingOnFrame, $"opened {Path.GetFileName(path)}");
             m_Player.Play();
         }
 
         /// <summary>
-        /// False while a paused video is playing only to land a seek - it is still
-        /// paused as far as anyone looking at it is concerned.
+        /// Whether playback is what the user asked for. A paused video that is playing
+        /// only to show a frame is still paused as far as anyone looking at it can tell.
         /// </summary>
         public bool IsPlaying()
         {
-            if (m_Player == null)
-                return false;
-            return m_Player.isPlaying && !m_PauseAfterSeek;
+            return m_State == State.Playing || m_State == State.Seeking;
         }
+
+        /// <summary>
+        /// Whether the image can change without anything else happening, so whoever
+        /// shows it has to keep repainting. A paused video draws nothing new on its own,
+        /// but one on its way to a frame does.
+        /// </summary>
+        internal bool NeedsRepaint => m_State == State.Playing || m_State == State.Seeking
+            || m_State == State.SeekingToPause || m_State == State.PausingOnFrame;
 
         /// <summary>
         /// The frame to draw, or null until the player has one. A video is opened
@@ -184,44 +252,36 @@ namespace Unity.Android.Logcat
         /// <summary>Zero until the video has opened.</summary>
         internal long FrameCount => m_Player != null ? (long)m_Player.frameCount : 0;
 
-        /// <summary>
-        /// The frame on screen, counted from zero. Setting it seeks, which lands
-        /// asynchronously - see <see cref="IsSeeking"/>.
-        /// </summary>
-        internal long Frame
-        {
-            get => m_Player != null ? Math.Max(0, m_Player.frame) : 0;
-            private set
-            {
-                if (m_Player == null || !m_Player.canSetTime)
-                    return;
-                IsSeeking = true;
-                m_SeekLanded = false;
-                m_Player.frame = value;
+        /// <summary>The frame on screen, counted from zero.</summary>
+        internal long Frame => m_Player != null ? Math.Max(0, m_Player.frame) : 0;
 
-                // A paused player does not decode the frame it seeks to, so the view
-                // would keep showing the old one. It plays until that frame is in, and
-                // FrameReady pauses it again. A drag sends seek after seek, and each one
-                // moves the frame being waited for.
-                if (!m_Player.isPlaying)
-                {
-                    m_PauseAfterSeek = true;
-                    m_Player.sendFrameReadyEvents = true;
-                    m_Player.Play();
-                }
+        /// <summary>
+        /// Seeks, which lands asynchronously. A drag sends seek after seek, and each one
+        /// moves the frame being waited for.
+        /// </summary>
+        private void SeekTo(long frame)
+        {
+            if (m_Player == null || !m_Player.canSetTime)
+                return;
+
+            switch (m_State)
+            {
+                case State.Playing:
+                case State.Seeking:
+                    m_Player.frame = frame;
+                    SetState(State.Seeking, $"seek to {frame}");
+                    break;
+                case State.Paused:
+                case State.SeekingToPause:
+                case State.PausingOnFrame:
+                    // Set before Play, which can land the seek straight away.
+                    SetState(State.SeekingToPause, $"seek to {frame}");
+                    m_Player.frame = frame;
+                    if (!m_Player.isPlaying)
+                        m_Player.Play();
+                    break;
             }
         }
-
-        bool m_PauseAfterSeek;
-        bool m_SeekLanded;
-
-        // Where a paused seek stopped, for Play to start from. Paused from inside
-        // FrameReady, the player's clock carries on regardless, and resuming would
-        // jump ahead by however long it sat paused. -1 when there is nothing to undo.
-        long m_ResumeFrom = -1;
-
-        string m_Path;
-        DateTime m_PathWriteTime;
 
         /// <summary>
         /// Whether this file, as it is on disk now, is what is loaded. When it is,
@@ -233,30 +293,42 @@ namespace Unity.Android.Logcat
                 && File.GetLastWriteTimeUtc(path) == m_PathWriteTime;
         }
 
-        /// <summary>
-        /// A seek has been asked for and its frame is not in yet. A paused video draws
-        /// nothing new on its own, so whoever shows it has to keep repainting until then.
-        /// </summary>
-        internal bool IsSeeking { get; private set; }
-
         private void TogglePlay()
         {
             if (m_Player == null)
                 return;
 
-            // Resuming mid seek just means not pausing once it lands.
-            if (m_PauseAfterSeek)
-                EndPauseAfterSeek();
-            else if (m_Player.isPlaying)
-                m_Player.Pause();
-            else
+            switch (m_State)
             {
-                m_Player.Play();
-                if (m_ResumeFrom >= 0)
-                {
-                    m_Player.frame = m_ResumeFrom;
-                    m_ResumeFrom = -1;
-                }
+                case State.Playing:
+                    m_Player.Pause();
+                    SetState(State.Paused, "pause");
+                    break;
+                // The seek still has to land, and pausing before it does would keep
+                // the old frame - so it pauses on the frame the seek brings.
+                case State.Seeking:
+                    SetState(State.SeekingToPause, "pause");
+                    break;
+                // Already playing underneath: carrying on is all it takes.
+                case State.SeekingToPause:
+                    SetState(State.Seeking, "play");
+                    break;
+                case State.PausingOnFrame:
+                    SetState(State.Playing, "play");
+                    break;
+                case State.Paused:
+                    var resumeFrom = m_ResumeFrom;
+                    m_Player.Play();
+                    if (resumeFrom >= 0)
+                    {
+                        SetState(State.Seeking, $"play from {resumeFrom}");
+                        m_Player.frame = resumeFrom;
+                    }
+                    else
+                    {
+                        SetState(State.Playing, "play");
+                    }
+                    break;
             }
         }
 
@@ -302,10 +374,81 @@ namespace Unity.Android.Logcat
             EditorGUI.BeginChangeCheck();
             var picked = GUI.HorizontalSlider(sliderRect, frame, 0, Mathf.Max(0, frameCount - 1));
             if (EditorGUI.EndChangeCheck())
-                Frame = (long)Mathf.Round(picked);
+                SeekTo((long)Mathf.Round(picked));
             EditorGUI.EndDisabledGroup();
             GUI.Label(counterRect, counter, Styles.FrameCounter);
             y += boxHeight;
+
+            if (Unsupported.IsDeveloperMode())
+                DoDebugGUI(rc, ref y);
+        }
+
+        /// <summary>
+        /// Developer mode only: the state, what the player itself says, and how the
+        /// state got here, newest first. Each row's tooltip has the full transition.
+        /// </summary>
+        void DoDebugGUI(Rect rc, ref float y)
+        {
+            y += kDebugGap;
+            // Headed the way the live view heads its own debugging details.
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + height > rc.yMax)
+                return;
+            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeveloperMode, EditorStyles.miniBoldLabel);
+            y += height;
+
+            DebugLine(rc, ref y, $"State: {m_State}", null);
+            if (m_Player != null)
+            {
+                var player = m_Player.isPlaying ? "playing" : m_Player.isPaused ? "paused" : "stopped";
+                DebugLine(rc, ref y, $"Player: {player}, frame {m_Player.frame}, resume {m_ResumeFrom}", null);
+            }
+
+            DoHistoryGUI(new Rect(rc.x, y, rc.width, rc.yMax - y));
+            y = rc.yMax;
+        }
+
+        /// <summary>
+        /// The state changes, newest first, in whatever is left of the column. Each
+        /// row's tooltip has the full transition. Rows are as wide as their text, and
+        /// scroll sideways when the column is narrower.
+        /// </summary>
+        void DoHistoryGUI(Rect rc)
+        {
+            var rowHeight = EditorGUIUtility.singleLineHeight;
+            if (rc.height < rowHeight * kMinHistoryRows)
+                return;
+
+            var transitions = m_History.ToArray();
+            var rows = new GUIContent[transitions.Length];
+            var contentWidth = 0f;
+            for (var i = 0; i < transitions.Length; i++)
+            {
+                var t = transitions[transitions.Length - 1 - i];
+                rows[i] = new GUIContent($"{t.Time:ss.fff} {t.To} ({t.Reason})",
+                    $"{t.Time:HH:mm:ss.fff} {t.From} -> {t.To}: {t.Reason}");
+                contentWidth = Mathf.Max(contentWidth, EditorStyles.miniLabel.CalcSize(rows[i]).x);
+            }
+
+            GUI.Box(rc, GUIContent.none, EditorStyles.helpBox);
+            var view = new Rect(rc.x + kSeekPadding, rc.y + kSeekPadding,
+                Mathf.Max(0, rc.width - 2 * kSeekPadding), Mathf.Max(0, rc.height - 2 * kSeekPadding));
+            var content = new Rect(0, 0, Mathf.Max(contentWidth, view.width - kScrollbarWidth),
+                rows.Length * rowHeight);
+
+            m_HistoryScroll = GUI.BeginScrollView(view, m_HistoryScroll, content);
+            for (var i = 0; i < rows.Length; i++)
+                GUI.Label(new Rect(0, i * rowHeight, content.width, rowHeight), rows[i], EditorStyles.miniLabel);
+            GUI.EndScrollView();
+        }
+
+        static void DebugLine(Rect rc, ref float y, string text, string tooltip)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + height > rc.yMax)
+                return;
+            GUI.Label(new Rect(rc.x, y, rc.width, height), new GUIContent(text, tooltip), EditorStyles.miniLabel);
+            y += height;
         }
     }
 }

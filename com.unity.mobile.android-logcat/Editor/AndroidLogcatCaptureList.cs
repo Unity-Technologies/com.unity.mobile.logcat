@@ -280,7 +280,7 @@ namespace Unity.Android.Logcat
                         videoRect => GUI.DrawTexture(videoRect, frame), m_Repaint);
                 }
 
-                if (opening || m_VideoPlayer.IsPlaying() || m_VideoPlayer.IsSeeking)
+                if (opening || m_VideoPlayer.NeedsRepaint)
                     m_Repaint();
             }
             else
