@@ -91,6 +91,7 @@ namespace Unity.Android.Logcat
                 return;
             EndPauseAfterSeek();
             source.Pause();
+            m_ResumeFrom = frameIdx;
         }
 
         private void EndPauseAfterSeek()
@@ -123,6 +124,7 @@ namespace Unity.Android.Logcat
         {
             Error = string.Empty;
             EndPauseAfterSeek();
+            m_ResumeFrom = -1;
             m_Player.Stop();
             m_Path = path;
             m_PathWriteTime = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
@@ -205,6 +207,11 @@ namespace Unity.Android.Logcat
         bool m_PauseAfterSeek;
         bool m_SeekLanded;
 
+        // Where a paused seek stopped, for Play to start from. Paused from inside
+        // FrameReady, the player's clock carries on regardless, and resuming would
+        // jump ahead by however long it sat paused. -1 when there is nothing to undo.
+        long m_ResumeFrom = -1;
+
         string m_Path;
         DateTime m_PathWriteTime;
 
@@ -235,7 +242,14 @@ namespace Unity.Android.Logcat
             else if (m_Player.isPlaying)
                 m_Player.Pause();
             else
+            {
                 m_Player.Play();
+                if (m_ResumeFrom >= 0)
+                {
+                    m_Player.frame = m_ResumeFrom;
+                    m_ResumeFrom = -1;
+                }
+            }
         }
 
         /// <summary>
