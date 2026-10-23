@@ -211,6 +211,10 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void InvalidatePreview()
         {
+            // Reloading a recording plays it again from the start, so one that has not
+            // changed on disk is left where it was, and paused if it was.
+            if (m_PreviewIsVideo && m_VideoPlayer.IsShowing(m_PreviewPath))
+                return;
             DestroyPreview();
         }
 

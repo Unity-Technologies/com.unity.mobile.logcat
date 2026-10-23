@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -59,6 +60,7 @@ namespace Unity.Android.Logcat
             m_Player.isLooping = true;
             m_Player.errorReceived += ErrorReceived;
             m_Player.seekCompleted += SeekCompleted;
+            m_Player.frameReady += FrameReady;
         }
 
         private void ErrorReceived(VideoPlayer source, string message)
@@ -66,19 +68,37 @@ namespace Unity.Android.Logcat
             // Stop video manually, otherwise it will spam Editor console.
             AndroidLogcatInternalLog.Log($"Error received while playing video, stopping video.\n{message}");
             Error = message;
-            IsSeeking = false;
-            m_PauseAfterSeek = false;
+            EndPauseAfterSeek();
             source.Stop();
         }
 
         private void SeekCompleted(VideoPlayer source)
         {
+            m_SeekLanded = true;
+            // A paused seek is not over until its frame is in - see FrameReady.
+            if (!m_PauseAfterSeek)
+                IsSeeking = false;
+        }
+
+        /// <summary>
+        /// Only sent while a paused seek is waiting for its frame. Seek completion alone
+        /// is too early: the texture still holds the old frame then, and pausing there
+        /// would keep it.
+        /// </summary>
+        private void FrameReady(VideoPlayer source, long frameIdx)
+        {
+            if (!m_PauseAfterSeek || !m_SeekLanded)
+                return;
+            EndPauseAfterSeek();
+            source.Pause();
+        }
+
+        private void EndPauseAfterSeek()
+        {
+            m_PauseAfterSeek = false;
             IsSeeking = false;
-            if (m_PauseAfterSeek)
-            {
-                m_PauseAfterSeek = false;
-                source.Pause();
-            }
+            if (m_Player != null)
+                m_Player.sendFrameReadyEvents = false;
         }
 
         public void Dispose()
@@ -102,9 +122,10 @@ namespace Unity.Android.Logcat
         public void Play(string path)
         {
             Error = string.Empty;
-            IsSeeking = false;
-            m_PauseAfterSeek = false;
+            EndPauseAfterSeek();
             m_Player.Stop();
+            m_Path = path;
+            m_PathWriteTime = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
 
             if (string.IsNullOrEmpty(path))
                 return;
@@ -165,20 +186,37 @@ namespace Unity.Android.Logcat
                 if (m_Player == null || !m_Player.canSetTime)
                     return;
                 IsSeeking = true;
+                m_SeekLanded = false;
                 m_Player.frame = value;
 
                 // A paused player does not decode the frame it seeks to, so the view
-                // would keep showing the old one. It plays until the seek lands, and
-                // SeekCompleted pauses it again.
+                // would keep showing the old one. It plays until that frame is in, and
+                // FrameReady pauses it again. A drag sends seek after seek, and each one
+                // moves the frame being waited for.
                 if (!m_Player.isPlaying)
                 {
                     m_PauseAfterSeek = true;
+                    m_Player.sendFrameReadyEvents = true;
                     m_Player.Play();
                 }
             }
         }
 
         bool m_PauseAfterSeek;
+        bool m_SeekLanded;
+
+        string m_Path;
+        DateTime m_PathWriteTime;
+
+        /// <summary>
+        /// Whether this file, as it is on disk now, is what is loaded. When it is,
+        /// loading it again would only lose where it was and whether it was paused.
+        /// </summary>
+        internal bool IsShowing(string path)
+        {
+            return !string.IsNullOrEmpty(path) && path == m_Path && File.Exists(path)
+                && File.GetLastWriteTimeUtc(path) == m_PathWriteTime;
+        }
 
         /// <summary>
         /// A seek has been asked for and its frame is not in yet. A paused video draws
@@ -193,7 +231,7 @@ namespace Unity.Android.Logcat
 
             // Resuming mid seek just means not pausing once it lands.
             if (m_PauseAfterSeek)
-                m_PauseAfterSeek = false;
+                EndPauseAfterSeek();
             else if (m_Player.isPlaying)
                 m_Player.Pause();
             else
