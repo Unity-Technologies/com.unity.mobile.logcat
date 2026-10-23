@@ -363,10 +363,17 @@ namespace Unity.Android.Logcat
         /// Seeks, which lands asynchronously. A drag sends seek after seek, and each one
         /// moves the frame being waited for.
         /// </summary>
-        private void SeekTo(long frame)
+        internal void SeekTo(long frame)
         {
-            if (m_Player == null || !m_Player.canSetTime)
+            if (m_Player == null)
                 return;
+            // Visible in the history rather than lost: a seek that did nothing looks
+            // exactly like one that landed on the frame it left.
+            if (!m_Player.canSetTime)
+            {
+                Note($"seek to {frame} refused: player cannot seek (prepared {m_Player.isPrepared})");
+                return;
+            }
 
             switch (m_State)
             {
@@ -396,7 +403,7 @@ namespace Unity.Android.Logcat
         /// going rather than from where the player still is. Stops at either end
         /// rather than wrapping, so holding back stays on the first frame.
         /// </summary>
-        private void Step(int direction)
+        internal void Step(int direction)
         {
             var from = m_SeekTarget >= 0 ? m_SeekTarget : Frame;
             var to = Math.Max(0, Math.Min(FrameCount - 1, from + direction));
@@ -414,7 +421,7 @@ namespace Unity.Android.Logcat
                 && File.GetLastWriteTimeUtc(path) == m_PathWriteTime;
         }
 
-        private void TogglePlay()
+        internal void TogglePlay()
         {
             if (m_Player == null)
                 return;
@@ -573,7 +580,7 @@ namespace Unity.Android.Logcat
         /// paste into a bug report: the file, the frame times around the one shown, and
         /// the whole history oldest first, with from and to.
         /// </summary>
-        string GetDebugInfo()
+        internal string GetDebugInfo()
         {
             var info = new StringBuilder();
             info.AppendLine($"Video: {(string.IsNullOrEmpty(m_Path) ? "-" : Path.GetFileName(m_Path))}");
