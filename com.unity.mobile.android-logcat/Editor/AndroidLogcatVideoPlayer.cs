@@ -39,6 +39,8 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
             internal static readonly GUIContent CopyDebugInfo = new GUIContent("Copy",
                 "Copy the state, the player's own view and every state change to the clipboard.");
+            internal static readonly GUIContent ClearHistory = new GUIContent("Clear",
+                "Clear the state changes, so the next ones start from an empty list.");
         }
 
         // Square-ish, sized to the icon rather than stretched across the column.
@@ -554,10 +556,18 @@ namespace Unity.Android.Logcat
             var height = EditorGUIUtility.singleLineHeight;
             if (y + height > rc.yMax)
                 return;
-            var copyWidth = EditorStyles.miniButton.CalcSize(Styles.CopyDebugInfo).x;
-            GUI.Label(new Rect(rc.x, y, Mathf.Max(0, rc.width - copyWidth), height), Styles.DeveloperMode,
+            // Clear and Copy, joined, at the right hand end of the heading.
+            var copyWidth = EditorStyles.miniButtonRight.CalcSize(Styles.CopyDebugInfo).x;
+            var clearWidth = EditorStyles.miniButtonLeft.CalcSize(Styles.ClearHistory).x;
+            GUI.Label(new Rect(rc.x, y, Mathf.Max(0, rc.width - copyWidth - clearWidth), height), Styles.DeveloperMode,
                 EditorStyles.miniBoldLabel);
-            if (GUI.Button(new Rect(rc.xMax - copyWidth, y, copyWidth, height), Styles.CopyDebugInfo, EditorStyles.miniButton))
+            if (GUI.Button(new Rect(rc.xMax - copyWidth - clearWidth, y, clearWidth, height), Styles.ClearHistory,
+                EditorStyles.miniButtonLeft))
+            {
+                m_History.Clear();
+                m_HistoryScroll = Vector2.zero;
+            }
+            if (GUI.Button(new Rect(rc.xMax - copyWidth, y, copyWidth, height), Styles.CopyDebugInfo, EditorStyles.miniButtonRight))
                 EditorGUIUtility.systemCopyBuffer = GetDebugInfo();
             y += height;
 
