@@ -274,6 +274,12 @@ namespace Unity.Android.Logcat
         {
             var recorded = result == AndroidLogcatCaptureVideo.Result.Success;
             ReportSaved("Recording", recorded ? videoPath : null);
+            if (!recorded)
+            {
+                // The bar has room for one line; what the device said goes to the Console.
+                m_StatusBar.Message = "Recording failed. See the Console for details.";
+                Debug.LogError($"Recording failed.\n{m_CaptureVideo.Errors}");
+            }
 
             // The list is counted from a cached scan, which knows nothing of a file
             // the recorder has just written.

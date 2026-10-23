@@ -570,7 +570,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.ToString());
-                AppendError(ex.Message);
+                AppendError(InnermostMessage(ex));
                 // Nothing is streaming, so unwind whatever did get set up and report
                 // through the callback instead of throwing into OnGUI.
                 Shutdown(Result.Failure);
@@ -1057,7 +1057,7 @@ namespace Unity.Android.Logcat
                 // A read failing after Stop was requested is just the connection we
                 // closed ourselves.
                 if (!session.Stop && session == m_Session)
-                    m_ReaderError = ex.Message;
+                    m_ReaderError = InnermostMessage(ex);
             }
             finally
             {
@@ -1497,7 +1497,12 @@ namespace Unity.Android.Logcat
         /// </summary>
         void DoErrorsGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
         {
-            var message = new GUIContent(m_Errors.ToString(),
+            // Reconnect is disabled without a device, and the error is what is drawn
+            // instead of the no-device message, so it has to say so itself.
+            var text = selectedDevice == null
+                ? m_Errors.ToString() + Environment.NewLine + Styles.NoDevice
+                : m_Errors.ToString();
+            var message = new GUIContent(text,
                 EditorGUIUtility.IconContent("console.erroricon").image);
 
             var buttonHeight = EditorGUIUtility.singleLineHeight;

@@ -326,8 +326,10 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
+            // A recording stays a recording: the extension is what says which it is.
+            var extension = Path.GetExtension(path);
             var directory = Path.GetDirectoryName(path);
-            var target = Path.Combine(directory, newName + GetImageExtension()).Replace("\\", "/");
+            var target = Path.Combine(directory, newName + extension).Replace("\\", "/");
             if (target == path)
             {
                 renamed = path;
@@ -337,7 +339,7 @@ namespace Unity.Android.Logcat
             if (File.Exists(target))
             {
                 UnityEngine.Debug.LogError(
-                    $"'{newName}{GetImageExtension()}' already exists. Choose a different name.");
+                    $"'{newName}{extension}' already exists. Choose a different name.");
                 return false;
             }
 
@@ -419,6 +421,16 @@ namespace Unity.Android.Logcat
         public string AllocateCapturePath(IAndroidLogcatDevice device, string extension)
         {
             return AllocatePath(device, extension);
+        }
+
+        /// <summary>
+        /// Ends a reservation made by <see cref="AllocateCapturePath"/>, once the capture
+        /// has landed or failed. Until then the scan keeps listing it with no file behind it.
+        /// </summary>
+        internal void ReleaseCapturePath(string path)
+        {
+            if (m_ReservedPaths.Remove(path))
+                InvalidateScreenshots();
         }
 
         internal AndroidLogcatCaptureScreenshot(AndroidLogcatRuntimeBase runtime, Func<string> directory, bool keepHistory)

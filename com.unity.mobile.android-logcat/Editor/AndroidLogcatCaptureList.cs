@@ -57,10 +57,18 @@ namespace Unity.Android.Logcat
                 "Size of the recording in pixels.");
             internal static readonly GUIContent Length = new GUIContent("Length",
                 "How long the recording runs.");
-            internal static readonly GUIContent Play = new GUIContent("Play",
-                "Play the recording.");
-            internal static readonly GUIContent Pause = new GUIContent("Pause",
-                "Pause the recording.");
+            // The icons the video clip inspector's preview toggles between, so playing
+            // a recording looks the same as playing a clip.
+            internal static readonly GUIContent Play = IconOrText("preAudioPlayOff", "Play", "Play the recording.");
+            internal static readonly GUIContent Pause = IconOrText("preAudioPlayOn", "Pause", "Pause the recording.");
+
+            static GUIContent IconOrText(string icon, string text, string tooltip)
+            {
+                var content = EditorGUIUtility.IconContent(icon);
+                return content != null && content.image != null
+                    ? new GUIContent(content.image, tooltip)
+                    : new GUIContent(text, tooltip);
+            }
 
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
@@ -91,6 +99,8 @@ namespace Unity.Android.Logcat
         const float kIconMargin = 2;
         // Air between the Live button and the captures under it.
         const float kGroupGap = 5;
+        // Square-ish, sized to the icon rather than stretched across the column.
+        const float kPlayButtonWidth = 32;
         // How long a new capture's row is lit, and how bright it starts.
         const double kFlashSeconds = 0.6;
         const float kFlashStrength = 0.6f;
@@ -264,8 +274,15 @@ namespace Unity.Android.Logcat
                 // A video opens asynchronously; there is no frame and no size until it has.
                 var frame = m_VideoPlayer.Texture;
                 var aspect = m_VideoPlayer.Aspect;
-                var opening = frame == null || aspect <= 0;
-                if (opening)
+                var failed = !string.IsNullOrEmpty(m_VideoPlayer.Error);
+                var opening = !failed && (frame == null || aspect <= 0);
+                if (failed)
+                {
+                    EditorGUI.HelpBox(previewArea, $"The recording cannot be played.\n{m_VideoPlayer.Error}",
+                        MessageType.Error);
+                    previewBox = previewArea;
+                }
+                else if (opening)
                 {
                     EditorGUI.HelpBox(previewArea, "Opening the recording...", MessageType.Info);
                     previewBox = previewArea;
@@ -329,8 +346,11 @@ namespace Unity.Android.Logcat
             if (y + height > rc.yMax)
                 return;
 
-            var label = m_VideoPlayer.IsPlaying() ? Styles.Pause : Styles.Play;
-            if (GUI.Button(new Rect(rc.x, y, rc.width, height), label, EditorStyles.miniButton))
+            // A toggle, pressed while playing, as the inspector draws it.
+            var playing = m_VideoPlayer.IsPlaying();
+            var width = Styles.Play.image != null ? Mathf.Min(kPlayButtonWidth, rc.width) : rc.width;
+            var buttonRect = new Rect(rc.x, y, width, height);
+            if (GUI.Toggle(buttonRect, playing, playing ? Styles.Pause : Styles.Play, EditorStyles.miniButton) != playing)
                 m_VideoPlayer.TogglePlay();
 
             y += height;

@@ -37,6 +37,7 @@ namespace Unity.Android.Logcat
         {
             // Stop video manually, otherwise it will spam Editor console.
             AndroidLogcatInternalLog.Log($"Error received while playing video, stopping video.\n{message}");
+            Error = message;
             source.Stop();
         }
 
@@ -55,8 +56,12 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>Why the current video could not be played, empty while it can.</summary>
+        internal string Error { get; private set; } = string.Empty;
+
         public void Play(string path)
         {
+            Error = string.Empty;
             m_Player.Stop();
 
             if (string.IsNullOrEmpty(path))

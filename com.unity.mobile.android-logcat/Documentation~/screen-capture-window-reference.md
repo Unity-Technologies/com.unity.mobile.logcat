@@ -96,7 +96,7 @@ This section appears beside the image while a screenshot or a recording is selec
 
 **Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** and **Length** come from the recording itself, so they display `Undefined` until it has opened.
 
-A selected recording starts playing and loops. Use **Play** and **Pause**, below the properties, to stop and resume it.
+A selected recording starts playing and loops. Use the play button below the properties to pause and resume it.
 
 ## Live view details
 

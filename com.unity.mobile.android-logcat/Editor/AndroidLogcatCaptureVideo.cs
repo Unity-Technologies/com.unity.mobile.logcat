@@ -89,8 +89,7 @@ namespace Unity.Android.Logcat
                     AndroidLogcatInternalLog.Log(title);
                     AndroidLogcatInternalLog.Log(m_RecordingProcessLog.ToString());
 
-                    m_OnStopRecording?.Invoke(result, targetPath);
-                    ClearRecordingData();
+                    CompleteRecording(result, targetPath);
                 }
             }
         }
@@ -162,6 +161,8 @@ namespace Unity.Android.Logcat
             if (IsRemoteRecorderActive(m_RecordingOnDevice))
             {
                 m_RecordingOnDevice = null;
+                m_OnStopRecording = null;
+                m_Runtime.CaptureScreenshot.ReleaseCapturePath(m_RecordingPath);
                 throw new InvalidOperationException("screenrecord is already recording on the device, aborting...");
             }
 
@@ -237,8 +238,7 @@ namespace Unity.Android.Logcat
             }
             finally
             {
-                m_OnStopRecording?.Invoke(result, targetPath);
-                ClearRecordingData();
+                CompleteRecording(result, targetPath);
             }
 
             return result == Result.Success;
@@ -261,6 +261,25 @@ namespace Unity.Android.Logcat
 
             DeleteVideoOnDevice(m_RecordingOnDevice);
             return result;
+        }
+
+        /// <summary>
+        /// The recording is over either way. Cleared before the callback runs: the callback
+        /// can leave the live view, which stops the recording again, and that has to find
+        /// nothing left to stop.
+        /// </summary>
+        private void CompleteRecording(Result result, string targetPath)
+        {
+            var onStopRecording = m_OnStopRecording;
+            ClearRecordingData();
+
+            // A pull that failed part way leaves what it had written, which would be
+            // listed as a recording.
+            if (result == Result.Failure)
+                DeleteVideoOnHost(targetPath);
+            m_Runtime.CaptureScreenshot.ReleaseCapturePath(targetPath);
+
+            onStopRecording?.Invoke(result, targetPath);
         }
 
         private void ClearRecordingData()
