@@ -139,9 +139,10 @@ namespace Unity.Android.Logcat
         // A recording is previewed by playing it, where a screenshot is drawn. Only
         // one of the two is ever loaded, since only one row is selected.
         readonly AndroidLogcatVideoPlayer m_VideoPlayer = new AndroidLogcatVideoPlayer();
-        bool m_PreviewIsVideo;
         string m_PreviewPath;
         PreviewDetails m_PreviewDetails;
+
+        bool PreviewIsVideo => m_PreviewDetails != null && m_PreviewTexture == null;
 
         // Zoom and pan for the preview. Its own, separate from the live view's: they
         // show different things, and a zoom set on one is rarely the one wanted on the
@@ -211,7 +212,7 @@ namespace Unity.Android.Logcat
         {
             // Reloading a recording opens it again at the start, so one that has not
             // changed on disk is left where it was, and paused if it was.
-            if (m_PreviewIsVideo && m_VideoPlayer.IsShowing(m_PreviewPath))
+            if (PreviewIsVideo && m_VideoPlayer.IsShowing(m_PreviewPath))
                 return;
             DestroyPreview();
         }
@@ -244,7 +245,7 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            if (m_PreviewTexture == null && !m_PreviewIsVideo)
+            if (m_PreviewDetails == null)
                 return false;
 
             AndroidLogcatStatsColumn.DrawBox(rc);
@@ -256,7 +257,7 @@ namespace Unity.Android.Logcat
             var previewArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
             Rect previewBox;
-            if (m_PreviewIsVideo)
+            if (PreviewIsVideo)
             {
                 // A video opens asynchronously; there is no frame and no size until it has.
                 var frame = m_VideoPlayer.Texture;
@@ -305,7 +306,7 @@ namespace Unity.Android.Logcat
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, details.DisplaySize);
 
             // A recording's size and length are known only once the player has opened it.
-            if (m_PreviewIsVideo)
+            if (PreviewIsVideo)
             {
                 AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.VideoSize,
                     Undefined(m_VideoPlayer.Dimensions));
@@ -318,7 +319,7 @@ namespace Unity.Android.Logcat
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize, details.FileSize);
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured, details.Captured, details.CapturedInFull);
 
-            if (m_PreviewIsVideo)
+            if (PreviewIsVideo)
             {
                 y += kGroupGap;
                 m_VideoPlayer.DoControlsGUI(rc, ref y);
@@ -388,7 +389,6 @@ namespace Unity.Android.Logcat
 
             if (IsVideo(path))
             {
-                m_PreviewIsVideo = true;
                 m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
                     AndroidLogcatScreenshotInfo.Load(path));
                 m_VideoPlayer.Open(path);
@@ -421,9 +421,8 @@ namespace Unity.Android.Logcat
 
         void DestroyPreview()
         {
-            if (m_PreviewIsVideo)
+            if (PreviewIsVideo)
                 m_VideoPlayer.Open(null);
-            m_PreviewIsVideo = false;
             if (m_PreviewTexture != null)
                 UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
             m_PreviewTexture = null;
