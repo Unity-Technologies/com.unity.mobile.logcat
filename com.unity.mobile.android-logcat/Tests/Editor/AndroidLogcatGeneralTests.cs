@@ -104,7 +104,7 @@ class AndroidLogcatGeneralTests
             var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
             var device = new AndroidLogcatFakeDevice90("unittest-device");
 
-            var reserved = captureScreenshot.AllocateImagePath(device);
+            var reserved = captureScreenshot.AllocateCapturePath(device, captureScreenshot.GetImageExtension());
             StringAssert.StartsWith(first, reserved, "The reservation belongs to the folder in use");
             Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
                 "A capture in flight is listed, so the next one cannot reuse its number");

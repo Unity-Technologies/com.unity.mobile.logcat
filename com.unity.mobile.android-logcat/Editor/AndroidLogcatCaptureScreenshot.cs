@@ -22,7 +22,7 @@ namespace Unity.Android.Logcat
         internal class AndroidLogcatCaptureScreenCaptureResult : IAndroidLogcatTaskResult
         {
             internal string imagePath;
-            // The path AllocateImagePath handed out, which is imagePath on success and
+            // The path AllocateCapturePath handed out, which is imagePath on success and
             // still needed on failure - that is the reservation to release.
             internal string reservedPath;
             internal string deviceId;
@@ -142,16 +142,13 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Reserves the next free path, <c>&lt;device_id&gt;_&lt;number&gt;.png</c> under
-        /// the capture directory, and makes sure it exists - adb pull will not create it.
-        /// <para>Internal rather than private so a test can reserve without a device.</para>
+        /// Reserves the next free path, <c>&lt;device_id&gt;_&lt;number&gt;</c> plus
+        /// <paramref name="extension"/> under the capture directory, and makes sure the
+        /// directory exists - adb pull will not create it. Screenshots and recordings
+        /// share the numbering: a recording is a capture like any other. Released with
+        /// <see cref="ReleaseCapturePath"/>.
         /// </summary>
-        internal string AllocateImagePath(IAndroidLogcatDevice device)
-        {
-            return AllocatePath(device, GetImageExtension());
-        }
-
-        private string AllocatePath(IAndroidLogcatDevice device, string extension)
+        internal string AllocateCapturePath(IAndroidLogcatDevice device, string extension)
         {
             var directory = m_Directory();
             Directory.CreateDirectory(directory);
@@ -160,7 +157,7 @@ namespace Unity.Android.Logcat
             var screenshots = GetScreenshots();
 
             if (!m_KeepHistory)
-                return AllocateSingleImagePath(directory, prefix, extension);
+                return AllocateSinglePath(directory, prefix, extension);
 
             // Numbering is per device, so only this device's entries count.
             var number = 1;
@@ -186,9 +183,9 @@ namespace Unity.Android.Logcat
         /// <summary>
         /// The single slot of a capture that keeps no history: always the same file,
         /// with everything captured before it - including a capture of another device -
-        /// deleted, so the directory holds one screenshot and no more.
+        /// deleted, so the directory holds one capture and no more.
         /// </summary>
-        private string AllocateSingleImagePath(string directory, string prefix, string extension)
+        private string AllocateSinglePath(string directory, string prefix, string extension)
         {
             var path = Path.Combine(directory, $"{prefix}_1{extension}").Replace("\\", "/");
 
@@ -415,15 +412,6 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Reserves the next free path for a capture of this kind, the same numbering
-        /// screenshots use - a recording is a capture like any other.
-        /// </summary>
-        public string AllocateCapturePath(IAndroidLogcatDevice device, string extension)
-        {
-            return AllocatePath(device, extension);
-        }
-
-        /// <summary>
         /// Ends a reservation made by <see cref="AllocateCapturePath"/>, once the capture
         /// has landed or failed. Until then the scan keeps listing it with no file behind it.
         /// </summary>
@@ -455,7 +443,7 @@ namespace Unity.Android.Logcat
             string imagePath;
             try
             {
-                imagePath = AllocateImagePath(device);
+                imagePath = AllocateCapturePath(device, GetImageExtension());
             }
             catch (Exception ex)
             {
