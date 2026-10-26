@@ -170,16 +170,6 @@ namespace Unity.Android.Logcat
                 settings.CaptureListWidth = kDefaultWidth;
         }
 
-        /// <summary>
-        /// Shows a capture, for something outside the list that has just made one.
-        /// </summary>
-        internal void Select(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return;
-            SelectOnly(path, m_SelectedDevice);
-        }
-
         /// <summary>The player holds a texture and a VideoPlayer of its own.</summary>
         internal void Dispose()
         {

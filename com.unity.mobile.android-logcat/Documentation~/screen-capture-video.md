@@ -6,7 +6,7 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to re
 2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify the device to record.
 3. Select **Live** in the [Capture list](screen-capture-window-reference.md#capture-list) to view the device's screen.
 4. Select **Take Recording** in the [Live view details](screen-capture-window-reference.md#live-view-details). The Screen Capture tool begins to record the device's screen, and the button becomes **Stop Recording**.
-5. Select **Stop Recording** to finish. The recording is added to the [Capture list](screen-capture-window-reference.md#capture-list) and selected, which opens it in the [Capture preview](screen-capture-window-reference.md#capture-preview). Selecting a capture from the list, or closing the window, also stops the recording.
+5. Select **Stop Recording** to finish. The recording is added to the [Capture list](screen-capture-window-reference.md#capture-list), and its row is briefly highlighted. Select the row to open it in the [Capture preview](screen-capture-window-reference.md#capture-preview). Selecting a capture from the list, or closing the window, also stops the recording.
 6. To keep a copy elsewhere, right-click the recording's row and select **Copy To...**.
 
 Recordings are stored beside screenshots, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.mp4`. To change how long a recording runs, its size or its bit rate, use the **Recording** settings in [Preferences](android-logcat-settings.md#capture-settings).

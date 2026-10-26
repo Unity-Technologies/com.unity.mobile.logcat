@@ -285,7 +285,7 @@ namespace Unity.Android.Logcat
             // the recorder has just written.
             m_CaptureScreenshot.InvalidateScreenshots();
             if (recorded)
-                m_CaptureList.Select(videoPath);
+                m_CaptureList?.Flash(videoPath);
 
             Repaint();
         }
