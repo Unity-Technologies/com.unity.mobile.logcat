@@ -454,7 +454,10 @@ namespace Unity.Android.Logcat
             var listRect = new Rect(rc.x, rc.y, width, rc.height);
             var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
 
-            DoColumnGUI(listRect, device);
+            // A recording only runs while the live view is showing, and selecting a
+            // capture would end it - so nothing in the column can be picked until it stops.
+            using (new EditorGUI.DisabledScope(m_Runtime.CaptureVideo.IsRecording))
+                DoColumnGUI(listRect, device);
 
             // Clamped to the window, so storing it unmoved would shrink a saved width
             // that this window is too narrow to show.
@@ -539,6 +542,12 @@ namespace Unity.Android.Logcat
             var scrollbarWidth = contentHeight > inner.height ? kScrollbarWidth : 0;
             var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
             var hasFocus = GUIUtility.keyboardControl == controlId;
+            // The rows read mouse and key events themselves, which GUI.enabled does not stop.
+            var interactive = GUI.enabled;
+            // Any button when none is given.
+            bool Pressed(Rect rect, EventType type, int button = -1) =>
+                interactive && Event.current.type == type && (button < 0 || Event.current.button == button)
+                && rect.Contains(Event.current.mousePosition);
 
             // A row that cannot be seen cannot say anything.
             if (m_FlashNeedsScroll && m_FlashPath != null)
@@ -583,7 +592,15 @@ namespace Unity.Android.Logcat
 
                 var icon = Styles.IconFor(path);
                 if (icon != null && Event.current.type == EventType.Repaint)
+                {
+                    // DrawTexture ignores GUI.enabled, so it is faded by hand the way
+                    // disabled styles fade their text.
+                    var color = GUI.color;
+                    if (!interactive)
+                        GUI.color = new Color(color.r, color.g, color.b, color.a * 0.5f);
                     GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit);
+                    GUI.color = color;
+                }
 
                 if (path == m_RenamingPath)
                 {
@@ -602,8 +619,7 @@ namespace Unity.Android.Logcat
                 // The whole row, icon included. Skipped while this row is being
                 // renamed, so clicking into the text field does not count as selecting
                 // the row.
-                if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                    && rowRect.Contains(Event.current.mousePosition) && path != m_RenamingPath)
+                if (Pressed(rowRect, EventType.MouseDown, 0) && path != m_RenamingPath)
                 {
                     GUIUtility.keyboardControl = controlId;
                     ClickRow(captures, path, Event.current, device);
@@ -616,16 +632,14 @@ namespace Unity.Android.Logcat
 
                 // On the press, so the row is drawn selected before the menu opens
                 // over it. Not consumed: the ContextClick is made from this event.
-                if (Event.current.type == EventType.MouseDown && Event.current.button == 1
-                    && rowRect.Contains(Event.current.mousePosition) && path != m_RenamingPath
+                if (Pressed(rowRect, EventType.MouseDown, 1) && path != m_RenamingPath
                     && !m_Selected.Contains(path))
                 {
                     GUIUtility.keyboardControl = controlId;
                     SelectOnly(path, device);
                 }
 
-                if (Event.current.type == EventType.ContextClick
-                    && rowRect.Contains(Event.current.mousePosition))
+                if (Pressed(rowRect, EventType.ContextClick))
                 {
                     GUIUtility.keyboardControl = controlId;
                     // A click inside the selection acts on the whole of it; one
@@ -644,15 +658,15 @@ namespace Unity.Android.Logcat
             GUI.EndScrollView();
 
             // Deselect when clicking on empty space
-            if (Event.current.type == EventType.MouseDown && Event.current.button == 0
-                && inner.Contains(Event.current.mousePosition) && m_RenamingPath == null)
+            if (Pressed(inner, EventType.MouseDown, 0) && m_RenamingPath == null)
             {
                 GUIUtility.keyboardControl = controlId;
                 DeselectAll();
                 Event.current.Use();
             }
 
-            HandleKeys(controlId, captures, rowHeight, inner.height, device);
+            if (interactive)
+                HandleKeys(controlId, captures, rowHeight, inner.height, device);
 
             if (menuPath != null)
                 ShowRowContextMenu(captures, menuPath, GUIUtility.ScreenToGUIPoint(menuScreenPosition));
