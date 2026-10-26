@@ -114,6 +114,12 @@ namespace Unity.Android.Logcat
         // past the target without being anywhere near it. -1 outside a paused seek.
         long m_SeekFrom = -1;
 
+        // The slider being dragged, as its hot control, and whether the video was
+        // playing when the drag began. Playing on underneath a drag would fight every
+        // seek it sends, so it pauses until the drag is over.
+        int m_DragControl;
+        bool m_ResumeAfterDrag;
+
         string m_Path;
         DateTime m_PathWriteTime;
 
@@ -312,6 +318,8 @@ namespace Unity.Android.Logcat
 
             m_Player.Stop();
             m_Information = null;
+            m_DragControl = 0;
+            m_ResumeAfterDrag = false;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
                 SetState(State.Closed, "closed");
@@ -516,6 +524,22 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>Pauses for a drag of the slider, remembering whether to play on after it.</summary>
+        internal void BeginDrag()
+        {
+            m_ResumeAfterDrag = IsPlaying();
+            if (m_ResumeAfterDrag)
+                TogglePlay();
+        }
+
+        /// <summary>Plays on from wherever the drag left the video, if it was playing before.</summary>
+        internal void EndDrag()
+        {
+            if (m_ResumeAfterDrag && !IsPlaying())
+                TogglePlay();
+            m_ResumeAfterDrag = false;
+        }
+
         /// <summary>
         /// The play toggle, and under it the seek slider with the frame counter, drawn
         /// from <paramref name="y"/> down within <paramref name="rc"/>. Whatever does not
@@ -566,12 +590,39 @@ namespace Unity.Android.Logcat
             var sliderRect = new Rect(inner.x, inner.y, Mathf.Max(0, inner.width - counterWidth - kSeekPadding), height);
             var counterRect = new Rect(inner.xMax - counterWidth, inner.y, counterWidth, height);
 
+            // The slider takes the mouse on the press and lets go on the release, which
+            // can be outside this window - so a drag ends when it is no longer hot,
+            // whatever event that turns up on. Paused before the slider handles the
+            // press, so even the press's own seek is a paused one.
+            if (m_DragControl != 0 && GUIUtility.hotControl != m_DragControl)
+            {
+                m_DragControl = 0;
+                EndDrag();
+            }
+            var e = Event.current;
+            var pressed = GUI.enabled && frameCount > 1 && e.type == EventType.MouseDown && e.button == 0
+                && sliderRect.Contains(e.mousePosition);
+            if (pressed)
+                BeginDrag();
+
+            // While dragging, the thumb stays where it was dragged to rather than going
+            // back to the frame the player has caught up to so far.
+            var thumb = m_DragControl != 0 && m_SeekTarget >= 0 ? m_SeekTarget : frame;
+
             EditorGUI.BeginDisabledGroup(frameCount <= 1);
             EditorGUI.BeginChangeCheck();
-            var picked = GUI.HorizontalSlider(sliderRect, frame, 0, Mathf.Max(0, frameCount - 1));
+            var picked = GUI.HorizontalSlider(sliderRect, thumb, 0, Mathf.Max(0, frameCount - 1));
             if (EditorGUI.EndChangeCheck())
                 SeekTo((long)Mathf.Round(picked));
             EditorGUI.EndDisabledGroup();
+
+            if (pressed)
+            {
+                if (GUIUtility.hotControl != 0)
+                    m_DragControl = GUIUtility.hotControl;
+                else
+                    EndDrag();
+            }
             GUI.Label(counterRect, counter, Styles.FrameCounter);
             y += boxHeight;
 
