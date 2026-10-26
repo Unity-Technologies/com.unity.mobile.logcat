@@ -9,6 +9,13 @@ using UnityEngine.Video;
 
 namespace Unity.Android.Logcat
 {
+    /// <summary>
+    /// Plays a recording in the capture preview: a VideoPlayer on a hidden GameObject,
+    /// rendering into a texture the caller draws, plus the controls under it - play and
+    /// pause, a frame step each way and a seek slider. Frames are counted from the
+    /// file's own timing (<see cref="AndroidLogcatVideoInformation"/>), so stepping and
+    /// seeking land on the frames the recording actually has.
+    /// </summary>
     internal class AndroidLogcatVideoPlayer : IDisposable
     {
         [NoAutoStaticsCleanup]
