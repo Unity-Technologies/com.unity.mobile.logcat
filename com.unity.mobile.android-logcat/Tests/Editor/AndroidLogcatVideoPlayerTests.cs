@@ -19,13 +19,18 @@ using State = Unity.Android.Logcat.AndroidLogcatVideoPlayer.State;
 /// </summary>
 class AndroidLogcatVideoPlayerTests
 {
-    const string kVideoRelativePath = "Tests/TestVideo.mp4";
+    const string kVideoRelativePath = "Tests/TestVideo_4seconds.mp4";
     const int kFrameCount = 137;
     // Decoding from the single keyframe to the far end of the recording is the slowest
     // thing here, and well within this on any machine.
     const double kTimeout = 10;
 
     static string VideoPath => Path.Combine(Application.dataPath, kVideoRelativePath).Replace("\\", "/");
+
+    // Stopped as soon as it started: one frame, at 0 s.
+    const string kSingleFrameRelativePath = "Tests/TestVideo_0seconds.mp4";
+
+    static string SingleFramePath => Path.Combine(Application.dataPath, kSingleFrameRelativePath).Replace("\\", "/");
 
     AndroidLogcatVideoPlayer m_Player;
 
@@ -354,6 +359,71 @@ class AndroidLogcatVideoPlayerTests
             "A different file is not the one showing.");
         Assert.IsFalse(m_Player.IsShowing(null));
         Assert.IsFalse(m_Player.IsShowing(string.Empty));
+    }
+
+    [Test]
+    public void ReadsASingleFrameRecording()
+    {
+        RequireSingleFrame();
+        var information = AndroidLogcatVideoInformation.Load(SingleFramePath);
+
+        Assert.IsNotNull(information);
+        Assert.AreEqual(1, information.FrameCount);
+        Assert.AreEqual(0, information.TimeOf(0));
+        Assert.AreEqual(0, information.FrameAt(1));
+        Assert.AreEqual(0, information.Snap(5, kPlayerFrameRate));
+        Assert.AreEqual(-1, information.StepFrom(0, 1, kPlayerFrameRate));
+        Assert.AreEqual(-1, information.StepFrom(0, -1, kPlayerFrameRate));
+        Assert.AreEqual(-1, information.StepFrom(0, 1, 0));
+    }
+
+    /// <summary>The end may come before the frame does.</summary>
+    [UnityTest]
+    public IEnumerator OpensASingleFrameRecordingPaused()
+    {
+        RequireSingleFrame();
+        yield return Open(SingleFramePath);
+
+        Assert.AreEqual(0, m_Player.Frame, Describe());
+        Assert.AreEqual(1, m_Player.FrameCount);
+        Assert.IsNotNull(m_Player.Texture, "Opened paused, but with nothing to show.");
+    }
+
+    [UnityTest]
+    public IEnumerator PlaysAndPausesASingleFrameRecording()
+    {
+        RequireSingleFrame();
+        yield return Open(SingleFramePath);
+
+        m_Player.TogglePlay();
+        Assert.IsTrue(m_Player.IsPlaying());
+        yield return WaitSeconds(0.5);
+        Assert.AreNotEqual(State.Failed, m_Player.CurrentState, Describe());
+
+        m_Player.TogglePlay();
+        yield return WaitForPaused("pausing");
+        Assert.AreEqual(0, m_Player.Frame, Describe());
+    }
+
+    [UnityTest]
+    public IEnumerator SeekingASingleFrameRecordingStaysOnIt()
+    {
+        RequireSingleFrame();
+        yield return Open(SingleFramePath);
+
+        m_Player.SeekTo(0);
+        yield return WaitForPaused("seeking to 0");
+        Assert.AreEqual(0, m_Player.Frame, Describe());
+
+        m_Player.SeekTo(5);
+        yield return WaitForPaused("seeking past the end");
+        Assert.AreEqual(0, m_Player.Frame, Describe());
+    }
+
+    static void RequireSingleFrame()
+    {
+        if (!File.Exists(SingleFramePath))
+            Assert.Ignore($"'{SingleFramePath}' is not in this project.");
     }
 
     /// <summary>Windows cannot move a file the player has open.</summary>
