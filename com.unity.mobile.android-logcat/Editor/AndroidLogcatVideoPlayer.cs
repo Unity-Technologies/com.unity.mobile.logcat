@@ -62,6 +62,8 @@ namespace Unity.Android.Logcat
         const float kScrollbarWidth = 16;
         // The history is only worth drawing if a few rows of it fit.
         const int kMinHistoryRows = 3;
+        // A backward seek resent this many times before giving up on it.
+        const int kMaxSeekRetries = 3;
 
         /// <summary>
         /// What the player is doing, as one value rather than a set of flags that could
@@ -113,6 +115,10 @@ namespace Unity.Android.Logcat
         // it has actually moved come from around here, and on a seek backwards they are
         // past the target without being anywhere near it. -1 outside a paused seek.
         long m_SeekFrom = -1;
+        int m_SeekRetries;
+
+        // Set once the open video is prepared, which isPrepared may not stay after it stops.
+        bool m_Prepared;
 
         // The slider being dragged, as its hot control, and whether the video was
         // playing when the drag began. Playing on underneath a drag would fight every
@@ -157,6 +163,7 @@ namespace Unity.Android.Logcat
             m_Player.seekCompleted += SeekCompleted;
             m_Player.frameReady += FrameReady;
             m_Player.loopPointReached += LoopPointReached;
+            m_Player.prepareCompleted += PrepareCompleted;
         }
 
         internal State CurrentState => m_State;
@@ -179,9 +186,13 @@ namespace Unity.Android.Logcat
                 m_SeekTarget = -1;
                 m_SeekFrom = -1;
             }
+            var waiting = state == State.SeekingToPause || state == State.PausingOnFrame;
+            EditorApplication.update -= CheckStopped;
+            if (waiting && m_Player != null)
+                EditorApplication.update += CheckStopped;
             if (m_Player != null)
             {
-                m_Player.sendFrameReadyEvents = state == State.SeekingToPause || state == State.PausingOnFrame;
+                m_Player.sendFrameReadyEvents = waiting;
                 // Only playback loops. Waiting for a frame past the end would otherwise
                 // wrap around and play the whole video again to reach it.
                 m_Player.isLooping = state == State.Playing || state == State.Seeking;
@@ -202,6 +213,30 @@ namespace Unity.Android.Logcat
             m_History.Enqueue(new Transition { Time = DateTime.Now, From = m_State, To = to, Reason = reason });
             while (m_History.Count > kHistoryLength)
                 m_History.Dequeue();
+        }
+
+        private void PrepareCompleted(VideoPlayer source)
+        {
+            m_Prepared = true;
+        }
+
+        /// <summary>
+        /// macOS stops a one frame video without a frame or loop point event, which
+        /// would leave a waiting state waiting forever.
+        /// </summary>
+        private void CheckStopped()
+        {
+            if (m_Player == null || !m_Prepared || m_Player.isPlaying || m_Player.isPaused)
+                return;
+            if (m_Player.texture == null)
+            {
+                Error = "The player stopped without decoding a frame.";
+                SetState(State.Failed, "stopped without a frame");
+                return;
+            }
+            var last = FrameCount - 1;
+            SetState(State.Paused, $"stopped, on {last}");
+            m_ResumeFrom = last;
         }
 
         private void ErrorReceived(VideoPlayer source, string message)
@@ -272,7 +307,18 @@ namespace Unity.Android.Logcat
                         break;
                     // Past the target on the way back is still where the seek started from.
                     if (target >= 0 && shown > target && target < m_SeekFrom && shown >= m_SeekFrom)
+                    {
+                        // Moving on from there means the seek was dropped, as macOS does
+                        // with one sent straight after Play.
+                        if (shown > m_SeekFrom + 1 && m_SeekRetries < kMaxSeekRetries)
+                        {
+                            m_SeekRetries++;
+                            m_SeekFrom = shown;
+                            Note($"seek to {target} dropped, sending it again");
+                            MoveTo(target);
+                        }
                         break;
+                    }
                     source.Pause();
                     SetState(State.Paused, shown == target ? $"on {shown}" : $"on {shown}, wanted {target}");
                     m_ResumeFrom = shown;
@@ -328,6 +374,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
+            m_Prepared = false;
             m_Information = AndroidLogcatVideoInformation.Load(path);
             m_Player.url = path;
             // There is no seek to wait for, only the first frame.
@@ -388,6 +435,9 @@ namespace Unity.Android.Logcat
             {
                 if (m_Player == null)
                     return 0;
+                // macOS rewinds the clock of a video paused at its end.
+                if (m_State == State.Paused && m_ResumeFrom >= 0)
+                    return m_ResumeFrom;
                 return m_Information != null ? m_Information.FrameAt(m_Player.time) : Math.Max(0, m_Player.frame);
             }
         }
@@ -441,6 +491,7 @@ namespace Unity.Android.Logcat
                     // Taken before anything moves, and kept across a drag's later seeks.
                     if (m_State == State.Paused)
                         m_SeekFrom = Frame;
+                    m_SeekRetries = 0;
                     // Set before Play, which can land the seek straight away.
                     SetState(State.SeekingToPause, $"seek to {frame}");
                     m_SeekTarget = frame;
