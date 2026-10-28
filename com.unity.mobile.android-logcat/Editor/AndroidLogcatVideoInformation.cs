@@ -18,6 +18,10 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatVideoInformation
     {
+        // Ten minutes at 120 fps; screenrecord stops at three. A broken file can claim
+        // billions of frames. Longer videos still play, with VideoPlayer's numbering.
+        internal const int kMaxFrames = 10 * 60 * 120;
+
         readonly double[] m_FrameTimes;
 
         // Worked out for one frame rate at a time, which is the player's and does not
@@ -207,7 +211,7 @@ namespace Unity.Android.Logcat
                 {
                     size = stream.Length - boxStart;
                 }
-                if (size < headerSize)
+                if (size < headerSize || size > stream.Length - boxStart)
                     return null;
 
                 if (name == type)
@@ -292,10 +296,18 @@ namespace Unity.Android.Logcat
             if (stts == null)
                 return null;
 
-            // Decode times: runs of (count, duration).
-            var decodeTimes = new List<long>();
-            long time = 0;
+            // Decode times: runs of (count, duration), counted before any are stored.
             var entries = ReadUInt32(data, stts.Value.Start + 4);
+            if (!EntriesFit(stts.Value, entries, 8))
+                return null;
+            long frameCount = 0;
+            for (var i = 0; i < entries; i++)
+                frameCount += ReadUInt32(data, stts.Value.Start + 8 + i * 8);
+            if (frameCount > kMaxFrames)
+                return null;
+
+            var decodeTimes = new List<long>((int)frameCount);
+            long time = 0;
             for (var i = 0; i < entries; i++)
             {
                 var entry = stts.Value.Start + 8 + i * 8;
@@ -316,6 +328,8 @@ namespace Unity.Android.Logcat
                 var cttsVersion = data[ctts.Value.Start];
                 var sample = 0;
                 var cttsEntries = ReadUInt32(data, ctts.Value.Start + 4);
+                if (!EntriesFit(ctts.Value, cttsEntries, 8))
+                    return null;
                 for (var i = 0; i < cttsEntries && sample < decodeTimes.Count; i++)
                 {
                     var entry = ctts.Value.Start + 8 + i * 8;
@@ -347,6 +361,12 @@ namespace Unity.Android.Logcat
             for (var i = 0; i < times.Length; i++)
                 times[i] = Math.Max(0, decodeTimes[i] - mediaStart) / (double)timescale;
             return times.Length > 0 ? times : null;
+        }
+
+        /// <summary>Whether the entries the header claims fit in the box.</summary>
+        static bool EntriesFit(Box box, uint entries, int entrySize)
+        {
+            return box.Start + 8 + (long)entries * entrySize <= box.End;
         }
 
         static uint ReadUInt32(byte[] data, int offset)

@@ -322,6 +322,8 @@ namespace Unity.Android.Logcat
             m_ResumeAfterDrag = false;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
+                // Releases the file, which Windows cannot rename or delete while open.
+                m_Player.url = string.Empty;
                 SetState(State.Closed, "closed");
                 return;
             }

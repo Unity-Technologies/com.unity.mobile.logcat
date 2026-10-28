@@ -170,6 +170,52 @@ class AndroidLogcatGeneralTests
         }
     }
 
+    /// <summary>A screenshot and a recording of one name would share a details file.</summary>
+    [Test]
+    public void RenameIsRefusedWhenAnotherKindOfCaptureHasTheName()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        try
+        {
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+
+            var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
+            var recording = System.IO.Path.Combine(directory, "unittest-rename-taken.mp4").Replace("\\", "/");
+            var details = System.IO.Path.Combine(directory, "unittest-rename-taken.json").Replace("\\", "/");
+            var renamed = System.IO.Path.Combine(directory, "unittest-rename-free.png").Replace("\\", "/");
+
+            System.IO.File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
+            System.IO.File.WriteAllBytes(recording, new byte[] { 4, 5, 6 });
+            new AndroidLogcatScreenshotInfo { deviceName = "The recording's device" }.Save(recording);
+            var recordingDetails = System.IO.File.ReadAllText(details);
+
+            try
+            {
+                LogAssert.Expect(LogType.Error, new Regex("unittest-rename-taken.mp4' already exists"));
+                Assert.IsFalse(captureScreenshot.RenameScreenshot(image, "unittest-rename-taken"),
+                    "The rename should be refused");
+                FileAssert.Exists(image);
+                FileAssert.DoesNotExist(System.IO.Path.Combine(directory, "unittest-rename-taken.png"));
+                Assert.AreEqual(recordingDetails, System.IO.File.ReadAllText(details),
+                    "The recording's details should be left alone");
+
+                Assert.IsTrue(captureScreenshot.RenameScreenshot(image, "unittest-rename-free"),
+                    "A name nothing else holds should rename");
+                FileAssert.Exists(renamed);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(directory, true);
+            }
+        }
+        finally
+        {
+            runtime.Shutdown();
+        }
+    }
+
     [Test]
     public void SettingsRangeTests()
     {

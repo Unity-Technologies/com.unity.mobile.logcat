@@ -138,7 +138,7 @@ namespace Unity.Android.Logcat
         Texture2D m_PreviewTexture;
         // A recording is previewed by playing it, where a screenshot is drawn. Only
         // one of the two is ever loaded, since only one row is selected.
-        readonly AndroidLogcatVideoPlayer m_VideoPlayer = new AndroidLogcatVideoPlayer();
+        readonly AndroidLogcatVideoPlayer m_VideoPlayer;
         string m_PreviewPath;
         PreviewDetails m_PreviewDetails;
 
@@ -157,11 +157,19 @@ namespace Unity.Android.Logcat
         internal bool LiveSelected => m_LiveSelected;
 
         internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime, Action repaint)
+            : this(runtime, runtime.CaptureScreenshot, repaint, AndroidLogcatVideoPlayer.kDefaultName)
+        {
+        }
+
+        /// <summary>For tests: own captures and player.</summary>
+        internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime,
+            AndroidLogcatCaptureScreenshot captureScreenshot, Action repaint, string playerName)
         {
             m_Runtime = runtime;
-            m_CaptureScreenshot = runtime.CaptureScreenshot;
+            m_CaptureScreenshot = captureScreenshot;
             m_LiveStream = runtime.LiveStream;
             m_Repaint = repaint;
+            m_VideoPlayer = new AndroidLogcatVideoPlayer(playerName);
 
             // Settings saved before the width existed deserialize it as 0, which would
             // collapse the list to nothing.
@@ -365,7 +373,7 @@ namespace Unity.Android.Logcat
         /// capture landing, a delete, a rename - so there is one path to get wrong
         /// instead of four.
         /// </summary>
-        void SyncPreview()
+        internal void SyncPreview()
         {
             var path = m_CaptureScreenshot.SelectedImagePath;
             if (path == m_PreviewPath)
@@ -408,6 +416,11 @@ namespace Unity.Android.Logcat
             return string.Equals(extension, ".mp4", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(extension, ".webm", StringComparison.OrdinalIgnoreCase);
         }
+
+        /// <summary>Null when nothing is loaded.</summary>
+        internal string PreviewPath => m_PreviewPath;
+
+        internal AndroidLogcatVideoPlayer VideoPlayer => m_VideoPlayer;
 
         void DestroyPreview()
         {
@@ -953,9 +966,28 @@ namespace Unity.Android.Logcat
 
             // An unchanged or unusable name is not an error; the row just goes back to
             // showing what it showed before.
-            if (m_CaptureScreenshot.RenameScreenshot(path, name, out var renamed))
-                FollowRename(path, renamed);
+            RenameCapture(path, name);
             m_Repaint();
+        }
+
+        /// <summary>The selection follows the rename.</summary>
+        internal bool RenameCapture(string path, string name)
+        {
+            ClosePreviewOf(path);
+            if (!m_CaptureScreenshot.RenameScreenshot(path, name, out var renamed))
+                return false;
+            FollowRename(path, renamed);
+            return true;
+        }
+
+        /// <summary>
+        /// Windows cannot move or delete a file the player has open. The next pass
+        /// reopens whatever is selected.
+        /// </summary>
+        void ClosePreviewOf(string path)
+        {
+            if (PreviewIsVideo && m_PreviewPath == path)
+                DestroyPreview();
         }
 
         void CancelRename()
@@ -1177,9 +1209,17 @@ namespace Unity.Android.Logcat
                 "Delete", "Cancel"))
                 return;
 
+            DeleteCaptures(captures, paths, device);
+        }
+
+        /// <summary>Deletes without asking, then selects the row that took the first one's place.</summary>
+        internal void DeleteCaptures(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            IReadOnlyList<string> paths, IAndroidLogcatDevice device)
+        {
             var firstRow = IndexOf(captures, paths[0]);
             foreach (var path in paths)
             {
+                ClosePreviewOf(path);
                 if (m_CaptureScreenshot.DeleteScreenshot(path))
                     m_Selected.Remove(path);
             }

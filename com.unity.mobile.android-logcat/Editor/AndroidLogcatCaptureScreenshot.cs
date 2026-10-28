@@ -333,11 +333,15 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            if (File.Exists(target))
+            // Any kind: a screenshot and a recording of one name would share a details file.
+            foreach (var taken in new[] { extension, GetImageExtension(), GetVideoExtension() })
             {
-                UnityEngine.Debug.LogError(
-                    $"'{newName}{extension}' already exists. Choose a different name.");
-                return false;
+                if (File.Exists(Path.Combine(directory, newName + taken)))
+                {
+                    UnityEngine.Debug.LogError(
+                        $"'{newName}{taken}' already exists. Choose a different name.");
+                    return false;
+                }
             }
 
             // Checked before the image moves, so the two cannot end up apart.

@@ -356,6 +356,91 @@ class AndroidLogcatVideoPlayerTests
         Assert.IsFalse(m_Player.IsShowing(string.Empty));
     }
 
+    /// <summary>Windows cannot move a file the player has open.</summary>
+    [UnityTest]
+    public IEnumerator RenamingThePreviewedRecordingMovesIt()
+    {
+        var directory = CreateCapturesFolder();
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        var captures = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+        var list = new AndroidLogcatCaptureList(runtime, captures, () => {}, nameof(AndroidLogcatVideoPlayerTests));
+        try
+        {
+            var path = CopyRecordingTo(directory);
+            yield return Preview(list, captures, path);
+
+            Assert.IsTrue(list.RenameCapture(path, "unittest-recording-renamed"), "The rename should have succeeded.");
+            var renamed = Path.Combine(directory, "unittest-recording-renamed.mp4").Replace("\\", "/");
+            FileAssert.Exists(renamed);
+            FileAssert.DoesNotExist(path);
+
+            list.SyncPreview();
+            Assert.AreEqual(renamed, list.PreviewPath, "The preview should follow the rename.");
+            yield return WaitForPaused("the renamed recording to open");
+            Assert.IsTrue(m_Player.IsShowing(renamed));
+        }
+        finally
+        {
+            list.Dispose();
+            runtime.Shutdown();
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator DeletingThePreviewedRecordingRemovesIt()
+    {
+        var directory = CreateCapturesFolder();
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        var captures = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+        var list = new AndroidLogcatCaptureList(runtime, captures, () => {}, nameof(AndroidLogcatVideoPlayerTests));
+        try
+        {
+            var path = CopyRecordingTo(directory);
+            yield return Preview(list, captures, path);
+
+            list.DeleteCaptures(captures.GetScreenshots(), new[] { path }, null);
+            FileAssert.DoesNotExist(path);
+
+            list.SyncPreview();
+            Assert.AreEqual(State.Closed, m_Player.CurrentState, "Nothing is left to preview.");
+        }
+        finally
+        {
+            list.Dispose();
+            runtime.Shutdown();
+            Directory.Delete(directory, true);
+        }
+    }
+
+    static string CreateCapturesFolder()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "AndroidLogcatTests", Guid.NewGuid().ToString("N")).Replace("\\", "/");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    /// <summary>A copy the test can move and delete.</summary>
+    static string CopyRecordingTo(string directory)
+    {
+        var path = Path.Combine(directory, "unittest-recording_1.mp4").Replace("\\", "/");
+        File.Copy(VideoPath, path);
+        return path;
+    }
+
+    /// <summary>Selects the recording and waits until it is open.</summary>
+    IEnumerator Preview(AndroidLogcatCaptureList list, AndroidLogcatCaptureScreenshot captures, string path)
+    {
+        captures.SelectImage(path);
+        list.SyncPreview();
+        Assert.AreEqual(path, list.PreviewPath);
+        m_Player = list.VideoPlayer;
+        yield return WaitForPaused("the recording to open");
+        Assert.IsTrue(m_Player.IsShowing(path));
+    }
+
     IEnumerator Open(string path = null)
     {
         // Not the Screen Capture window's, which TearDown would otherwise destroy.
