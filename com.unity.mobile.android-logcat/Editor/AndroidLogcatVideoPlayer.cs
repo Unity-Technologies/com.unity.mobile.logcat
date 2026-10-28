@@ -64,6 +64,8 @@ namespace Unity.Android.Logcat
         const int kMinHistoryRows = 3;
         // A backward seek resent this many times before giving up on it.
         const int kMaxSeekRetries = 3;
+        // A player also reads as stopped for a moment between preparing and playing.
+        const double kStoppedSeconds = 0.5;
 
         /// <summary>
         /// What the player is doing, as one value rather than a set of flags that could
@@ -119,6 +121,7 @@ namespace Unity.Android.Logcat
 
         // Set once the open video is prepared, which isPrepared may not stay after it stops.
         bool m_Prepared;
+        double m_StoppedSince = -1;
 
         // The slider being dragged, as its hot control, and whether the video was
         // playing when the drag began. Playing on underneath a drag would fight every
@@ -188,6 +191,7 @@ namespace Unity.Android.Logcat
             }
             var waiting = state == State.SeekingToPause || state == State.PausingOnFrame;
             EditorApplication.update -= CheckStopped;
+            m_StoppedSince = -1;
             if (waiting && m_Player != null)
                 EditorApplication.update += CheckStopped;
             if (m_Player != null)
@@ -218,6 +222,7 @@ namespace Unity.Android.Logcat
         private void PrepareCompleted(VideoPlayer source)
         {
             m_Prepared = true;
+            Note($"prepared, {source.frameCount} frames at {source.frameRate:0.###} fps");
         }
 
         /// <summary>
@@ -227,7 +232,17 @@ namespace Unity.Android.Logcat
         private void CheckStopped()
         {
             if (m_Player == null || !m_Prepared || m_Player.isPlaying || m_Player.isPaused)
+            {
+                m_StoppedSince = -1;
                 return;
+            }
+            var now = EditorApplication.timeSinceStartup;
+            if (m_StoppedSince < 0)
+                m_StoppedSince = now;
+            if (now - m_StoppedSince < kStoppedSeconds)
+                return;
+
+            m_StoppedSince = -1;
             if (m_Player.texture == null)
             {
                 Error = "The player stopped without decoding a frame.";
@@ -737,7 +752,7 @@ namespace Unity.Android.Logcat
             if (m_Player == null)
                 yield break;
             var player = m_Player.isPlaying ? "playing" : m_Player.isPaused ? "paused" : "stopped";
-            yield return $"Player: {player}, frame {m_Player.frame}, time {m_Player.time:0.000}s";
+            yield return $"Player: {player}, prepared {m_Player.isPrepared}, frame {m_Player.frame}, time {m_Player.time:0.000}s";
             yield return $"Shown: {Frame}, resume {m_ResumeFrom}, seek {m_SeekFrom} -> {m_SeekTarget}, " +
                 (m_Information != null ? $"{m_Information.FrameCount} frame times" : "no frame times") +
                 (m_Information?.Showable(FrameRate) is long[] showable
