@@ -24,8 +24,9 @@ namespace Unity.Android.Logcat
 
         readonly double[] m_FrameTimes;
 
-        // Worked out for one frame rate at a time, which is the player's and does not
-        // change while a video is open.
+        // Cache for Showable: the frames VideoPlayer can display at m_ShowableRate.
+        // E.g. frames starting at 0.000, 0.010 and 0.050 s, at 25 fps (0.04 s slots),
+        // land in slots 0, 0 and 1 - frame 1 is never shown, so this is [0, 2].
         double m_ShowableRate;
         long[] m_Showable;
 
