@@ -11,15 +11,23 @@ namespace Unity.Android.Logcat
     /// Prototype: records the live stream's JPEG frames into an MP4 with MediaEncoder,
     /// as an alternative to adb screenrecord. Frames are queued from the reader thread
     /// and encoded on EditorApplication.update, whether or not the window paints.
+    /// <para>
+    /// The file has a constant frame rate, so its frames are exactly VideoPlayer's: each
+    /// slot gets the newest frame that arrived in it, and a slot nothing arrived in
+    /// repeats the one before.
+    /// </para>
     /// </summary>
     internal class AndroidLogcatStreamRecorder
     {
-        // About three seconds at 30 fps. Past that the Editor is not keeping up, and
-        // frames are dropped rather than piling up in memory.
+        // About as fast as the stream delivers at full size.
+        internal const int kFrameRate = 30;
+        // A keyframe a second; the frames between are differences, so a repeat is nearly free.
+        const int kKeyframeInterval = kFrameRate;
+        const float kBitsPerPixel = 0.1f;
+        // About three seconds. Past that the Editor is not keeping up, and frames are
+        // dropped rather than piling up in memory.
         const int kMaxQueued = 90;
-        // Nominal only: every frame carries its own time, which makes the file VFR.
-        const int kNominalFps = 30;
-        // Per Editor update. The rest waits in the queue rather than stalling the Editor.
+        // Per Editor update. The rest waits rather than stalling the Editor.
         const double kBudgetMs = 8;
 
         struct QueuedFrame
@@ -38,28 +46,31 @@ namespace Unity.Android.Logcat
 
         MediaEncoder m_Encoder;
         Texture2D m_Decoded;
+        // The frame for slot m_Written, not written yet: a newer one may still replace it.
         Texture2D m_Canvas;
+        bool m_HasPending;
         int m_Width;
         int m_Height;
+        long m_Written;
+        // Writes of the pending frame owed before the next one can take its place.
+        long m_Owed;
+        // Decoded, waiting for m_Owed to be paid before it becomes the pending frame.
+        bool m_HasDecoded;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
-        long m_LastPtsUs = -1;
-        // The last frame added, repeated at Stop so a still screen keeps its length.
-        Texture2D m_LastAdded;
 
         // Stats, for comparing against screenrecord.
-        int m_Encoded;
+        int m_Received;
+        int m_Replaced;
         int m_Dropped;
         int m_Failed;
-        int m_Composed;
         double m_DecodeMs;
         double m_EncodeMs;
         double m_WorstUpdateMs;
 
         internal string Path => m_Path;
         internal string Error { get; private set; } = string.Empty;
-        internal int FramesEncoded => m_Encoded;
 
         /// <summary>The newest frame decoded, which the live view shows instead of decoding it again.</summary>
         internal Texture2D Latest => m_Decoded;
@@ -76,7 +87,8 @@ namespace Unity.Android.Logcat
                 try
                 {
                     CreateEncoder(current.width, current.height);
-                    Add(current, 0);
+                    Compose(current);
+                    m_HasPending = true;
                 }
                 catch (Exception ex)
                 {
@@ -87,6 +99,8 @@ namespace Unity.Android.Logcat
         }
 
         long NowUs => m_Clock.ElapsedTicks * 1000000 / Stopwatch.Frequency;
+
+        static long SlotAt(long us) => (long)Math.Round(us * (double)kFrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
         internal void Enqueue(byte[] data, int size, long ptsUs)
@@ -112,85 +126,93 @@ namespace Unity.Android.Logcat
         void Drain(double budgetMs)
         {
             var watch = Stopwatch.StartNew();
-            while (watch.Elapsed.TotalMilliseconds < budgetMs)
+            try
             {
-                QueuedFrame frame;
-                lock (m_Lock)
+                while (string.IsNullOrEmpty(Error) && watch.Elapsed.TotalMilliseconds < budgetMs && Step())
                 {
-                    if (m_Queue.Count == 0)
-                        break;
-                    frame = m_Queue.Dequeue();
                 }
-                if (string.IsNullOrEmpty(Error))
-                    Encode(frame);
+            }
+            catch (Exception ex)
+            {
+                Fail(ex);
             }
             // Not the flush at Stop, which is allowed to take as long as it needs.
             if (budgetMs < double.MaxValue)
                 m_WorstUpdateMs = Math.Max(m_WorstUpdateMs, watch.Elapsed.TotalMilliseconds);
         }
 
-        void Encode(QueuedFrame frame)
+        /// <summary>One piece of work, in order: an owed write, a waiting frame, the next queued one.</summary>
+        bool Step()
         {
-            try
+            if (m_Owed > 0)
+            {
+                WritePending();
+                m_Owed--;
+                return true;
+            }
+
+            if (m_HasDecoded)
             {
                 var watch = Stopwatch.StartNew();
-                if (m_Decoded == null)
-                    m_Decoded = new Texture2D(2, 2, TextureFormat.RGB24, true);
-                if (!ImageConversion.LoadImage(m_Decoded, new ReadOnlySpan<byte>(frame.Data)))
-                {
-                    m_Failed++;
-                    return;
-                }
-                m_DecodeMs += watch.Elapsed.TotalMilliseconds;
-
-                if (m_Encoder == null)
-                    CreateEncoder(m_Decoded.width, m_Decoded.height);
-
-                // Device spacing, anchored where the first device frame arrived.
-                if (m_FirstPtsUs < 0)
-                {
-                    m_FirstPtsUs = frame.PtsUs;
-                    m_FirstArrivalUs = frame.ArrivalUs;
-                }
-                watch.Restart();
-                Add(m_Decoded, m_FirstArrivalUs + frame.PtsUs - m_FirstPtsUs);
+                Compose(m_Decoded);
                 m_EncodeMs += watch.Elapsed.TotalMilliseconds;
+                m_HasDecoded = false;
+                m_HasPending = true;
+                return true;
             }
-            catch (Exception ex)
+
+            QueuedFrame frame;
+            lock (m_Lock)
             {
-                Fail(ex);
+                if (m_Queue.Count == 0)
+                    return false;
+                frame = m_Queue.Dequeue();
             }
+            Decode(frame);
+            return true;
         }
 
-        /// <summary>Adds a frame at <paramref name="us"/>, nudged past the last one if need be.</summary>
-        void Add(Texture2D texture, long us)
+        void Decode(QueuedFrame frame)
         {
-            us = Math.Max(us, m_LastPtsUs + 1);
-            var time = new MediaTime(us, 1000000, 1);
-
-            // The encoder takes RGBA32 only, and a decoded JPEG is RGB24.
-            bool added;
-            if (texture.format == TextureFormat.RGBA32 && texture.width == m_Width && texture.height == m_Height)
-            {
-                added = m_Encoder.AddFrame(texture, time);
-            }
-            else
-            {
-                Compose(texture);
-                m_Composed++;
-                added = m_Encoder.AddFrame(m_Canvas, time);
-            }
-
-            if (added)
-            {
-                m_Encoded++;
-                m_LastPtsUs = us;
-                m_LastAdded = texture;
-            }
-            else
+            var watch = Stopwatch.StartNew();
+            if (m_Decoded == null)
+                m_Decoded = new Texture2D(2, 2, TextureFormat.RGB24, true);
+            if (!ImageConversion.LoadImage(m_Decoded, new ReadOnlySpan<byte>(frame.Data)))
             {
                 m_Failed++;
+                return;
             }
+            m_DecodeMs += watch.Elapsed.TotalMilliseconds;
+            m_Received++;
+
+            if (m_Encoder == null)
+                CreateEncoder(m_Decoded.width, m_Decoded.height);
+
+            // Device spacing, anchored where the first device frame arrived.
+            if (m_FirstPtsUs < 0)
+            {
+                m_FirstPtsUs = frame.PtsUs;
+                m_FirstArrivalUs = frame.ArrivalUs;
+            }
+            var slot = SlotAt(m_FirstArrivalUs + frame.PtsUs - m_FirstPtsUs);
+
+            // The pending frame fills every slot up to this one. In its own slot, or
+            // an earlier one, this frame replaces it instead.
+            if (m_HasPending && slot > m_Written)
+                m_Owed = slot - m_Written;
+            else if (m_HasPending)
+                m_Replaced++;
+            m_HasDecoded = true;
+        }
+
+        void WritePending()
+        {
+            var watch = Stopwatch.StartNew();
+            if (m_Encoder.AddFrame(m_Canvas))
+                m_Written++;
+            else
+                m_Failed++;
+            m_EncodeMs += watch.Elapsed.TotalMilliseconds;
         }
 
         void Fail(Exception ex)
@@ -204,20 +226,27 @@ namespace Unity.Android.Logcat
             // H.264 needs even sizes.
             m_Width = width & ~1;
             m_Height = height & ~1;
-            var attributes = new VideoTrackAttributes
+            var h264 = new H264EncoderAttributes
             {
-                frameRate = new MediaRational(kNominalFps),
+                gopSize = kKeyframeInterval,
+                // Frames stored in the order they are shown.
+                numConsecutiveBFrames = 0,
+                profile = VideoEncodingProfile.H264High
+            };
+            var attributes = new VideoTrackEncoderAttributes(h264)
+            {
+                frameRate = new MediaRational(kFrameRate),
                 width = (uint)m_Width,
                 height = (uint)m_Height,
                 includeAlpha = false,
-                bitRateMode = VideoBitrateMode.High
+                targetBitRate = (uint)(m_Width * m_Height * kFrameRate * kBitsPerPixel)
             };
             m_Encoder = new MediaEncoder(m_Path, attributes);
         }
 
         /// <summary>
-        /// Converts a frame to RGBA32 at the encoder's fixed size, centered on black when
-        /// its size differs - after a rotation, or an odd one.
+        /// Converts a frame to RGBA32, which is all the encoder takes, at its fixed size -
+        /// centered on black when the size differs, after a rotation or an odd one.
         /// </summary>
         void Compose(Texture2D source)
         {
@@ -243,25 +272,30 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Encodes what is still queued and closes the file. Returns false when nothing
-        /// was written, which leaves no file behind.
+        /// Encodes what is still queued, holds the last frame until now, and closes the
+        /// file. Returns false when nothing was written, which leaves no file behind.
         /// </summary>
         internal bool Stop()
         {
             EditorApplication.update -= Update;
             Drain(double.MaxValue);
-            if (m_Encoder != null && m_LastAdded != null && string.IsNullOrEmpty(Error))
+            try
             {
-                try
+                if (m_HasPending && string.IsNullOrEmpty(Error))
                 {
-                    Add(m_LastAdded, NowUs);
-                    // The hold is the same frame, not a new one.
-                    m_Encoded--;
+                    var last = Math.Max(SlotAt(NowUs), m_Written);
+                    while (m_Written <= last && string.IsNullOrEmpty(Error))
+                    {
+                        var before = m_Written;
+                        WritePending();
+                        if (m_Written == before)
+                            break;
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Fail(ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                Fail(ex);
             }
             m_Encoder?.Dispose();
             m_Encoder = null;
@@ -271,17 +305,18 @@ namespace Unity.Android.Logcat
                 UnityEngine.Object.DestroyImmediate(m_Canvas);
             m_Decoded = null;
             m_Canvas = null;
-            return m_Encoded > 0 && string.IsNullOrEmpty(Error);
+            return m_Written > 0 && string.IsNullOrEmpty(Error);
         }
 
         /// <summary>What to compare against screenrecord.</summary>
         internal string Stats()
         {
-            var frames = Math.Max(1, m_Encoded + m_Failed);
-            var seconds = m_LastPtsUs > 0 ? m_LastPtsUs / 1000000.0 : 0;
-            return $"Stream recording: {m_Encoded} frames over {seconds:0.0} s ({(seconds > 0 ? m_Encoded / seconds : 0):0.0} fps), " +
-                $"{m_Width}x{m_Height}, {m_Dropped} dropped (Editor behind), {m_Failed} failed, {m_Composed} composed. " +
-                $"Per frame: decode {m_DecodeMs / frames:0.0} ms, encode {m_EncodeMs / frames:0.0} ms. " +
+            var seconds = m_Written / (double)kFrameRate;
+            return $"Stream recording: {m_Written} frames at {kFrameRate} fps ({seconds:0.0} s), {m_Width}x{m_Height}, " +
+                $"{m_Received} received, {m_Replaced} replaced by a newer one in the same slot, " +
+                $"{m_Dropped} dropped (Editor behind), {m_Failed} failed. " +
+                $"Per received frame: decode {m_DecodeMs / Math.Max(1, m_Received):0.0} ms. " +
+                $"Per written frame: encode {m_EncodeMs / Math.Max(1, m_Written):0.0} ms. " +
                 $"Worst update {m_WorstUpdateMs:0} ms.";
         }
     }
