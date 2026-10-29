@@ -26,6 +26,10 @@ namespace Unity.Android.Logcat
                 + "and is added to the list when it stops. Leaving the live view stops it.");
             public static readonly GUIContent StopRecording = new GUIContent("Stop Recording",
                 "Stop recording and add the recording to the list.");
+            public static readonly GUIContent RecordStream = new GUIContent("Record Stream",
+                "Prototype, Developer Mode only: record the live stream's frames with MediaEncoder "
+                + "instead of screenrecord on the device.");
+            public static readonly GUIContent StopStreamRecording = new GUIContent("Stop Stream Recording");
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -42,6 +46,8 @@ namespace Unity.Android.Logcat
         private AndroidLogcatStatusBar m_StatusBar;
 
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
+
+        private AndroidLogcatStreamRecorder m_StreamRecorder;
 
         const float kAdvancedMenuWidth = 26;
 
@@ -86,6 +92,16 @@ namespace Unity.Android.Logcat
                     () => m_CaptureVideo.IsRecording ? Styles.StopRecording : Styles.TakeRecording,
                     ToggleRecording, () => CanRecord)
             };
+            if (Unsupported.IsDeveloperMode())
+            {
+                m_CaptureActions = new List<AndroidLogcatLiveStream.CaptureAction>(m_CaptureActions)
+                {
+                    new AndroidLogcatLiveStream.CaptureAction(
+                        () => m_StreamRecorder != null ? Styles.StopStreamRecording : Styles.RecordStream,
+                        ToggleStreamRecording,
+                        () => m_StreamRecorder != null || (m_LiveStream.IsStreaming && !m_CaptureVideo.IsRecording))
+                }.ToArray();
+            }
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
         }
@@ -105,6 +121,8 @@ namespace Unity.Android.Logcat
 
         private void OnDisable()
         {
+            StopStreamRecording();
+
             // The live stream and the recorder are owned by the runtime, so they would
             // otherwise carry on after the window that was showing them is gone - and
             // keep reporting to a status bar that is gone with it. Dropping the
@@ -306,6 +324,59 @@ namespace Unity.Android.Logcat
         {
             if (m_LiveStream != null && m_LiveStream.HasPendingFrame)
                 Repaint();
+            // Nothing to record once the stream is gone - a capture was selected, or it failed.
+            if (m_StreamRecorder != null && !m_LiveStream.IsStreaming)
+                StopStreamRecording();
+        }
+
+        private void ToggleStreamRecording()
+        {
+            if (m_StreamRecorder != null)
+            {
+                StopStreamRecording();
+                return;
+            }
+
+            var device = m_DeviceSelection.SelectedDevice;
+            var path = m_CaptureScreenshot.AllocateCapturePath(device, m_CaptureScreenshot.GetVideoExtension());
+            m_StreamRecorder = new AndroidLogcatStreamRecorder(path, m_LiveStream.Texture);
+            m_LiveStream.Recorder = m_StreamRecorder;
+            AndroidLogcatScreenshotInfo.Create(device)?.Save(path);
+            m_StatusBar.Message = "Recording the stream...";
+        }
+
+        private void StopStreamRecording()
+        {
+            var recorder = m_StreamRecorder;
+            if (recorder == null)
+                return;
+            m_StreamRecorder = null;
+            if (m_LiveStream != null)
+                m_LiveStream.Recorder = null;
+
+            var recorded = recorder.Stop();
+            var stats = recorder.Stats();
+            if (!recorded)
+            {
+                AndroidLogcatScreenshotInfo.Delete(recorder.Path);
+                if (File.Exists(recorder.Path))
+                    File.Delete(recorder.Path);
+            }
+            m_CaptureScreenshot.ReleaseCapturePath(recorder.Path);
+            m_CaptureScreenshot.InvalidateScreenshots();
+
+            if (recorded)
+            {
+                ReportSaved("Stream recording", recorder.Path);
+                m_CaptureList?.Flash(recorder.Path);
+                Debug.Log($"{stats}\n{recorder.Path}");
+            }
+            else
+            {
+                m_StatusBar.Message = "Stream recording failed. See the Console for details.";
+                Debug.LogError($"Stream recording failed: {recorder.Error}\n{stats}");
+            }
+            Repaint();
         }
 
         /// <summary>

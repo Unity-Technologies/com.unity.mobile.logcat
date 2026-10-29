@@ -389,6 +389,15 @@ namespace Unity.Android.Logcat
 
         internal bool IsStreaming => m_ReaderThread != null;
 
+        volatile AndroidLogcatStreamRecorder m_Recorder;
+
+        /// <summary>Prototype: gets every frame the reader receives, not just the newest.</summary>
+        internal AndroidLogcatStreamRecorder Recorder
+        {
+            get => m_Recorder;
+            set => m_Recorder = value;
+        }
+
         /// <summary>
         /// Raised when there is something new to say about the stream: the first frame
         /// has arrived and named its size, that size changed under it - a rotation, a
@@ -1013,8 +1022,9 @@ namespace Unity.Android.Logcat
                 while (!session.Stop)
                 {
                     ReadExactly(stream, header, kFrameHeaderSize);
-                    // Bytes 0..7 are the presentation timestamp, unused: frames are
-                    // displayed as they arrive rather than scheduled.
+                    // Bytes 0..7 are the presentation timestamp, in microseconds. The
+                    // view shows frames as they arrive; only a recording uses it.
+                    var ptsUs = (long)ReadInt32BE(header, 0) << 32 | (uint)ReadInt32BE(header, 4);
                     var width = ReadInt32BE(header, 8);
                     var height = ReadInt32BE(header, 12);
                     var displayWidth = ReadInt32BE(header, 16);
@@ -1030,6 +1040,8 @@ namespace Unity.Android.Logcat
 
                     if (session != m_Session)
                         break;
+
+                    m_Recorder?.Enqueue(payload, size, ptsUs);
 
                     lock (m_FrameLock)
                     {
