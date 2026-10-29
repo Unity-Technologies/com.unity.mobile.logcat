@@ -90,10 +90,11 @@ This section appears beside the image while a screenshot or a recording is selec
 | **Display Size**   | The device's display resolution when the capture was taken. This differs from **Image Size** if the display was rotated or its size overridden. |
 | **Image Size**     | The size of the image in pixels. Screenshots only.           |
 | **Video Size**     | The size of the recording in pixels. Recordings only. |
+| **Frame Rate**     | How many frames per second the recording plays at. Recordings only. |
 | **File Size**      | The size of the file on disk.                                |
 | **Captured**       | When the file was last written. Hover over it for the full date and time. |
 
-**Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** comes from the recording itself, so it displays `Undefined` until the recording has opened.
+**Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** and **Frame Rate** come from the recording itself, so they display `Undefined` until the recording has opened.
 
 A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it. While it is paused, the buttons beside the play button go back or forward one frame. You can also drag the slider under it to move to another point in the recording, whether it is playing or paused. A playing recording pauses while you drag, and plays on from the new point when you let go. Next to the step buttons is the current time and the length of the recording, in seconds and hundredths of a second, with minutes for a recording a minute or longer.
 

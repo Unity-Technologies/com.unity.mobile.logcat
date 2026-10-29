@@ -55,6 +55,8 @@ namespace Unity.Android.Logcat
                 "When the file was last written.");
             internal static readonly GUIContent VideoSize = new GUIContent("Video Size",
                 "Size of the recording in pixels.");
+            internal static readonly GUIContent FrameRate = new GUIContent("Frame Rate",
+                "Frames per second the recording plays at.");
             // The selected row draws on a coloured background, where the default label
             // colour is hard to read.
             static GUIStyle s_SelectedRow;
@@ -308,6 +310,9 @@ namespace Unity.Android.Logcat
             {
                 AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.VideoSize,
                     Undefined(m_VideoPlayer.Dimensions));
+                var frameRate = m_VideoPlayer.FrameRate;
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FrameRate,
+                    frameRate > 0 ? $"{frameRate:0.##} fps" : kUndefined);
             }
             else
             {
