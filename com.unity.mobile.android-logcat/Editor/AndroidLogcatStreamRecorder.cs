@@ -35,6 +35,7 @@ namespace Unity.Android.Logcat
             internal byte[] Data;
             internal long PtsUs;
             internal long ArrivalUs;
+            internal int Rotation;
         }
 
         readonly string m_Path;
@@ -43,6 +44,8 @@ namespace Unity.Android.Logcat
         // The recording's own time, from Start. The device only sends a frame when the
         // screen changes, so its timestamps alone cannot say when recording began.
         readonly Stopwatch m_Clock = Stopwatch.StartNew();
+        // The live view's turn for a frame's display rotation, which the recording follows.
+        readonly Func<int, int> m_QuarterTurnsFor;
 
         MediaEncoder m_Encoder;
         Texture2D m_Decoded;
@@ -56,6 +59,7 @@ namespace Unity.Android.Logcat
         long m_Owed;
         // Decoded, waiting for m_Owed to be paid before it becomes the pending frame.
         bool m_HasDecoded;
+        int m_DecodedTurns;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
@@ -79,15 +83,18 @@ namespace Unity.Android.Logcat
         /// What the live view shows now, recorded as the first frame: a still screen
         /// sends nothing until it changes. Null before the stream's first frame.
         /// </param>
-        internal AndroidLogcatStreamRecorder(string path, Texture2D current)
+        /// <param name="currentTurns">The live view's turn of <paramref name="current"/>.</param>
+        internal AndroidLogcatStreamRecorder(string path, Texture2D current, int currentTurns,
+            Func<int, int> quarterTurnsFor)
         {
             m_Path = path;
+            m_QuarterTurnsFor = quarterTurnsFor;
             if (current != null)
             {
                 try
                 {
-                    CreateEncoder(current.width, current.height);
-                    Compose(current);
+                    CreateEncoder(current.width, current.height, currentTurns);
+                    Compose(current, currentTurns);
                     m_HasPending = true;
                 }
                 catch (Exception ex)
@@ -103,7 +110,7 @@ namespace Unity.Android.Logcat
         static long SlotAt(long us) => (long)Math.Round(us * (double)kFrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
-        internal void Enqueue(byte[] data, int size, long ptsUs)
+        internal void Enqueue(byte[] data, int size, long ptsUs, int rotation)
         {
             var copy = new byte[size];
             Buffer.BlockCopy(data, 0, copy, 0, size);
@@ -114,7 +121,7 @@ namespace Unity.Android.Logcat
                     m_Dropped++;
                     return;
                 }
-                m_Queue.Enqueue(new QueuedFrame { Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs });
+                m_Queue.Enqueue(new QueuedFrame { Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation });
             }
         }
 
@@ -154,7 +161,7 @@ namespace Unity.Android.Logcat
             if (m_HasDecoded)
             {
                 var watch = Stopwatch.StartNew();
-                Compose(m_Decoded);
+                Compose(m_Decoded, m_DecodedTurns);
                 m_EncodeMs += watch.Elapsed.TotalMilliseconds;
                 m_HasDecoded = false;
                 m_HasPending = true;
@@ -184,9 +191,10 @@ namespace Unity.Android.Logcat
             }
             m_DecodeMs += watch.Elapsed.TotalMilliseconds;
             m_Received++;
+            m_DecodedTurns = m_QuarterTurnsFor(frame.Rotation);
 
             if (m_Encoder == null)
-                CreateEncoder(m_Decoded.width, m_Decoded.height);
+                CreateEncoder(m_Decoded.width, m_Decoded.height, m_DecodedTurns);
 
             // Device spacing, anchored where the first device frame arrived.
             if (m_FirstPtsUs < 0)
@@ -221,17 +229,20 @@ namespace Unity.Android.Logcat
             AndroidLogcatInternalLog.Log($"Stream recording failed: {ex}");
         }
 
-        void CreateEncoder(int width, int height)
+        /// <summary>Sized to the first frame as the view shows it, turned or not.</summary>
+        void CreateEncoder(int width, int height, int turns)
         {
+            var sideways = (turns & 1) != 0;
             // H.264 needs even sizes.
-            m_Width = width & ~1;
-            m_Height = height & ~1;
+            m_Width = (sideways ? height : width) & ~1;
+            m_Height = (sideways ? width : height) & ~1;
             var h264 = new H264EncoderAttributes
             {
                 gopSize = kKeyframeInterval,
-                // Frames stored in the order they are shown.
+                // Frames stored in the order they are shown. High profile reorders them
+                // anyway on Windows, and VideoPlayer warns about the timestamps.
                 numConsecutiveBFrames = 0,
-                profile = VideoEncodingProfile.H264High
+                profile = VideoEncodingProfile.H264Baseline
             };
             var attributes = new VideoTrackEncoderAttributes(h264)
             {
@@ -245,18 +256,19 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Converts a frame to RGBA32, which is all the encoder takes, at its fixed size -
-        /// centered on black when the size differs, after a rotation or an odd one.
+        /// Converts a frame to RGBA32, which is all the encoder takes, turned as the live
+        /// view turns it and at the encoder's fixed size - centered on black when the
+        /// size differs, after a rotation or an odd one.
         /// </summary>
-        void Compose(Texture2D source)
+        void Compose(Texture2D source, int turns)
         {
             if (m_Canvas == null)
                 m_Canvas = new Texture2D(m_Width, m_Height, TextureFormat.RGBA32, false);
 
-            var scale = Mathf.Min((float)m_Width / source.width, (float)m_Height / source.height);
-            var w = source.width * scale;
-            var h = source.height * scale;
-            var rect = new Rect((m_Width - w) * 0.5f, (m_Height - h) * 0.5f, w, h);
+            var sideways = (turns & 1) != 0;
+            var turnedWidth = sideways ? source.height : source.width;
+            var turnedHeight = sideways ? source.width : source.height;
+            var scale = Mathf.Min((float)m_Width / turnedWidth, (float)m_Height / turnedHeight);
 
             var target = RenderTexture.GetTemporary(m_Width, m_Height, 0, RenderTextureFormat.ARGB32);
             var previous = RenderTexture.active;
@@ -264,7 +276,10 @@ namespace Unity.Android.Logcat
             GL.Clear(true, true, Color.black);
             GL.PushMatrix();
             GL.LoadPixelMatrix(0, m_Width, m_Height, 0);
-            Graphics.DrawTexture(rect, source);
+            // Counter-clockwise, as the live view turns it, about the canvas centre.
+            var centre = new Vector3(m_Width * 0.5f, m_Height * 0.5f, 0);
+            GL.MultMatrix(Matrix4x4.TRS(centre, Quaternion.Euler(0, 0, turns * -90f), new Vector3(scale, scale, 1)));
+            Graphics.DrawTexture(new Rect(-source.width * 0.5f, -source.height * 0.5f, source.width, source.height), source);
             GL.PopMatrix();
             m_Canvas.ReadPixels(new Rect(0, 0, m_Width, m_Height), 0, 0, false);
             RenderTexture.active = previous;

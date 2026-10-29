@@ -1060,7 +1060,7 @@ namespace Unity.Android.Logcat
                     if (session != m_Session)
                         break;
 
-                    m_Recorder?.Enqueue(payload, size, ptsUs);
+                    m_Recorder?.Enqueue(payload, size, ptsUs, rotation);
 
                     lock (m_FrameLock)
                     {
@@ -1621,14 +1621,14 @@ namespace Unity.Android.Logcat
         /// refuses to. Zero once the device has honoured the request, which is what
         /// keeps a rotation it accepted from being applied twice.
         /// </summary>
-        internal int ViewQuarterTurns
+        internal int ViewQuarterTurns => QuarterTurnsFor(m_DisplayRotation);
+
+        /// <summary>The view's turn for a frame the device sent at <paramref name="displayRotation"/>.</summary>
+        internal int QuarterTurnsFor(int displayRotation)
         {
-            get
-            {
-                if (m_RequestedRotation == AndroidDeviceRotation.Auto)
-                    return 0;
-                return (((int)m_RequestedRotation - m_DisplayRotation) % 4 + 4) % 4;
-            }
+            if (m_RequestedRotation == AndroidDeviceRotation.Auto)
+                return 0;
+            return (((int)m_RequestedRotation - displayRotation) % 4 + 4) % 4;
         }
 
         /// <summary>A size the way the view is showing it, which a turn transposes.</summary>

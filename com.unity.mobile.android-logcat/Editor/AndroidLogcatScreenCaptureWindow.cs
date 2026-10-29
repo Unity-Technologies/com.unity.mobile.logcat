@@ -358,7 +358,8 @@ namespace Unity.Android.Logcat
 
             var device = m_DeviceSelection.SelectedDevice;
             var path = m_CaptureScreenshot.AllocateCapturePath(device, m_CaptureScreenshot.GetVideoExtension());
-            m_StreamRecorder = new AndroidLogcatStreamRecorder(path, m_LiveStream.Texture);
+            m_StreamRecorder = new AndroidLogcatStreamRecorder(path, m_LiveStream.Texture,
+                m_LiveStream.ViewQuarterTurns, m_LiveStream.QuarterTurnsFor);
             m_RecordingStarted = DateTime.Now;
             m_LiveStream.Recorder = m_StreamRecorder;
             AndroidLogcatScreenshotInfo.Create(device)?.Save(path);
