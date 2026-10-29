@@ -55,6 +55,9 @@ namespace Unity.Android.Logcat
         // Between the play toggle and the step pair, which are drawn joined.
         const float kButtonGap = 4;
         const float kSeekPadding = 2;
+        // Either side of the time, inside its box. CalcSize runs a fraction short, and
+        // the box's border takes a pixel too.
+        const float kTimePadding = 6;
         const float kDebugGap = 5;
         // Several seeks' worth, scrolled through rather than all on screen.
         const int kHistoryLength = 100;
@@ -622,11 +625,11 @@ namespace Unity.Android.Logcat
             var length = frameCount > 0 ? FormatTime(Length, minutes) : "-.--";
             var time = frameCount > 0 ? $"{FormatTime(TimeOf(frame), minutes)} / {length}" : "-.-- / -.--";
             // Sized to the longest the text gets, so the box does not change width as it plays.
-            var timeWidth = Styles.FrameCounter.CalcSize(new GUIContent($"{length} / {length}")).x + 2 * kSeekPadding;
+            var timeWidth = Mathf.Ceil(Styles.FrameCounter.CalcSize(new GUIContent($"{length} / {length}")).x) + 2 * kTimePadding;
             var timeX = Mathf.Max(x + kButtonGap, rc.xMax - timeWidth);
             var timeRect = new Rect(timeX, y, Mathf.Max(0, rc.xMax - timeX), height);
             GUI.Box(timeRect, GUIContent.none, EditorStyles.helpBox);
-            GUI.Label(new Rect(timeRect.x + kSeekPadding, timeRect.y, Mathf.Max(0, timeRect.width - 2 * kSeekPadding), height),
+            GUI.Label(new Rect(timeRect.x + kTimePadding / 2, timeRect.y, Mathf.Max(0, timeRect.width - kTimePadding), height),
                 time, Styles.FrameCounter);
             y += height;
 
