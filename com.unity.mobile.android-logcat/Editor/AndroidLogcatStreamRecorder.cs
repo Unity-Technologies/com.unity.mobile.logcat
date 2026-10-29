@@ -19,6 +19,8 @@ namespace Unity.Android.Logcat
         const int kMaxQueued = 90;
         // Nominal only: every frame carries its own time, which makes the file VFR.
         const int kNominalFps = 30;
+        // Per Editor update. The rest waits in the queue rather than stalling the Editor.
+        const double kBudgetMs = 8;
 
         struct QueuedFrame
         {
@@ -58,6 +60,9 @@ namespace Unity.Android.Logcat
         internal string Path => m_Path;
         internal string Error { get; private set; } = string.Empty;
         internal int FramesEncoded => m_Encoded;
+
+        /// <summary>The newest frame decoded, which the live view shows instead of decoding it again.</summary>
+        internal Texture2D Latest => m_Decoded;
 
         /// <param name="current">
         /// What the live view shows now, recorded as the first frame: a still screen
@@ -101,8 +106,13 @@ namespace Unity.Android.Logcat
 
         void Update()
         {
+            Drain(kBudgetMs);
+        }
+
+        void Drain(double budgetMs)
+        {
             var watch = Stopwatch.StartNew();
-            while (true)
+            while (watch.Elapsed.TotalMilliseconds < budgetMs)
             {
                 QueuedFrame frame;
                 lock (m_Lock)
@@ -114,7 +124,9 @@ namespace Unity.Android.Logcat
                 if (string.IsNullOrEmpty(Error))
                     Encode(frame);
             }
-            m_WorstUpdateMs = Math.Max(m_WorstUpdateMs, watch.Elapsed.TotalMilliseconds);
+            // Not the flush at Stop, which is allowed to take as long as it needs.
+            if (budgetMs < double.MaxValue)
+                m_WorstUpdateMs = Math.Max(m_WorstUpdateMs, watch.Elapsed.TotalMilliseconds);
         }
 
         void Encode(QueuedFrame frame)
@@ -123,7 +135,7 @@ namespace Unity.Android.Logcat
             {
                 var watch = Stopwatch.StartNew();
                 if (m_Decoded == null)
-                    m_Decoded = new Texture2D(2, 2, TextureFormat.RGB24, false);
+                    m_Decoded = new Texture2D(2, 2, TextureFormat.RGB24, true);
                 if (!ImageConversion.LoadImage(m_Decoded, new ReadOnlySpan<byte>(frame.Data)))
                 {
                     m_Failed++;
@@ -237,7 +249,7 @@ namespace Unity.Android.Logcat
         internal bool Stop()
         {
             EditorApplication.update -= Update;
-            Update();
+            Drain(double.MaxValue);
             if (m_Encoder != null && m_LastAdded != null && string.IsNullOrEmpty(Error))
             {
                 try

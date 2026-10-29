@@ -777,8 +777,24 @@ namespace Unity.Android.Logcat
                 // take the whole buffer: a reused buffer is usually larger than the
                 // frame sitting in it.
                 bool decoded;
-                using (k_DecodeFrame.Auto())
-                    decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+                var recorded = m_Recorder?.Latest;
+                if (recorded != null)
+                {
+                    // The recorder decodes every frame already; this is it, or one just before.
+                    if (m_Texture.width != recorded.width || m_Texture.height != recorded.height
+                        || m_Texture.format != recorded.format || m_Texture.mipmapCount != recorded.mipmapCount)
+                    {
+                        m_Texture.Reinitialize(recorded.width, recorded.height, recorded.format, recorded.mipmapCount > 1);
+                        m_Texture.Apply(false);
+                    }
+                    Graphics.CopyTexture(recorded, m_Texture);
+                    decoded = true;
+                }
+                else
+                {
+                    using (k_DecodeFrame.Auto())
+                        decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+                }
 
                 if (decoded)
                 {
