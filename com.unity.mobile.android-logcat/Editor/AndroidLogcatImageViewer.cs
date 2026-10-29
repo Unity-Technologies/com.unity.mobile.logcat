@@ -49,6 +49,21 @@ namespace Unity.Android.Logcat
                     return s_Badge;
                 }
             }
+
+            static GUIStyle s_RecordingBadge;
+
+            internal static GUIStyle RecordingBadge
+            {
+                get
+                {
+                    if (s_RecordingBadge == null)
+                    {
+                        s_RecordingBadge = new GUIStyle(Badge) { fontStyle = FontStyle.Bold };
+                        s_RecordingBadge.normal.textColor = new Color(0.95f, 0.25f, 0.25f);
+                    }
+                    return s_RecordingBadge;
+                }
+            }
         }
 
         internal const float kMinZoom = 1.0f;
@@ -69,6 +84,8 @@ namespace Unity.Android.Logcat
         const float kFramePadding = 2;
 
         float m_Zoom = kMinZoom;
+        // The last box drawn, less its scrollbars, for badges drawn after it.
+        Rect m_Visible;
         Vector2 m_Scroll;
         bool m_Panning;
 
@@ -116,9 +133,13 @@ namespace Unity.Android.Logcat
             drawContents(content);
             GUI.EndScrollView();
 
+            m_Visible = new Rect(box.x, box.y,
+                box.width - (image.y > box.height ? kScrollbarSize : 0),
+                box.height - (image.x > box.width ? kScrollbarSize : 0));
+
             // Outside the scroll view, or it would scroll away with the image.
             if (IsZoomed)
-                DoZoomBadgeGUI(box);
+                DoZoomBadgeGUI(m_Visible);
 
             return box;
         }
@@ -298,12 +319,23 @@ namespace Unity.Android.Logcat
 
         void DoZoomBadgeGUI(Rect area)
         {
-            var content = Styles.Zoom(ZoomPercent);
-            var size = Styles.Badge.CalcSize(content);
-            var rect = new Rect(area.x + kBadgeMargin, area.y + kBadgeMargin,
-                Mathf.Min(Mathf.Ceil(size.x), area.width),
-                Mathf.Min(Mathf.Ceil(size.y), area.height));
-            GUI.Label(rect, content, Styles.Badge);
+            DoBadgeGUI(area, Styles.Zoom(ZoomPercent), Styles.Badge, false);
+        }
+
+        /// <summary>How long the recording has been running, in the top right corner of the last box drawn.</summary>
+        internal void DoRecordingBadgeGUI(TimeSpan elapsed)
+        {
+            var text = $"● REC {(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}";
+            DoBadgeGUI(m_Visible, new GUIContent(text), Styles.RecordingBadge, true);
+        }
+
+        static void DoBadgeGUI(Rect area, GUIContent content, GUIStyle style, bool right)
+        {
+            var size = style.CalcSize(content);
+            var width = Mathf.Min(Mathf.Ceil(size.x), area.width);
+            var x = right ? area.xMax - kBadgeMargin - width : area.x + kBadgeMargin;
+            var rect = new Rect(x, area.y + kBadgeMargin, width, Mathf.Min(Mathf.Ceil(size.y), area.height));
+            GUI.Label(rect, content, style);
         }
     }
 }

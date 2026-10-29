@@ -48,6 +48,12 @@ namespace Unity.Android.Logcat
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
 
         private AndroidLogcatStreamRecorder m_StreamRecorder;
+        private DateTime m_RecordingStarted;
+        private int m_RecordingSecondsShown = -1;
+
+        private TimeSpan? RecordingTime => m_CaptureVideo.IsRecording || m_StreamRecorder != null
+            ? DateTime.Now - m_RecordingStarted
+            : (TimeSpan?)null;
 
         const float kAdvancedMenuWidth = 26;
 
@@ -76,6 +82,7 @@ namespace Unity.Android.Logcat
             m_CaptureVideo = m_Runtime.CaptureVideo;
             m_LiveStream = m_Runtime.LiveStream;
             m_LiveStream.StreamChanged += ReportStream;
+            m_LiveStream.RecordingTime = () => RecordingTime;
             m_CaptureList = new AndroidLogcatCaptureList(m_Runtime, Repaint);
             // Nothing here connects to anything, so the bar carries the message alone.
             m_StatusBar = new AndroidLogcatStatusBar() { ShowConnection = false };
@@ -131,7 +138,10 @@ namespace Unity.Android.Logcat
 
             // Unsubscribed but kept, since OnDestroy still has undoing to do.
             if (m_LiveStream != null)
+            {
                 m_LiveStream.StreamChanged -= ReportStream;
+                m_LiveStream.RecordingTime = null;
+            }
 
             m_CaptureList?.Dispose();
 
@@ -170,6 +180,7 @@ namespace Unity.Android.Logcat
 
             // Whatever the bar said about the last capture is about to be out of date.
             m_StatusBar.Message = string.Empty;
+            m_RecordingStarted = DateTime.Now;
 
             var settings = m_Runtime.Settings;
             m_CaptureVideo.StartRecording(m_DeviceSelection.SelectedDevice, OnVideoCompleted,
@@ -324,6 +335,14 @@ namespace Unity.Android.Logcat
         {
             if (m_LiveStream != null && m_LiveStream.HasPendingFrame)
                 Repaint();
+            // A still screen sends no frames, so nothing else would move the clock.
+            var recording = RecordingTime;
+            var seconds = recording.HasValue ? (int)recording.Value.TotalSeconds : -1;
+            if (seconds != m_RecordingSecondsShown)
+            {
+                m_RecordingSecondsShown = seconds;
+                Repaint();
+            }
             // Nothing to record once the stream is gone - a capture was selected, or it failed.
             if (m_StreamRecorder != null && !m_LiveStream.IsStreaming)
                 StopStreamRecording();
@@ -340,6 +359,7 @@ namespace Unity.Android.Logcat
             var device = m_DeviceSelection.SelectedDevice;
             var path = m_CaptureScreenshot.AllocateCapturePath(device, m_CaptureScreenshot.GetVideoExtension());
             m_StreamRecorder = new AndroidLogcatStreamRecorder(path, m_LiveStream.Texture);
+            m_RecordingStarted = DateTime.Now;
             m_LiveStream.Recorder = m_StreamRecorder;
             AndroidLogcatScreenshotInfo.Create(device)?.Save(path);
             m_StatusBar.Message = "Recording the stream...";

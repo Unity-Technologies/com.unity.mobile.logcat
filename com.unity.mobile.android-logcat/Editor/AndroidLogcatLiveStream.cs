@@ -391,6 +391,9 @@ namespace Unity.Android.Logcat
 
         volatile AndroidLogcatStreamRecorder m_Recorder;
 
+        /// <summary>How long the owner has been recording, null when it is not.</summary>
+        internal Func<TimeSpan?> RecordingTime;
+
         /// <summary>Prototype: gets every frame the reader receives, not just the newest.</summary>
         internal AndroidLogcatStreamRecorder Recorder
         {
@@ -1587,6 +1590,10 @@ namespace Unity.Android.Logcat
             }, repaint);
 
             HandleKeyboardInput(controlId);
+
+            var recording = RecordingTime?.Invoke();
+            if (recording.HasValue)
+                m_Viewer.DoRecordingBadgeGUI(recording.Value);
 
             if (statsWidth > 0)
                 DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
