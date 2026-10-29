@@ -8,18 +8,20 @@ using UnityEngine;
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// Prototype: records the live stream's JPEG frames into an MP4 with MediaEncoder,
-    /// as an alternative to adb screenrecord. Frames are queued from the reader thread
-    /// and encoded on EditorApplication.update, whether or not the window paints.
+    /// Records the live stream's JPEG frames into an MP4 with MediaEncoder. Frames are
+    /// queued from the reader thread and encoded on EditorApplication.update, whether
+    /// or not the window paints.
     /// <para>
-    /// The file has a constant frame rate, so its frames are exactly VideoPlayer's: each
-    /// slot gets the newest frame that arrived in it, and a slot nothing arrived in
-    /// repeats the one before.
+    /// Constant frame rate: the recording is cut into 1/kFrameRate slots and every slot
+    /// gets exactly one frame. The device only sends a frame when the screen changes, so
+    /// a slot gets the newest frame that arrived in it, or a repeat of the previous one.
+    /// That keeps VideoPlayer's frame numbers and times exact, so the player can step and
+    /// seek by frame without reading the file's timing.
     /// </para>
     /// </summary>
     internal class AndroidLogcatStreamRecorder
     {
-        // About as fast as the stream delivers at full size.
+        // Every frame lasts exactly 1/kFrameRate s. About as fast as the stream delivers at full size.
         internal const int kFrameRate = 30;
         // A keyframe a second; the frames between are differences, so a repeat is nearly free.
         const int kKeyframeInterval = kFrameRate;
@@ -64,7 +66,7 @@ namespace Unity.Android.Logcat
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
 
-        // Stats, for comparing against screenrecord.
+        // Stats, logged when a recording stops.
         int m_Received;
         int m_Replaced;
         int m_Dropped;
@@ -107,6 +109,7 @@ namespace Unity.Android.Logcat
 
         long NowUs => m_Clock.ElapsedTicks * 1000000 / Stopwatch.Frequency;
 
+        /// <summary>The slot a time falls in: frame number N covers N/kFrameRate s.</summary>
         static long SlotAt(long us) => (long)Math.Round(us * (double)kFrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
@@ -196,7 +199,8 @@ namespace Unity.Android.Logcat
             if (m_Encoder == null)
                 CreateEncoder(m_Decoded.width, m_Decoded.height, m_DecodedTurns);
 
-            // Device spacing, anchored where the first device frame arrived.
+            // Device spacing, anchored where the first device frame arrived, then rounded
+            // to a slot - the only place a frame's time is decided.
             if (m_FirstPtsUs < 0)
             {
                 m_FirstPtsUs = frame.PtsUs;
@@ -213,6 +217,7 @@ namespace Unity.Android.Logcat
             m_HasDecoded = true;
         }
 
+        /// <summary>One slot. Written without a timestamp, so the encoder spaces it 1/kFrameRate s on.</summary>
         void WritePending()
         {
             var watch = Stopwatch.StartNew();
@@ -323,7 +328,7 @@ namespace Unity.Android.Logcat
             return m_Written > 0 && string.IsNullOrEmpty(Error);
         }
 
-        /// <summary>What to compare against screenrecord.</summary>
+        /// <summary>How the recording went, for the log.</summary>
         internal string Stats()
         {
             var seconds = m_Written / (double)kFrameRate;

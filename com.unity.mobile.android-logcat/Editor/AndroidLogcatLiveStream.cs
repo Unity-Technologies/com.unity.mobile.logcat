@@ -394,7 +394,7 @@ namespace Unity.Android.Logcat
         /// <summary>How long the owner has been recording, null when it is not.</summary>
         internal Func<TimeSpan?> RecordingTime;
 
-        /// <summary>Prototype: gets every frame the reader receives, not just the newest.</summary>
+        /// <summary>Gets every frame the reader receives while recording, not just the newest.</summary>
         internal AndroidLogcatStreamRecorder Recorder
         {
             get => m_Recorder;

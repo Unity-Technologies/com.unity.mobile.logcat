@@ -9,13 +9,15 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to re
 5. Select **Stop Recording** to finish. The recording is added to the [Capture list](screen-capture-window-reference.md#capture-list), and its row is briefly highlighted. Select the row to open it in the [Capture preview](screen-capture-window-reference.md#capture-preview). The Capture list is disabled while recording. Closing the window also stops the recording.
 6. To keep a copy elsewhere, right-click the recording's row and select **Copy To...**.
 
-Recordings are stored beside screenshots, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.mp4`. To change how long a recording runs, its size or its bit rate, use the **Recording** settings in [Preferences](android-logcat-settings.md#capture-settings).
+Recordings are stored beside screenshots, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.mp4`.
+
+A recording is made from the live view, so it is the size of the stream and shows the view as it is turned. To record at a larger size or a higher quality, raise **Max Size** and **JPEG Quality** in the [Live Stream settings](android-logcat-settings.md#live-stream). Recordings play at 30 frames per second. The device only sends a frame when its screen changes, so while the screen is still, the recording repeats the last frame. There is no time limit.
 
 ## Details
 
 * When recording a video, the Screen Recorder Tool doesn't capture sound.
-* The Screen Recorder Tool uses Unity's video player for the video preview. If your operating system is Windows, you might see `WindowsVideoMedia` warnings in the Editor console. This is because the video is not processed.
-* If the entire video contains a static image, the video only contains one frame and the length of the video will be zero.
+* Recording uses the Editor to encode the video, which takes some of its time while a recording runs. A larger stream costs more.
+* The Linux Editor can't record, or play recordings back, because it doesn't support H.264 video.
 * On Chrome OS, you can only capture the video from the sandboxed app which is the one you install manually via adb or Unity. You can't capture video from the desktop or from built-in apps.
 
 ## Additional resources

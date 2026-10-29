@@ -4,50 +4,68 @@ using System.IO;
 using NUnit.Framework;
 using Unity.Android.Logcat;
 using UnityEditor;
+using UnityEditor.Media;
 using UnityEngine;
 using UnityEngine.TestTools;
 using State = Unity.Android.Logcat.AndroidLogcatVideoPlayer.State;
 
 /// <summary>
-/// The capture list's video player against a real screenrecord recording: 137 frames
-/// at a variable rate, a single keyframe, so its frame numbers only line up with
-/// VideoPlayer's own if the file's frame times are used.
-/// <para>
-/// The recording lives in the test project rather than the package, which is where CI
-/// runs these. Anywhere else the tests that need it are ignored.
-/// </para>
+/// The capture list's video player, against videos made here the way recordings are
+/// made: H.264 at a constant 30 fps, so VideoPlayer's frame numbers are exact.
 /// </summary>
 class AndroidLogcatVideoPlayerTests
 {
-    const string kVideoRelativePath = "Tests/TestVideo_4seconds.mp4";
-    const int kFrameCount = 137;
-    // Decoding from the single keyframe to the far end of the recording is the slowest
-    // thing here, and well within this on any machine.
+    const int kFrameRate = AndroidLogcatStreamRecorder.kFrameRate;
+    const int kFrameCount = 90;
+    const int kSize = 128;
+    // Decoding to the far end of a video is the slowest thing here, and well within
+    // this on any machine.
     const double kTimeout = 10;
 
-    static string VideoPath => Path.Combine(Application.dataPath, kVideoRelativePath).Replace("\\", "/");
-
-    // Stopped as soon as it started: one frame, at 0 s.
-    const string kSingleFrameRelativePath = "Tests/TestVideo_0seconds.mp4";
-
-    static string SingleFramePath => Path.Combine(Application.dataPath, kSingleFrameRelativePath).Replace("\\", "/");
+    static string s_Folder;
+    static string s_VideoPath;
+    static string s_SingleFramePath;
+    static string s_Unavailable;
 
     AndroidLogcatVideoPlayer m_Player;
+
+    [OneTimeSetUp]
+    public void WriteVideos()
+    {
+        // The Linux Editor has no H.264 encoder or decoder.
+        if (Application.platform == RuntimePlatform.LinuxEditor)
+        {
+            s_Unavailable = "There is no H.264 in the Linux Editor.";
+            return;
+        }
+
+        s_Folder = Path.Combine(Path.GetTempPath(), "AndroidLogcatTests", Guid.NewGuid().ToString("N")).Replace("\\", "/");
+        Directory.CreateDirectory(s_Folder);
+        s_VideoPath = Path.Combine(s_Folder, "video.mp4").Replace("\\", "/");
+        s_SingleFramePath = Path.Combine(s_Folder, "single.mp4").Replace("\\", "/");
+        try
+        {
+            WriteVideo(s_VideoPath, kFrameCount);
+            WriteVideo(s_SingleFramePath, 1);
+        }
+        catch (Exception ex)
+        {
+            s_Unavailable = $"The test videos could not be written: {ex.Message}";
+        }
+    }
+
+    [OneTimeTearDown]
+    public void DeleteVideos()
+    {
+        if (s_Folder != null && Directory.Exists(s_Folder))
+            Directory.Delete(s_Folder, true);
+    }
 
     [SetUp]
     public void SetUp()
     {
-        if (!File.Exists(VideoPath))
-            Assert.Ignore($"'{VideoPath}' is not in this project.");
-        // The Linux Editor has no H.264 decoder; only reading the files runs there.
-        if (Application.platform == RuntimePlatform.LinuxEditor && IsPlaybackTest())
-            Assert.Ignore("VideoPlayer cannot play H.264 in the Linux Editor.");
-    }
-
-    bool IsPlaybackTest()
-    {
-        var method = GetType().GetMethod(TestContext.CurrentContext.Test.MethodName);
-        return method != null && method.IsDefined(typeof(UnityTestAttribute), false);
+        if (s_Unavailable != null && IsPlaybackTest())
+            Assert.Ignore(s_Unavailable);
     }
 
     [TearDown]
@@ -57,129 +75,64 @@ class AndroidLogcatVideoPlayerTests
         m_Player = null;
     }
 
-    [Test]
-    public void FrameTimesAreReadFromTheFile()
+    bool IsPlaybackTest()
     {
-        var times = AndroidLogcatVideoInformation.ReadFrameTimes(VideoPath);
-
-        Assert.IsNotNull(times, "The recording's frame times could not be read.");
-        Assert.AreEqual(kFrameCount, times.Length);
-        // From a dump of the file's own timing table.
-        Assert.AreEqual(0.000, times[0], 0.0005);
-        Assert.AreEqual(0.044, times[1], 0.0005);
-        Assert.AreEqual(0.261, times[6], 0.0005);
-        // 100 ms after frame 6: VideoPlayer's constant-rate numbering skips here.
-        Assert.AreEqual(0.361, times[7], 0.0005);
-        Assert.AreEqual(4.919, times[kFrameCount - 1], 0.0005);
-        for (var i = 1; i < times.Length; i++)
-            Assert.Greater(times[i], times[i - 1], $"Frame {i} does not start after frame {i - 1}.");
+        var method = GetType().GetMethod(TestContext.CurrentContext.Test.MethodName);
+        return method != null && method.IsDefined(typeof(UnityTestAttribute), false);
     }
 
-    [Test]
-    public void FrameTimesAreNullForWhatIsNotAnMp4()
+    /// <summary>A frame a shade lighter each time, so consecutive frames differ.</summary>
+    static void WriteVideo(string path, int frames)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"{nameof(AndroidLogcatVideoPlayerTests)}_{Guid.NewGuid():N}.mp4");
+        var h264 = new H264EncoderAttributes
+        {
+            gopSize = kFrameRate,
+            numConsecutiveBFrames = 0,
+            profile = VideoEncodingProfile.H264Baseline
+        };
+        var attributes = new VideoTrackEncoderAttributes(h264)
+        {
+            frameRate = new MediaRational(kFrameRate),
+            width = kSize,
+            height = kSize,
+            includeAlpha = false,
+            targetBitRate = 1000000
+        };
+        var texture = new Texture2D(kSize, kSize, TextureFormat.RGBA32, false);
         try
         {
-            File.WriteAllText(path, "This is not a video.");
-            Assert.IsNull(AndroidLogcatVideoInformation.Load(path));
-            Assert.IsNull(AndroidLogcatVideoInformation.Load(path + ".missing"));
+            using (var encoder = new MediaEncoder(path, attributes))
+            {
+                var pixels = new Color32[kSize * kSize];
+                for (var i = 0; i < frames; i++)
+                {
+                    var shade = (byte)(i * 255 / Math.Max(1, frames - 1));
+                    for (var p = 0; p < pixels.Length; p++)
+                        pixels[p] = new Color32(shade, (byte)(255 - shade), (byte)(p % kSize * 2), 255);
+                    texture.SetPixels32(pixels);
+                    texture.Apply(false);
+                    if (!encoder.AddFrame(texture))
+                        throw new Exception($"Frame {i} was refused.");
+                }
+            }
         }
         finally
         {
-            File.Delete(path);
-        }
-    }
-
-    // VideoPlayer's grid for this recording: its frame 1 is reported at 0.036 s.
-    const double kPlayerFrameRate = 1 / 0.036;
-
-    static AndroidLogcatVideoInformation LoadInformation()
-    {
-        var information = AndroidLogcatVideoInformation.Load(VideoPath);
-        Assert.IsNotNull(information, "The recording's frame times could not be read.");
-        return information;
-    }
-
-    [Test]
-    public void FrameAtPicksTheNearestFrame()
-    {
-        var information = LoadInformation();
-
-        // Where VideoPlayer reports frames 1 and 2, which start at 0.044 s and 0.095 s.
-        Assert.AreEqual(1, information.FrameAt(0.036));
-        Assert.AreEqual(2, information.FrameAt(0.108));
-        Assert.AreEqual(0, information.FrameAt(0));
-        Assert.AreEqual(0, information.FrameAt(-1));
-        Assert.AreEqual(kFrameCount - 1, information.FrameAt(1000));
-        for (var i = 0; i < kFrameCount; i++)
-            Assert.AreEqual(i, information.FrameAt(information.TimeOf(i)), $"Frame {i}'s own start time.");
-    }
-
-    [Test]
-    public void SlotOfIsVideoPlayersOwnFrameNumber()
-    {
-        var information = LoadInformation();
-
-        // As VideoPlayer reported them: frame 1 in slot 1, frame 2 in slot 3.
-        Assert.AreEqual(0, information.SlotOf(0, kPlayerFrameRate));
-        Assert.AreEqual(1, information.SlotOf(1, kPlayerFrameRate));
-        Assert.AreEqual(3, information.SlotOf(2, kPlayerFrameRate));
-        for (var i = 0; i < kFrameCount; i++)
-        {
-            var slot = information.SlotOf(i, kPlayerFrameRate);
-            Assert.AreEqual(information.Snap(i, kPlayerFrameRate), information.FrameAt(slot / kPlayerFrameRate),
-                $"Slot {slot} should show what frame {i} snaps to.");
+            UnityEngine.Object.DestroyImmediate(texture);
         }
     }
 
     [Test]
-    public void StepFromSkipsFramesThatShareASlot()
+    public void FormatsTimeAsMinutesSecondsAndHundredths()
     {
-        var information = LoadInformation();
-        var showable = information.Showable(kPlayerFrameRate);
-
-        var gap = -1;
-        for (var i = 0; i + 1 < showable.Length && gap < 0; i++)
-        {
-            if (showable[i + 1] - showable[i] > 1)
-                gap = i;
-        }
-        Assert.GreaterOrEqual(gap, 0, "This recording has frames close enough to share a slot.");
-
-        Assert.AreEqual(showable[gap + 1], information.StepFrom(showable[gap], 1, kPlayerFrameRate));
-        Assert.AreEqual(showable[gap], information.StepFrom(showable[gap + 1], -1, kPlayerFrameRate));
-        Assert.AreEqual(-1, information.StepFrom(showable[0], -1, kPlayerFrameRate));
-        Assert.AreEqual(-1, information.StepFrom(showable[showable.Length - 1], 1, kPlayerFrameRate));
-    }
-
-    [Test]
-    public void SnapLandsOnAShowableFrame()
-    {
-        var information = LoadInformation();
-        var showable = information.Showable(kPlayerFrameRate);
-
-        for (var i = 0; i < kFrameCount; i++)
-        {
-            var snapped = information.Snap(i, kPlayerFrameRate);
-            Assert.That(showable, Has.Member(snapped), $"Frame {i} snapped to {snapped}, which cannot be shown.");
-            Assert.LessOrEqual(Math.Abs(snapped - i), 1, $"Frame {i} snapped further than its neighbour.");
-        }
-        foreach (var frame in showable)
-            Assert.AreEqual(frame, information.Snap(frame, kPlayerFrameRate), "A showable frame snaps to itself.");
-    }
-
-    [Test]
-    public void WithoutTheFrameRateEveryFrameCounts()
-    {
-        var information = LoadInformation();
-
-        Assert.IsNull(information.Showable(0));
-        Assert.AreEqual(10, information.Snap(10, 0));
-        Assert.AreEqual(11, information.StepFrom(10, 1, 0));
-        Assert.AreEqual(9, information.StepFrom(10, -1, 0));
-        Assert.AreEqual(-1, information.StepFrom(0, -1, 0));
-        Assert.AreEqual(-1, information.StepFrom(kFrameCount - 1, 1, 0));
+        Assert.AreEqual("0:00.00", AndroidLogcatVideoPlayer.FormatTime(0));
+        Assert.AreEqual("0:03.00", AndroidLogcatVideoPlayer.FormatTime(3));
+        Assert.AreEqual("0:00.03", AndroidLogcatVideoPlayer.FormatTime(1.0 / 30));
+        Assert.AreEqual("1:05.34", AndroidLogcatVideoPlayer.FormatTime(65.338));
+        Assert.AreEqual("1:00.00", AndroidLogcatVideoPlayer.FormatTime(59.996));
+        Assert.AreEqual("0:00.00", AndroidLogcatVideoPlayer.FormatTime(-1));
+        Assert.AreEqual("4.60", AndroidLogcatVideoPlayer.FormatTime(4.6, false));
+        Assert.AreEqual("0.03", AndroidLogcatVideoPlayer.FormatTime(1.0 / 30, false));
     }
 
     [UnityTest]
@@ -189,9 +142,12 @@ class AndroidLogcatVideoPlayerTests
 
         Assert.IsFalse(m_Player.IsPlaying());
         Assert.AreEqual(0, m_Player.Frame, Describe());
-        Assert.AreEqual(kFrameCount, m_Player.FrameCount, "The frame count should come from the file, not VideoPlayer's estimate.");
+        Assert.AreEqual(kFrameCount, m_Player.FrameCount, Describe());
+        Assert.AreEqual(kFrameRate, m_Player.FrameRate, 0.01, Describe());
+        Assert.AreEqual(kFrameCount / (double)kFrameRate, m_Player.Length, 0.01);
+        Assert.AreEqual(1.0, m_Player.TimeOf(kFrameRate), 0.001);
         Assert.IsNotNull(m_Player.Texture, "Opened paused, but with nothing to show.");
-        Assert.IsTrue(m_Player.IsShowing(VideoPath));
+        Assert.IsTrue(m_Player.IsShowing(s_VideoPath));
     }
 
     [UnityTest]
@@ -216,57 +172,32 @@ class AndroidLogcatVideoPlayerTests
     {
         yield return Open();
 
-        var showable = ShowableFrames();
-
-        // Across 6 to 8, where one real frame lasts as long as two to three of
-        // VideoPlayer's constant-rate ones.
         for (var i = 1; i <= 9; i++)
         {
             m_Player.Step(1);
-            yield return WaitForPaused($"stepping forward to {showable[i]}");
-            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping forward to {i}");
+            Assert.AreEqual(i, m_Player.Frame, Describe());
         }
 
         for (var i = 8; i >= 5; i--)
         {
             m_Player.Step(-1);
-            yield return WaitForPaused($"stepping back to {showable[i]}");
-            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping back to {i}");
+            Assert.AreEqual(i, m_Player.Frame, Describe());
         }
     }
 
-    /// <summary>
-    /// Every frame VideoPlayer can show, one step at a time, including the ones next
-    /// to a frame it cannot - which a step has to skip without going further.
-    /// </summary>
     [UnityTest]
-    public IEnumerator StepsThroughEveryShowableFrame()
+    public IEnumerator StepsThroughEveryFrame()
     {
         yield return Open();
-        var showable = ShowableFrames();
 
-        for (var i = 1; i < showable.Length; i++)
+        for (var i = 1; i < kFrameCount; i++)
         {
             m_Player.Step(1);
-            yield return WaitForPaused($"stepping forward to {showable[i]}");
-            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping forward to {i}");
+            Assert.AreEqual(i, m_Player.Frame, Describe());
         }
-    }
-
-    [UnityTest]
-    public IEnumerator ShowableFramesAreMostOfThem()
-    {
-        yield return Open();
-        var showable = ShowableFrames();
-
-        Assert.AreEqual(0, showable[0]);
-        Assert.AreEqual(kFrameCount - 1, showable[showable.Length - 1]);
-        // Frames closer together than one slot share it, so how many are left depends on
-        // the rate VideoPlayer reports: about 28 fps on Windows, 20 on macOS.
-        var slots = m_Player.Information.SlotOf(kFrameCount - 1, m_Player.FrameRate) + 1;
-        Assert.That(showable.Length, Is.InRange(kFrameCount / 2, Math.Min(kFrameCount, slots)), Describe());
-        for (var i = 1; i < showable.Length; i++)
-            Assert.Greater(showable[i], showable[i - 1]);
     }
 
     [UnityTest]
@@ -278,7 +209,7 @@ class AndroidLogcatVideoPlayerTests
         Assert.AreEqual(State.Paused, m_Player.CurrentState, "Stepping back from the first frame should do nothing.");
         Assert.AreEqual(0, m_Player.Frame);
 
-        var last = ShowableFrames()[ShowableFrames().Length - 1];
+        const int last = kFrameCount - 1;
         m_Player.SeekTo(last);
         yield return WaitForPaused("the seek to the last frame");
         Assert.AreEqual(last, m_Player.Frame, Describe());
@@ -289,12 +220,11 @@ class AndroidLogcatVideoPlayerTests
 
         // Back from the end, twice: a video paused on its last frame counts as finished,
         // and the seek has to survive Play starting it over.
-        var showable = ShowableFrames();
-        for (var i = showable.Length - 2; i >= showable.Length - 3; i--)
+        for (var i = last - 1; i >= last - 2; i--)
         {
             m_Player.Step(-1);
-            yield return WaitForPaused($"stepping back to {showable[i]}");
-            Assert.AreEqual(showable[i], m_Player.Frame, Describe());
+            yield return WaitForPaused($"stepping back to {i}");
+            Assert.AreEqual(i, m_Player.Frame, Describe());
         }
     }
 
@@ -303,13 +233,11 @@ class AndroidLogcatVideoPlayerTests
     {
         yield return Open();
 
-        foreach (var target in new long[] { 50, 120, 10, 7, 100 })
+        foreach (var target in new long[] { 50, 80, 10, 7, 60 })
         {
-            // 50 and 10 are each in a slot with a neighbour that is shown in their place.
-            var expected = m_Player.Information.Snap(target, m_Player.FrameRate);
             m_Player.SeekTo(target);
             yield return WaitForPaused($"the seek to {target}");
-            Assert.AreEqual(expected, m_Player.Frame, Describe());
+            Assert.AreEqual(target, m_Player.Frame, Describe());
             Assert.IsFalse(m_Player.IsPlaying(), "A seek while paused should leave the video paused.");
         }
     }
@@ -320,11 +248,11 @@ class AndroidLogcatVideoPlayerTests
         yield return Open();
         m_Player.TogglePlay();
 
-        m_Player.SeekTo(80);
+        m_Player.SeekTo(60);
         Assert.AreEqual(State.Seeking, m_Player.CurrentState, $"The seek did not start. {Describe()}");
         // Playing was already the state before the seek, so the frame is what says it landed.
-        yield return WaitFor("the seek to reach 80",
-            () => m_Player.CurrentState == State.Playing && m_Player.Frame >= 80);
+        yield return WaitFor("the seek to reach 60",
+            () => m_Player.CurrentState == State.Playing && m_Player.Frame >= 60);
         Assert.IsTrue(m_Player.IsPlaying());
     }
 
@@ -340,8 +268,8 @@ class AndroidLogcatVideoPlayerTests
 
         m_Player.TogglePlay();
         yield return WaitFor("playback to resume", () => m_Player.CurrentState == State.Playing);
-        // At most a few frames on from 50 in the time it took to get here, rather than
-        // the second's worth that the clock would have run on by.
+        // At most a few frames on from 50, rather than the second's worth that the clock
+        // would have run on by.
         Assert.That(m_Player.Frame, Is.InRange(50, 60), Describe());
     }
 
@@ -353,45 +281,27 @@ class AndroidLogcatVideoPlayerTests
         m_Player.Open(null);
         Assert.AreEqual(State.Closed, m_Player.CurrentState);
         Assert.IsFalse(m_Player.IsPlaying());
-        Assert.IsFalse(m_Player.IsShowing(VideoPath));
+        Assert.IsFalse(m_Player.IsShowing(s_VideoPath));
     }
 
     // Only the path: changing the file's modification time while it is open is not
-    // possible on Windows, where VideoPlayer holds it - which is also why a recording
-    // cannot be overwritten behind the window's back there.
+    // possible on Windows, where VideoPlayer holds it.
     [UnityTest]
     public IEnumerator IsShowingOnlyTheOpenedFile()
     {
         yield return Open();
 
-        Assert.IsTrue(m_Player.IsShowing(VideoPath));
-        Assert.IsFalse(m_Player.IsShowing(Path.ChangeExtension(VideoPath, ".other.mp4")),
+        Assert.IsTrue(m_Player.IsShowing(s_VideoPath));
+        Assert.IsFalse(m_Player.IsShowing(Path.ChangeExtension(s_VideoPath, ".other.mp4")),
             "A different file is not the one showing.");
         Assert.IsFalse(m_Player.IsShowing(null));
         Assert.IsFalse(m_Player.IsShowing(string.Empty));
-    }
-
-    [Test]
-    public void ReadsASingleFrameRecording()
-    {
-        RequireSingleFrame();
-        var information = AndroidLogcatVideoInformation.Load(SingleFramePath);
-
-        Assert.IsNotNull(information);
-        Assert.AreEqual(1, information.FrameCount);
-        Assert.AreEqual(0, information.TimeOf(0));
-        Assert.AreEqual(0, information.FrameAt(1));
-        Assert.AreEqual(0, information.Snap(5, kPlayerFrameRate));
-        Assert.AreEqual(-1, information.StepFrom(0, 1, kPlayerFrameRate));
-        Assert.AreEqual(-1, information.StepFrom(0, -1, kPlayerFrameRate));
-        Assert.AreEqual(-1, information.StepFrom(0, 1, 0));
     }
 
     /// <summary>The end may come before the frame does, or with no event at all.</summary>
     [UnityTest]
     public IEnumerator OpensASingleFrameRecordingPaused()
     {
-        RequireSingleFrame();
         yield return OpenSingleFrame();
 
         Assert.AreEqual(0, m_Player.Frame, Describe());
@@ -402,7 +312,6 @@ class AndroidLogcatVideoPlayerTests
     [UnityTest]
     public IEnumerator PlaysAndPausesASingleFrameRecording()
     {
-        RequireSingleFrame();
         yield return OpenSingleFrame();
 
         m_Player.TogglePlay();
@@ -418,7 +327,6 @@ class AndroidLogcatVideoPlayerTests
     [UnityTest]
     public IEnumerator SeekingASingleFrameRecordingStaysOnIt()
     {
-        RequireSingleFrame();
         yield return OpenSingleFrame();
 
         m_Player.SeekTo(0);
@@ -431,13 +339,13 @@ class AndroidLogcatVideoPlayerTests
     }
 
     /// <summary>
-    /// macOS cannot decode this video, which is fine as long as it says so rather
-    /// than opening forever.
+    /// A platform that cannot decode a one frame video is fine, as long as it says so
+    /// rather than opening forever.
     /// </summary>
     IEnumerator OpenSingleFrame()
     {
         m_Player = new AndroidLogcatVideoPlayer(nameof(AndroidLogcatVideoPlayerTests));
-        m_Player.Open(SingleFramePath);
+        m_Player.Open(s_SingleFramePath);
         var start = EditorApplication.timeSinceStartup;
         while (m_Player.CurrentState != State.Paused && m_Player.CurrentState != State.Failed)
         {
@@ -448,12 +356,6 @@ class AndroidLogcatVideoPlayerTests
         }
         if (m_Player.CurrentState == State.Failed)
             Assert.Ignore($"This platform cannot decode the video: {m_Player.Error}");
-    }
-
-    static void RequireSingleFrame()
-    {
-        if (!File.Exists(SingleFramePath))
-            Assert.Ignore($"'{SingleFramePath}' is not in this project.");
     }
 
     /// <summary>Windows cannot move a file the player has open.</summary>
@@ -526,7 +428,7 @@ class AndroidLogcatVideoPlayerTests
     static string CopyRecordingTo(string directory)
     {
         var path = Path.Combine(directory, "unittest-recording_1.mp4").Replace("\\", "/");
-        File.Copy(VideoPath, path);
+        File.Copy(s_VideoPath, path);
         return path;
     }
 
@@ -541,20 +443,13 @@ class AndroidLogcatVideoPlayerTests
         Assert.IsTrue(m_Player.IsShowing(path));
     }
 
-    IEnumerator Open(string path = null)
+    IEnumerator Open()
     {
         // Not the Screen Capture window's, which TearDown would otherwise destroy.
         m_Player = new AndroidLogcatVideoPlayer(nameof(AndroidLogcatVideoPlayerTests));
-        m_Player.Open(path ?? VideoPath);
+        m_Player.Open(s_VideoPath);
         Assert.AreEqual(State.PausingOnFrame, m_Player.CurrentState);
         yield return WaitForPaused("the first frame");
-    }
-
-    long[] ShowableFrames()
-    {
-        var showable = m_Player.Information?.Showable(m_Player.FrameRate);
-        Assert.IsNotNull(showable, $"The player should know which frames it can show once it is open. {Describe()}");
-        return showable;
     }
 
     IEnumerator WaitForPaused(string what)

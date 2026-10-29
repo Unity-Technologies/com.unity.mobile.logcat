@@ -12,9 +12,8 @@ namespace Unity.Android.Logcat
     /// <summary>
     /// Plays a recording in the capture preview: a VideoPlayer on a hidden GameObject,
     /// rendering into a texture the caller draws, plus the controls under it - play and
-    /// pause, a frame step each way and a seek slider. Frames are counted from the
-    /// file's own timing (<see cref="AndroidLogcatVideoInformation"/>), so stepping and
-    /// seeking land on the frames the recording actually has.
+    /// pause, a frame step each way and a seek slider. Recordings have a constant frame
+    /// rate, so VideoPlayer's frame numbers are the file's own.
     /// </summary>
     internal class AndroidLogcatVideoPlayer : IDisposable
     {
@@ -131,11 +130,6 @@ namespace Unity.Android.Logcat
 
         string m_Path;
         DateTime m_PathWriteTime;
-
-        // The recording's own frames. Frame numbers here are indices into them. Null
-        // when the file could not be read, and then they are VideoPlayer's own, which
-        // skip and repeat on a recording.
-        AndroidLogcatVideoInformation m_Information;
 
         Vector2 m_HistoryScroll;
 
@@ -302,12 +296,12 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Only sent while waiting for a frame. A paused seek pauses on the first frame
-        /// at or past its target, read from the player's clock against the file's frame
-        /// times - neither "seek done" nor "the next frame after it" is that frame.
+        /// at or past its target - neither "seek done" nor "the next frame after it" is
+        /// that frame.
         /// </summary>
         private void FrameReady(VideoPlayer source, long frameIdx)
         {
-            var shown = Frame;
+            var shown = frameIdx;
             switch (m_State)
             {
                 case State.PausingOnFrame:
@@ -316,7 +310,7 @@ namespace Unity.Android.Logcat
                     m_ResumeFrom = shown;
                     break;
                 case State.SeekingToPause:
-                    Note($"frame ready: player frame {frameIdx}, time {source.time:0.000}s, shown {shown}");
+                    Note($"frame ready: {frameIdx}, time {source.time:0.000}s");
                     var target = m_SeekTarget;
                     if (target >= 0 && shown < target)
                         break;
@@ -378,7 +372,6 @@ namespace Unity.Android.Logcat
             }
 
             m_Player.Stop();
-            m_Information = null;
             m_DragControl = 0;
             m_ResumeAfterDrag = false;
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
@@ -390,7 +383,6 @@ namespace Unity.Android.Logcat
             }
 
             m_Prepared = false;
-            m_Information = AndroidLogcatVideoInformation.Load(path);
             m_Player.url = path;
             // There is no seek to wait for, only the first frame.
             SetState(State.PausingOnFrame, $"opened {Path.GetFileName(path)}");
@@ -430,18 +422,17 @@ namespace Unity.Android.Logcat
             ? $"{m_Player.width}x{m_Player.height}"
             : string.Empty;
 
-        internal AndroidLogcatVideoInformation Information => m_Information;
-
         /// <summary>Zero until the video has opened.</summary>
         internal double FrameRate => m_Player != null ? m_Player.frameRate : 0;
 
-        /// <summary>
-        /// Exact from the file when it could be read, otherwise VideoPlayer's estimate,
-        /// which is zero until the video has opened.
-        /// </summary>
-        internal long FrameCount => m_Information != null
-            ? m_Information.FrameCount
-            : m_Player != null ? (long)m_Player.frameCount : 0;
+        /// <summary>Zero until the video has opened.</summary>
+        internal long FrameCount => m_Player != null ? (long)m_Player.frameCount : 0;
+
+        /// <summary>Where <paramref name="frame"/> starts, in seconds. Zero until the video has opened.</summary>
+        internal double TimeOf(long frame) => FrameRate > 0 ? frame / FrameRate : 0;
+
+        /// <summary>Zero until the video has opened.</summary>
+        internal double Length => TimeOf(FrameCount);
 
         /// <summary>The frame on screen, counted from zero.</summary>
         internal long Frame
@@ -453,23 +444,13 @@ namespace Unity.Android.Logcat
                 // macOS rewinds the clock of a video paused at its end.
                 if (m_State == State.Paused && m_ResumeFrom >= 0)
                     return m_ResumeFrom;
-                return m_Information != null ? m_Information.FrameAt(m_Player.time) : Math.Max(0, m_Player.frame);
+                return Math.Max(0, m_Player.frame);
             }
         }
 
-        /// <summary>
-        /// Points the player at a frame: by the slot of its grid the frame sits in, once
-        /// the rate is known; by the frame's start time before then; by VideoPlayer's own
-        /// number without frame times at all.
-        /// </summary>
         void MoveTo(long frame)
         {
-            if (m_Information == null)
-                m_Player.frame = frame;
-            else if (FrameRate > 0)
-                m_Player.frame = m_Information.SlotOf(frame, FrameRate);
-            else
-                m_Player.time = m_Information.TimeOf(frame);
+            m_Player.frame = frame;
         }
 
         /// <summary>
@@ -488,10 +469,7 @@ namespace Unity.Android.Logcat
                 return;
             }
 
-            var snapped = m_Information != null ? m_Information.Snap(frame, FrameRate) : frame;
-            if (snapped != frame)
-                Note($"{frame} shares a slot with {snapped}, which is shown instead");
-            frame = snapped;
+            frame = Math.Max(0, Math.Min(frame, FrameCount - 1));
 
             switch (m_State)
             {
@@ -537,8 +515,6 @@ namespace Unity.Android.Logcat
         long StepTarget(int direction)
         {
             var from = m_SeekTarget >= 0 ? m_SeekTarget : Frame;
-            if (m_Information != null)
-                return m_Information.StepFrom(from, direction, FrameRate);
             var to = from + direction;
             return to >= 0 && to < FrameCount ? to : -1;
         }
@@ -609,7 +585,7 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// The play toggle, and under it the seek slider with the frame counter, drawn
+        /// The play toggle, and under it the seek slider with the time, drawn
         /// from <paramref name="y"/> down within <paramref name="rc"/>. Whatever does not
         /// fit is left out, and <paramref name="y"/> ends below what was drawn.
         /// </summary>
@@ -637,9 +613,24 @@ namespace Unity.Android.Logcat
             if (GUI.Button(ButtonRect(rc, ref x, y, height, Styles.StepForward), Styles.StepForward, EditorStyles.miniButtonRight))
                 Step(1);
             EditorGUI.EndDisabledGroup();
+
+            // The time, in a box at the right end of the row, so the slider gets the full width.
+            var frameCount = FrameCount;
+            var frame = Frame;
+            // Minutes only when the recording runs that long, so both times fit the box.
+            var minutes = Length >= 60;
+            var length = frameCount > 0 ? FormatTime(Length, minutes) : "-.--";
+            var time = frameCount > 0 ? $"{FormatTime(TimeOf(frame), minutes)} / {length}" : "-.-- / -.--";
+            // Sized to the longest the text gets, so the box does not change width as it plays.
+            var timeWidth = Styles.FrameCounter.CalcSize(new GUIContent($"{length} / {length}")).x + 2 * kSeekPadding;
+            var timeX = Mathf.Max(x + kButtonGap, rc.xMax - timeWidth);
+            var timeRect = new Rect(timeX, y, Mathf.Max(0, rc.xMax - timeX), height);
+            GUI.Box(timeRect, GUIContent.none, EditorStyles.helpBox);
+            GUI.Label(new Rect(timeRect.x + kSeekPadding, timeRect.y, Mathf.Max(0, timeRect.width - 2 * kSeekPadding), height),
+                time, Styles.FrameCounter);
             y += height;
 
-            // Its own row: the column is too narrow to share one with the toggle.
+            // Its own row, the whole width of the column.
             var boxHeight = height + 2 * kSeekPadding;
             if (y + kSeekGap + boxHeight > rc.yMax)
                 return;
@@ -647,16 +638,8 @@ namespace Unity.Android.Logcat
             var boxRect = new Rect(rc.x, y, rc.width, boxHeight);
             GUI.Box(boxRect, GUIContent.none, EditorStyles.helpBox);
 
-            var frameCount = FrameCount;
-            var frame = Frame;
-            // Counted from one, so the last frame reads as the total. Measured against
-            // the widest it can get, so the slider does not jitter as the number grows.
-            var counter = frameCount > 0 ? $"{frame + 1}/{frameCount}" : "-/-";
-            var counterWidth = EditorStyles.miniLabel.CalcSize(new GUIContent($"{frameCount}/{frameCount}")).x;
-            var inner = new Rect(boxRect.x + kSeekPadding, boxRect.y + kSeekPadding,
-                boxRect.width - 2 * kSeekPadding, height);
-            var sliderRect = new Rect(inner.x, inner.y, Mathf.Max(0, inner.width - counterWidth - kSeekPadding), height);
-            var counterRect = new Rect(inner.xMax - counterWidth, inner.y, counterWidth, height);
+            var sliderRect = new Rect(boxRect.x + kSeekPadding, boxRect.y + kSeekPadding,
+                Mathf.Max(0, boxRect.width - 2 * kSeekPadding), height);
 
             // The slider takes the mouse on the press and lets go on the release, which
             // can be outside this window - so a drag ends when it is no longer hot,
@@ -675,13 +658,13 @@ namespace Unity.Android.Logcat
 
             // While dragging, the thumb stays where it was dragged to rather than going
             // back to the frame the player has caught up to so far.
-            var thumb = m_DragControl != 0 && m_SeekTarget >= 0 ? m_SeekTarget : frame;
+            var thumb = TimeOf(m_DragControl != 0 && m_SeekTarget >= 0 ? m_SeekTarget : frame);
 
             EditorGUI.BeginDisabledGroup(frameCount <= 1);
             EditorGUI.BeginChangeCheck();
-            var picked = GUI.HorizontalSlider(sliderRect, thumb, 0, Mathf.Max(0, frameCount - 1));
+            var picked = GUI.HorizontalSlider(sliderRect, (float)thumb, 0, (float)TimeOf(Math.Max(0, frameCount - 1)));
             if (EditorGUI.EndChangeCheck())
-                SeekTo((long)Mathf.Round(picked));
+                SeekTo((long)Math.Round(picked * FrameRate));
             EditorGUI.EndDisabledGroup();
 
             if (pressed)
@@ -691,11 +674,19 @@ namespace Unity.Android.Logcat
                 else
                     EndDrag();
             }
-            GUI.Label(counterRect, counter, Styles.FrameCounter);
             y += boxHeight;
 
             if (Unsupported.IsDeveloperMode())
                 DoDebugGUI(rc, ref y);
+        }
+
+        /// <summary>Seconds and hundredths, such as 5.37, or with minutes, such as 1:05.37.</summary>
+        internal static string FormatTime(double seconds, bool minutes = true)
+        {
+            var hundredths = (long)Math.Round(Math.Max(0, seconds) * 100);
+            return minutes
+                ? $"{hundredths / 6000}:{hundredths / 100 % 60:00}.{hundredths % 100:00}"
+                : $"{hundredths / 100}.{hundredths % 100:00}";
         }
 
         /// <summary>
@@ -753,34 +744,21 @@ namespace Unity.Android.Logcat
                 yield break;
             var player = m_Player.isPlaying ? "playing" : m_Player.isPaused ? "paused" : "stopped";
             yield return $"Player: {player}, prepared {m_Player.isPrepared}, frame {m_Player.frame}, time {m_Player.time:0.000}s";
-            yield return $"Shown: {Frame}, resume {m_ResumeFrom}, seek {m_SeekFrom} -> {m_SeekTarget}, " +
-                (m_Information != null ? $"{m_Information.FrameCount} frame times" : "no frame times") +
-                (m_Information?.Showable(FrameRate) is long[] showable
-                    ? $", {showable.Length} showable at {FrameRate:0.###} fps"
-                    : string.Empty);
+            yield return $"Shown: {Frame} of {FrameCount} at {FrameRate:0.###} fps, resume {m_ResumeFrom}, " +
+                $"seek {m_SeekFrom} -> {m_SeekTarget}";
         }
 
         /// <summary>
         /// Everything the panel shows, plus what it has no room for, as plain text to
-        /// paste into a bug report: the file, the frame times around the one shown, and
-        /// the whole history oldest first, with from and to.
+        /// paste into a bug report: the file and the whole history oldest first, with
+        /// from and to.
         /// </summary>
         internal string GetDebugInfo()
         {
             var info = new StringBuilder();
             info.AppendLine($"Video: {(string.IsNullOrEmpty(m_Path) ? "-" : Path.GetFileName(m_Path))}");
-            info.AppendLine($"Frame count: {FrameCount} (VideoPlayer says {(m_Player != null ? (long)m_Player.frameCount : 0)})");
             foreach (var line in DebugStatus())
                 info.AppendLine(line);
-
-            if (m_Information != null)
-            {
-                var shown = Frame;
-                info.Append("Frame times around shown:");
-                for (var i = Math.Max(0, shown - 3); i <= Math.Min(m_Information.FrameCount - 1, shown + 3); i++)
-                    info.Append($" {i}={m_Information.TimeOf(i):0.000}s");
-                info.AppendLine();
-            }
 
             info.AppendLine("State changes, oldest first:");
             foreach (var t in m_History)

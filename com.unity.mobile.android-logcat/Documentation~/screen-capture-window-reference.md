@@ -89,13 +89,13 @@ This section appears beside the image while a screenshot or a recording is selec
 | **OS**             | The Android version and API level the device was running.    |
 | **Display Size**   | The device's display resolution when the capture was taken. This differs from **Image Size** if the display was rotated or its size overridden. |
 | **Image Size**     | The size of the image in pixels. Screenshots only.           |
-| **Video Size**     | The size of the recording in pixels, which is what the **Video Size** setting asked for. Recordings only. |
+| **Video Size**     | The size of the recording in pixels. Recordings only. |
 | **File Size**      | The size of the file on disk.                                |
 | **Captured**       | When the file was last written. Hover over it for the full date and time. |
 
 **Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** comes from the recording itself, so it displays `Undefined` until the recording has opened.
 
-A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it. While it is paused, the buttons beside the play button go back or forward one frame. You can also drag the slider under it to move to another frame, whether the recording is playing or paused. A playing recording pauses while you drag, and plays on from the new frame when you let go. The number beside the slider is the current frame and the total number of frames. A recording only gets a new frame when the screen changes, so some frames follow the previous one very closely. The preview can't show such a frame on its own, so stepping skips it and the frame number jumps by two.
+A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it. While it is paused, the buttons beside the play button go back or forward one frame. You can also drag the slider under it to move to another point in the recording, whether it is playing or paused. A playing recording pauses while you drag, and plays on from the new point when you let go. Next to the step buttons is the current time and the length of the recording, in seconds and hundredths of a second, with minutes for a recording a minute or longer.
 
 ## Live view details
 
@@ -144,7 +144,7 @@ The device navigation buttons work while the live view is streaming and the devi
 | **Half**    | Holds the device half open, regardless of the hinge position. Appears only for devices that report half open as a separate state. |
 | **Unfold**  | Holds the device unfolded, regardless of the hinge position. |
 
-Under **Device Capture**, **Take Screenshot** captures the device screen and adds it to the [Capture list](#capture-list). **Ctrl+Shift+S** (macOS: **Cmd+Shift+S**) does the same while this window has focus and **Live** is selected. The shortcut has no effect while a saved capture is selected. **Take Recording** starts recording the device screen and changes to **Stop Recording**. The recording is added to the list when it stops. The [Capture list](#capture-list) is disabled while recording. Closing the window also stops the recording, so a recording never continues out of sight. Screenshots and recordings are taken on the device rather than copied from the stream, so they are full resolution regardless of how the stream is scaled. The recorder settings are in [Preferences](android-logcat-settings.md#capture-settings).
+Under **Device Capture**, **Take Screenshot** captures the device screen and adds it to the [Capture list](#capture-list). **Ctrl+Shift+S** (macOS: **Cmd+Shift+S**) does the same while this window has focus and **Live** is selected. The shortcut has no effect while a saved capture is selected. **Take Recording** starts recording the live view and changes to **Stop Recording**, and the view shows how long it has been recording. The recording is added to the list when it stops. The [Capture list](#capture-list) is disabled while recording. Closing the window, or the live stream stopping, also stops the recording, so a recording never continues out of sight. Screenshots are taken on the device, so they are full resolution regardless of how the stream is scaled. Recordings are made from the stream, so they are the stream's size.
 
 For how to interact with the device and how to change the size, quality, and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
 
