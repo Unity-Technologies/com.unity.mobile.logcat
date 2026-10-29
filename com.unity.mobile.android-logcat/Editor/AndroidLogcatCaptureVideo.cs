@@ -60,7 +60,7 @@ namespace Unity.Android.Logcat
             RecordingPath = captures.AllocateCapturePath(device, captures.GetVideoExtension());
             try
             {
-                m_Recorder = new AndroidLogcatStreamRecorder(RecordingPath, stream.Texture,
+                m_Recorder = new AndroidLogcatStreamRecorder(RecordingPath, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
                     stream.ViewQuarterTurns, stream.QuarterTurnsFor);
             }
             catch

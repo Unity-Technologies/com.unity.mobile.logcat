@@ -15,7 +15,7 @@ using State = Unity.Android.Logcat.AndroidLogcatVideoPlayer.State;
 /// </summary>
 class AndroidLogcatVideoPlayerTests
 {
-    const int kFrameRate = AndroidLogcatStreamRecorder.kFrameRate;
+    const int kFrameRate = 30;
     const int kFrameCount = 90;
     const int kSize = 128;
     // Decoding to the far end of a video is the slowest thing here, and well within

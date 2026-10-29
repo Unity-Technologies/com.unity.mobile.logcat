@@ -23,7 +23,7 @@ namespace Unity.Android.Logcat
         // hand edited settings file is held to.
         internal static readonly SettingsRange kLiveStreamMaxSize = new SettingsRange(1024, 256, 2048);
         internal static readonly SettingsRange kLiveStreamQuality = new SettingsRange(70, 1, 100);
-        internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 120);
+        internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 60);
 
         // Where captures go unless told otherwise, relative to the project. Library is
         // local to the machine and outside any build, which suits output that is cheap

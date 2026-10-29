@@ -12,7 +12,7 @@ namespace Unity.Android.Logcat
     /// queued from the reader thread and encoded on EditorApplication.update, whether
     /// or not the window paints.
     /// <para>
-    /// Constant frame rate: the recording is cut into 1/kFrameRate slots and every slot
+    /// Constant frame rate: the recording is cut into 1/frame rate slots and every slot
     /// gets exactly one frame. The device only sends a frame when the screen changes, so
     /// a slot gets the newest frame that arrived in it, or a repeat of the previous one.
     /// That keeps VideoPlayer's frame numbers and times exact, so the player can step and
@@ -21,10 +21,6 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal class AndroidLogcatStreamRecorder
     {
-        // Every frame lasts exactly 1/kFrameRate s. About as fast as the stream delivers at full size.
-        internal const int kFrameRate = 30;
-        // A keyframe a second; the frames between are differences, so a repeat is nearly free.
-        const int kKeyframeInterval = kFrameRate;
         const float kBitsPerPixel = 0.1f;
         // About three seconds. Past that the Editor is not keeping up, and frames are
         // dropped rather than piling up in memory.
@@ -41,6 +37,8 @@ namespace Unity.Android.Logcat
         }
 
         readonly string m_Path;
+        // Every frame lasts exactly 1/m_FrameRate s.
+        readonly int m_FrameRate;
         readonly object m_Lock = new object();
         readonly Queue<QueuedFrame> m_Queue = new Queue<QueuedFrame>();
         // The recording's own time, from Start. The device only sends a frame when the
@@ -86,10 +84,12 @@ namespace Unity.Android.Logcat
         /// sends nothing until it changes. Null before the stream's first frame.
         /// </param>
         /// <param name="currentTurns">The live view's turn of <paramref name="current"/>.</param>
-        internal AndroidLogcatStreamRecorder(string path, Texture2D current, int currentTurns,
+        /// <param name="frameRate">The live stream's Max Frame Rate: the most it can deliver.</param>
+        internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentTurns,
             Func<int, int> quarterTurnsFor)
         {
             m_Path = path;
+            m_FrameRate = Math.Max(1, frameRate);
             m_QuarterTurnsFor = quarterTurnsFor;
             if (current != null)
             {
@@ -109,8 +109,8 @@ namespace Unity.Android.Logcat
 
         long NowUs => m_Clock.ElapsedTicks * 1000000 / Stopwatch.Frequency;
 
-        /// <summary>The slot a time falls in: frame number N covers N/kFrameRate s.</summary>
-        static long SlotAt(long us) => (long)Math.Round(us * (double)kFrameRate / 1000000);
+        /// <summary>The slot a time falls in: frame number N covers N/m_FrameRate s.</summary>
+        long SlotAt(long us) => (long)Math.Round(us * (double)m_FrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
         internal void Enqueue(byte[] data, int size, long ptsUs, int rotation)
@@ -217,7 +217,7 @@ namespace Unity.Android.Logcat
             m_HasDecoded = true;
         }
 
-        /// <summary>One slot. Written without a timestamp, so the encoder spaces it 1/kFrameRate s on.</summary>
+        /// <summary>One slot. Written without a timestamp, so the encoder spaces it 1/m_FrameRate s on.</summary>
         void WritePending()
         {
             var watch = Stopwatch.StartNew();
@@ -243,7 +243,8 @@ namespace Unity.Android.Logcat
             m_Height = (sideways ? width : height) & ~1;
             var h264 = new H264EncoderAttributes
             {
-                gopSize = kKeyframeInterval,
+                // A keyframe a second; the frames between are differences, so a repeat is nearly free.
+                gopSize = (uint)m_FrameRate,
                 // Frames stored in the order they are shown. High profile reorders them
                 // anyway on Windows, and VideoPlayer warns about the timestamps.
                 numConsecutiveBFrames = 0,
@@ -251,11 +252,11 @@ namespace Unity.Android.Logcat
             };
             var attributes = new VideoTrackEncoderAttributes(h264)
             {
-                frameRate = new MediaRational(kFrameRate),
+                frameRate = new MediaRational(m_FrameRate),
                 width = (uint)m_Width,
                 height = (uint)m_Height,
                 includeAlpha = false,
-                targetBitRate = (uint)(m_Width * m_Height * kFrameRate * kBitsPerPixel)
+                targetBitRate = (uint)(m_Width * m_Height * m_FrameRate * kBitsPerPixel)
             };
             m_Encoder = new MediaEncoder(m_Path, attributes);
         }
@@ -331,8 +332,8 @@ namespace Unity.Android.Logcat
         /// <summary>How the recording went, for the log.</summary>
         internal string Stats()
         {
-            var seconds = m_Written / (double)kFrameRate;
-            return $"Stream recording: {m_Written} frames at {kFrameRate} fps ({seconds:0.0} s), {m_Width}x{m_Height}, " +
+            var seconds = m_Written / (double)m_FrameRate;
+            return $"Stream recording: {m_Written} frames at {m_FrameRate} fps ({seconds:0.0} s), {m_Width}x{m_Height}, " +
                 $"{m_Received} received, {m_Replaced} replaced by a newer one in the same slot, " +
                 $"{m_Dropped} dropped (Editor behind), {m_Failed} failed. " +
                 $"Per received frame: decode {m_DecodeMs / Math.Max(1, m_Received):0.0} ms. " +

@@ -35,7 +35,7 @@ namespace Unity.Android.Logcat
             public static readonly GUIContent liveStreamReset = new GUIContent("Reset",
                 $"Put Max Size, JPEG Quality and Max Frame Rate back to {AndroidLogcatSettings.kLiveStreamMaxSize.Default}, {AndroidLogcatSettings.kLiveStreamQuality.Default} and {AndroidLogcatSettings.kLiveStreamMaxFps.Default}, leaving every other setting alone.");
             public static readonly GUIContent liveStreamMaxFps = new GUIContent("Max Frame Rate",
-                "Ceiling on frames per second. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
+                "Ceiling on frames per second, and the frame rate recordings are made at. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
