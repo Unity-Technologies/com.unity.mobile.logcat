@@ -211,9 +211,6 @@ namespace Unity.Android.Logcat
                 "Captures taken on the device itself, at its own resolution, rather than copied " +
                 "from the stream.");
 
-            internal static readonly GUIContent RecordTouches = new GUIContent("Record Touches",
-                "Save the clicks and drags sent from here with a recording, so playing it in this window "
-                + "shows where the screen was touched. Other video players do not show them.");
             internal static readonly GUIContent DeviceFold = new GUIContent("Device Fold",
                 "Folds and unfolds the device without touching it, which is how a foldable's " +
                 "two displays are reached from here. Only for devices that fold.");
@@ -1935,14 +1932,6 @@ namespace Unity.Android.Logcat
 
                 y += height;
             }
-
-            // Beside Take Recording, which it is about.
-            var settings = m_Runtime?.Settings;
-            if (settings == null || y + height > rc.yMax)
-                return;
-            settings.RecordTouches = EditorGUI.ToggleLeft(new Rect(rc.x, y, ButtonRowWidth(rc), height),
-                Styles.RecordTouches, settings.RecordTouches, EditorStyles.miniLabel);
-            y += height;
         }
 
         /// <summary>

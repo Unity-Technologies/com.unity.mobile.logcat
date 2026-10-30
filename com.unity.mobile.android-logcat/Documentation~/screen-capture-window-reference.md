@@ -148,8 +148,6 @@ The device navigation buttons work while the live view is streaming and the devi
 
 Under **Device Capture**, **Take Screenshot** captures the device screen and adds it to the [Capture list](#capture-list). **Ctrl+Shift+S** (macOS: **Cmd+Shift+S**) does the same while this window has focus and **Live** is selected. The shortcut has no effect while a saved capture is selected. **Take Recording** starts recording the live view and changes to **Stop Recording**, and the view shows how long it has been recording. The recording is added to the list when it stops. The [Capture list](#capture-list) is disabled while recording. Closing the window, or the live stream stopping, also stops the recording, so a recording never continues out of sight. Screenshots are taken on the device, so they are full resolution regardless of how the stream is scaled. Recordings are made from the stream, so they are the stream's size.
 
-**Record Touches**, under the capture buttons, saves the clicks and drags you send from the live view with a recording. When the recording plays in the Screen Capture window, a marker shows where the screen was touched. Other video players don't show the markers. **Record Touches** is enabled by default.
-
 For how to interact with the device and how to change the size, quality, and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
 
 ## Status bar

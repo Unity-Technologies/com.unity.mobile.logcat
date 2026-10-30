@@ -272,7 +272,7 @@ namespace Unity.Android.Logcat
 
         /// <summary>
         /// Whether touches sent from the live view are saved with a recording, for its
-        /// player to draw. Set in the live view rather than in Preferences.
+        /// player to draw.
         /// </summary>
         internal bool RecordTouches
         {

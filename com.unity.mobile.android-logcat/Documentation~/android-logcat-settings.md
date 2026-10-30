@@ -71,6 +71,7 @@ Changing the folder takes effect immediately. Unity doesn't move existing captur
 |---|---|
 |**Time Limit (minutes)**|Specifies how long a recording runs before it stops on its own, between 1 and 60 minutes. The default value is 10.|
 |**Square Video**|Records a square video, as wide and tall as the longest side of the stream, so turning the device or unfolding a foldable keeps the picture at full size. When disabled, the video is the size of the screen when recording starts, and a turned or unfolded screen is scaled down to fit. Enabled by default.|
+|**Record Touches**|Saves the clicks and drags you send from the live view with a recording. When the recording plays in the Screen Capture window, a marker shows where the screen was touched: green when pressed, blue while dragging, and white, fading, once released, or red if the touch was cancelled. Other video players don't show the markers. Enabled by default.|
 
 ### Live Stream
 

@@ -437,6 +437,24 @@ namespace Unity.Android.Logcat
         const double kTouchFadeSeconds = 0.3;
         static Texture2D s_TouchMarker;
 
+        // Tints for the marker's light parts, by what the touch was last doing. The dark
+        // rim stays dark, so each reads on any screen.
+        static readonly Color kTouchDown = new Color(0.3f, 0.9f, 0.4f);
+        static readonly Color kTouchMove = new Color(0.3f, 0.7f, 1f);
+        static readonly Color kTouchUp = Color.white;
+        static readonly Color kTouchCancel = new Color(1f, 0.35f, 0.35f);
+
+        static Color TouchColor(string action)
+        {
+            switch (action)
+            {
+                case nameof(AndroidLogcatLiveStream.TouchAction.Down): return kTouchDown;
+                case nameof(AndroidLogcatLiveStream.TouchAction.Move): return kTouchMove;
+                case nameof(AndroidLogcatLiveStream.TouchAction.Cancel): return kTouchCancel;
+                default: return kTouchUp;
+            }
+        }
+
         /// <summary>
         /// The touch the Editor sent at <paramref name="time"/>, if any. Android does not
         /// draw injected touches into the screen, so the recording only has them as data.
@@ -445,12 +463,14 @@ namespace Unity.Android.Logcat
         {
             if (Event.current.type != EventType.Repaint)
                 return;
-            if (!m_PreviewDetails.TouchAt(time, kTouchFadeSeconds, out var position, out var alpha))
+            if (!m_PreviewDetails.TouchAt(time, kTouchFadeSeconds, out var position, out var alpha, out var action))
                 return;
 
             var centre = new Vector2(videoRect.x + position.x * videoRect.width, videoRect.y + position.y * videoRect.height);
             var previous = GUI.color;
-            GUI.color = new Color(1, 1, 1, alpha);
+            var color = TouchColor(action);
+            color.a = alpha;
+            GUI.color = color;
             GUI.DrawTexture(new Rect(centre.x - kTouchSize / 2, centre.y - kTouchSize / 2, kTouchSize, kTouchSize),
                 TouchMarker);
             GUI.color = previous;
@@ -557,10 +577,11 @@ namespace Unity.Android.Logcat
             /// Where an Editor touch was at <paramref name="time"/>: held down, or lifted less
             /// than <paramref name="fadeSeconds"/> before, fading out. False when there is none.
             /// </summary>
-            internal bool TouchAt(double time, double fadeSeconds, out Vector2 position, out float alpha)
+            internal bool TouchAt(double time, double fadeSeconds, out Vector2 position, out float alpha, out string action)
             {
                 position = default;
                 alpha = 0;
+                action = null;
                 AndroidLogcatScreenshotInfo.TouchInfo last = null;
                 var lastTime = 0.0;
                 if (m_FrameChanges == null)
@@ -578,6 +599,7 @@ namespace Unity.Android.Logcat
                     return false;
 
                 position = new Vector2(last.x, last.y);
+                action = last.action;
                 var down = last.action == nameof(AndroidLogcatLiveStream.TouchAction.Down)
                     || last.action == nameof(AndroidLogcatLiveStream.TouchAction.Move);
                 if (down)

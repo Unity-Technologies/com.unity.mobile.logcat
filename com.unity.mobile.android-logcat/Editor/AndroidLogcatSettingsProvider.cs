@@ -39,6 +39,9 @@ namespace Unity.Android.Logcat
                 + "Editor time and the file is larger.\n\n"
                 + "When off, the video is the size of the screen when recording starts, and a turned or "
                 + "unfolded screen is scaled down to fit inside it.");
+            public static readonly GUIContent recordTouches = new GUIContent("Record Touches",
+                "Save the clicks and drags sent from the live view with a recording, so playing it in the "
+                + "Screen Capture window shows where the screen was touched. Other video players do not show them.");
 
             public static readonly GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
@@ -102,6 +105,7 @@ namespace Unity.Android.Logcat
             settings.RecordingTimeLimit = RangeSlider(Styles.recordingTimeLimit,
                 settings.RecordingTimeLimit, AndroidLogcatSettings.kRecordingTimeLimit);
             settings.RecordingSquareVideo = EditorGUILayout.Toggle(Styles.recordingSquareVideo, settings.RecordingSquareVideo);
+            settings.RecordTouches = EditorGUILayout.Toggle(Styles.recordTouches, settings.RecordTouches);
 
             GUILayout.Space(10);
             EditorGUILayout.LabelField("Live Stream", EditorStyles.miniBoldLabel);
