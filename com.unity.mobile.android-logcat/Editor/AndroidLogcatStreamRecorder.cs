@@ -173,8 +173,12 @@ namespace Unity.Android.Logcat
             lock (m_Lock)
                 m_Queue.Enqueue(new QueuedFrame
                 {
-                    Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation,
-                    DisplayWidth = displayWidth, DisplayHeight = displayHeight
+                    Data = copy,
+                    PtsUs = ptsUs,
+                    ArrivalUs = NowUs,
+                    Rotation = rotation,
+                    DisplayWidth = displayWidth,
+                    DisplayHeight = displayHeight
                 });
         }
 
