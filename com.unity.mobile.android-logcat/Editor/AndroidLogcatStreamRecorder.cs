@@ -72,6 +72,10 @@ namespace Unity.Android.Logcat
         // Decoded, waiting for m_Owed to be paid before it becomes the pending frame.
         bool m_HasDecoded;
         int m_DecodedTurns;
+        // The device rotation m_Decoded came at, to turn it again when the view does.
+        int m_DecodedRotation;
+        // The live view's texture the recording started from, until a frame is decoded.
+        Texture2D m_Seed;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
@@ -98,9 +102,9 @@ namespace Unity.Android.Logcat
         /// What the live view shows now, recorded as the first frame: a still screen
         /// sends nothing until it changes. Null before the stream's first frame.
         /// </param>
-        /// <param name="currentTurns">The live view's turn of <paramref name="current"/>.</param>
+        /// <param name="currentRotation">The device rotation <paramref name="current"/> came at.</param>
         /// <param name="frameRate">The live stream's Max Frame Rate: the most it can deliver.</param>
-        internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentTurns,
+        internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentRotation,
             Func<int, int> quarterTurnsFor)
         {
             m_Path = path;
@@ -110,9 +114,12 @@ namespace Unity.Android.Logcat
             {
                 try
                 {
-                    CreateEncoder(current.width, current.height, currentTurns);
+                    m_Seed = current;
+                    m_DecodedRotation = currentRotation;
+                    m_DecodedTurns = quarterTurnsFor(currentRotation);
+                    CreateEncoder(current.width, current.height, m_DecodedTurns);
                     using (k_Compose.Auto())
-                        Compose(current, currentTurns);
+                        Compose(current, m_DecodedTurns);
                     m_HasPending = true;
                 }
                 catch (Exception ex)
@@ -207,6 +214,21 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
+            // Asking for a rotation the app refuses sends no frame, yet the view turns at
+            // once - so the frame held is turned again here, as the view turns it.
+            var source = m_Decoded != null ? m_Decoded : m_Seed;
+            if (m_HasPending && source != null)
+            {
+                var turns = m_QuarterTurnsFor(m_DecodedRotation);
+                if (turns != m_DecodedTurns)
+                {
+                    m_DecodedTurns = turns;
+                    using (k_Compose.Auto())
+                        Compose(source, turns);
+                    return true;
+                }
+            }
+
             // A still screen sends nothing, so its repeats are written as time passes rather
             // than all at once when the next frame comes, or at Stop.
             if (m_HasPending && m_Written < SlotAt(NowUs - kIdleMarginUs))
@@ -234,6 +256,7 @@ namespace Unity.Android.Logcat
             m_DecodeMs += watch.Elapsed.TotalMilliseconds;
             m_Received++;
             LatestPtsUs = frame.PtsUs;
+            m_DecodedRotation = frame.Rotation;
             m_DecodedTurns = m_QuarterTurnsFor(frame.Rotation);
 
             if (m_Encoder == null)
@@ -395,6 +418,7 @@ namespace Unity.Android.Logcat
                     UnityEngine.Object.DestroyImmediate(m_Canvas);
                 m_Decoded = null;
                 m_Canvas = null;
+                m_Seed = null;
             }
             // Frames written before an error are still a playable file, once it is closed.
             return closed && m_Written > 0;

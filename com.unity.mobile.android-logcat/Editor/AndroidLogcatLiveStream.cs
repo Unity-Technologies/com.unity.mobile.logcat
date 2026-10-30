@@ -1650,6 +1650,9 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal int ViewQuarterTurns => QuarterTurnsFor(m_DisplayRotation);
 
+        /// <summary>The device rotation the frame on screen came at.</summary>
+        internal int DisplayRotation => m_DisplayRotation;
+
         /// <summary>The view's turn for a frame the device sent at <paramref name="displayRotation"/>.</summary>
         internal int QuarterTurnsFor(int displayRotation)
         {
