@@ -76,6 +76,7 @@ namespace Unity.Android.Logcat
         int m_DecodedRotation;
         // The live view's texture the recording started from, until a frame is decoded.
         Texture2D m_Seed;
+        readonly int m_Side;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
@@ -104,10 +105,15 @@ namespace Unity.Android.Logcat
         /// </param>
         /// <param name="currentRotation">The device rotation <paramref name="current"/> came at.</param>
         /// <param name="frameRate">The live stream's Max Frame Rate: the most it can deliver.</param>
+        /// <param name="side">
+        /// The video is a square of this, so any frame fits it turned either way. 0 sizes
+        /// it to the first frame instead.
+        /// </param>
         internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentRotation,
-            Func<int, int> quarterTurnsFor)
+            Func<int, int> quarterTurnsFor, int side = 0)
         {
             m_Path = path;
+            m_Side = side;
             m_FrameRate = Math.Max(1, frameRate);
             m_QuarterTurnsFor = quarterTurnsFor;
             if (current != null)
@@ -305,8 +311,8 @@ namespace Unity.Android.Logcat
         {
             var sideways = (turns & 1) != 0;
             // H.264 needs even sizes.
-            m_Width = (sideways ? height : width) & ~1;
-            m_Height = (sideways ? width : height) & ~1;
+            m_Width = (m_Side > 0 ? m_Side : sideways ? height : width) & ~1;
+            m_Height = (m_Side > 0 ? m_Side : sideways ? width : height) & ~1;
             var h264 = new H264EncoderAttributes
             {
                 // A keyframe a second; the frames between are differences, so a repeat is nearly free.

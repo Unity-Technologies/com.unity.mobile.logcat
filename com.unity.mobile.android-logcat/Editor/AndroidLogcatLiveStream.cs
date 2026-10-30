@@ -319,6 +319,8 @@ namespace Unity.Android.Logcat
         // call, and a device does not start folding half way through one.
         FoldStates m_FoldStates = FoldStates.None;
         bool m_FoldStatesQueried;
+        // The Max Size the server was started with, which it scales each screen to.
+        int m_MaxSize;
         volatile string m_ReaderError;
         volatile bool m_StreamEnded;
 
@@ -571,8 +573,9 @@ namespace Unity.Android.Logcat
                 PushServer(device, jarPath);
 
                 var settings = m_Runtime.Settings;
+                m_MaxSize = maxSize ?? settings.LiveStreamMaxSize;
                 StartServerProcess(device,
-                    maxSize ?? settings.LiveStreamMaxSize,
+                    m_MaxSize,
                     quality ?? settings.LiveStreamQuality,
                     maxFps ?? settings.LiveStreamMaxFps,
                     displayId);
@@ -1652,6 +1655,38 @@ namespace Unity.Android.Logcat
 
         /// <summary>The device rotation the frame on screen came at.</summary>
         internal int DisplayRotation => m_DisplayRotation;
+
+        /// <summary>
+        /// The longest side of any frame the device can send: turning keeps it, and a
+        /// foldable's other screen can be bigger. A recording is a square of this, so
+        /// rotating or unfolding does not shrink the picture. 0 before the first frame.
+        /// </summary>
+        internal int LongestFrameSide()
+        {
+            var longest = Math.Max(m_FrameWidth, m_FrameHeight);
+            if (longest == 0 || m_Device == null)
+                return longest;
+
+            if (!m_FoldStatesQueried)
+            {
+                m_FoldStatesQueried = true;
+                m_FoldStates = m_Device.QueryFoldStates();
+            }
+            if (!m_FoldStates.Supported)
+                return longest;
+
+            foreach (var size in m_Device.QueryPhysicalDisplaySizes())
+                longest = Math.Max(longest, LimitedSide(Math.Max(size.x, size.y)));
+            return longest;
+        }
+
+        /// <summary>A screen's longest side as the server sends it: capped at Max Size, a multiple of 8.</summary>
+        int LimitedSide(int side)
+        {
+            if (m_MaxSize > 0 && side > m_MaxSize)
+                side = m_MaxSize;
+            return Math.Max(8, side & ~7);
+        }
 
         /// <summary>The view's turn for a frame the device sent at <paramref name="displayRotation"/>.</summary>
         internal int QuarterTurnsFor(int displayRotation)

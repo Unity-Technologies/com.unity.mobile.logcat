@@ -84,7 +84,8 @@ namespace Unity.Android.Logcat
             var path = captures.AllocateCapturePath(device, captures.GetVideoExtension());
             // The constructor reports failures through Error rather than throwing.
             var recorder = new AndroidLogcatStreamRecorder(path, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
-                stream.DisplayRotation, stream.QuarterTurnsFor);
+                stream.DisplayRotation, stream.QuarterTurnsFor,
+                m_Runtime.Settings.RecordingSquareVideo ? stream.LongestFrameSide() : 0);
             // The encoder is created from the live view's frame, and failing to is
             // reported here rather than as a recording that never writes anything.
             if (!string.IsNullOrEmpty(recorder.Error))

@@ -299,11 +299,14 @@ class AndroidLogcatGeneralTests
         Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Min, settings.RecordingTimeLimit);
         settings.RecordingTimeLimit = 1000;
         Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Max, settings.RecordingTimeLimit);
+        Assert.IsTrue(settings.RecordingSquareVideo, "Square video should be on by default");
+        settings.RecordingSquareVideo = false;
 
         // And the whole page Reset takes them with everything else.
         settings.LiveStreamMaxSize = 512;
         settings.Reset();
         Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
+        Assert.IsTrue(settings.RecordingSquareVideo, "Reset should turn square video back on");
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);

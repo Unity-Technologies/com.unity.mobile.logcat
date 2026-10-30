@@ -90,6 +90,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private int m_RecordingTimeLimit;
 
+        [SerializeField]
+        private bool m_RecordingSquareVideo;
+
         internal int MemoryRequestIntervalMS
         {
             set
@@ -245,6 +248,25 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Whether a recording is a square of the stream's longest side, so turning the
+        /// device or unfolding it keeps the picture at full size.
+        /// </summary>
+        internal bool RecordingSquareVideo
+        {
+            set
+            {
+                if (m_RecordingSquareVideo == value)
+                    return;
+                m_RecordingSquareVideo = value;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_RecordingSquareVideo;
+            }
+        }
+
         internal int LiveStreamMaxFps
         {
             set
@@ -343,6 +365,7 @@ namespace Unity.Android.Logcat
             m_MaxExitedPackagesToShow = 4;
             m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
             m_RecordingTimeLimit = kRecordingTimeLimit.Default;
+            m_RecordingSquareVideo = true;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");

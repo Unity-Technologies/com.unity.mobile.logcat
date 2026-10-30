@@ -30,6 +30,10 @@ namespace Unity.Android.Logcat
 
             public static readonly GUIContent recordingTimeLimit = new GUIContent("Time Limit (minutes)",
                 "How long a recording runs before it stops on its own.");
+            public static readonly GUIContent recordingSquareVideo = new GUIContent("Square Video",
+                "Record a square video as wide and tall as the stream's longest side, so turning the device "
+                + "or unfolding a foldable keeps the picture at full size. When off, the video is the size "
+                + "of the screen when recording starts, and a turned or unfolded screen is scaled down to fit.");
 
             public static readonly GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
@@ -92,6 +96,7 @@ namespace Unity.Android.Logcat
             EditorGUILayout.LabelField("Recording", EditorStyles.miniBoldLabel);
             settings.RecordingTimeLimit = RangeSlider(Styles.recordingTimeLimit,
                 settings.RecordingTimeLimit, AndroidLogcatSettings.kRecordingTimeLimit);
+            settings.RecordingSquareVideo = EditorGUILayout.Toggle(Styles.recordingSquareVideo, settings.RecordingSquareVideo);
 
             GUILayout.Space(10);
             EditorGUILayout.LabelField("Live Stream", EditorStyles.miniBoldLabel);
