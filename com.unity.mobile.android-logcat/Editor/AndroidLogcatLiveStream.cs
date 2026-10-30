@@ -211,6 +211,9 @@ namespace Unity.Android.Logcat
                 "Captures taken on the device itself, at its own resolution, rather than copied " +
                 "from the stream.");
 
+            internal static readonly GUIContent RecordTouches = new GUIContent("Record Touches",
+                "Save the clicks and drags sent from here with a recording, so playing it in this window "
+                + "shows where the screen was touched. Other video players do not show them.");
             internal static readonly GUIContent DeviceFold = new GUIContent("Device Fold",
                 "Folds and unfolds the device without touching it, which is how a foldable's " +
                 "two displays are reached from here. Only for devices that fold.");
@@ -1932,6 +1935,14 @@ namespace Unity.Android.Logcat
 
                 y += height;
             }
+
+            // Beside Take Recording, which it is about.
+            var settings = m_Runtime?.Settings;
+            if (settings == null || y + height > rc.yMax)
+                return;
+            settings.RecordTouches = EditorGUI.ToggleLeft(new Rect(rc.x, y, ButtonRowWidth(rc), height),
+                Styles.RecordTouches, settings.RecordTouches, EditorStyles.miniLabel);
+            y += height;
         }
 
         /// <summary>
@@ -2165,6 +2176,11 @@ namespace Unity.Android.Logcat
         {
             var position = PositionOnScreen(videoRect, mousePosition);
             SendTouchMessage(action, position.x, position.y);
+            // As the view shows it, which is how the recording is turned too.
+            if (m_Runtime?.Settings?.RecordTouches ?? false)
+                m_Recorder?.NoteTouch(action,
+                    Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width),
+                    Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height));
         }
 
         void SendScrollAt(Rect videoRect, Vector2 mousePosition, Vector2 delta)

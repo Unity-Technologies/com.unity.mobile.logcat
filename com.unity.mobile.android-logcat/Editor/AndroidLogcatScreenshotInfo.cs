@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -43,6 +44,20 @@ namespace Unity.Android.Logcat
             public double time;
             public DisplayInfo display = new DisplayInfo();
             public ContentInfo content = new ContentInfo();
+            public List<TouchInfo> touches = new List<TouchInfo>();
+        }
+
+        /// <summary>
+        /// A touch sent from the Editor, at a position on the picture from 0 to 1, top left
+        /// first - so it lands on the content rect whatever size the video is.
+        /// </summary>
+        [Serializable]
+        internal class TouchInfo
+        {
+            // Down, Move, Up or Cancel.
+            public string action;
+            public float x;
+            public float y;
         }
 
         /// <summary>

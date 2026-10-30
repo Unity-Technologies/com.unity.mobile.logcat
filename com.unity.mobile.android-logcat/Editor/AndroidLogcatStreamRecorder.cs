@@ -337,6 +337,26 @@ namespace Unity.Android.Logcat
             change.display.height = height;
         }
 
+        /// <summary>
+        /// A touch sent from the Editor, at a position on the picture as the view shows it,
+        /// 0 to 1 from the top left. Android does not draw injected touches, so a player
+        /// draws these instead. Only the last move of a frame is kept.
+        /// </summary>
+        internal void NoteTouch(AndroidLogcatLiveStream.TouchAction action, float x, float y)
+        {
+            var change = ChangeAt((double)SlotAt(NowUs) / m_FrameRate);
+            var touches = change.touches;
+            var last = touches.Count > 0 ? touches[touches.Count - 1] : null;
+            var name = action.ToString();
+            if (last != null && action == AndroidLogcatLiveStream.TouchAction.Move && last.action == name)
+            {
+                last.x = x;
+                last.y = y;
+                return;
+            }
+            touches.Add(new AndroidLogcatScreenshotInfo.TouchInfo { action = name, x = x, y = y });
+        }
+
         /// <summary>Where Compose puts a frame in the video, so a player can leave out the black.</summary>
         void NoteContent(int sourceWidth, int sourceHeight, int turns, long slot)
         {

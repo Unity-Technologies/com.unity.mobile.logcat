@@ -365,8 +365,13 @@ namespace Unity.Android.Logcat
                     // turning the device left it.
                     var uv = m_PreviewDetails.ContentAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame), frame.width, frame.height);
                     var shown = new Vector2(uv.width * frame.width, uv.height * frame.height);
+                    var time = m_VideoPlayer.TimeOf(m_VideoPlayer.Frame);
                     previewBox = m_Viewer.DoGUI(previewArea, shown.y > 0 ? shown.x / shown.y : aspect,
-                        videoRect => GUI.DrawTextureWithTexCoords(videoRect, frame, uv), m_Repaint);
+                        videoRect =>
+                        {
+                            GUI.DrawTextureWithTexCoords(videoRect, frame, uv);
+                            DrawTouch(videoRect, time);
+                        }, m_Repaint);
                 }
 
                 if (opening || m_VideoPlayer.NeedsRepaint)
@@ -423,6 +428,66 @@ namespace Unity.Android.Logcat
             {
                 y += kGroupGap;
                 AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y);
+            }
+        }
+
+        // On screen, whatever the zoom: it marks a finger, not an area of the picture.
+        const float kTouchSize = 36;
+        // How long a lifted touch takes to fade, so a quick tap is still seen.
+        const double kTouchFadeSeconds = 0.3;
+        static Texture2D s_TouchMarker;
+
+        /// <summary>
+        /// The touch the Editor sent at <paramref name="time"/>, if any. Android does not
+        /// draw injected touches into the screen, so the recording only has them as data.
+        /// </summary>
+        void DrawTouch(Rect videoRect, double time)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            if (!m_PreviewDetails.TouchAt(time, kTouchFadeSeconds, out var position, out var alpha))
+                return;
+
+            var centre = new Vector2(videoRect.x + position.x * videoRect.width, videoRect.y + position.y * videoRect.height);
+            var previous = GUI.color;
+            GUI.color = new Color(1, 1, 1, alpha);
+            GUI.DrawTexture(new Rect(centre.x - kTouchSize / 2, centre.y - kTouchSize / 2, kTouchSize, kTouchSize),
+                TouchMarker);
+            GUI.color = previous;
+        }
+
+        /// <summary>A light disc with a dark rim, visible on light and dark screens alike.</summary>
+        static Texture2D TouchMarker
+        {
+            get
+            {
+                if (s_TouchMarker != null)
+                    return s_TouchMarker;
+                const int kSize = 64;
+                s_TouchMarker = new Texture2D(kSize, kSize, TextureFormat.RGBA32, false)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear
+                };
+                var pixels = new Color32[kSize * kSize];
+                var radius = kSize / 2f - 1;
+                for (var y = 0; y < kSize; y++)
+                {
+                    for (var x = 0; x < kSize; x++)
+                    {
+                        var distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(kSize / 2f, kSize / 2f));
+                        // Antialiased edge, a dark rim, a white ring inside it, and a soft fill.
+                        var edge = Mathf.Clamp01(radius - distance + 0.5f);
+                        Color color = distance > radius - 3 ? new Color(0, 0, 0, 0.8f)
+                            : distance > radius - 7 ? new Color(1, 1, 1, 0.95f)
+                            : new Color(1, 1, 1, 0.45f);
+                        color.a *= edge;
+                        pixels[y * kSize + x] = color;
+                    }
+                }
+                s_TouchMarker.SetPixels32(pixels);
+                s_TouchMarker.Apply();
+                return s_TouchMarker;
             }
         }
 
@@ -486,6 +551,45 @@ namespace Unity.Android.Logcat
                 var height = Mathf.Max(1, content.height - 2 * kInset);
                 return new Rect((float)(content.x + kInset) / videoWidth, (float)(content.y + kInset) / videoHeight,
                     (float)width / videoWidth, (float)height / videoHeight);
+            }
+
+            /// <summary>
+            /// Where an Editor touch was at <paramref name="time"/>: held down, or lifted less
+            /// than <paramref name="fadeSeconds"/> before, fading out. False when there is none.
+            /// </summary>
+            internal bool TouchAt(double time, double fadeSeconds, out Vector2 position, out float alpha)
+            {
+                position = default;
+                alpha = 0;
+                AndroidLogcatScreenshotInfo.TouchInfo last = null;
+                var lastTime = 0.0;
+                if (m_FrameChanges == null)
+                    return false;
+                foreach (var change in m_FrameChanges)
+                {
+                    if (change.time > time + 0.0005)
+                        break;
+                    if (change.touches == null || change.touches.Count == 0)
+                        continue;
+                    last = change.touches[change.touches.Count - 1];
+                    lastTime = change.time;
+                }
+                if (last == null)
+                    return false;
+
+                position = new Vector2(last.x, last.y);
+                var down = last.action == nameof(AndroidLogcatLiveStream.TouchAction.Down)
+                    || last.action == nameof(AndroidLogcatLiveStream.TouchAction.Move);
+                if (down)
+                {
+                    alpha = 1;
+                    return true;
+                }
+                var since = time - lastTime;
+                if (since > fadeSeconds)
+                    return false;
+                alpha = (float)(1 - since / fadeSeconds);
+                return true;
             }
 
             T LatestAt<T>(double time, Func<AndroidLogcatScreenshotInfo.FrameChange, T> pick) where T : class

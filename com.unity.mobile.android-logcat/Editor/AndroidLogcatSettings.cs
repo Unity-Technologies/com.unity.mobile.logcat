@@ -93,6 +93,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private bool m_RecordingSquareVideo;
 
+        [SerializeField]
+        private bool m_RecordTouches;
+
         internal int MemoryRequestIntervalMS
         {
             set
@@ -267,6 +270,25 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>
+        /// Whether touches sent from the live view are saved with a recording, for its
+        /// player to draw. Set in the live view rather than in Preferences.
+        /// </summary>
+        internal bool RecordTouches
+        {
+            set
+            {
+                if (m_RecordTouches == value)
+                    return;
+                m_RecordTouches = value;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_RecordTouches;
+            }
+        }
+
         internal int LiveStreamMaxFps
         {
             set
@@ -366,6 +388,7 @@ namespace Unity.Android.Logcat
             m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
             m_RecordingTimeLimit = kRecordingTimeLimit.Default;
             m_RecordingSquareVideo = true;
+            m_RecordTouches = true;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
