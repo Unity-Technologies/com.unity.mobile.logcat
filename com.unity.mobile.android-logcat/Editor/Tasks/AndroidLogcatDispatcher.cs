@@ -20,7 +20,7 @@ namespace Unity.Android.Logcat
             internal Action<IAndroidLogcatTaskResult> integrateAction;
         }
 
-        CustomSampler m_Sampler;
+        static readonly Unity.Profiling.ProfilerMarker s_AsyncWorkMarker = new Unity.Profiling.ProfilerMarker("AndroidLogcat Async Work");
 
         private Queue<AsyncTask> m_AsyncTaskQueue = new Queue<AsyncTask>();
         private Queue<IntegrationTask> m_IntegrateTaskQueue = new Queue<IntegrationTask>();
@@ -51,8 +51,6 @@ namespace Unity.Android.Logcat
 
             m_Runtime.Update += IntegrateMainThread;
             ThreadPool.QueueUserWorkItem(WorkerThread);
-
-            m_Sampler = CustomSampler.Create("AndroidLogcat Async Work");
 
             s_MainThread = Thread.CurrentThread;
         }
@@ -115,9 +113,9 @@ namespace Unity.Android.Logcat
 
                         try
                         {
-                            m_Sampler.Begin();
+                            s_AsyncWorkMarker.Begin();
                             var result = task.asyncAction.Invoke(task.taskData);
-                            m_Sampler.End();
+                            s_AsyncWorkMarker.End();
 
                             if (task.integrateAction != null)
                             {
