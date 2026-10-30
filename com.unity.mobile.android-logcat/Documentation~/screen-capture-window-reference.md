@@ -24,9 +24,6 @@ The Device Screen Capture window contains the following areas.
 
 The toolbar contains options to control the Screen Capture tool.
 
-![The Device Screen Capture window toolbar](images/device-screen-capture-window-toolbar.png)
-> The Device Screen Capture window toolbar.
-
 | **Toolbar option**      | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
 | **Device Selector**     | Specifies the Android device to capture the screen of.       |
