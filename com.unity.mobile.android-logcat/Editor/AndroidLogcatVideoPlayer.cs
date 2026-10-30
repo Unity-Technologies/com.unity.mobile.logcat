@@ -110,14 +110,15 @@ namespace Unity.Android.Logcat
         // jump ahead by however long it sat paused. -1 when there is nothing to undo.
         long m_ResumeFrom = -1;
 
-        // The frame a paused seek is on its way to. The player's own frame is the old
-        // one until the seek lands, and stepping from that would undo a quick second
-        // click. -1 outside a paused seek.
+        // The frame a seek is on its way to. The player's own frame is the old one
+        // until the seek lands, and stepping from that would undo a quick second
+        // click. -1 outside a seek.
+        // Kept while playing too, as a pause before the seek lands waits for it.
         long m_SeekTarget = -1;
 
         // The frame shown when a paused seek began. Frames the player decodes before
         // it has actually moved come from around here, and on a seek backwards they are
-        // past the target without being anywhere near it. -1 outside a paused seek.
+        // past the target without being anywhere near it. -1 outside a seek.
         long m_SeekFrom = -1;
         int m_SeekRetries;
 
@@ -181,7 +182,7 @@ namespace Unity.Android.Logcat
             m_State = state;
             if (state != State.Paused)
                 m_ResumeFrom = -1;
-            if (state != State.SeekingToPause && state != State.PausingOnFrame)
+            if (state != State.Seeking && state != State.SeekingToPause && state != State.PausingOnFrame)
             {
                 m_SeekTarget = -1;
                 m_SeekFrom = -1;
@@ -478,8 +479,12 @@ namespace Unity.Android.Logcat
             {
                 case State.Playing:
                 case State.Seeking:
+                    if (m_State == State.Playing)
+                        m_SeekFrom = Frame;
+                    m_SeekRetries = 0;
                     MoveTo(frame);
                     SetState(State.Seeking, $"seek to {frame}");
+                    m_SeekTarget = frame;
                     break;
                 case State.Paused:
                 case State.SeekingToPause:
@@ -561,6 +566,10 @@ namespace Unity.Android.Logcat
                     if (resumeFrom >= 0)
                     {
                         SetState(State.Seeking, $"play from {resumeFrom}");
+                        // The player's clock ran on while paused, so that is where it seeks from.
+                        m_SeekFrom = Math.Max(0, m_Player.frame);
+                        m_SeekTarget = resumeFrom;
+                        m_SeekRetries = 0;
                         MoveTo(resumeFrom);
                     }
                     else

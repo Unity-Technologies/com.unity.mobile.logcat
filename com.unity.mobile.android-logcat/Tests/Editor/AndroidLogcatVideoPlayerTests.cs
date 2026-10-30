@@ -257,6 +257,20 @@ class AndroidLogcatVideoPlayerTests
     }
 
     [UnityTest]
+    public IEnumerator PausingBeforeASeekBackLandsPausesOnItsTarget()
+    {
+        yield return Open();
+        m_Player.TogglePlay();
+        yield return WaitFor("playback to move past frame 60", () => m_Player.Frame > 60);
+
+        m_Player.SeekTo(10);
+        m_Player.TogglePlay();
+        Assert.AreEqual(State.SeekingToPause, m_Player.CurrentState, Describe());
+        yield return WaitForPaused("the seek to 10");
+        Assert.AreEqual(10, m_Player.Frame, Describe());
+    }
+
+    [UnityTest]
     public IEnumerator PlayResumesFromWhereAPausedSeekLanded()
     {
         yield return Open();
