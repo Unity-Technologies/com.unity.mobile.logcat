@@ -25,6 +25,9 @@ namespace Unity.Android.Logcat
         internal static readonly SettingsRange kLiveStreamQuality = new SettingsRange(70, 1, 100);
         internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 60);
 
+        // Minutes a recording runs before it stops on its own.
+        internal static readonly SettingsRange kRecordingTimeLimit = new SettingsRange(10, 1, 60);
+
         // Where captures go unless told otherwise, relative to the project. Library is
         // local to the machine and outside any build, which suits output that is cheap
         // to produce again.
@@ -83,6 +86,9 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private int m_LiveStreamMaxFps;
+
+        [SerializeField]
+        private int m_RecordingTimeLimit;
 
         internal int MemoryRequestIntervalMS
         {
@@ -222,6 +228,23 @@ namespace Unity.Android.Logcat
         /// Frame rate cap of the live stream. A mirrored display only produces a frame
         /// when the screen changes, so this is a ceiling rather than a rate.
         /// </summary>
+        /// <summary>In minutes.</summary>
+        internal int RecordingTimeLimit
+        {
+            set
+            {
+                var corrected = kRecordingTimeLimit.Clamp(value);
+                if (m_RecordingTimeLimit == corrected)
+                    return;
+                m_RecordingTimeLimit = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_RecordingTimeLimit;
+            }
+        }
+
         internal int LiveStreamMaxFps
         {
             set
@@ -319,6 +342,7 @@ namespace Unity.Android.Logcat
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;
             m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
+            m_RecordingTimeLimit = kRecordingTimeLimit.Default;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
@@ -455,6 +479,7 @@ namespace Unity.Android.Logcat
             m_LiveStreamMaxSize = kLiveStreamMaxSize.OrDefault(m_LiveStreamMaxSize);
             m_LiveStreamQuality = kLiveStreamQuality.OrDefault(m_LiveStreamQuality);
             m_LiveStreamMaxFps = kLiveStreamMaxFps.OrDefault(m_LiveStreamMaxFps);
+            m_RecordingTimeLimit = kRecordingTimeLimit.OrDefault(m_RecordingTimeLimit);
         }
 
         internal static AndroidLogcatSettings Load()

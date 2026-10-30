@@ -331,6 +331,7 @@ namespace Unity.Android.Logcat
         int m_PendingDisplayWidth;
         int m_PendingDisplayHeight;
         int m_PendingRotation;
+        long m_PendingPtsUs;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -752,6 +753,7 @@ namespace Unity.Android.Logcat
             int size;
             int width, height;
             int displayWidth, displayHeight, rotation;
+            long ptsUs;
 
             lock (m_FrameLock)
             {
@@ -764,6 +766,7 @@ namespace Unity.Android.Logcat
                 displayWidth = m_PendingDisplayWidth;
                 displayHeight = m_PendingDisplayHeight;
                 rotation = m_PendingRotation;
+                ptsUs = m_PendingPtsUs;
             }
 
             if (frame != null)
@@ -777,10 +780,12 @@ namespace Unity.Android.Logcat
                 // take the whole buffer: a reused buffer is usually larger than the
                 // frame sitting in it.
                 bool decoded;
-                var recorded = m_Recorder?.Latest;
+                // The recorder decodes every frame already, but may not have got to this one:
+                // it is reused only when it is this frame, or the view would be left behind.
+                var recorder = m_Recorder;
+                var recorded = recorder != null && recorder.LatestPtsUs == ptsUs ? recorder.Latest : null;
                 if (recorded != null)
                 {
-                    // The recorder decodes every frame already; this is it, or one just before.
                     if (m_Texture.width != recorded.width || m_Texture.height != recorded.height
                         || m_Texture.format != recorded.format || m_Texture.mipmapCount != recorded.mipmapCount)
                     {
@@ -1079,6 +1084,7 @@ namespace Unity.Android.Logcat
                         m_PendingDisplayWidth = displayWidth;
                         m_PendingDisplayHeight = displayHeight;
                         m_PendingRotation = rotation;
+                        m_PendingPtsUs = ptsUs;
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }

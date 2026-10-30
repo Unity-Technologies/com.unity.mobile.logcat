@@ -30,6 +30,9 @@ namespace Unity.Android.Logcat
         const int kMaxQueued = 90;
         // Per Editor update. The rest waits rather than stalling the Editor.
         const double kBudgetMs = 8;
+        // How far behind now a still screen's repeats are written, so a frame still on
+        // its way from the device can take its slot.
+        const long kIdleMarginUs = 100000;
 
         // Found by typing "AndroidLogcat" into the Profiler's search box.
         static readonly ProfilerMarker k_Update = new ProfilerMarker("AndroidLogcat.RecordUpdate");
@@ -87,6 +90,9 @@ namespace Unity.Android.Logcat
 
         /// <summary>The newest frame decoded, which the live view shows instead of decoding it again.</summary>
         internal Texture2D Latest => m_Decoded;
+
+        /// <summary>The device timestamp of <see cref="Latest"/>, -1 before the first.</summary>
+        internal long LatestPtsUs { get; private set; } = -1;
 
         /// <param name="current">
         /// What the live view shows now, recorded as the first frame: a still screen
@@ -183,15 +189,30 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            QueuedFrame frame;
+            var frame = default(QueuedFrame);
+            var idle = false;
             lock (m_Lock)
             {
                 if (m_Queue.Count == 0)
-                    return false;
-                frame = m_Queue.Dequeue();
+                    idle = true;
+                else
+                    frame = m_Queue.Dequeue();
             }
-            Decode(frame);
-            return true;
+            if (!idle)
+            {
+                Decode(frame);
+                return true;
+            }
+
+            // A still screen sends nothing, so its repeats are written as time passes rather
+            // than all at once when the next frame comes, or at Stop.
+            if (m_HasPending && m_Written < SlotAt(NowUs - kIdleMarginUs))
+            {
+                var before = m_Written;
+                WritePending();
+                return m_Written > before;
+            }
+            return false;
         }
 
         void Decode(QueuedFrame frame)
@@ -209,6 +230,7 @@ namespace Unity.Android.Logcat
             }
             m_DecodeMs += watch.Elapsed.TotalMilliseconds;
             m_Received++;
+            LatestPtsUs = frame.PtsUs;
             m_DecodedTurns = m_QuarterTurnsFor(frame.Rotation);
 
             if (m_Encoder == null)
@@ -316,13 +338,15 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool Stop()
         {
+            // Taken first, so the time the final writes take does not lengthen the recording.
+            var stopSlot = SlotAt(NowUs);
             EditorApplication.update -= Update;
             Drain(double.MaxValue);
             try
             {
                 if (m_HasPending && string.IsNullOrEmpty(Error))
                 {
-                    var last = Math.Max(SlotAt(NowUs), m_Written);
+                    var last = Math.Max(stopSlot, m_Written);
                     while (m_Written <= last && string.IsNullOrEmpty(Error))
                     {
                         var before = m_Written;

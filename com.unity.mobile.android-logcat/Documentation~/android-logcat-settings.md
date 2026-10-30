@@ -8,6 +8,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Memory Window](#memory-window)
 * [Packages](#packages)
 * [Capture Settings](#capture-settings)
+    * [Recording](#recording)
     * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
@@ -63,6 +64,12 @@ To choose a folder, select **Browse...**. If the folder is inside the project, U
 The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Assets`. It is outside `Assets`, so Unity doesn't import captures or include them in a build. Deleting the `Library` folder doesn't remove the captures folder. Captures in this folder remain until you delete them. Unity's own `.gitignore` file doesn't cover the captures folder. If you don't want captures in source control, add the captures folder to your own `.gitignore` file.
 
 Changing the folder takes effect immediately. Unity doesn't move existing captures to the new folder: they stay in the old folder, and the [Capture list](screen-capture-window-reference.md#capture-list) displays only the captures in the new folder. To keep using earlier captures, move them to the new folder yourself, together with their `.json` files.
+
+### Recording
+
+|**Setting**|**Description**|
+|---|---|
+|**Time Limit (minutes)**|Specifies how long a recording runs before it stops on its own, between 1 and 60 minutes. The default value is 10.|
 
 ### Live Stream
 

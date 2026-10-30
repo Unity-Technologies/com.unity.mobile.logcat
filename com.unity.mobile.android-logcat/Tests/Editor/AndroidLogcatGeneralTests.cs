@@ -294,9 +294,16 @@ class AndroidLogcatGeneralTests
         Assert.AreEqual(17, settings.MessageFontSize, "A live stream reset should not touch the font size");
         Assert.AreEqual(1234, settings.MaxCachedMessageCount, "A live stream reset should not touch the message cap");
 
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
+        settings.RecordingTimeLimit = 0;
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Min, settings.RecordingTimeLimit);
+        settings.RecordingTimeLimit = 1000;
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Max, settings.RecordingTimeLimit);
+
         // And the whole page Reset takes them with everything else.
         settings.LiveStreamMaxSize = 512;
         settings.Reset();
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);

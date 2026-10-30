@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using UnityEditor;
 
 namespace Unity.Android.Logcat
 {
@@ -34,13 +35,29 @@ namespace Unity.Android.Logcat
         {
             m_Runtime = runtime;
             m_Runtime.Update += Update;
-            m_Runtime.Closing += () => StopRecording();
+            m_Runtime.Closing += Close;
+            // A reload ends the recorder without closing the file, and an MP4 is only
+            // playable once its index is written on close - so it is saved first.
+            AssemblyReloadEvents.beforeAssemblyReload += SaveBeforeReload;
+        }
+
+        void Close()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload -= SaveBeforeReload;
+            StopRecording();
+        }
+
+        void SaveBeforeReload()
+        {
+            StopRecording();
         }
 
         void Update()
         {
             // Nothing more will arrive: a capture was selected, or the stream failed.
             if (IsRecording && !m_Runtime.LiveStream.IsStreaming)
+                StopRecording();
+            if (IsRecording && Elapsed.TotalMinutes >= m_Runtime.Settings.RecordingTimeLimit)
                 StopRecording();
         }
 

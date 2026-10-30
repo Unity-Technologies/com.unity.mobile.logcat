@@ -444,6 +444,9 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal void OnDeviceChanged(IAndroidLogcatDevice device)
         {
+            // A recording belongs to the device it started on, so it ends before the
+            // stream moves to another.
+            m_Runtime.CaptureVideo?.StopRecording();
             if (m_LiveSelected)
                 m_LiveStream.RestartStreaming(device);
         }

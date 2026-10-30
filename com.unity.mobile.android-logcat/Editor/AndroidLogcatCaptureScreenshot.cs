@@ -132,10 +132,12 @@ namespace Unity.Android.Logcat
 
             var prefix = AndroidLogcatUtilities.SanitizeFileName(device.Id);
             var screenshots = GetScreenshots();
-            // Ordered by number within a device, so the last match is the newest.
+            // Ordered by number within a device, so the last match is the newest. Images
+            // only: recordings are listed too, and are no use to anyone loading a texture.
             for (var i = screenshots.Count - 1; i >= 0; i--)
             {
-                if (screenshots[i].DevicePrefix == prefix)
+                if (screenshots[i].DevicePrefix == prefix
+                    && screenshots[i].Path.EndsWith(GetImageExtension(), StringComparison.OrdinalIgnoreCase))
                     return screenshots[i].Path;
             }
             return string.Empty;
