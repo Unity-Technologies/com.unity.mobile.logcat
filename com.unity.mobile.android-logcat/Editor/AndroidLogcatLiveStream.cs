@@ -275,6 +275,10 @@ namespace Unity.Android.Logcat
         int m_ForwardedPort = -1;
 
         Thread m_ReaderThread;
+        // Cleanups still running. A domain reload aborts threads, and one aborted while
+        // waiting on the server process hangs the reload - so closing waits for them.
+        readonly List<Thread> m_CleanupThreads = new List<Thread>();
+        const int kCleanupJoinMs = 10000;
         /// <summary>
         /// A button the window puts under the stream's own controls, for doing
         /// something with the device being watched - taking a screenshot of it, and
@@ -460,6 +464,12 @@ namespace Unity.Android.Logcat
                 return;
             if (IsStreaming)
                 Shutdown(Result.Success);
+            foreach (var thread in m_CleanupThreads)
+            {
+                if (!thread.Join(kCleanupJoinMs))
+                    AndroidLogcatInternalLog.Log("Live stream cleanup did not finish in time");
+            }
+            m_CleanupThreads.Clear();
             DestroyTexture();
             m_Runtime = null;
         }
@@ -665,11 +675,14 @@ namespace Unity.Android.Logcat
         void CleanUpInBackground(Thread reader, Process process, IAndroidLogcatDevice device,
             int port, string jarPath)
         {
-            new Thread(() => CleanUp(reader, process, device, port, jarPath))
+            var thread = new Thread(() => CleanUp(reader, process, device, port, jarPath))
             {
                 Name = "AndroidLogcatLiveStreamCleanup",
                 IsBackground = true
-            }.Start();
+            };
+            m_CleanupThreads.RemoveAll(t => !t.IsAlive);
+            m_CleanupThreads.Add(thread);
+            thread.Start();
         }
 
         void CleanUp(Thread reader, Process process, IAndroidLogcatDevice device,
