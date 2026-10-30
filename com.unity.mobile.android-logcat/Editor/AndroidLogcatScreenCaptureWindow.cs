@@ -45,7 +45,8 @@ namespace Unity.Android.Logcat
 
         private int m_RecordingSecondsShown = -1;
 
-        private TimeSpan? RecordingTime => m_CaptureVideo.IsRecording ? m_CaptureVideo.Elapsed : (TimeSpan?)null;
+        // Null without Android support too, as OnEnable then leaves m_CaptureVideo unset.
+        private TimeSpan? RecordingTime => m_CaptureVideo != null && m_CaptureVideo.IsRecording ? m_CaptureVideo.Elapsed : (TimeSpan?)null;
 
         const float kAdvancedMenuWidth = 26;
 
