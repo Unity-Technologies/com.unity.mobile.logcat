@@ -14,6 +14,9 @@ namespace Unity.Android.Logcat
 
         internal const float kLabelWidth = 80;
 
+        static readonly GUIContent kDeveloperMode = new GUIContent("Developer Mode");
+        static readonly GUIContent kReloadDomain = new GUIContent("Reload Domain", "Reload the script domain.");
+
         /// <summary>
         /// The box an image and its column sit in, which is the same help box a message
         /// in that area is drawn in - so the view keeps its shape whether it is showing
@@ -58,6 +61,25 @@ namespace Unity.Android.Logcat
         {
             return new Rect(imageBox.xMax + kMargin, area.y,
                 Mathf.Max(0, area.xMax - imageBox.xMax - kMargin), area.height);
+        }
+
+        /// <summary>
+        /// The Developer Mode heading and Reload Domain under it, which start each view's
+        /// debugging details. False when there was no room for them.
+        /// </summary>
+        internal static bool DeveloperModeGUI(Rect rc, ref float y)
+        {
+            var height = EditorGUIUtility.singleLineHeight;
+            if (y + 2 * height > rc.yMax)
+                return false;
+
+            GUI.Label(new Rect(rc.x, y, rc.width, height), kDeveloperMode, EditorStyles.miniBoldLabel);
+            y += height;
+            var reloadWidth = Mathf.Min(EditorStyles.miniButton.CalcSize(kReloadDomain).x, rc.width);
+            if (GUI.Button(new Rect(rc.x, y, reloadWidth, height), kReloadDomain, EditorStyles.miniButton))
+                EditorUtility.RequestScriptReload();
+            y += height;
+            return true;
         }
 
         internal static void Row(Rect rc, float labelWidth, ref float y, GUIContent name, string value,

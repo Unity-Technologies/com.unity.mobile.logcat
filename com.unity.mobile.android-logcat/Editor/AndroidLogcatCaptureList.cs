@@ -327,6 +327,11 @@ namespace Unity.Android.Logcat
                 y += kGroupGap;
                 m_VideoPlayer.DoControlsGUI(rc, ref y);
             }
+            else if (Unsupported.IsDeveloperMode())
+            {
+                y += kGroupGap;
+                AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y);
+            }
         }
 
         static string Undefined(string value) => string.IsNullOrEmpty(value) ? kUndefined : value;

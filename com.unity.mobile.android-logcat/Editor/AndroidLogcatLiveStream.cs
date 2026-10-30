@@ -225,7 +225,6 @@ namespace Unity.Android.Logcat
                 new GUIContent("270°", "Lock the device a quarter turn clockwise, top edge to the right")
             };
 
-            internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
             internal static readonly GUIContent Socket = new GUIContent("Socket",
                 "Abstract unix socket the on-device server is listening on.");
             internal static readonly GUIContent ForwardedPort = new GUIContent("Port",
@@ -2495,11 +2494,8 @@ namespace Unity.Android.Logcat
 
             var height = EditorGUIUtility.singleLineHeight;
             y += kNavigationSpacing;
-            if (y + height > rc.yMax)
+            if (!AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y))
                 return;
-
-            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeveloperMode, EditorStyles.miniBoldLabel);
-            y += height;
 
             AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.Socket,
                 string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName, m_SocketName);

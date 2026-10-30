@@ -42,10 +42,9 @@ namespace Unity.Android.Logcat
             internal static readonly GUIContent StepBack = IconOrText("Animation.PrevKey", "<", "Go back one frame.");
             internal static readonly GUIContent StepForward = IconOrText("Animation.NextKey", ">", "Go forward one frame.");
 
-            internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
-            internal static readonly GUIContent CopyDebugInfo = new GUIContent("Copy",
+            internal static readonly GUIContent CopyDebugInfo = new GUIContent("Copy State",
                 "Copy the state, the player's own view and every state change to the clipboard.");
-            internal static readonly GUIContent ClearHistory = new GUIContent("Clear",
+            internal static readonly GUIContent ClearHistory = new GUIContent("Clear Events",
                 "Clear the state changes, so the next ones start from an empty list.");
         }
 
@@ -723,29 +722,29 @@ namespace Unity.Android.Logcat
         {
             y += kDebugGap;
             // Headed the way the live view heads its own debugging details.
-            var height = EditorGUIUtility.singleLineHeight;
-            if (y + height > rc.yMax)
+            if (!AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y))
                 return;
-            // Clear and Copy, joined, at the right hand end of the heading.
-            var copyWidth = EditorStyles.miniButtonRight.CalcSize(Styles.CopyDebugInfo).x;
-            var clearWidth = EditorStyles.miniButtonLeft.CalcSize(Styles.ClearHistory).x;
-            GUI.Label(new Rect(rc.x, y, Mathf.Max(0, rc.width - copyWidth - clearWidth), height), Styles.DeveloperMode,
-                EditorStyles.miniBoldLabel);
-            if (GUI.Button(new Rect(rc.xMax - copyWidth - clearWidth, y, clearWidth, height), Styles.ClearHistory,
-                EditorStyles.miniButtonLeft))
-            {
-                m_History.Clear();
-                m_HistoryScroll = Vector2.zero;
-            }
-            if (GUI.Button(new Rect(rc.xMax - copyWidth, y, copyWidth, height), Styles.CopyDebugInfo, EditorStyles.miniButtonRight))
-                EditorGUIUtility.systemCopyBuffer = GetDebugInfo();
-            y += height;
+            var height = EditorGUIUtility.singleLineHeight;
 
             foreach (var line in DebugStatus())
                 DebugLine(rc, ref y, line, null);
 
-            DoHistoryGUI(new Rect(rc.x, y, rc.width, rc.yMax - y));
+            // Clear Events and Copy State, joined, under the list.
+            var buttonsY = rc.yMax - height;
+            if (buttonsY < y)
+                return;
+            DoHistoryGUI(new Rect(rc.x, y, rc.width, buttonsY - y));
             y = rc.yMax;
+            var clearWidth = EditorStyles.miniButtonLeft.CalcSize(Styles.ClearHistory).x;
+            if (GUI.Button(new Rect(rc.x, buttonsY, clearWidth, height), Styles.ClearHistory, EditorStyles.miniButtonLeft))
+            {
+                m_History.Clear();
+                m_HistoryScroll = Vector2.zero;
+            }
+            var copyWidth = EditorStyles.miniButtonRight.CalcSize(Styles.CopyDebugInfo).x;
+            if (GUI.Button(new Rect(rc.x + clearWidth, buttonsY, copyWidth, height), Styles.CopyDebugInfo,
+                EditorStyles.miniButtonRight))
+                EditorGUIUtility.systemCopyBuffer = GetDebugInfo();
         }
 
         /// <summary>What the panel shows above the history, one line each.</summary>
