@@ -387,7 +387,11 @@ namespace Unity.Android.Logcat
 
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device, details.Device, details.DeviceId);
             AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS, details.OS);
-            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, details.DisplaySize);
+            // A recording's changes as the device is folded or turned, at the time shown.
+            var displaySize = PreviewIsVideo
+                ? details.DisplaySizeAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame))
+                : details.DisplaySize;
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, displaySize);
 
             // A recording's size and length are known only once the player has opened it.
             if (PreviewIsVideo)
@@ -436,6 +440,7 @@ namespace Unity.Android.Logcat
             internal string Captured { get; }
             internal string CapturedInFull { get; }
             internal string[] Values { get; }
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_FrameChanges;
 
             /// <summary>A recording has no texture, so it has no image size either.</summary>
             internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
@@ -446,11 +451,29 @@ namespace Unity.Android.Logcat
                 DisplaySize = info == null || info.displayWidth <= 0
                     ? kUndefined
                     : $"{info.displayWidth}x{info.displayHeight}";
+                m_FrameChanges = info?.frameChanges;
                 ImageSize = texture != null ? $"{texture.width}x{texture.height}" : kUndefined;
                 FileSize = EditorUtility.FormatBytes(file.Length);
                 Captured = file.LastWriteTime.ToString("g");
                 CapturedInFull = file.LastWriteTime.ToString("F");
                 Values = new[] { Device, OS, DisplaySize, ImageSize, FileSize, Captured };
+            }
+
+            /// <summary>The display size <paramref name="time"/> seconds into a recording.</summary>
+            internal string DisplaySizeAt(double time)
+            {
+                if (m_FrameChanges == null)
+                    return DisplaySize;
+                var size = DisplaySize;
+                foreach (var change in m_FrameChanges)
+                {
+                    // A hair early, so the frame a change lands on already shows it.
+                    if (change.time > time + 0.0005)
+                        break;
+                    if (change.display != null && change.display.IsSet)
+                        size = $"{change.display.width}x{change.display.height}";
+                }
+                return size;
             }
         }
 

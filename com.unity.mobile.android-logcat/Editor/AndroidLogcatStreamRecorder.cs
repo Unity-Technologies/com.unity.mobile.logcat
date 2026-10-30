@@ -46,6 +46,8 @@ namespace Unity.Android.Logcat
             internal long PtsUs;
             internal long ArrivalUs;
             internal int Rotation;
+            internal int DisplayWidth;
+            internal int DisplayHeight;
         }
 
         readonly string m_Path;
@@ -77,6 +79,14 @@ namespace Unity.Android.Logcat
         // The live view's texture the recording started from, until a frame is decoded.
         Texture2D m_Seed;
         readonly int m_Side;
+        readonly List<AndroidLogcatScreenshotInfo.FrameChange> m_FrameChanges =
+            new List<AndroidLogcatScreenshotInfo.FrameChange>();
+        // The display as the last change set it.
+        int m_DisplayWidth;
+        int m_DisplayHeight;
+
+        /// <summary>What changed over the recording, from its start.</summary>
+        internal IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> FrameChanges => m_FrameChanges;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
@@ -110,11 +120,13 @@ namespace Unity.Android.Logcat
         /// it to the first frame instead.
         /// </param>
         internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentRotation,
-            Func<int, int> quarterTurnsFor, int side = 0)
+            Vector2Int currentDisplaySize, Func<int, int> quarterTurnsFor, int side = 0)
         {
             m_Path = path;
             m_Side = side;
             m_FrameRate = Math.Max(1, frameRate);
+            // After the frame rate, which turns its slot into a time.
+            NoteDisplaySize(currentDisplaySize.x, currentDisplaySize.y, 0);
             m_QuarterTurnsFor = quarterTurnsFor;
             if (current != null)
             {
@@ -142,7 +154,7 @@ namespace Unity.Android.Logcat
         long SlotAt(long us) => (long)Math.Round(us * (double)m_FrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
-        internal void Enqueue(byte[] data, int size, long ptsUs, int rotation)
+        internal void Enqueue(byte[] data, int size, long ptsUs, int rotation, int displayWidth, int displayHeight)
         {
             lock (m_Lock)
             {
@@ -157,7 +169,11 @@ namespace Unity.Android.Logcat
             var copy = new byte[size];
             Buffer.BlockCopy(data, 0, copy, 0, size);
             lock (m_Lock)
-                m_Queue.Enqueue(new QueuedFrame { Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation });
+                m_Queue.Enqueue(new QueuedFrame
+                {
+                    Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation,
+                    DisplayWidth = displayWidth, DisplayHeight = displayHeight
+                });
         }
 
         void Update()
@@ -277,6 +293,9 @@ namespace Unity.Android.Logcat
             }
             var slot = SlotAt(m_FirstArrivalUs + frame.PtsUs - m_FirstPtsUs);
 
+            // Shown from its own slot, or from the pending one's when it replaces that.
+            NoteDisplaySize(frame.DisplayWidth, frame.DisplayHeight, m_HasPending ? Math.Max(slot, m_Written) : m_Written);
+
             // The pending frame fills every slot up to this one. In its own slot, or
             // an earlier one, this frame replaces it instead.
             if (m_HasPending && slot > m_Written)
@@ -298,6 +317,33 @@ namespace Unity.Android.Logcat
             else
                 m_Failed++;
             m_EncodeMs += watch.Elapsed.TotalMilliseconds;
+        }
+
+        void NoteDisplaySize(int width, int height, long slot)
+        {
+            if (width <= 0 || height <= 0)
+                return;
+            if (width == m_DisplayWidth && height == m_DisplayHeight)
+                return;
+            m_DisplayWidth = width;
+            m_DisplayHeight = height;
+            var change = ChangeAt((double)slot / m_FrameRate);
+            change.display.width = width;
+            change.display.height = height;
+        }
+
+        /// <summary>
+        /// The change at <paramref name="time"/>, added when there is none. One at a later
+        /// time is taken instead: a frame replacing one in its slot replaces its changes too.
+        /// </summary>
+        AndroidLogcatScreenshotInfo.FrameChange ChangeAt(double time)
+        {
+            var last = m_FrameChanges.Count > 0 ? m_FrameChanges[m_FrameChanges.Count - 1] : null;
+            if (last != null && last.time >= time)
+                return last;
+            var change = new AndroidLogcatScreenshotInfo.FrameChange { time = time };
+            m_FrameChanges.Add(change);
+            return change;
         }
 
         void Fail(Exception ex)

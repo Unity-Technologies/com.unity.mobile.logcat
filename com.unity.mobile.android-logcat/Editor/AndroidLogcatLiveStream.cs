@@ -1084,7 +1084,7 @@ namespace Unity.Android.Logcat
                     if (session != m_Session)
                         break;
 
-                    m_Recorder?.Enqueue(payload, size, ptsUs, rotation);
+                    m_Recorder?.Enqueue(payload, size, ptsUs, rotation, displayWidth, displayHeight);
 
                     lock (m_FrameLock)
                     {

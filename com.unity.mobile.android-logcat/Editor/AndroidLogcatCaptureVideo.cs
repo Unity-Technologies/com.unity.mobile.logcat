@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 
@@ -84,7 +85,7 @@ namespace Unity.Android.Logcat
             var path = captures.AllocateCapturePath(device, captures.GetVideoExtension());
             // The constructor reports failures through Error rather than throwing.
             var recorder = new AndroidLogcatStreamRecorder(path, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
-                stream.DisplayRotation, stream.QuarterTurnsFor,
+                stream.DisplayRotation, stream.DisplaySize, stream.QuarterTurnsFor,
                 m_Runtime.Settings.RecordingSquareVideo ? stream.LongestFrameSide() : 0);
             // The encoder is created from the live view's frame, and failing to is
             // reported here rather than as a recording that never writes anything.
@@ -131,10 +132,37 @@ namespace Unity.Android.Logcat
                     Errors = "No frames were recorded.";
                 DeleteRecording(path);
             }
+            else
+            {
+                SaveFrameChanges(path, recorder.FrameChanges);
+            }
             m_Runtime.CaptureScreenshot.ReleaseCapturePath(path);
 
             onStopRecording?.Invoke(recorded ? Result.Success : Result.Failure, path);
             return recorded;
+        }
+
+        /// <summary>
+        /// Folding or turning the device during a recording changes its display, so the
+        /// details saved at the start get what changed over time.
+        /// </summary>
+        static void SaveFrameChanges(string path, IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> changes)
+        {
+            if (changes.Count == 0)
+                return;
+            var info = AndroidLogcatScreenshotInfo.Load(path);
+            if (info == null)
+                return;
+            var first = changes[0].display;
+            if (first.IsSet)
+            {
+                info.displayWidth = first.width;
+                info.displayHeight = first.height;
+            }
+            info.frameChanges = new AndroidLogcatScreenshotInfo.FrameChange[changes.Count];
+            for (var i = 0; i < changes.Count; i++)
+                info.frameChanges[i] = changes[i];
+            info.Save(path);
         }
 
         static void DeleteRecording(string path)

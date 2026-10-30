@@ -30,6 +30,30 @@ namespace Unity.Android.Logcat
         public string abi;
         public int displayWidth;
         public int displayHeight;
+        // What changes over a recording, in time order. Only a recording has these.
+        public FrameChange[] frameChanges;
+
+        /// <summary>
+        /// What changed <see cref="time"/> seconds into a recording. Each kind of change is
+        /// a field of its own, unset where that kind did not change.
+        /// </summary>
+        [Serializable]
+        internal class FrameChange
+        {
+            public double time;
+            public DisplayInfo display = new DisplayInfo();
+        }
+
+        /// <summary>The device's display, which folding or turning it changes.</summary>
+        [Serializable]
+        internal class DisplayInfo
+        {
+            public int width;
+            public int height;
+
+            // JsonUtility writes a nested class even when it is empty, so empty means unset.
+            internal bool IsSet => width > 0 && height > 0;
+        }
 
         internal static string PathFor(string imagePath)
         {
