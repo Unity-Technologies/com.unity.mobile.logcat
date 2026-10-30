@@ -74,10 +74,11 @@ A screenshot and the live view are both fitted to the window, which can be too s
 | **Ctrl**+scroll (macOS: **Cmd**+scroll) over the image | Zooms between 100% and 4000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
 | **Ctrl**+drag with the left or middle mouse button (macOS: **Cmd**+drag) | Moves the zoomed image, to bring another part of it into view. |
 | The scrollbars                                         | Moves the zoomed image. The scrollbars appear as soon as the image is larger than the preview area. |
+| Right-click the zoom in the corner of the image        | Opens a menu to zoom to 100%, 200%, 400%, 800%, 1600%, 3200%, or 4000%, around the middle of the view. |
 
 Zooming and moving the image only change how you see it. In the live view, the device still receives your clicks, drags, and keys at the place on its screen you are pointing at, and scrolling without **Ctrl** still scrolls the device rather than the view.
 
-The zoom of the live view and the zoom of the screenshots are separate, and both go back to 100% when scripts recompile.
+The zoom of the live view and the zoom of the screenshots are separate, and both stay as they are when scripts recompile.
 
 ## Capture details
 
