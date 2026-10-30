@@ -381,16 +381,20 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// The change at <paramref name="time"/>, added when there is none. One at a later
-        /// time is taken instead: a frame replacing one in its slot replaces its changes too.
+        /// The change at <paramref name="time"/>, inserted in time order when there is none.
+        /// Not always last: a touch is timed when it is sent, while a frame still queued is
+        /// timed by its slot, which can be earlier.
         /// </summary>
         AndroidLogcatScreenshotInfo.FrameChange ChangeAt(double time)
         {
-            var last = m_FrameChanges.Count > 0 ? m_FrameChanges[m_FrameChanges.Count - 1] : null;
-            if (last != null && last.time >= time)
-                return last;
+            var index = m_FrameChanges.Count;
+            while (index > 0 && m_FrameChanges[index - 1].time > time)
+                index--;
+            // Times are slots over the frame rate, so the same slot gives the same time exactly.
+            if (index > 0 && m_FrameChanges[index - 1].time == time)
+                return m_FrameChanges[index - 1];
             var change = new AndroidLogcatScreenshotInfo.FrameChange { time = time };
-            m_FrameChanges.Add(change);
+            m_FrameChanges.Insert(index, change);
             return change;
         }
 
