@@ -100,6 +100,13 @@ namespace Unity.Android.Logcat
             m_Scroll = Vector2.zero;
         }
 
+        /// <summary>Puts back a zoom and scroll saved earlier, as across a domain reload.</summary>
+        internal void Restore(float zoom, Vector2 scroll)
+        {
+            m_Zoom = Mathf.Clamp(zoom, kMinZoom, kMaxZoom);
+            m_Scroll = scroll;
+        }
+
         /// <summary>
         /// Draws an image of the given aspect ratio into <paramref name="area"/> and
         /// returns the box it is seen through, for laying out whatever sits beside it.

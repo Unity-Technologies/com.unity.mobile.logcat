@@ -132,6 +132,8 @@ namespace Unity.Android.Logcat
             public string Anchor;
             public string Previewed;
             public long VideoFrame = -1;
+            public float Zoom = AndroidLogcatImageViewer.kMinZoom;
+            public Vector2 Scroll;
         }
 
         // The capture that has just landed, lit until m_FlashUntil. The window is
@@ -223,7 +225,9 @@ namespace Unity.Android.Logcat
                 Paths = new List<string>(m_Selected),
                 Anchor = m_SelectionAnchor,
                 Previewed = m_CaptureScreenshot.SelectedImagePath,
-                VideoFrame = PreviewIsVideo ? m_VideoPlayer.Frame : -1
+                VideoFrame = PreviewIsVideo ? m_VideoPlayer.Frame : -1,
+                Zoom = m_Viewer.Zoom,
+                Scroll = m_Viewer.Scroll
             };
         }
 
@@ -231,6 +235,8 @@ namespace Unity.Android.Logcat
         internal void RestoreSelection(Selection selection)
         {
             m_Restore = selection != null && selection.Saved ? selection : null;
+            if (m_Restore != null)
+                m_Viewer.Restore(m_Restore.Zoom, m_Restore.Scroll);
         }
 
         void ApplyRestore(Selection selection, IAndroidLogcatDevice device)
