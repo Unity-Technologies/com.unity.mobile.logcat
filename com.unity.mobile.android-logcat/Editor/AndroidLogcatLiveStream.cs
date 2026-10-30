@@ -83,6 +83,9 @@ namespace Unity.Android.Logcat
 
         readonly AndroidLogcatImageViewer m_Viewer = new AndroidLogcatImageViewer();
 
+        /// <summary>The view's zoom and scroll, which the window keeps across a domain reload.</summary>
+        internal AndroidLogcatImageViewer Viewer => m_Viewer;
+
         static string m_ServerJarPath;
 
         internal static string GetServerJarPath()
