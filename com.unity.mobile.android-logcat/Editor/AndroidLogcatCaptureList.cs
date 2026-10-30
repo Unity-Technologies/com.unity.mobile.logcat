@@ -116,6 +116,23 @@ namespace Unity.Android.Logcat
         int m_KnownCount = -1;
         // Whether the one-off "what should this window open on" decision has been made.
         bool m_InitialSelectionDone;
+        // Taken up in place of that decision, after a domain reload.
+        Selection m_Restore;
+        // The frame the restored video was on, for when it opens. -1 for none.
+        long m_RestoreVideoFrame = -1;
+
+        /// <summary>What is selected, which the window keeps across a domain reload.</summary>
+        [Serializable]
+        internal class Selection
+        {
+            // Unity deserializes a missing one as an empty instance rather than null.
+            public bool Saved;
+            public bool Live;
+            public List<string> Paths = new List<string>();
+            public string Anchor;
+            public string Previewed;
+            public long VideoFrame = -1;
+        }
 
         // The capture that has just landed, lit until m_FlashUntil. The window is
         // showing the device rather than the list when one arrives, so the row is what
@@ -185,6 +202,51 @@ namespace Unity.Android.Logcat
         {
             m_VideoPlayer.Dispose();
             DestroyPreview();
+        }
+
+        internal Selection SaveSelection()
+        {
+            return new Selection
+            {
+                Saved = true,
+                Live = m_LiveSelected,
+                Paths = new List<string>(m_Selected),
+                Anchor = m_SelectionAnchor,
+                Previewed = m_CaptureScreenshot.SelectedImagePath,
+                VideoFrame = PreviewIsVideo ? m_VideoPlayer.Frame : -1
+            };
+        }
+
+        /// <summary>Applied on the first draw, in place of opening on the live view.</summary>
+        internal void RestoreSelection(Selection selection)
+        {
+            m_Restore = selection != null && selection.Saved ? selection : null;
+        }
+
+        void ApplyRestore(Selection selection, IAndroidLogcatDevice device)
+        {
+            if (selection.Live)
+            {
+                SetLive(true, device);
+                return;
+            }
+            foreach (var path in selection.Paths)
+            {
+                if (File.Exists(path))
+                    m_Selected.Add(path);
+            }
+            m_SelectionAnchor = m_Selected.Contains(selection.Anchor) ? selection.Anchor : null;
+            if (m_Selected.Count == 0)
+                return;
+            if (m_Selected.Contains(selection.Previewed))
+            {
+                m_CaptureScreenshot.SelectImage(selection.Previewed);
+                m_RestoreVideoFrame = selection.VideoFrame;
+            }
+            else
+            {
+                m_CaptureScreenshot.SelectImage(First(m_Selected));
+            }
         }
 
         /// <summary>
@@ -399,7 +461,8 @@ namespace Unity.Android.Logcat
             {
                 m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
                     AndroidLogcatScreenshotInfo.Load(path));
-                m_VideoPlayer.Open(path);
+                m_VideoPlayer.Open(path, m_RestoreVideoFrame);
+                m_RestoreVideoFrame = -1;
                 return;
             }
 
@@ -547,15 +610,18 @@ namespace Unity.Android.Logcat
             SyncPreview();
             PruneSelection(captures);
 
-            // With nothing selected - a first run, or a domain reload, which does not
-            // remember what was selected - open on the live view rather than on an
-            // empty pane. Once per window: deleting the last capture deliberately
-            // leaves nothing selected rather than starting a stream.
+            // A domain reload puts back what was selected. Otherwise, with nothing
+            // selected, open on the live view rather than on an empty pane. Once per
+            // window: deleting the last capture deliberately leaves nothing selected
+            // rather than starting a stream.
             if (!m_InitialSelectionDone)
             {
                 m_InitialSelectionDone = true;
-                if (!m_LiveSelected && m_Selected.Count == 0)
+                if (m_Restore != null)
+                    ApplyRestore(m_Restore, device);
+                else if (!m_LiveSelected && m_Selected.Count == 0)
                     SetLive(true, device);
+                m_Restore = null;
             }
 
             var rowHeight = EditorGUIUtility.singleLineHeight;

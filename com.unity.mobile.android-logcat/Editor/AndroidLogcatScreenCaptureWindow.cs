@@ -41,6 +41,10 @@ namespace Unity.Android.Logcat
         private AndroidLogcatCaptureList m_CaptureList;
         private AndroidLogcatStatusBar m_StatusBar;
 
+        // So a domain reload keeps what was selected, rather than opening on the live view.
+        [SerializeField]
+        private AndroidLogcatCaptureList.Selection m_Selection;
+
         private AndroidLogcatLiveStream.CaptureAction[] m_CaptureActions;
 
         private int m_RecordingSecondsShown = -1;
@@ -77,6 +81,7 @@ namespace Unity.Android.Logcat
             m_LiveStream.StreamChanged += ReportStream;
             m_LiveStream.RecordingTime = () => RecordingTime;
             m_CaptureList = new AndroidLogcatCaptureList(m_Runtime, Repaint);
+            m_CaptureList.RestoreSelection(m_Selection);
             // Nothing here connects to anything, so the bar carries the message alone.
             m_StatusBar = new AndroidLogcatStatusBar() { ShowConnection = false };
 
@@ -115,6 +120,8 @@ namespace Unity.Android.Logcat
             // otherwise carry on after the window that was showing them is gone - and
             // keep reporting to a status bar that is gone with it. Dropping the
             // selection ends both.
+            if (m_CaptureList != null)
+                m_Selection = m_CaptureList.SaveSelection();
             m_CaptureList?.Deselect();
 
             // Unsubscribed but kept, since OnDestroy still has undoing to do.
@@ -124,7 +131,10 @@ namespace Unity.Android.Logcat
                 m_LiveStream.RecordingTime = null;
             }
 
+            // Runs twice on a domain reload, from the runtime closing and then from Unity,
+            // and the second pass must not save the selection the first one dropped.
             m_CaptureList?.Dispose();
+            m_CaptureList = null;
 
             if (!AndroidBridge.AndroidExtensionsInstalled)
                 return;

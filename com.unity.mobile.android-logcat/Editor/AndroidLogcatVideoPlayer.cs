@@ -134,6 +134,9 @@ namespace Unity.Android.Logcat
         string m_Path;
         DateTime m_PathWriteTime;
 
+        // Where Open was asked to pause, sought once the first frame is in. -1 for none.
+        long m_OpenAt = -1;
+
         Vector2 m_HistoryScroll;
 
         internal const string kDefaultName = "LogcatVideoPlayer";
@@ -311,6 +314,13 @@ namespace Unity.Android.Logcat
                     source.Pause();
                     SetState(State.Paused, $"frame {shown} in");
                     m_ResumeFrom = shown;
+                    // A seek needs the video open, which the first frame says it is.
+                    if (m_OpenAt >= 0)
+                    {
+                        var openAt = m_OpenAt;
+                        m_OpenAt = -1;
+                        SeekTo(openAt);
+                    }
                     break;
                 case State.SeekingToPause:
                     Note($"frame ready: {frameIdx}, time {source.time:0.000}s");
@@ -358,12 +368,13 @@ namespace Unity.Android.Logcat
         internal string Error { get; private set; } = string.Empty;
 
         /// <summary>
-        /// Opens a video paused on its first frame, or closes the current one when
+        /// Opens a video paused on <paramref name="frame"/>, or closes the current one when
         /// <paramref name="path"/> is empty.
         /// </summary>
-        public void Open(string path)
+        public void Open(string path, long frame = 0)
         {
             Error = string.Empty;
+            m_OpenAt = frame > 0 ? frame : -1;
             m_Path = path;
             m_PathWriteTime = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : default;
 
