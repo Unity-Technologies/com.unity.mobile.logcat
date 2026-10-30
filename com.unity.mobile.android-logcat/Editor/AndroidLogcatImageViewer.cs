@@ -22,7 +22,8 @@ namespace Unity.Android.Logcat
 
             static readonly string Gestures =
                 $"{kModifier}+Wheel over the image zooms between 100% and 4000%, " +
-                $"{kModifier}+Left or middle mouse drag moves the zoomed image";
+                $"{kModifier}+Left or middle mouse drag moves the zoomed image, " +
+                "right click here picks a zoom";
 
             internal static GUIContent Zoom(int percent)
             {
@@ -31,9 +32,12 @@ namespace Unity.Android.Logcat
 
             static GUIStyle s_Badge;
 
+            // Drawn under a badge: opaque enough to read over any image, light or dark.
+            internal static readonly Color BadgeBackground = new Color(0, 0, 0, 0.75f);
+
             /// <summary>
-            /// A help box that does not wrap. The standard one does, and CalcSize being
-            /// a fraction short of what it then needs breaks "168%" across two lines.
+            /// Bold white text, as the badge sits over the image itself. Not wrapped:
+            /// CalcSize being a fraction short would break "168%" across two lines.
             /// </summary>
             internal static GUIStyle Badge
             {
@@ -41,12 +45,30 @@ namespace Unity.Android.Logcat
                 {
                     if (s_Badge == null)
                     {
-                        s_Badge = new GUIStyle(EditorStyles.helpBox);
+                        s_Badge = new GUIStyle(EditorStyles.boldLabel);
                         s_Badge.wordWrap = false;
                         s_Badge.alignment = TextAnchor.MiddleCenter;
                         s_Badge.padding = new RectOffset(6, 6, 2, 2);
+                        s_Badge.normal.textColor = Color.white;
+                        s_Badge.hover.textColor = Color.white;
                     }
                     return s_Badge;
+                }
+            }
+
+            static GUIStyle s_RecordingBadge;
+
+            internal static GUIStyle RecordingBadge
+            {
+                get
+                {
+                    if (s_RecordingBadge == null)
+                    {
+                        s_RecordingBadge = new GUIStyle(Badge);
+                        s_RecordingBadge.normal.textColor = new Color(1f, 0.35f, 0.35f);
+                        s_RecordingBadge.hover.textColor = s_RecordingBadge.normal.textColor;
+                    }
+                    return s_RecordingBadge;
                 }
             }
         }
@@ -54,12 +76,16 @@ namespace Unity.Android.Logcat
         internal const float kMinZoom = 1.0f;
         internal const float kMaxZoom = 40.0f;
 
+        // Offered by the zoom badge's context menu.
+        static readonly int[] kZoomPresets = { 100, 200, 400, 800, 1600, 3200, 4000 };
+
         // Four notches of the wheel double the zoom. A factor rather than a fixed step,
         // because a step that is a sensible move at 100% is invisible at 4000%.
         const float kWheelDeltaPerNotch = 3.0f;
         const float kNotchesPerDoubling = 4.0f;
         const int kLeftMouseButton = 0;
         const int kMiddleMouseButton = 2;
+        const int kRightMouseButton = 1;
         const float kBadgeMargin = 4;
         // Deliberately more than a scrollbar takes. It only bounds how far the image can
         // be moved, and BeginScrollView clamps what it is handed, so guessing high costs
@@ -69,6 +95,8 @@ namespace Unity.Android.Logcat
         const float kFramePadding = 2;
 
         float m_Zoom = kMinZoom;
+        // The last box drawn, less its scrollbars, for badges drawn after it.
+        Rect m_Visible;
         Vector2 m_Scroll;
         bool m_Panning;
 
@@ -81,6 +109,13 @@ namespace Unity.Android.Logcat
         {
             m_Zoom = kMinZoom;
             m_Scroll = Vector2.zero;
+        }
+
+        /// <summary>Puts back a zoom and scroll saved earlier, as across a domain reload.</summary>
+        internal void Restore(float zoom, Vector2 scroll)
+        {
+            m_Zoom = Mathf.Clamp(zoom, kMinZoom, kMaxZoom);
+            m_Scroll = scroll;
         }
 
         /// <summary>
@@ -102,9 +137,10 @@ namespace Unity.Android.Logcat
                 Mathf.Max(0, area.width - kFramePadding * 2),
                 Mathf.Max(0, area.height - kFramePadding * 2));
 
-            // Both before the scroll view, so neither it nor the contents see these
+            // All before the scroll view, so neither it nor the contents see these
             // events first: the live view forwards a plain wheel to the device, and the
             // scroll view would scroll on it.
+            HandleZoomMenu(area, aspect, repaint);
             var box = ViewBox(area, aspect, out _);
             HandleZoom(area, aspect, box, repaint);
             HandlePan(controlId, area, aspect, box, repaint);
@@ -116,9 +152,11 @@ namespace Unity.Android.Logcat
             drawContents(content);
             GUI.EndScrollView();
 
+            m_Visible = VisibleRect(box, image);
+
             // Outside the scroll view, or it would scroll away with the image.
             if (IsZoomed)
-                DoZoomBadgeGUI(box);
+                DoZoomBadgeGUI(m_Visible);
 
             return box;
         }
@@ -148,6 +186,14 @@ namespace Unity.Android.Logcat
                 size.x, size.y);
         }
 
+        /// <summary>The box less its scrollbars, which sit inside it.</summary>
+        static Rect VisibleRect(Rect box, Vector2 image)
+        {
+            return new Rect(box.x, box.y,
+                box.width - (image.y > box.height ? kScrollbarSize : 0),
+                box.height - (image.x > box.width ? kScrollbarSize : 0));
+        }
+
         static Rect FitRect(Rect container, float aspect)
         {
             if (container.width <= 0 || container.height <= 0 || aspect <= 0)
@@ -174,7 +220,19 @@ namespace Unity.Android.Logcat
                 return false;
 
             var doublings = -wheelDelta / (kWheelDeltaPerNotch * kNotchesPerDoubling);
-            var zoom = Mathf.Clamp(m_Zoom * Mathf.Pow(2.0f, doublings), kMinZoom, kMaxZoom);
+            return ZoomTo(area, aspect, pointer, m_Zoom * Mathf.Pow(2.0f, doublings));
+        }
+
+        /// <summary>
+        /// Zooms to <paramref name="zoom"/>, keeping whatever is under
+        /// <paramref name="pointer"/> where it is. Returns false when nothing changed.
+        /// </summary>
+        bool ZoomTo(Rect area, float aspect, Vector2 pointer, float zoom)
+        {
+            if (area.width <= 0 || area.height <= 0)
+                return false;
+
+            zoom = Mathf.Clamp(zoom, kMinZoom, kMaxZoom);
             if (Mathf.Approximately(zoom, m_Zoom))
                 return false;
 
@@ -206,6 +264,39 @@ namespace Unity.Android.Logcat
         {
             m_Scroll -= mouseDelta;
             ClampScroll(area, aspect);
+        }
+
+        /// <summary>
+        /// Right clicking the zoom badge offers a few fixed zooms, each about the middle
+        /// of what is in view.
+        /// </summary>
+        void HandleZoomMenu(Rect area, float aspect, Action repaint)
+        {
+            var e = Event.current;
+            if (e.type != EventType.MouseDown || e.button != kRightMouseButton || !IsZoomed)
+                return;
+            // Worked out from this pass rather than read from m_Visible: the Layout pass
+            // before every event hands the window a dummy area.
+            var visible = VisibleRect(ViewBox(area, aspect, out var image), image);
+            if (!BadgeRect(visible, Styles.Zoom(ZoomPercent), Styles.Badge, false).Contains(e.mousePosition))
+                return;
+
+            var centre = visible.center;
+            void Set(float zoom)
+            {
+                if (ZoomTo(area, aspect, centre, zoom))
+                    repaint?.Invoke();
+            }
+
+            var menu = new GenericMenu();
+            foreach (var percent in kZoomPresets)
+            {
+                var zoom = percent / 100.0f;
+                if (zoom <= kMaxZoom)
+                    menu.AddItem(new GUIContent($"{percent}%"), ZoomPercent == percent, () => Set(zoom));
+            }
+            menu.ShowAsContext();
+            e.Use();
         }
 
         void HandleZoom(Rect area, float aspect, Rect box, Action repaint)
@@ -298,12 +389,29 @@ namespace Unity.Android.Logcat
 
         void DoZoomBadgeGUI(Rect area)
         {
-            var content = Styles.Zoom(ZoomPercent);
-            var size = Styles.Badge.CalcSize(content);
-            var rect = new Rect(area.x + kBadgeMargin, area.y + kBadgeMargin,
-                Mathf.Min(Mathf.Ceil(size.x), area.width),
-                Mathf.Min(Mathf.Ceil(size.y), area.height));
-            GUI.Label(rect, content, Styles.Badge);
+            DoBadgeGUI(area, Styles.Zoom(ZoomPercent), Styles.Badge, false);
+        }
+
+        /// <summary>How long the recording has been running, in the top right corner of the last box drawn.</summary>
+        internal void DoRecordingBadgeGUI(TimeSpan elapsed)
+        {
+            var text = $"● REC {(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}";
+            DoBadgeGUI(m_Visible, new GUIContent(text), Styles.RecordingBadge, true);
+        }
+
+        static void DoBadgeGUI(Rect area, GUIContent content, GUIStyle style, bool right)
+        {
+            var rect = BadgeRect(area, content, style, right);
+            EditorGUI.DrawRect(rect, Styles.BadgeBackground);
+            GUI.Label(rect, content, style);
+        }
+
+        static Rect BadgeRect(Rect area, GUIContent content, GUIStyle style, bool right)
+        {
+            var size = style.CalcSize(content);
+            var width = Mathf.Min(Mathf.Ceil(size.x), area.width);
+            var x = right ? area.xMax - kBadgeMargin - width : area.x + kBadgeMargin;
+            return new Rect(x, area.y + kBadgeMargin, width, Mathf.Min(Mathf.Ceil(size.y), area.height));
         }
     }
 }

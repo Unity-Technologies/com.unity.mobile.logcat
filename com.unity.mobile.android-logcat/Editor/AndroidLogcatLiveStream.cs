@@ -83,6 +83,9 @@ namespace Unity.Android.Logcat
 
         readonly AndroidLogcatImageViewer m_Viewer = new AndroidLogcatImageViewer();
 
+        /// <summary>The view's zoom and scroll, which the window keeps across a domain reload.</summary>
+        internal AndroidLogcatImageViewer Viewer => m_Viewer;
+
         static string m_ServerJarPath;
 
         internal static string GetServerJarPath()
@@ -225,7 +228,6 @@ namespace Unity.Android.Logcat
                 new GUIContent("270°", "Lock the device a quarter turn clockwise, top edge to the right")
             };
 
-            internal static readonly GUIContent DeveloperMode = new GUIContent("Developer Mode");
             internal static readonly GUIContent Socket = new GUIContent("Socket",
                 "Abstract unix socket the on-device server is listening on.");
             internal static readonly GUIContent ForwardedPort = new GUIContent("Port",
@@ -276,6 +278,10 @@ namespace Unity.Android.Logcat
         int m_ForwardedPort = -1;
 
         Thread m_ReaderThread;
+        // Cleanups still running. A domain reload aborts threads, and one aborted while
+        // waiting on the server process hangs the reload - so closing waits for them.
+        readonly List<Thread> m_CleanupThreads = new List<Thread>();
+        const int kCleanupJoinMs = 10000;
         /// <summary>
         /// A button the window puts under the stream's own controls, for doing
         /// something with the device being watched - taking a screenshot of it, and
@@ -284,12 +290,16 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal readonly struct CaptureAction
         {
-            internal readonly GUIContent Label;
+            /// <summary>
+            /// Asked on every repaint, so one button can say what it does next -
+            /// recording starts and stops from the same place.
+            /// </summary>
+            internal readonly Func<GUIContent> Label;
             internal readonly Action Action;
             /// <summary>Asked on every repaint. Null is a button that is always enabled.</summary>
             internal readonly Func<bool> Enabled;
 
-            internal CaptureAction(GUIContent label, Action action, Func<bool> enabled = null)
+            internal CaptureAction(Func<GUIContent> label, Action action, Func<bool> enabled = null)
             {
                 Label = label;
                 Action = action;
@@ -309,6 +319,8 @@ namespace Unity.Android.Logcat
         // call, and a device does not start folding half way through one.
         FoldStates m_FoldStates = FoldStates.None;
         bool m_FoldStatesQueried;
+        // The Max Size the server was started with, which it scales each screen to.
+        int m_MaxSize;
         volatile string m_ReaderError;
         volatile bool m_StreamEnded;
 
@@ -327,6 +339,7 @@ namespace Unity.Android.Logcat
         int m_PendingDisplayWidth;
         int m_PendingDisplayHeight;
         int m_PendingRotation;
+        long m_PendingPtsUs;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -384,6 +397,18 @@ namespace Unity.Android.Logcat
         int m_StatsFrames;
 
         internal bool IsStreaming => m_ReaderThread != null;
+
+        volatile AndroidLogcatStreamRecorder m_Recorder;
+
+        /// <summary>How long the owner has been recording, null when it is not.</summary>
+        internal Func<TimeSpan?> RecordingTime;
+
+        /// <summary>Gets every frame the reader receives while recording, not just the newest.</summary>
+        internal AndroidLogcatStreamRecorder Recorder
+        {
+            get => m_Recorder;
+            set => m_Recorder = value;
+        }
 
         /// <summary>
         /// Raised when there is something new to say about the stream: the first frame
@@ -444,6 +469,12 @@ namespace Unity.Android.Logcat
                 return;
             if (IsStreaming)
                 Shutdown(Result.Success);
+            foreach (var thread in m_CleanupThreads)
+            {
+                if (!thread.Join(kCleanupJoinMs))
+                    AndroidLogcatInternalLog.Log("Live stream cleanup did not finish in time");
+            }
+            m_CleanupThreads.Clear();
             DestroyTexture();
             m_Runtime = null;
         }
@@ -542,8 +573,9 @@ namespace Unity.Android.Logcat
                 PushServer(device, jarPath);
 
                 var settings = m_Runtime.Settings;
+                m_MaxSize = maxSize ?? settings.LiveStreamMaxSize;
                 StartServerProcess(device,
-                    maxSize ?? settings.LiveStreamMaxSize,
+                    m_MaxSize,
                     quality ?? settings.LiveStreamQuality,
                     maxFps ?? settings.LiveStreamMaxFps,
                     displayId);
@@ -566,7 +598,7 @@ namespace Unity.Android.Logcat
             catch (Exception ex)
             {
                 AndroidLogcatInternalLog.Log(ex.ToString());
-                AppendError(ex.Message);
+                AppendError(InnermostMessage(ex));
                 // Nothing is streaming, so unwind whatever did get set up and report
                 // through the callback instead of throwing into OnGUI.
                 Shutdown(Result.Failure);
@@ -649,11 +681,14 @@ namespace Unity.Android.Logcat
         void CleanUpInBackground(Thread reader, Process process, IAndroidLogcatDevice device,
             int port, string jarPath)
         {
-            new Thread(() => CleanUp(reader, process, device, port, jarPath))
+            var thread = new Thread(() => CleanUp(reader, process, device, port, jarPath))
             {
                 Name = "AndroidLogcatLiveStreamCleanup",
                 IsBackground = true
-            }.Start();
+            };
+            m_CleanupThreads.RemoveAll(t => !t.IsAlive);
+            m_CleanupThreads.Add(thread);
+            thread.Start();
         }
 
         void CleanUp(Thread reader, Process process, IAndroidLogcatDevice device,
@@ -736,6 +771,7 @@ namespace Unity.Android.Logcat
             int size;
             int width, height;
             int displayWidth, displayHeight, rotation;
+            long ptsUs;
 
             lock (m_FrameLock)
             {
@@ -748,6 +784,7 @@ namespace Unity.Android.Logcat
                 displayWidth = m_PendingDisplayWidth;
                 displayHeight = m_PendingDisplayHeight;
                 rotation = m_PendingRotation;
+                ptsUs = m_PendingPtsUs;
             }
 
             if (frame != null)
@@ -761,8 +798,27 @@ namespace Unity.Android.Logcat
                 // take the whole buffer: a reused buffer is usually larger than the
                 // frame sitting in it.
                 bool decoded;
-                using (k_DecodeFrame.Auto())
-                    decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+                // The recorder decodes every frame already, but may not have got to this one:
+                // it is reused only when it is this frame, or the view would be left behind.
+                var recorder = m_Recorder;
+                var recorded = recorder != null && recorder.LatestPtsUs == ptsUs ? recorder.Latest : null;
+                if (recorded != null)
+                {
+                    if (m_Texture.width != recorded.width || m_Texture.height != recorded.height
+                        || m_Texture.format != recorded.format || m_Texture.mipmapCount != recorded.mipmapCount)
+                    {
+                        m_Texture.Reinitialize(recorded.width, recorded.height, recorded.format, recorded.mipmapCount > 1);
+                        m_Texture.Apply(false);
+                    }
+                    using (k_DecodeFrame.Auto())
+                        Graphics.CopyTexture(recorded, m_Texture);
+                    decoded = true;
+                }
+                else
+                {
+                    using (k_DecodeFrame.Auto())
+                        decoded = ImageConversion.LoadImage(m_Texture, new ReadOnlySpan<byte>(frame, 0, size));
+                }
 
                 if (decoded)
                 {
@@ -1009,8 +1065,9 @@ namespace Unity.Android.Logcat
                 while (!session.Stop)
                 {
                     ReadExactly(stream, header, kFrameHeaderSize);
-                    // Bytes 0..7 are the presentation timestamp, unused: frames are
-                    // displayed as they arrive rather than scheduled.
+                    // Bytes 0..7 are the presentation timestamp, in microseconds. The
+                    // view shows frames as they arrive; only a recording uses it.
+                    var ptsUs = (long)ReadInt32BE(header, 0) << 32 | (uint)ReadInt32BE(header, 4);
                     var width = ReadInt32BE(header, 8);
                     var height = ReadInt32BE(header, 12);
                     var displayWidth = ReadInt32BE(header, 16);
@@ -1027,8 +1084,15 @@ namespace Unity.Android.Logcat
                     if (session != m_Session)
                         break;
 
+                    m_Recorder?.Enqueue(payload, size, ptsUs, rotation, displayWidth, displayHeight);
+
                     lock (m_FrameLock)
                     {
+                        // Again under the lock, which a stop clears the frame under: one
+                        // published after that would show on the next stream.
+                        if (session != m_Session)
+                            break;
+
                         // Only the newest frame is kept: if the Editor cannot keep up,
                         // showing the latest screen matters more than showing every
                         // frame. The frame being dropped goes back to the free list
@@ -1043,6 +1107,7 @@ namespace Unity.Android.Logcat
                         m_PendingDisplayWidth = displayWidth;
                         m_PendingDisplayHeight = displayHeight;
                         m_PendingRotation = rotation;
+                        m_PendingPtsUs = ptsUs;
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }
@@ -1053,7 +1118,7 @@ namespace Unity.Android.Logcat
                 // A read failing after Stop was requested is just the connection we
                 // closed ourselves.
                 if (!session.Stop && session == m_Session)
-                    m_ReaderError = ex.Message;
+                    m_ReaderError = InnermostMessage(ex);
             }
             finally
             {
@@ -1493,7 +1558,12 @@ namespace Unity.Android.Logcat
         /// </summary>
         void DoErrorsGUI(Rect rc, IAndroidLogcatDevice selectedDevice)
         {
-            var message = new GUIContent(m_Errors.ToString(),
+            // Reconnect is disabled without a device, and the error is what is drawn
+            // instead of the no-device message, so it has to say so itself.
+            var text = selectedDevice == null
+                ? m_Errors.ToString() + Environment.NewLine + Styles.NoDevice
+                : m_Errors.ToString();
+            var message = new GUIContent(text,
                 EditorGUIUtility.IconContent("console.erroricon").image);
 
             var buttonHeight = EditorGUIUtility.singleLineHeight;
@@ -1567,6 +1637,10 @@ namespace Unity.Android.Logcat
 
             HandleKeyboardInput(controlId);
 
+            var recording = RecordingTime?.Invoke();
+            if (recording.HasValue)
+                m_Viewer.DoRecordingBadgeGUI(recording.Value);
+
             if (statsWidth > 0)
                 DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
         }
@@ -1577,14 +1651,49 @@ namespace Unity.Android.Logcat
         /// refuses to. Zero once the device has honoured the request, which is what
         /// keeps a rotation it accepted from being applied twice.
         /// </summary>
-        internal int ViewQuarterTurns
+        internal int ViewQuarterTurns => QuarterTurnsFor(m_DisplayRotation);
+
+        /// <summary>The device rotation the frame on screen came at.</summary>
+        internal int DisplayRotation => m_DisplayRotation;
+
+        /// <summary>
+        /// The longest side of any frame the device can send: turning keeps it, and a
+        /// foldable's other screen can be bigger. A recording is a square of this, so
+        /// rotating or unfolding does not shrink the picture. 0 before the first frame.
+        /// </summary>
+        internal int LongestFrameSide()
         {
-            get
+            var longest = Math.Max(m_FrameWidth, m_FrameHeight);
+            if (longest == 0 || m_Device == null)
+                return longest;
+
+            if (!m_FoldStatesQueried)
             {
-                if (m_RequestedRotation == AndroidDeviceRotation.Auto)
-                    return 0;
-                return (((int)m_RequestedRotation - m_DisplayRotation) % 4 + 4) % 4;
+                m_FoldStatesQueried = true;
+                m_FoldStates = m_Device.QueryFoldStates();
             }
+            if (!m_FoldStates.Supported)
+                return longest;
+
+            foreach (var size in m_Device.QueryPhysicalDisplaySizes())
+                longest = Math.Max(longest, LimitedSide(Math.Max(size.x, size.y)));
+            return longest;
+        }
+
+        /// <summary>A screen's longest side as the server sends it: capped at Max Size, a multiple of 8.</summary>
+        int LimitedSide(int side)
+        {
+            if (m_MaxSize > 0 && side > m_MaxSize)
+                side = m_MaxSize;
+            return Math.Max(8, side & ~7);
+        }
+
+        /// <summary>The view's turn for a frame the device sent at <paramref name="displayRotation"/>.</summary>
+        internal int QuarterTurnsFor(int displayRotation)
+        {
+            if (m_RequestedRotation == AndroidDeviceRotation.Auto)
+                return 0;
+            return (((int)m_RequestedRotation - displayRotation) % 4 + 4) % 4;
         }
 
         /// <summary>A size the way the view is showing it, which a turn transposes.</summary>
@@ -1815,7 +1924,7 @@ namespace Unity.Android.Logcat
                 var enabled = capture.Action != null && (capture.Enabled == null || capture.Enabled());
                 EditorGUI.BeginDisabledGroup(!enabled);
                 if (GUI.Button(new Rect(rc.x, y, ButtonRowWidth(rc), height),
-                    capture.Label, EditorStyles.miniButton))
+                    capture.Label(), EditorStyles.miniButton))
                 {
                     capture.Action();
                 }
@@ -2056,6 +2165,11 @@ namespace Unity.Android.Logcat
         {
             var position = PositionOnScreen(videoRect, mousePosition);
             SendTouchMessage(action, position.x, position.y);
+            // As the view shows it, which is how the recording is turned too.
+            if (m_Runtime?.Settings?.RecordTouches ?? false)
+                m_Recorder?.NoteTouch(action,
+                    Mathf.Clamp01((mousePosition.x - videoRect.x) / videoRect.width),
+                    Mathf.Clamp01((mousePosition.y - videoRect.y) / videoRect.height));
         }
 
         void SendScrollAt(Rect videoRect, Vector2 mousePosition, Vector2 delta)
@@ -2444,11 +2558,8 @@ namespace Unity.Android.Logcat
 
             var height = EditorGUIUtility.singleLineHeight;
             y += kNavigationSpacing;
-            if (y + height > rc.yMax)
+            if (!AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y))
                 return;
-
-            GUI.Label(new Rect(rc.x, y, rc.width, height), Styles.DeveloperMode, EditorStyles.miniBoldLabel);
-            y += height;
 
             AndroidLogcatStatsColumn.Row(rc, labelWidth, ref y, Styles.Socket,
                 string.IsNullOrEmpty(m_SocketName) ? "-" : m_SocketName, m_SocketName);

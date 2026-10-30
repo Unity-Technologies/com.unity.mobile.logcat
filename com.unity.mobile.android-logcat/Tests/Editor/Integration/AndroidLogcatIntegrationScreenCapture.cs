@@ -12,7 +12,6 @@ using System.Text.RegularExpressions;
 [RequiresAndroidDevice]
 internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatIntegrationTestBase
 {
-    private string VideoPathOnHost => Runtime.CaptureVideo.GetVideoPath(Device);
 
     // These tests take captures and clear the folder between them, so they get one of
     // their own rather than whatever the machine running them has configured. It sits
@@ -65,14 +64,14 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
 
     private void Cleanup()
     {
-        // Need to kill screen recorder before attempting to delete files
-        AndroidLogcatUtilities.KillScreenRecordProcess(Runtime, Device);
-        SafeDeleteOnDevice(Device, AndroidLogcatCaptureVideo.VideoPathOnDevice);
-        SafeDeleteOnHost(VideoPathOnHost);
+        Runtime.CaptureVideo.StopRecording();
+        Runtime.LiveStream.StopStreaming();
 
         // Start from an empty folder - the fixture's own, so this takes nothing with
         // it that these tests did not write. Leftovers from an earlier run are still
         // listed, and they carry another device's prefix or a name a test reuses.
+        // Recordings live in the same folder and are listed with them.
+        Runtime.CaptureScreenshot.InvalidateScreenshots();
         foreach (var screenshot in Runtime.CaptureScreenshot.GetScreenshots().ToArray())
             Runtime.CaptureScreenshot.DeleteScreenshot(screenshot.Path);
     }
@@ -254,82 +253,59 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     }
 
     [UnityTest]
-    public IEnumerator CanGetVideo()
+    public IEnumerator CanRecordTheLiveStream()
     {
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, false);
+        Runtime.LiveStream.StartStreaming(Device, null);
+        yield return WaitForCondition("Waiting for the first frame", () => Runtime.LiveStream.FramesReceived > 0);
 
+        // Where the recording landed is known when it stops: it is numbered like a
+        // screenshot, and the number is taken when the recording starts.
         var recordingResult = AndroidLogcatCaptureVideo.Result.Failure;
-        Runtime.CaptureVideo.StartRecording(Device, (r, s) =>
+        string recordedPath = null;
+        Runtime.CaptureVideo.StartRecording(Device, (r, p) =>
         {
             recordingResult = r;
+            recordedPath = p;
         });
 
         // Starting recording without stoping previous one, should throw
         Assert.Throws(typeof(InvalidOperationException), () => Runtime.CaptureVideo.StartRecording(Device, null));
 
-        yield return WaitForCondition("Waiting for Android's screenrecord to become active",
-            () => Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
+        // Frames only arrive when the screen changes.
+        SendKeyEvent("KEYCODE_APP_SWITCH");
+        SendKeyEvent("KEYCODE_HOME");
+        yield return WaitFor(3.0, "Recording video");
 
-        yield return WaitFor(5.0, "Recording video");
         var result = Runtime.CaptureVideo.StopRecording();
-        Assert.IsTrue(result, "Failed to stop the recording");
+        Assert.IsTrue(result, $"Failed to stop the recording: {Runtime.CaptureVideo.Errors}");
         Assert.AreEqual(AndroidLogcatCaptureVideo.Result.Success, recordingResult);
 
         result = Runtime.CaptureVideo.StopRecording();
         Assert.IsFalse(result, "StopRecording should return false, since it was already stopped");
 
-        yield return WaitForCondition("Waiting for Android's screenrecord to quit",
-            () => !Runtime.CaptureVideo.IsRemoteRecorderActive(Device));
+        AssertFileExistanceOnHost(recordedPath, true);
+        StringAssert.EndsWith(".mp4", recordedPath, "A recording is saved as an .mp4 capture");
 
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, true);
-
-        CopyToArtifacts("video.mp4", Runtime.CaptureVideo.GetVideoPath(Device));
+        CopyToArtifacts("video.mp4", recordedPath);
     }
 
-    [UnityTest]
-    public IEnumerator CanGetVideoWithTimeLimit()
+    [Test]
+    public void RecordingNeedsTheLiveStream()
     {
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, false);
-
-        var recordingTime = 5;
-        var recordingResult = AndroidLogcatCaptureVideo.Result.Failure;
-        Runtime.CaptureVideo.StartRecording(Device, (r, s) =>
-        {
-            recordingResult = r;
-        }, TimeSpan.FromSeconds(recordingTime));
-
-        yield return WaitForCondition($"Waiting for the recording to stop automatically (Should stop in {recordingTime} seconds)",
-            () => recordingResult == AndroidLogcatCaptureVideo.Result.Success, 20);
-
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, true);
-
-        CopyToArtifacts("video.mp4", Runtime.CaptureVideo.GetVideoPath(Device));
+        Assert.IsFalse(Runtime.LiveStream.IsStreaming);
+        Assert.Throws(typeof(InvalidOperationException), () => Runtime.CaptureVideo.StartRecording(Device, null));
+        Assert.IsFalse(Runtime.CaptureVideo.IsRecording);
     }
 
-    [UnityTest]
-    public IEnumerator CaptureVideoHandlesErrors()
+    private void SendKeyEvent(string keyCode)
     {
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, false);
-
-        var recordingResult = AndroidLogcatCaptureVideo.Result.Success;
-        Runtime.CaptureVideo.StartRecording(Device, (r, p) =>
+        Runtime.Tools.ADB.Run(new[]
         {
-            recordingResult = r;
-        }, TimeSpan.FromSeconds(180), 0, 0);
-
-        yield return WaitForCondition($"Waiting for the recording to fail",
-            () => recordingResult == AndroidLogcatCaptureVideo.Result.Failure, 20);
-        var errors = Runtime.CaptureVideo.Errors;
-        Assert.Greater(errors.Length, 0);
-        AssertFileExistanceOnDevice(AndroidLogcatCaptureVideo.VideoPathOnDevice, false);
-        AssertFileExistanceOnHost(VideoPathOnHost, false);
-
-        Debug.Log(errors);
-        ReportArtifact("errors.txt", errors);
+            $"-s {Device.Id}",
+            "shell",
+            "input",
+            "keyevent",
+            keyCode
+        }, $"Failed to send {keyCode} to the device");
     }
 }

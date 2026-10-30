@@ -104,7 +104,7 @@ class AndroidLogcatGeneralTests
             var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
             var device = new AndroidLogcatFakeDevice90("unittest-device");
 
-            var reserved = captureScreenshot.AllocateImagePath(device);
+            var reserved = captureScreenshot.AllocateCapturePath(device, captureScreenshot.GetImageExtension());
             StringAssert.StartsWith(first, reserved, "The reservation belongs to the folder in use");
             Assert.IsTrue(captureScreenshot.GetScreenshots().Any(s => s.Path == reserved),
                 "A capture in flight is listed, so the next one cannot reuse its number");
@@ -154,6 +154,52 @@ class AndroidLogcatGeneralTests
                 FileAssert.Exists(image);
                 Assert.AreEqual(keep, System.IO.File.ReadAllText(taken),
                     "A refused rename should leave the other file alone");
+
+                Assert.IsTrue(captureScreenshot.RenameScreenshot(image, "unittest-rename-free"),
+                    "A name nothing else holds should rename");
+                FileAssert.Exists(renamed);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(directory, true);
+            }
+        }
+        finally
+        {
+            runtime.Shutdown();
+        }
+    }
+
+    /// <summary>A screenshot and a recording of one name would share a details file.</summary>
+    [Test]
+    public void RenameIsRefusedWhenAnotherKindOfCaptureHasTheName()
+    {
+        var runtime = new AndroidLogcatTestRuntime();
+        runtime.Initialize();
+        try
+        {
+            var directory = CreateCapturesFolder();
+            var captureScreenshot = new AndroidLogcatCaptureScreenshot(runtime, () => directory, true);
+
+            var image = System.IO.Path.Combine(directory, "unittest-rename_1.png").Replace("\\", "/");
+            var recording = System.IO.Path.Combine(directory, "unittest-rename-taken.mp4").Replace("\\", "/");
+            var details = System.IO.Path.Combine(directory, "unittest-rename-taken.json").Replace("\\", "/");
+            var renamed = System.IO.Path.Combine(directory, "unittest-rename-free.png").Replace("\\", "/");
+
+            System.IO.File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
+            System.IO.File.WriteAllBytes(recording, new byte[] { 4, 5, 6 });
+            new AndroidLogcatScreenshotInfo { deviceName = "The recording's device" }.Save(recording);
+            var recordingDetails = System.IO.File.ReadAllText(details);
+
+            try
+            {
+                LogAssert.Expect(LogType.Error, new Regex("unittest-rename-taken.mp4' already exists"));
+                Assert.IsFalse(captureScreenshot.RenameScreenshot(image, "unittest-rename-taken"),
+                    "The rename should be refused");
+                FileAssert.Exists(image);
+                FileAssert.DoesNotExist(System.IO.Path.Combine(directory, "unittest-rename-taken.png"));
+                Assert.AreEqual(recordingDetails, System.IO.File.ReadAllText(details),
+                    "The recording's details should be left alone");
 
                 Assert.IsTrue(captureScreenshot.RenameScreenshot(image, "unittest-rename-free"),
                     "A name nothing else holds should rename");
@@ -248,9 +294,22 @@ class AndroidLogcatGeneralTests
         Assert.AreEqual(17, settings.MessageFontSize, "A live stream reset should not touch the font size");
         Assert.AreEqual(1234, settings.MaxCachedMessageCount, "A live stream reset should not touch the message cap");
 
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
+        settings.RecordingTimeLimit = 0;
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Min, settings.RecordingTimeLimit);
+        settings.RecordingTimeLimit = 1000;
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Max, settings.RecordingTimeLimit);
+        Assert.IsTrue(settings.RecordingSquareVideo, "Square video should be on by default");
+        settings.RecordingSquareVideo = false;
+        Assert.IsTrue(settings.RecordTouches, "Recording touches should be on by default");
+        settings.RecordTouches = false;
+
         // And the whole page Reset takes them with everything else.
         settings.LiveStreamMaxSize = 512;
         settings.Reset();
+        Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
+        Assert.IsTrue(settings.RecordingSquareVideo, "Reset should turn square video back on");
+        Assert.IsTrue(settings.RecordTouches, "Reset should turn recording touches back on");
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);
