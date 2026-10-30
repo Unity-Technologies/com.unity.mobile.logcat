@@ -32,9 +32,12 @@ namespace Unity.Android.Logcat
 
             static GUIStyle s_Badge;
 
+            // Drawn under a badge: opaque enough to read over any image, light or dark.
+            internal static readonly Color BadgeBackground = new Color(0, 0, 0, 0.75f);
+
             /// <summary>
-            /// A help box that does not wrap. The standard one does, and CalcSize being
-            /// a fraction short of what it then needs breaks "168%" across two lines.
+            /// Bold white text, as the badge sits over the image itself. Not wrapped:
+            /// CalcSize being a fraction short would break "168%" across two lines.
             /// </summary>
             internal static GUIStyle Badge
             {
@@ -42,10 +45,12 @@ namespace Unity.Android.Logcat
                 {
                     if (s_Badge == null)
                     {
-                        s_Badge = new GUIStyle(EditorStyles.helpBox);
+                        s_Badge = new GUIStyle(EditorStyles.boldLabel);
                         s_Badge.wordWrap = false;
                         s_Badge.alignment = TextAnchor.MiddleCenter;
                         s_Badge.padding = new RectOffset(6, 6, 2, 2);
+                        s_Badge.normal.textColor = Color.white;
+                        s_Badge.hover.textColor = Color.white;
                     }
                     return s_Badge;
                 }
@@ -59,8 +64,9 @@ namespace Unity.Android.Logcat
                 {
                     if (s_RecordingBadge == null)
                     {
-                        s_RecordingBadge = new GUIStyle(Badge) { fontStyle = FontStyle.Bold };
-                        s_RecordingBadge.normal.textColor = new Color(0.95f, 0.25f, 0.25f);
+                        s_RecordingBadge = new GUIStyle(Badge);
+                        s_RecordingBadge.normal.textColor = new Color(1f, 0.35f, 0.35f);
+                        s_RecordingBadge.hover.textColor = s_RecordingBadge.normal.textColor;
                     }
                     return s_RecordingBadge;
                 }
@@ -395,7 +401,9 @@ namespace Unity.Android.Logcat
 
         static void DoBadgeGUI(Rect area, GUIContent content, GUIStyle style, bool right)
         {
-            GUI.Label(BadgeRect(area, content, style, right), content, style);
+            var rect = BadgeRect(area, content, style, right);
+            EditorGUI.DrawRect(rect, Styles.BadgeBackground);
+            GUI.Label(rect, content, style);
         }
 
         static Rect BadgeRect(Rect area, GUIContent content, GUIStyle style, bool right)
