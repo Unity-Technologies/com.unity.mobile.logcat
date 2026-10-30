@@ -384,7 +384,9 @@ namespace Unity.Android.Logcat
                     imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
             }
 
-            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, previewBox));
+            // A recording's picture changes shape as the device folds or turns, and a column
+            // beside it would move and resize with it, slider and all - so it keeps to the right.
+            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, PreviewIsVideo ? previewArea : previewBox));
             return true;
         }
 

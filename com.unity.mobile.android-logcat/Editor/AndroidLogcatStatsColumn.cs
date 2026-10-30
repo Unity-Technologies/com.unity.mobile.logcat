@@ -11,6 +11,8 @@ namespace Unity.Android.Logcat
     {
         const float kWidth = 190;
         const float kMargin = 8;
+        // Off the box's right edge, so the column's buttons and slider do not touch it.
+        const float kRightMargin = 10;
 
         internal const float kLabelWidth = 80;
 
@@ -48,7 +50,7 @@ namespace Unity.Android.Logcat
             foreach (var value in values)
                 widest = Mathf.Max(widest, Mathf.Ceil(EditorStyles.miniLabel.CalcSize(new GUIContent(value)).x));
 
-            return Mathf.Min(Mathf.Max(kWidth, kLabelWidth + widest + kMargin), area.width * 0.4f);
+            return Mathf.Min(Mathf.Max(kWidth, kLabelWidth + widest + kMargin + kRightMargin), area.width * 0.4f);
         }
 
         /// <summary>
@@ -60,7 +62,7 @@ namespace Unity.Android.Logcat
         internal static Rect RectBeside(Rect area, Rect imageBox)
         {
             return new Rect(imageBox.xMax + kMargin, area.y,
-                Mathf.Max(0, area.xMax - imageBox.xMax - kMargin), area.height);
+                Mathf.Max(0, area.xMax - imageBox.xMax - kMargin - kRightMargin), area.height);
         }
 
         /// <summary>
