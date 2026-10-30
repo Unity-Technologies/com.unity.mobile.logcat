@@ -787,7 +787,8 @@ namespace Unity.Android.Logcat
                         m_Texture.Reinitialize(recorded.width, recorded.height, recorded.format, recorded.mipmapCount > 1);
                         m_Texture.Apply(false);
                     }
-                    Graphics.CopyTexture(recorded, m_Texture);
+                    using (k_DecodeFrame.Auto())
+                        Graphics.CopyTexture(recorded, m_Texture);
                     decoded = true;
                 }
                 else

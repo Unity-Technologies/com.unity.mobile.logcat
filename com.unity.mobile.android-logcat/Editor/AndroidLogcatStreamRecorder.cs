@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEditor;
 using UnityEditor.Media;
+using Unity.Profiling;
+using Unity.Scripting.LifecycleManagement;
 using UnityEngine;
 
 namespace Unity.Android.Logcat
@@ -19,6 +21,7 @@ namespace Unity.Android.Logcat
     /// seek by frame without reading the file's timing.
     /// </para>
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatStreamRecorder
     {
         const float kBitsPerPixel = 0.1f;
@@ -27,6 +30,12 @@ namespace Unity.Android.Logcat
         const int kMaxQueued = 90;
         // Per Editor update. The rest waits rather than stalling the Editor.
         const double kBudgetMs = 8;
+
+        // Found by typing "AndroidLogcat" into the Profiler's search box.
+        static readonly ProfilerMarker k_Update = new ProfilerMarker("AndroidLogcat.RecordUpdate");
+        static readonly ProfilerMarker k_Decode = new ProfilerMarker("AndroidLogcat.RecordDecode");
+        static readonly ProfilerMarker k_Compose = new ProfilerMarker("AndroidLogcat.RecordCompose");
+        static readonly ProfilerMarker k_Encode = new ProfilerMarker("AndroidLogcat.RecordEncode");
 
         struct QueuedFrame
         {
@@ -96,7 +105,8 @@ namespace Unity.Android.Logcat
                 try
                 {
                     CreateEncoder(current.width, current.height, currentTurns);
-                    Compose(current, currentTurns);
+                    using (k_Compose.Auto())
+                        Compose(current, currentTurns);
                     m_HasPending = true;
                 }
                 catch (Exception ex)
@@ -130,7 +140,8 @@ namespace Unity.Android.Logcat
 
         void Update()
         {
-            Drain(kBudgetMs);
+            using (k_Update.Auto())
+                Drain(kBudgetMs);
         }
 
         void Drain(double budgetMs)
@@ -164,7 +175,8 @@ namespace Unity.Android.Logcat
             if (m_HasDecoded)
             {
                 var watch = Stopwatch.StartNew();
-                Compose(m_Decoded, m_DecodedTurns);
+                using (k_Compose.Auto())
+                    Compose(m_Decoded, m_DecodedTurns);
                 m_EncodeMs += watch.Elapsed.TotalMilliseconds;
                 m_HasDecoded = false;
                 m_HasPending = true;
@@ -187,7 +199,10 @@ namespace Unity.Android.Logcat
             var watch = Stopwatch.StartNew();
             if (m_Decoded == null)
                 m_Decoded = new Texture2D(2, 2, TextureFormat.RGB24, true);
-            if (!ImageConversion.LoadImage(m_Decoded, new ReadOnlySpan<byte>(frame.Data)))
+            bool decoded;
+            using (k_Decode.Auto())
+                decoded = ImageConversion.LoadImage(m_Decoded, new ReadOnlySpan<byte>(frame.Data));
+            if (!decoded)
             {
                 m_Failed++;
                 return;
@@ -221,7 +236,10 @@ namespace Unity.Android.Logcat
         void WritePending()
         {
             var watch = Stopwatch.StartNew();
-            if (m_Encoder.AddFrame(m_Canvas))
+            bool added;
+            using (k_Encode.Auto())
+                added = m_Encoder.AddFrame(m_Canvas);
+            if (added)
                 m_Written++;
             else
                 m_Failed++;
