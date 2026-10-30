@@ -81,9 +81,10 @@ namespace Unity.Android.Logcat
         readonly int m_Side;
         readonly List<AndroidLogcatScreenshotInfo.FrameChange> m_FrameChanges =
             new List<AndroidLogcatScreenshotInfo.FrameChange>();
-        // The display as the last change set it.
+        // The display and the picture's place in the video, as the last change set them.
         int m_DisplayWidth;
         int m_DisplayHeight;
+        RectInt m_Content;
 
         /// <summary>What changed over the recording, from its start.</summary>
         internal IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> FrameChanges => m_FrameChanges;
@@ -138,6 +139,7 @@ namespace Unity.Android.Logcat
                     CreateEncoder(current.width, current.height, m_DecodedTurns);
                     using (k_Compose.Auto())
                         Compose(current, m_DecodedTurns);
+                    NoteContent(current.width, current.height, m_DecodedTurns, 0);
                     m_HasPending = true;
                 }
                 catch (Exception ex)
@@ -247,6 +249,7 @@ namespace Unity.Android.Logcat
                     m_DecodedTurns = turns;
                     using (k_Compose.Auto())
                         Compose(source, turns);
+                    NoteContent(source.width, source.height, turns, m_Written);
                     return true;
                 }
             }
@@ -294,7 +297,9 @@ namespace Unity.Android.Logcat
             var slot = SlotAt(m_FirstArrivalUs + frame.PtsUs - m_FirstPtsUs);
 
             // Shown from its own slot, or from the pending one's when it replaces that.
-            NoteDisplaySize(frame.DisplayWidth, frame.DisplayHeight, m_HasPending ? Math.Max(slot, m_Written) : m_Written);
+            var shownFrom = m_HasPending ? Math.Max(slot, m_Written) : m_Written;
+            NoteDisplaySize(frame.DisplayWidth, frame.DisplayHeight, shownFrom);
+            NoteContent(m_Decoded.width, m_Decoded.height, m_DecodedTurns, shownFrom);
 
             // The pending frame fills every slot up to this one. In its own slot, or
             // an earlier one, this frame replaces it instead.
@@ -330,6 +335,29 @@ namespace Unity.Android.Logcat
             var change = ChangeAt((double)slot / m_FrameRate);
             change.display.width = width;
             change.display.height = height;
+        }
+
+        /// <summary>Where Compose puts a frame in the video, so a player can leave out the black.</summary>
+        void NoteContent(int sourceWidth, int sourceHeight, int turns, long slot)
+        {
+            if (m_Width <= 0 || sourceWidth <= 0 || sourceHeight <= 0)
+                return;
+            var sideways = (turns & 1) != 0;
+            var turnedWidth = sideways ? sourceHeight : sourceWidth;
+            var turnedHeight = sideways ? sourceWidth : sourceHeight;
+            // As Compose fits it: scaled to touch two sides, centred.
+            var scale = Mathf.Min((float)m_Width / turnedWidth, (float)m_Height / turnedHeight);
+            var width = Mathf.RoundToInt(turnedWidth * scale);
+            var height = Mathf.RoundToInt(turnedHeight * scale);
+            var content = new RectInt((m_Width - width) / 2, (m_Height - height) / 2, width, height);
+            if (content.Equals(m_Content))
+                return;
+            m_Content = content;
+            var change = ChangeAt((double)slot / m_FrameRate);
+            change.content.x = content.x;
+            change.content.y = content.y;
+            change.content.width = content.width;
+            change.content.height = content.height;
         }
 
         /// <summary>

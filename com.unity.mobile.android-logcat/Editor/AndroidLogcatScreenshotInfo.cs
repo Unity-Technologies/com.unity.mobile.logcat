@@ -42,6 +42,22 @@ namespace Unity.Android.Logcat
         {
             public double time;
             public DisplayInfo display = new DisplayInfo();
+            public ContentInfo content = new ContentInfo();
+        }
+
+        /// <summary>
+        /// Where the picture sits in the video, in its pixels. The rest is black: the video
+        /// keeps one size while the picture is turned, folded or resized inside it.
+        /// </summary>
+        [Serializable]
+        internal class ContentInfo
+        {
+            public int x;
+            public int y;
+            public int width;
+            public int height;
+
+            internal bool IsSet => width > 0 && height > 0;
         }
 
         /// <summary>The device's display, which folding or turning it changes.</summary>

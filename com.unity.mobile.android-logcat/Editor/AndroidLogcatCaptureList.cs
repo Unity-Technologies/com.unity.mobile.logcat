@@ -361,8 +361,12 @@ namespace Unity.Android.Logcat
                 }
                 else
                 {
-                    previewBox = m_Viewer.DoGUI(previewArea, aspect,
-                        videoRect => GUI.DrawTexture(videoRect, frame), m_Repaint);
+                    // Only the picture: the rest of a recording is black, wherever folding or
+                    // turning the device left it.
+                    var uv = m_PreviewDetails.ContentAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame), frame.width, frame.height);
+                    var shown = new Vector2(uv.width * frame.width, uv.height * frame.height);
+                    previewBox = m_Viewer.DoGUI(previewArea, shown.y > 0 ? shown.x / shown.y : aspect,
+                        videoRect => GUI.DrawTextureWithTexCoords(videoRect, frame, uv), m_Repaint);
                 }
 
                 if (opening || m_VideoPlayer.NeedsRepaint)
@@ -462,18 +466,41 @@ namespace Unity.Android.Logcat
             /// <summary>The display size <paramref name="time"/> seconds into a recording.</summary>
             internal string DisplaySizeAt(double time)
             {
+                var display = LatestAt(time, change => change.display != null && change.display.IsSet ? change.display : null);
+                return display != null ? $"{display.width}x{display.height}" : DisplaySize;
+            }
+
+            /// <summary>
+            /// The part of a recording's frame with the picture in it at <paramref name="time"/>,
+            /// as texture coordinates. All of it for a recording that does not say.
+            /// </summary>
+            internal Rect ContentAt(double time, int videoWidth, int videoHeight)
+            {
+                var content = LatestAt(time, change => change.content != null && change.content.IsSet ? change.content : null);
+                if (content == null || videoWidth <= 0 || videoHeight <= 0)
+                    return new Rect(0, 0, 1, 1);
+                // A pixel in from each side: compression bleeds the black into the edge.
+                // Centred, so the flip between pixel rows and texture coordinates cancels out.
+                const int kInset = 1;
+                var width = Mathf.Max(1, content.width - 2 * kInset);
+                var height = Mathf.Max(1, content.height - 2 * kInset);
+                return new Rect((float)(content.x + kInset) / videoWidth, (float)(content.y + kInset) / videoHeight,
+                    (float)width / videoWidth, (float)height / videoHeight);
+            }
+
+            T LatestAt<T>(double time, Func<AndroidLogcatScreenshotInfo.FrameChange, T> pick) where T : class
+            {
+                T latest = null;
                 if (m_FrameChanges == null)
-                    return DisplaySize;
-                var size = DisplaySize;
+                    return latest;
                 foreach (var change in m_FrameChanges)
                 {
                     // A hair early, so the frame a change lands on already shows it.
                     if (change.time > time + 0.0005)
                         break;
-                    if (change.display != null && change.display.IsSet)
-                        size = $"{change.display.width}x{change.display.height}";
+                    latest = pick(change) ?? latest;
                 }
-                return size;
+                return latest;
             }
         }
 
