@@ -19,9 +19,13 @@ namespace Unity.Android.Logcat
         readonly AndroidLogcatRuntimeBase m_Runtime;
         AndroidLogcatStreamRecorder m_Recorder;
         Action<Result, string> m_OnStopRecording;
-        DateTime m_Started;
+        // Not the wall clock, which a clock change would move the time limit with.
+        readonly System.Diagnostics.Stopwatch m_Clock = new System.Diagnostics.Stopwatch();
 
-        /// <summary>Why the last recording failed, empty when it did not.</summary>
+        /// <summary>
+        /// Why the last recording failed or stopped early, empty when it did not. One that
+        /// stopped early is still kept, with what was written before.
+        /// </summary>
         internal string Errors { get; private set; } = string.Empty;
 
         /// <summary>The recording being taken, or the last one. Empty before the first.</summary>
@@ -29,7 +33,7 @@ namespace Unity.Android.Logcat
 
         internal bool IsRecording => m_Recorder != null;
 
-        internal TimeSpan Elapsed => IsRecording ? DateTime.Now - m_Started : TimeSpan.Zero;
+        internal TimeSpan Elapsed => IsRecording ? m_Clock.Elapsed : TimeSpan.Zero;
 
         internal AndroidLogcatCaptureVideo(AndroidLogcatRuntimeBase runtime)
         {
@@ -77,32 +81,27 @@ namespace Unity.Android.Logcat
             Errors = string.Empty;
             var captures = m_Runtime.CaptureScreenshot;
             // Numbered like a screenshot, and reserved the same way.
-            RecordingPath = captures.AllocateCapturePath(device, captures.GetVideoExtension());
-            AndroidLogcatStreamRecorder recorder;
-            try
-            {
-                recorder = new AndroidLogcatStreamRecorder(RecordingPath, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
-                    stream.ViewQuarterTurns, stream.QuarterTurnsFor);
-            }
-            catch
-            {
-                captures.ReleaseCapturePath(RecordingPath);
-                throw;
-            }
+            var path = captures.AllocateCapturePath(device, captures.GetVideoExtension());
+            // The constructor reports failures through Error rather than throwing.
+            var recorder = new AndroidLogcatStreamRecorder(path, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
+                stream.ViewQuarterTurns, stream.QuarterTurnsFor);
             // The encoder is created from the live view's frame, and failing to is
             // reported here rather than as a recording that never writes anything.
             if (!string.IsNullOrEmpty(recorder.Error))
             {
+                Errors = recorder.Error;
                 recorder.Stop();
-                DeleteRecording(RecordingPath);
-                captures.ReleaseCapturePath(RecordingPath);
-                throw new InvalidOperationException(recorder.Error);
+                AndroidLogcatInternalLog.Log(recorder.Stats());
+                DeleteRecording(path);
+                captures.ReleaseCapturePath(path);
+                throw new InvalidOperationException(Errors);
             }
+            RecordingPath = path;
             m_Recorder = recorder;
             // The same details a screenshot is saved with, so the list can say which device it came from.
             AndroidLogcatScreenshotInfo.Create(device)?.Save(RecordingPath);
             m_OnStopRecording = onStopRecording;
-            m_Started = DateTime.Now;
+            m_Clock.Restart();
             stream.Recorder = m_Recorder;
         }
 
@@ -124,9 +123,11 @@ namespace Unity.Android.Logcat
             var recorded = recorder.Stop();
             AndroidLogcatInternalLog.Log(recorder.Stats());
             var path = recorder.Path;
+            Errors = recorder.Error;
             if (!recorded)
             {
-                Errors = string.IsNullOrEmpty(recorder.Error) ? "No frames were recorded." : recorder.Error;
+                if (string.IsNullOrEmpty(Errors))
+                    Errors = "No frames were recorded.";
                 DeleteRecording(path);
             }
             m_Runtime.CaptureScreenshot.ReleaseCapturePath(path);

@@ -301,6 +301,11 @@ namespace Unity.Android.Logcat
                 m_StatusBar.Message = "Recording failed. See the Console for details.";
                 Debug.LogError($"Recording failed.\n{m_CaptureVideo.Errors}");
             }
+            else if (!string.IsNullOrEmpty(m_CaptureVideo.Errors))
+            {
+                // Kept, but shorter than it ran for.
+                Debug.LogWarning($"Recording stopped early, saved up to where it failed.\n{m_CaptureVideo.Errors}");
+            }
 
             // The list is counted from a cached scan, which knows nothing of a file
             // the recorder has just written.
@@ -326,6 +331,8 @@ namespace Unity.Android.Logcat
         void Update()
         {
             if (m_LiveStream != null && m_LiveStream.HasPendingFrame)
+                Repaint();
+            if (m_CaptureList != null && m_CaptureList.NeedsRepaint)
                 Repaint();
             // A still screen sends no frames, so nothing else would move the clock.
             var recording = RecordingTime;

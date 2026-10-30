@@ -1082,6 +1082,11 @@ namespace Unity.Android.Logcat
 
                     lock (m_FrameLock)
                     {
+                        // Again under the lock, which a stop clears the frame under: one
+                        // published after that would show on the next stream.
+                        if (session != m_Session)
+                            break;
+
                         // Only the newest frame is kept: if the Editor cannot keep up,
                         // showing the latest screen matters more than showing every
                         // frame. The frame being dropped goes back to the free list

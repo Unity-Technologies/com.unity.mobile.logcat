@@ -131,8 +131,6 @@ namespace Unity.Android.Logcat
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
         internal void Enqueue(byte[] data, int size, long ptsUs, int rotation)
         {
-            var copy = new byte[size];
-            Buffer.BlockCopy(data, 0, copy, 0, size);
             lock (m_Lock)
             {
                 if (m_Queue.Count >= kMaxQueued)
@@ -140,8 +138,13 @@ namespace Unity.Android.Logcat
                     m_Dropped++;
                     return;
                 }
-                m_Queue.Enqueue(new QueuedFrame { Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation });
             }
+            // Outside the lock, and only once there is room. The reader is the only one
+            // adding, so the room is still there after.
+            var copy = new byte[size];
+            Buffer.BlockCopy(data, 0, copy, 0, size);
+            lock (m_Lock)
+                m_Queue.Enqueue(new QueuedFrame { Data = copy, PtsUs = ptsUs, ArrivalUs = NowUs, Rotation = rotation });
         }
 
         void Update()
@@ -319,17 +322,30 @@ namespace Unity.Android.Logcat
             var target = RenderTexture.GetTemporary(m_Width, m_Height, 0, RenderTextureFormat.ARGB32);
             var previous = RenderTexture.active;
             RenderTexture.active = target;
-            GL.Clear(true, true, Color.black);
-            GL.PushMatrix();
-            GL.LoadPixelMatrix(0, m_Width, m_Height, 0);
-            // Counter-clockwise, as the live view turns it, about the canvas centre.
-            var centre = new Vector3(m_Width * 0.5f, m_Height * 0.5f, 0);
-            GL.MultMatrix(Matrix4x4.TRS(centre, Quaternion.Euler(0, 0, turns * -90f), new Vector3(scale, scale, 1)));
-            Graphics.DrawTexture(new Rect(-source.width * 0.5f, -source.height * 0.5f, source.width, source.height), source);
-            GL.PopMatrix();
-            m_Canvas.ReadPixels(new Rect(0, 0, m_Width, m_Height), 0, 0, false);
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(target);
+            try
+            {
+                GL.Clear(true, true, Color.black);
+                GL.PushMatrix();
+                try
+                {
+                    GL.LoadPixelMatrix(0, m_Width, m_Height, 0);
+                    // Counter-clockwise, as the live view turns it, about the canvas centre.
+                    var centre = new Vector3(m_Width * 0.5f, m_Height * 0.5f, 0);
+                    GL.MultMatrix(Matrix4x4.TRS(centre, Quaternion.Euler(0, 0, turns * -90f), new Vector3(scale, scale, 1)));
+                    Graphics.DrawTexture(new Rect(-source.width * 0.5f, -source.height * 0.5f, source.width, source.height), source);
+                }
+                finally
+                {
+                    GL.PopMatrix();
+                }
+                m_Canvas.ReadPixels(new Rect(0, 0, m_Width, m_Height), 0, 0, false);
+            }
+            finally
+            {
+                // The Editor draws into whatever is left active.
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(target);
+            }
         }
 
         /// <summary>
@@ -342,6 +358,7 @@ namespace Unity.Android.Logcat
             var stopSlot = SlotAt(NowUs);
             EditorApplication.update -= Update;
             Drain(double.MaxValue);
+            var closed = true;
             try
             {
                 if (m_HasPending && string.IsNullOrEmpty(Error))
@@ -360,15 +377,27 @@ namespace Unity.Android.Logcat
             {
                 Fail(ex);
             }
-            m_Encoder?.Dispose();
-            m_Encoder = null;
-            if (m_Decoded != null)
-                UnityEngine.Object.DestroyImmediate(m_Decoded);
-            if (m_Canvas != null)
-                UnityEngine.Object.DestroyImmediate(m_Canvas);
-            m_Decoded = null;
-            m_Canvas = null;
-            return m_Written > 0 && string.IsNullOrEmpty(Error);
+            finally
+            {
+                try
+                {
+                    m_Encoder?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    closed = false;
+                    Fail(ex);
+                }
+                m_Encoder = null;
+                if (m_Decoded != null)
+                    UnityEngine.Object.DestroyImmediate(m_Decoded);
+                if (m_Canvas != null)
+                    UnityEngine.Object.DestroyImmediate(m_Canvas);
+                m_Decoded = null;
+                m_Canvas = null;
+            }
+            // Frames written before an error are still a playable file, once it is closed.
+            return closed && m_Written > 0;
         }
 
         /// <summary>How the recording went, for the log.</summary>

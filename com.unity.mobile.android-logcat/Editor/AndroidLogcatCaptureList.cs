@@ -163,6 +163,16 @@ namespace Unity.Android.Logcat
 
         bool PreviewIsVideo => m_PreviewDetails != null && m_PreviewTexture == null;
 
+        // A video opens asynchronously; there is no frame and no size until it has.
+        bool VideoOpening => string.IsNullOrEmpty(m_VideoPlayer.Error)
+            && (m_VideoPlayer.Texture == null || m_VideoPlayer.Aspect <= 0);
+
+        /// <summary>
+        /// Whether the preview changes on its own, so the window has to keep repainting.
+        /// A repaint asked for from OnGUI alone can be lost while the Editor starts up.
+        /// </summary>
+        internal bool NeedsRepaint => PreviewIsVideo && (VideoOpening || m_VideoPlayer.NeedsRepaint);
+
         // Zoom and pan for the preview. Its own, separate from the live view's: they
         // show different things, and a zoom set on one is rarely the one wanted on the
         // other. Kept across screenshots, though - screenshots from the same device are
@@ -321,11 +331,10 @@ namespace Unity.Android.Logcat
             Rect previewBox;
             if (PreviewIsVideo)
             {
-                // A video opens asynchronously; there is no frame and no size until it has.
                 var frame = m_VideoPlayer.Texture;
                 var aspect = m_VideoPlayer.Aspect;
                 var failed = !string.IsNullOrEmpty(m_VideoPlayer.Error);
-                var opening = !failed && (frame == null || aspect <= 0);
+                var opening = VideoOpening;
                 if (failed)
                 {
                     EditorGUI.HelpBox(previewArea, $"The recording cannot be played.\n{m_VideoPlayer.Error}",
