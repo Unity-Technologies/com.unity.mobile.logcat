@@ -73,6 +73,7 @@ class AndroidLogcatNetTests
         {
             "UnityEngine.ScriptingModule",
             "UnityEngine.UICommonModule",
+            "UnityEngine.TypeRegistryModule",
         });
 #endif
 
