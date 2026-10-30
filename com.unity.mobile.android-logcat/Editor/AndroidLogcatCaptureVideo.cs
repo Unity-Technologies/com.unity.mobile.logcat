@@ -59,6 +59,9 @@ namespace Unity.Android.Logcat
                 StopRecording();
             if (IsRecording && Elapsed.TotalMinutes >= m_Runtime.Settings.RecordingTimeLimit)
                 StopRecording();
+            // The encoder failed, so nothing more will be written.
+            if (IsRecording && !string.IsNullOrEmpty(m_Recorder.Error))
+                StopRecording();
         }
 
         internal void StartRecording(IAndroidLogcatDevice device, Action<Result, string> onStopRecording)
@@ -75,9 +78,10 @@ namespace Unity.Android.Logcat
             var captures = m_Runtime.CaptureScreenshot;
             // Numbered like a screenshot, and reserved the same way.
             RecordingPath = captures.AllocateCapturePath(device, captures.GetVideoExtension());
+            AndroidLogcatStreamRecorder recorder;
             try
             {
-                m_Recorder = new AndroidLogcatStreamRecorder(RecordingPath, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
+                recorder = new AndroidLogcatStreamRecorder(RecordingPath, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
                     stream.ViewQuarterTurns, stream.QuarterTurnsFor);
             }
             catch
@@ -85,6 +89,16 @@ namespace Unity.Android.Logcat
                 captures.ReleaseCapturePath(RecordingPath);
                 throw;
             }
+            // The encoder is created from the live view's frame, and failing to is
+            // reported here rather than as a recording that never writes anything.
+            if (!string.IsNullOrEmpty(recorder.Error))
+            {
+                recorder.Stop();
+                DeleteRecording(RecordingPath);
+                captures.ReleaseCapturePath(RecordingPath);
+                throw new InvalidOperationException(recorder.Error);
+            }
+            m_Recorder = recorder;
             // The same details a screenshot is saved with, so the list can say which device it came from.
             AndroidLogcatScreenshotInfo.Create(device)?.Save(RecordingPath);
             m_OnStopRecording = onStopRecording;
@@ -113,21 +127,26 @@ namespace Unity.Android.Logcat
             if (!recorded)
             {
                 Errors = string.IsNullOrEmpty(recorder.Error) ? "No frames were recorded." : recorder.Error;
-                AndroidLogcatScreenshotInfo.Delete(path);
-                try
-                {
-                    if (File.Exists(path))
-                        File.Delete(path);
-                }
-                catch (Exception ex)
-                {
-                    AndroidLogcatInternalLog.Log($"Failed to delete '{path}': {ex.Message}");
-                }
+                DeleteRecording(path);
             }
             m_Runtime.CaptureScreenshot.ReleaseCapturePath(path);
 
             onStopRecording?.Invoke(recorded ? Result.Success : Result.Failure, path);
             return recorded;
+        }
+
+        static void DeleteRecording(string path)
+        {
+            AndroidLogcatScreenshotInfo.Delete(path);
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to delete '{path}': {ex.Message}");
+            }
         }
     }
 }
