@@ -19,6 +19,7 @@ namespace Unity.Android.Logcat
     /// and the image itself stay there; this only decides what to look at.
     /// </para>
     /// </summary>
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatCaptureList
     {
         [NoAutoStaticsCleanup]
