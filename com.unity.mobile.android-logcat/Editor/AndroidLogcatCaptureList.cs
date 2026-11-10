@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Unity.Profiling;
 using UnityEditor;
 using Unity.Scripting.LifecycleManagement;
@@ -521,7 +522,7 @@ namespace Unity.Android.Logcat
         /// it is loaded: the column is measured against these before the image is
         /// fitted, and none of it changes while the same screenshot is shown.
         /// </summary>
-        class PreviewDetails
+        internal class PreviewDetails
         {
             internal string Device { get; }
             internal string DeviceId { get; }
@@ -532,7 +533,11 @@ namespace Unity.Android.Logcat
             internal string Captured { get; }
             internal string CapturedInFull { get; }
             internal string[] Values { get; }
-            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_FrameChanges;
+            // A recording's changes split by kind, each in time order, so a lookup is a
+            // binary search rather than a walk past every touch of a long recording.
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_DisplayChanges;
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_ContentChanges;
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_TouchChanges;
 
             /// <summary>A recording has no texture, so it has no image size either.</summary>
             internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
@@ -543,7 +548,10 @@ namespace Unity.Android.Logcat
                 DisplaySize = info == null || info.displayWidth <= 0
                     ? kUndefined
                     : $"{info.displayWidth}x{info.displayHeight}";
-                m_FrameChanges = info?.frameChanges;
+                var changes = info?.frameChanges ?? Array.Empty<AndroidLogcatScreenshotInfo.FrameChange>();
+                m_DisplayChanges = Ordered(changes, change => change.display != null && change.display.IsSet);
+                m_ContentChanges = Ordered(changes, change => change.content != null && change.content.IsSet);
+                m_TouchChanges = Ordered(changes, change => change.touches != null && change.touches.Count > 0);
                 ImageSize = texture != null ? $"{texture.width}x{texture.height}" : kUndefined;
                 FileSize = EditorUtility.FormatBytes(file.Length);
                 Captured = file.LastWriteTime.ToString("g");
@@ -554,7 +562,7 @@ namespace Unity.Android.Logcat
             /// <summary>The display size <paramref name="time"/> seconds into a recording.</summary>
             internal string DisplaySizeAt(double time)
             {
-                var display = LatestAt(time, change => change.display != null && change.display.IsSet ? change.display : null);
+                var display = LatestAt(m_DisplayChanges, time)?.display;
                 return display != null ? $"{display.width}x{display.height}" : DisplaySize;
             }
 
@@ -564,7 +572,7 @@ namespace Unity.Android.Logcat
             /// </summary>
             internal Rect ContentAt(double time, int videoWidth, int videoHeight)
             {
-                var content = LatestAt(time, change => change.content != null && change.content.IsSet ? change.content : null);
+                var content = LatestAt(m_ContentChanges, time)?.content;
                 if (content == null || videoWidth <= 0 || videoHeight <= 0)
                     return new Rect(0, 0, 1, 1);
                 // A pixel in from each side: compression bleeds the black into the edge.
@@ -585,21 +593,11 @@ namespace Unity.Android.Logcat
                 position = default;
                 alpha = 0;
                 action = null;
-                AndroidLogcatScreenshotInfo.TouchInfo last = null;
-                var lastTime = 0.0;
-                if (m_FrameChanges == null)
+                var change = LatestAt(m_TouchChanges, time);
+                if (change == null)
                     return false;
-                foreach (var change in m_FrameChanges)
-                {
-                    if (change.time > time + 0.0005)
-                        break;
-                    if (change.touches == null || change.touches.Count == 0)
-                        continue;
-                    last = change.touches[change.touches.Count - 1];
-                    lastTime = change.time;
-                }
-                if (last == null)
-                    return false;
+                var last = change.touches[change.touches.Count - 1];
+                var lastTime = change.time;
 
                 position = new Vector2(last.x, last.y);
                 action = last.action;
@@ -617,19 +615,28 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            T LatestAt<T>(double time, Func<AndroidLogcatScreenshotInfo.FrameChange, T> pick) where T : class
+            static AndroidLogcatScreenshotInfo.FrameChange[] Ordered(
+                AndroidLogcatScreenshotInfo.FrameChange[] changes, Func<AndroidLogcatScreenshotInfo.FrameChange, bool> has)
             {
-                T latest = null;
-                if (m_FrameChanges == null)
-                    return latest;
-                foreach (var change in m_FrameChanges)
+                // Stable, as recordings made before the recorder kept them in order may not be.
+                return changes.Where(change => change != null && has(change)).OrderBy(change => change.time).ToArray();
+            }
+
+            /// <summary>The last of <paramref name="changes"/> at or before <paramref name="time"/>, or null.</summary>
+            static AndroidLogcatScreenshotInfo.FrameChange LatestAt(AndroidLogcatScreenshotInfo.FrameChange[] changes, double time)
+            {
+                // A hair early, so the frame a change lands on already shows it.
+                time += 0.0005;
+                int low = 0, high = changes.Length;
+                while (low < high)
                 {
-                    // A hair early, so the frame a change lands on already shows it.
-                    if (change.time > time + 0.0005)
-                        break;
-                    latest = pick(change) ?? latest;
+                    var middle = low + (high - low) / 2;
+                    if (changes[middle].time > time)
+                        high = middle;
+                    else
+                        low = middle + 1;
                 }
-                return latest;
+                return low > 0 ? changes[low - 1] : null;
             }
         }
 
