@@ -9,7 +9,7 @@ namespace Unity.Android.Logcat
     /// </summary>
     internal static class AndroidLogcatStatsColumn
     {
-        const float kWidth = 190;
+        const float kWidth = 220;
         const float kMargin = 8;
         // Off the box's right edge, so the column's buttons and slider do not touch it.
         const float kRightMargin = 10;

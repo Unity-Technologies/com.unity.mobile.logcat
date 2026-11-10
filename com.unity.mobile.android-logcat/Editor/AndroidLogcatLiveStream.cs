@@ -1632,7 +1632,7 @@ namespace Unity.Android.Logcat
             if ((ViewQuarterTurns & 1) != 0)
                 aspect = 1f / aspect;
 
-            var imageBox = m_Viewer.DoGUI(imageArea, aspect, videoRect =>
+            m_Viewer.DoGUI(imageArea, aspect, videoRect =>
             {
                 HandleTouchInput(controlId, videoRect);
                 DrawFrame(videoRect);
@@ -1645,7 +1645,8 @@ namespace Unity.Android.Logcat
                 m_Viewer.DoRecordingBadgeGUI(recording.Value);
 
             if (statsWidth > 0)
-                DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageBox), captureActions);
+                // Beside the area rather than the image, so turning the device does not move it.
+                DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, imageArea), captureActions);
         }
 
         /// <summary>

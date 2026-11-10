@@ -343,7 +343,6 @@ namespace Unity.Android.Logcat
             var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc, m_PreviewDetails.Values);
             var previewArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
 
-            Rect previewBox;
             if (PreviewIsVideo)
             {
                 var frame = m_VideoPlayer.Texture;
@@ -354,12 +353,10 @@ namespace Unity.Android.Logcat
                 {
                     EditorGUI.HelpBox(previewArea, $"The recording cannot be played.\n{m_VideoPlayer.Error}",
                         MessageType.Error);
-                    previewBox = previewArea;
                 }
                 else if (opening)
                 {
                     EditorGUI.HelpBox(previewArea, "Opening the recording...", MessageType.Info);
-                    previewBox = previewArea;
                 }
                 else
                 {
@@ -368,7 +365,7 @@ namespace Unity.Android.Logcat
                     var uv = m_PreviewDetails.ContentAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame), frame.width, frame.height);
                     var shown = new Vector2(uv.width * frame.width, uv.height * frame.height);
                     var time = m_VideoPlayer.TimeOf(m_VideoPlayer.Frame);
-                    previewBox = m_Viewer.DoGUI(previewArea, shown.y > 0 ? shown.x / shown.y : aspect,
+                    m_Viewer.DoGUI(previewArea, shown.y > 0 ? shown.x / shown.y : aspect,
                         videoRect =>
                         {
                             GUI.DrawTextureWithTexCoords(videoRect, frame, uv);
@@ -381,14 +378,14 @@ namespace Unity.Android.Logcat
             }
             else
             {
-                previewBox = m_Viewer.DoGUI(previewArea,
+                m_Viewer.DoGUI(previewArea,
                     (float)m_PreviewTexture.width / m_PreviewTexture.height,
                     imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
             }
 
-            // A recording's picture changes shape as the device folds or turns, and a column
-            // beside it would move and resize with it, slider and all - so it keeps to the right.
-            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, PreviewIsVideo ? previewArea : previewBox));
+            // Beside the area rather than the picture, which changes shape as the device folds
+            // or turns: the column stays put, as in the live view, whatever is selected.
+            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, previewArea));
             return true;
         }
 
