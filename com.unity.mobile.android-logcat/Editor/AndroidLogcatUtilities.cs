@@ -1146,7 +1146,9 @@ namespace Unity.Android.Logcat
                 int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
             }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            var rect = GUILayoutUtility.GetRect(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            if (Event.current.type == EventType.Repaint)
+                AndroidLogcatStyles.StatusIcon.Draw(rect, statusIcon, false, false, false, false);
         }
         internal static void DrawRectangle(Rect area, int frameWidth, Color color)
         {
