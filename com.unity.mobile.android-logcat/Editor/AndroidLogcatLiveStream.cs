@@ -1582,18 +1582,16 @@ namespace Unity.Android.Logcat
         void DoErrorButtonsGUI(Rect rc, float y, float height, IAndroidLogcatDevice selectedDevice)
         {
             // The jar is a build output and is not committed, so a fresh clone has none
-            // until Gradle has run. Offering to run it here is the whole of the fix, so
-            // the button is only worth drawing when that project is actually next to
-            // the package - GetServerGradleProjectPath says so.
-            var gradleProject = m_FailureType == FailureType.JarNotFound
-                ? GetServerGradleProjectPath()
-                : null;
+            // until Gradle has run, and an old one may no longer match the Editor. Only
+            // drawn when that project is next to the package - GetServerGradleProjectPath says so.
+            var gradleProject = GetServerGradleProjectPath();
 
             var x = rc.x;
             if (gradleProject != null)
             {
                 var buttonRect = new Rect(x, y, Mathf.Min(kBuildJarButtonWidth, rc.width), height);
-                if (GUI.Button(buttonRect, new GUIContent("Build Server Jar",
+                var label = m_FailureType == FailureType.JarNotFound ? "Build Server Jar" : "Rebuild Server Jar";
+                if (GUI.Button(buttonRect, new GUIContent(label,
                     $"Runs 'gradlew dexJar' in {gradleProject}, then starts the stream again.")))
                 {
                     RebuildServerJar(gradleProject);
