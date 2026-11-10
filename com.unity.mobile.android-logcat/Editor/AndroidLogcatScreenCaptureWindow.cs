@@ -26,6 +26,8 @@ namespace Unity.Android.Logcat
                 + "it stops. Leaving the live view stops it.");
             public static readonly GUIContent StopRecording = new GUIContent("Stop Recording",
                 "Stop recording and add the recording to the list.");
+            public static readonly GUIContent RecordingUnsupported = new GUIContent("Take Recording",
+                "Recording isn't available on Linux, the Linux Editor has no H.264 encoder.");
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -94,7 +96,7 @@ namespace Unity.Android.Logcat
                 // One button that starts and stops: a recording is running or it is
                 // not, and two buttons would leave one of them dead most of the time.
                 new AndroidLogcatLiveStream.CaptureAction(
-                    () => m_CaptureVideo.IsRecording ? Styles.StopRecording : Styles.TakeRecording,
+                    () => m_CaptureVideo.IsRecording ? Styles.StopRecording : RecordingSupported ? Styles.TakeRecording : Styles.RecordingUnsupported,
                     ToggleRecording, () => CanRecord)
             };
 
@@ -159,7 +161,9 @@ namespace Unity.Android.Logcat
         /// once one is running, whatever happened to the device since.
         /// </summary>
         private bool CanRecord =>
-            m_CaptureVideo.IsRecording || (m_LiveStream.IsStreaming && m_DeviceSelection.SelectedDevice != null);
+            m_CaptureVideo.IsRecording || (RecordingSupported && m_LiveStream.IsStreaming && m_DeviceSelection.SelectedDevice != null);
+
+        private static bool RecordingSupported => Application.platform != RuntimePlatform.LinuxEditor;
 
         private void ToggleRecording()
         {

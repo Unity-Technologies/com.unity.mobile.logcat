@@ -230,10 +230,6 @@ namespace Unity.Android.Logcat
             }
         }
 
-        /// <summary>
-        /// Frame rate cap of the live stream. A mirrored display only produces a frame
-        /// when the screen changes, so this is a ceiling rather than a rate.
-        /// </summary>
         /// <summary>In minutes.</summary>
         internal int RecordingTimeLimit
         {
@@ -257,17 +253,8 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool RecordingSquareVideo
         {
-            set
-            {
-                if (m_RecordingSquareVideo == value)
-                    return;
-                m_RecordingSquareVideo = value;
-                InvokeOnSettingsChanged();
-            }
-            get
-            {
-                return m_RecordingSquareVideo;
-            }
+            set => Set(ref m_RecordingSquareVideo, value);
+            get => m_RecordingSquareVideo;
         }
 
         /// <summary>
@@ -276,19 +263,14 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal bool RecordTouches
         {
-            set
-            {
-                if (m_RecordTouches == value)
-                    return;
-                m_RecordTouches = value;
-                InvokeOnSettingsChanged();
-            }
-            get
-            {
-                return m_RecordTouches;
-            }
+            set => Set(ref m_RecordTouches, value);
+            get => m_RecordTouches;
         }
 
+        /// <summary>
+        /// Frame rate cap of the live stream. A mirrored display only produces a frame
+        /// when the screen changes, so this is a ceiling rather than a rate.
+        /// </summary>
         internal int LiveStreamMaxFps
         {
             set
@@ -524,7 +506,8 @@ namespace Unity.Android.Logcat
             // regexes along with them.
             m_LiveStreamMaxSize = kLiveStreamMaxSize.OrDefault(m_LiveStreamMaxSize);
             m_LiveStreamQuality = kLiveStreamQuality.OrDefault(m_LiveStreamQuality);
-            m_LiveStreamMaxFps = kLiveStreamMaxFps.OrDefault(m_LiveStreamMaxFps);
+            // Clamped rather than reset: the cap used to go up to 120.
+            m_LiveStreamMaxFps = m_LiveStreamMaxFps == 0 ? kLiveStreamMaxFps.Default : kLiveStreamMaxFps.Clamp(m_LiveStreamMaxFps);
             m_RecordingTimeLimit = kRecordingTimeLimit.OrDefault(m_RecordingTimeLimit);
         }
 

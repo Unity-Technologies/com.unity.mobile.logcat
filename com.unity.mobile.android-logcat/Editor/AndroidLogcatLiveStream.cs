@@ -319,6 +319,8 @@ namespace Unity.Android.Logcat
         // call, and a device does not start folding half way through one.
         FoldStates m_FoldStates = FoldStates.None;
         bool m_FoldStatesQueried;
+        // The panels' physical sizes, also once per stream: wm size does not change them.
+        IReadOnlyList<Vector2Int> m_PhysicalDisplaySizes;
         // The Max Size the server was started with, which it scales each screen to.
         int m_MaxSize;
         volatile string m_ReaderError;
@@ -521,6 +523,7 @@ namespace Unity.Android.Logcat
             m_HeldKeys.Clear();
             m_FoldStates = FoldStates.None;
             m_FoldStatesQueried = false;
+            m_PhysicalDisplaySizes = null;
             m_FrameWidth = 0;
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
@@ -1675,7 +1678,9 @@ namespace Unity.Android.Logcat
             if (!m_FoldStates.Supported)
                 return longest;
 
-            foreach (var size in m_Device.QueryPhysicalDisplaySizes())
+            if (m_PhysicalDisplaySizes == null)
+                m_PhysicalDisplaySizes = m_Device.QueryPhysicalDisplaySizes();
+            foreach (var size in m_PhysicalDisplaySizes)
                 longest = Math.Max(longest, LimitedSide(Math.Max(size.x, size.y)));
             return longest;
         }
