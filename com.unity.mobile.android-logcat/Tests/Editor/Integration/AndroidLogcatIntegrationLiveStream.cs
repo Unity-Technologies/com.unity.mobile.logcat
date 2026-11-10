@@ -4,9 +4,6 @@ using System.Collections;
 using Unity.Android.Logcat;
 using UnityEngine;
 using UnityEngine.TestTools;
-using System.IO;
-using System.Net;
-using System.Text;
 
 [TestFixture]
 [RequiresAndroidDevice]
@@ -19,11 +16,10 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
 
     // On these agents adb's forward is created beside the device rather than beside
     // the Editor, so connecting to the loopback is refused however healthy
-    // 'adb forward --list' looks. The device is reached instead at its own address,
-    // through a port the platform maps for us - and that mapping points at a fixed
-    // port on the far side, which is the one the forward has to ask for here.
-    const int kMappedLocalPort = 27183;
-    const string kMappedPortUrl = "https://api.platform-env.ds.unity3d.com/mappedPort";
+    // 'adb forward --list' looks. The device is reached instead at its own address, on
+    // a port in the range the Bokken network opens between agents and devices for the
+    // Player Connection (34999-35020).
+    const int kTunnelPort = 35000;
 
     /// <summary>
     /// Points the live stream at the device the way the agents reach it. Does nothing
@@ -31,48 +27,14 @@ internal class AndroidLogcatRuntimeIntegrationLiveStream : AndroidLogcatIntegrat
     /// </summary>
     private void ConfigureLiveStreamTunnel()
     {
-        var deviceId = Environment.GetEnvironmentVariable("BOKKEN_DEVICE_ID");
         var deviceIp = Environment.GetEnvironmentVariable("BOKKEN_DEVICE_IP");
-        if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(deviceIp))
+        if (string.IsNullOrEmpty(deviceIp))
             return;
 
-        int mappedPort;
-        try
-        {
-            mappedPort = QueryMappedPort(deviceId);
-        }
-        catch (Exception ex)
-        {
-            Assert.Fail($"Failed to ask {kMappedPortUrl} which port is mapped to device '{deviceId}': {ex.Message}");
-            return;
-        }
-
-        Runtime.LiveStream.ForwardLocalPort = kMappedLocalPort;
+        Runtime.LiveStream.ForwardLocalPort = kTunnelPort;
         Runtime.LiveStream.TunnelHost = deviceIp;
-        Runtime.LiveStream.TunnelPort = mappedPort;
-        Console.WriteLine($"Live stream tunnel: forwarding tcp:{kMappedLocalPort}, connecting to {deviceIp}:{mappedPort}");
-    }
-
-    static int QueryMappedPort(string deviceId)
-    {
-        var request = (HttpWebRequest)WebRequest.Create(kMappedPortUrl);
-        request.Method = "POST";
-        request.Headers["Authorization"] = "Bearer bokken";
-        request.ContentType = "text/plain";
-
-        var body = Encoding.UTF8.GetBytes(deviceId);
-        request.ContentLength = body.Length;
-        using (var stream = request.GetRequestStream())
-            stream.Write(body, 0, body.Length);
-
-        string answer;
-        using (var response = (HttpWebResponse)request.GetResponse())
-        using (var reader = new StreamReader(response.GetResponseStream()))
-            answer = reader.ReadToEnd().Trim();
-
-        if (!int.TryParse(answer, out var port) || port <= 0)
-            throw new Exception($"Expected a port number, got '{answer}'");
-        return port;
+        Runtime.LiveStream.TunnelPort = kTunnelPort;
+        Console.WriteLine($"Live stream tunnel: forwarding tcp:{kTunnelPort}, connecting to {deviceIp}:{kTunnelPort}");
     }
 
     [SetUp]
