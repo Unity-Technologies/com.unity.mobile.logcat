@@ -104,9 +104,9 @@ namespace Unity.Android.Logcat
         private State m_State = State.Closed;
         private readonly Queue<Transition> m_History = new Queue<Transition>();
 
-        // Where a paused video stopped, for Play to start from. Paused from inside the
-        // player's own callbacks, its clock carries on regardless, and resuming would
-        // jump ahead by however long it sat paused. -1 when there is nothing to undo.
+        // Where a paused video stopped, for Play to start from. The player's clock can
+        // carry on under a pause, and resuming would jump ahead by however long it sat
+        // paused. -1 when there is nothing to undo.
         long m_ResumeFrom = -1;
 
         // The frame a seek is on its way to. The player's own frame is the old one
@@ -555,8 +555,13 @@ namespace Unity.Android.Logcat
             switch (m_State)
             {
                 case State.Playing:
+                    // Read before pausing. Resuming seeks back to it, as the clock can run on
+                    // under a pause here too - and the picture then sits still until it
+                    // catches up, then jumps.
+                    var pausedOn = Frame;
                     m_Player.Pause();
-                    SetState(State.Paused, "pause");
+                    SetState(State.Paused, $"pause on {pausedOn}");
+                    m_ResumeFrom = pausedOn;
                     break;
                 // The seek still has to land, and pausing before it does would keep
                 // the old frame - so it pauses on the frame the seek brings.

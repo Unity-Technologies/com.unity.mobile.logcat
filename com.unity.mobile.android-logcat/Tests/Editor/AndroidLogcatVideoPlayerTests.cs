@@ -243,6 +243,24 @@ class AndroidLogcatVideoPlayerTests
     }
 
     [UnityTest]
+    public IEnumerator PlayResumesFromWhereAPauseLeftIt()
+    {
+        yield return Open();
+        m_Player.TogglePlay();
+        yield return WaitFor("playback to move past frame 10", () => m_Player.Frame > 10);
+
+        m_Player.TogglePlay();
+        var pausedOn = m_Player.Frame;
+        // Long enough for a player clock that kept running while paused to show.
+        yield return WaitSeconds(1);
+
+        m_Player.TogglePlay();
+        yield return WaitFor("playback to resume", () => m_Player.CurrentState == State.Playing);
+        // At most a few frames on, rather than the second's worth the clock would have run on by.
+        Assert.That(m_Player.Frame, Is.InRange(pausedOn, pausedOn + 10), Describe());
+    }
+
+    [UnityTest]
     public IEnumerator SeeksWhilePlayingAndKeepsPlaying()
     {
         yield return Open();
