@@ -7,6 +7,8 @@ using System.Collections;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Text;
 
 internal class AndroidLogcatIntegrationTestBase
 {
@@ -19,6 +21,65 @@ internal class AndroidLogcatIntegrationTestBase
     public IAndroidLogcatDevice Device => m_Device;
 
     public int GetTicks() => m_Ticks;
+
+    // On these agents adb's forward is created beside the device rather than beside
+    // the Editor, so connecting to the loopback is refused however healthy
+    // 'adb forward --list' looks. The device is reached instead at its own address,
+    // through a port the platform maps for us - and that mapping points at a fixed
+    // port on the far side, which is the one the forward has to ask for here.
+    const int kMappedLocalPort = 27183;
+    const string kMappedPortUrl = "https://api.platform-env.ds.unity3d.com/mappedPort";
+
+    /// <summary>
+    /// Points the live stream at the device the way the agents reach it. Does nothing
+    /// off a build agent, where adb's forward is on the loopback like anywhere else.
+    /// Every test that starts the live stream needs it.
+    /// </summary>
+    protected void ConfigureLiveStreamTunnel()
+    {
+        var deviceId = Environment.GetEnvironmentVariable("BOKKEN_DEVICE_ID");
+        var deviceIp = Environment.GetEnvironmentVariable("BOKKEN_DEVICE_IP");
+        if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(deviceIp))
+            return;
+
+        int mappedPort;
+        try
+        {
+            mappedPort = QueryMappedPort(deviceId);
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail($"Failed to ask {kMappedPortUrl} which port is mapped to device '{deviceId}': {ex.Message}");
+            return;
+        }
+
+        Runtime.LiveStream.ForwardLocalPort = kMappedLocalPort;
+        Runtime.LiveStream.TunnelHost = deviceIp;
+        Runtime.LiveStream.TunnelPort = mappedPort;
+        Console.WriteLine($"Live stream tunnel: forwarding tcp:{kMappedLocalPort}, connecting to {deviceIp}:{mappedPort}");
+    }
+
+    static int QueryMappedPort(string deviceId)
+    {
+        var request = (HttpWebRequest)WebRequest.Create(kMappedPortUrl);
+        request.Method = "POST";
+        request.Headers["Authorization"] = "Bearer bokken";
+        request.ContentType = "text/plain";
+
+        var body = Encoding.UTF8.GetBytes(deviceId);
+        request.ContentLength = body.Length;
+        using (var stream = request.GetRequestStream())
+            stream.Write(body, 0, body.Length);
+
+        string answer;
+        using (var response = (HttpWebResponse)request.GetResponse())
+        using (var reader = new StreamReader(response.GetResponseStream()))
+            answer = reader.ReadToEnd().Trim();
+
+        if (!int.TryParse(answer, out var port) || port <= 0)
+            throw new Exception($"Expected a port number, got '{answer}'");
+        return port;
+    }
 
     /// <summary>
     /// Used to measure Editor ticking. Since Time.frameCount doesn't increase while running editor tests

@@ -255,6 +255,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
     [UnityTest]
     public IEnumerator CanRecordTheLiveStream()
     {
+        ConfigureLiveStreamTunnel();
         Runtime.LiveStream.StartStreaming(Device, null);
         yield return WaitForCondition("Waiting for the first frame", () => Runtime.LiveStream.FramesReceived > 0);
 
