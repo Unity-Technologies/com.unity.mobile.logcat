@@ -27,7 +27,7 @@ The toolbar contains options to control the Screen Capture tool.
 | **Toolbar option**      | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
 | **Device Selector**     | Specifies the Android device to capture the screen of.       |
-| **Advanced**            | Opens a menu with **Preferences**, which contains the capture settings. |
+| **More** (**⋮**) menu   | Opens a menu with **Preferences**, which gives access to the capture settings section in the [Android Logcat Settings](android-logcat-settings.md#capture-settings). |
 
 ## Capture list
 
@@ -36,7 +36,7 @@ The capture list contains the **Live** button and every capture you have taken f
 | **Item**           | **Description**                                              |
 | ------------------ | ------------------------------------------------------------ |
 | **Live**           | Displays the selected device's screen live. Select **Live** to view the screen, take screenshots, and record videos. For more information, refer to [View the device screen live](screen-capture-live-stream.md). |
-| A capture          | A screenshot or a recording, named after its file without its extension, with an icon that shows which it is. Captures are saved as you take them, so every one stays until you delete it. Selecting a recording opens it in the [Capture preview](#capture-preview), paused on its first frame. |
+| A capture          | A screenshot or a recording that appears in the list with an icon and its file name without the extension. Each capture is saved when you take it and remains in the list until you delete it. Select a recording to open it in the [Capture preview](#capture-preview). The recording is paused on its first frame. |
 
 Captures are stored in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>` with a `.png` or `.mp4` extension. The default folder, `AndroidLogcat/Captures`, is in your project but outside `Assets`, so it isn't part of your build. Deleting the `Library` folder doesn't delete captures.
 
@@ -94,7 +94,7 @@ This section appears beside the image while a screenshot or a recording is selec
 
 **Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** and **Frame Rate** come from the recording itself, so they display `Undefined` until the recording has opened.
 
-A selected recording opens paused on its first frame, and loops once it plays. Use the play button below the properties to play and pause it. While it is paused, the buttons beside the play button go back or forward one frame. You can also drag the slider under it to move to another point in the recording, whether it is playing or paused. A playing recording pauses while you drag, and plays on from the new point when you let go. Next to the step buttons is the current time and the length of the recording, in seconds and hundredths of a second, with minutes for a recording a minute or longer.
+When you select a recording, it opens on its first frame and is paused. The recording loops during playback. Use the play button to play and pause the recording. While the recording is paused, use the step buttons to go back or forward one frame. To move to another point in the recording, whether it is playing or paused, drag the slider. A playing recording pauses while you drag the slider, and resumes from the new point when you release it. Next to the step buttons is the current time and the length of the recording, in seconds and hundredths of a second. For a recording of one minute or longer, the time also includes minutes.
 
 ## Live view details
 

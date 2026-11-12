@@ -11,14 +11,17 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to re
 
 Recordings are stored beside screenshots, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>.mp4`.
 
-A recording is made from the live view, so it shows the view as it is turned. The video is square, as wide and tall as the longest side of the stream, so turning the device, or unfolding a foldable, keeps the picture at full size. The rest of the square is black. To record at the size of the screen instead, disable **Square Video** in the [Recording settings](android-logcat-settings.md#recording). To record at a larger size or a higher quality, raise **Max Size** and **JPEG Quality** in the [Live Stream settings](android-logcat-settings.md#live-stream). Recordings play at the **Max Frame Rate** of the Live Stream settings, 30 frames per second by default. A higher rate records fast movement more smoothly, but costs more Editor time, and at a large **Max Size** the device may not deliver frames that fast. The device only sends a frame when its screen changes, so while the screen is still, the recording repeats the last frame. A recording stops on its own after the **Time Limit** in the [Recording settings](android-logcat-settings.md#recording), 10 minutes by default. It also stops, and is saved, when Unity reloads scripts, for example after a script is changed.
+A recording is made from the live view, so it uses the same orientation as the live view. By default, the video is square, and its width and height match the longest dimension of the live stream. When you rotate the device, or unfold a foldable device, the display stays at full size. The rest of the square is black. To record at the size of the screen instead, disable **Square Video** in the [Recording settings](android-logcat-settings.md#recording).
 
-## Details
+To change the size, quality, and frame rate of a recording, use **Max Size**, **JPEG Quality**, and **Max Frame Rate** in the [Live Stream settings](android-logcat-settings.md#live-stream).
+
+The device sends a frame only when its screen changes. While the screen is still, the recording repeats the last frame. A recording stops automatically after the **Time Limit** in the [Recording settings](android-logcat-settings.md#recording), which is 10 minutes by default. A recording also stops and is saved when Unity reloads scripts, for example after you change a script.
+
+## Recording limitations
 
 * When recording a video, the Screen Recorder Tool doesn't capture sound.
-* Recording uses the Editor to encode the video, which takes some of its time while a recording runs. A larger stream costs more.
+* The Unity Editor encodes the video when a recording runs, which uses Editor processing time. A larger stream increases this processing time.
 * The Linux Editor can't record, or play recordings back, because it doesn't support H.264 video.
-* On Chrome OS, you can only capture the video from the sandboxed app which is the one you install manually via adb or Unity. You can't capture video from the desktop or from built-in apps.
 
 ## Additional resources
 
