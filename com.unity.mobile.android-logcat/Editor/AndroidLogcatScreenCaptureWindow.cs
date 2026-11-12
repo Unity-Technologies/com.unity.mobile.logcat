@@ -21,12 +21,12 @@ namespace Unity.Android.Logcat
                 "Capture the device screen and add it to the list. The screenshot comes from the device "
                 + "rather than from the stream, so it is full resolution whatever the stream is scaled to. "
                 + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS, while this view is showing.");
-            public static readonly GUIContent TakeRecording = new GUIContent("Take Recording",
+            public static readonly GUIContent StartRecording = new GUIContent("Start Recording",
                 "Record the live view, at the stream's size, and add the recording to the list when "
                 + "it stops. Leaving the live view stops it.");
             public static readonly GUIContent StopRecording = new GUIContent("Stop Recording",
                 "Stop recording and add the recording to the list.");
-            public static readonly GUIContent RecordingUnsupported = new GUIContent("Take Recording",
+            public static readonly GUIContent RecordingUnsupported = new GUIContent("Start Recording",
                 "Recording isn't available on Linux, the Linux Editor has no H.264 encoder.");
         }
         private AndroidLogcatRuntimeBase m_Runtime;
@@ -96,7 +96,7 @@ namespace Unity.Android.Logcat
                 // One button that starts and stops: a recording is running or it is
                 // not, and two buttons would leave one of them dead most of the time.
                 new AndroidLogcatLiveStream.CaptureAction(
-                    () => m_CaptureVideo.IsRecording ? Styles.StopRecording : RecordingSupported ? Styles.TakeRecording : Styles.RecordingUnsupported,
+                    () => m_CaptureVideo.IsRecording ? Styles.StopRecording : RecordingSupported ? Styles.StartRecording : Styles.RecordingUnsupported,
                     ToggleRecording, () => CanRecord)
             };
 
@@ -452,7 +452,7 @@ namespace Unity.Android.Logcat
             {
                 var message = m_DeviceSelection.SelectedDevice == null
                     ? "No capture to show. Select one from the list."
-                    : "No capture to show. Select Live, then Take Screenshot or Take Recording.";
+                    : "No capture to show. Select Live, then Take Screenshot or Start Recording.";
                 EditorGUI.HelpBox(imageRect, message, MessageType.Info);
             }
         }

@@ -5,7 +5,7 @@ This page explains how to use the [Screen Capture tool](screen-capture.md) to re
 1. Open the [Device Screen Capture window](screen-capture-window-reference.md).
 2. In the [Toolbar](screen-capture-window-reference.md#toolbar), use **Device Selector** to specify the device to record.
 3. Select **Live** in the [Capture list](screen-capture-window-reference.md#capture-list) to view the device's screen.
-4. Select **Take Recording** in the [Live view details](screen-capture-window-reference.md#live-view-details). The Screen Capture tool begins to record the device's screen, and the button becomes **Stop Recording**.
+4. Select **Start Recording** in the [Live view details](screen-capture-window-reference.md#live-view-details). The Screen Capture tool begins to record the device's screen, and the button becomes **Stop Recording**.
 5. Select **Stop Recording** to finish. The recording is added to the [Capture list](screen-capture-window-reference.md#capture-list), and its row is briefly highlighted. Select the row to open it in the [Capture preview](screen-capture-window-reference.md#capture-preview). The Capture list is disabled while recording. Closing the window also stops the recording.
 6. To keep a copy elsewhere, right-click the recording's row and select **Copy To...**.
 
