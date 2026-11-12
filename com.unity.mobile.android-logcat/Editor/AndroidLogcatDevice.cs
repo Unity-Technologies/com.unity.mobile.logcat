@@ -124,6 +124,12 @@ namespace Unity.Android.Logcat
         internal abstract FoldStates QueryFoldStates();
 
         /// <summary>
+        /// The size of each of the device's own screens, on or off - both of a
+        /// foldable's, say. Empty when it cannot be told.
+        /// </summary>
+        internal abstract IReadOnlyList<Vector2Int> QueryPhysicalDisplaySizes();
+
+        /// <summary>
         /// Holds the device in one of the states <see cref="QueryFoldStates"/> reports.
         /// A negative identifier hands it back to the device's own sensors.
         /// </summary>
@@ -397,6 +403,43 @@ namespace Unity.Android.Logcat
             }
 
             return new FoldStates(folded, half, unfolded);
+        }
+
+        // DisplayDeviceInfo{"Inner Display": uniqueId="local:46...", 2076 x 2152, ... - one
+        // line of `dumpsys display` per screen, the screen's own size whether on or off.
+        static readonly Regex PhysicalDisplayRegex =
+            new Regex(@"DisplayDeviceInfo\{""[^""]*"": uniqueId=""[^""]*"", (?<w>\d+) x (?<h>\d+)");
+
+        internal override IReadOnlyList<Vector2Int> QueryPhysicalDisplaySizes()
+        {
+            var sizes = new List<Vector2Int>();
+            if (m_Device == null || State != DeviceState.Connected)
+                return sizes;
+
+            string output;
+            try
+            {
+                output = m_ADB.Run(new[] { $"-s {Id}", "shell", "dumpsys", "display" },
+                    "Failed to query the device's displays");
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log($"Failed to query the device's displays: {ex.Message}");
+                return sizes;
+            }
+
+            foreach (var line in output.Split('\n'))
+            {
+                // Built in screens only: one plugged in or virtual is not what is streamed.
+                if (!line.Contains("type INTERNAL"))
+                    continue;
+                var match = PhysicalDisplayRegex.Match(line);
+                if (match.Success)
+                    sizes.Add(new Vector2Int(
+                        int.Parse(match.Groups["w"].Value, CultureInfo.InvariantCulture),
+                        int.Parse(match.Groups["h"].Value, CultureInfo.InvariantCulture)));
+            }
+            return sizes;
         }
 
         internal override void SetDeviceState(int identifier)

@@ -28,6 +28,21 @@ namespace Unity.Android.Logcat
                 + "this machine and not part of a build.");
             public static readonly GUIContent browse = new GUIContent("Browse...", "Pick the captures folder.");
 
+            public static readonly GUIContent recordingTimeLimit = new GUIContent("Time Limit (minutes)",
+                "How long a recording runs before it stops on its own.");
+            public static readonly GUIContent recordingSquareVideo = new GUIContent("Square Video",
+                "Record a square video as wide and tall as the stream's longest side.\n\n"
+                + "Pros: turning the device or unfolding a foldable keeps the picture at full size. "
+                + "The Screen Capture window plays it without the black areas.\n\n"
+                + "Cons: other video players show black areas around the picture. Each frame has more "
+                + "pixels to encode, about twice as many on a portrait phone, so recording costs more "
+                + "Editor time and the file is larger.\n\n"
+                + "When off, the video is the size of the screen when recording starts, and a turned or "
+                + "unfolded screen is scaled down to fit inside it.");
+            public static readonly GUIContent recordTouches = new GUIContent("Record Touches",
+                "Save the clicks and drags sent from the live view with a recording, so playing it in the "
+                + "Screen Capture window shows where the screen was touched. Other video players do not show them.");
+
             public static readonly GUIContent liveStreamMaxSize = new GUIContent("Max Size",
                 "Longest side of the streamed image in pixels. The device display is scaled down to fit, which is what keeps the bandwidth and the encoding cost on the device down.");
             public static readonly GUIContent liveStreamQuality = new GUIContent("JPEG Quality",
@@ -35,7 +50,7 @@ namespace Unity.Android.Logcat
             public static readonly GUIContent liveStreamReset = new GUIContent("Reset",
                 $"Put Max Size, JPEG Quality and Max Frame Rate back to {AndroidLogcatSettings.kLiveStreamMaxSize.Default}, {AndroidLogcatSettings.kLiveStreamQuality.Default} and {AndroidLogcatSettings.kLiveStreamMaxFps.Default}, leaving every other setting alone.");
             public static readonly GUIContent liveStreamMaxFps = new GUIContent("Max Frame Rate",
-                "Ceiling on frames per second. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
+                "Ceiling on frames per second, and the frame rate recordings are made at. A mirrored display only produces a frame when the screen changes, so an idle device sends fewer than this rather than exactly this.");
         }
 
         private AndroidLogcatRuntimeBase m_Runtime;
@@ -86,14 +101,21 @@ namespace Unity.Android.Logcat
             DoCapturesFolderGUI(settings);
 
             GUILayout.Space(10);
+            EditorGUILayout.LabelField("Recording", EditorStyles.miniBoldLabel);
+            settings.RecordingTimeLimit = RangeSlider(Styles.recordingTimeLimit,
+                settings.RecordingTimeLimit, AndroidLogcatSettings.kRecordingTimeLimit);
+            settings.RecordingSquareVideo = EditorGUILayout.Toggle(Styles.recordingSquareVideo, settings.RecordingSquareVideo);
+            settings.RecordTouches = EditorGUILayout.Toggle(Styles.recordTouches, settings.RecordTouches);
+
+            GUILayout.Space(10);
             EditorGUILayout.LabelField("Live Stream", EditorStyles.miniBoldLabel);
             // Applied when a stream starts, so a stream that is already running keeps the
             // settings it started with until it is reconnected.
-            settings.LiveStreamMaxSize = LiveStreamSlider(Styles.liveStreamMaxSize,
+            settings.LiveStreamMaxSize = RangeSlider(Styles.liveStreamMaxSize,
                 settings.LiveStreamMaxSize, AndroidLogcatSettings.kLiveStreamMaxSize);
-            settings.LiveStreamQuality = LiveStreamSlider(Styles.liveStreamQuality,
+            settings.LiveStreamQuality = RangeSlider(Styles.liveStreamQuality,
                 settings.LiveStreamQuality, AndroidLogcatSettings.kLiveStreamQuality);
-            settings.LiveStreamMaxFps = LiveStreamSlider(Styles.liveStreamMaxFps,
+            settings.LiveStreamMaxFps = RangeSlider(Styles.liveStreamMaxFps,
                 settings.LiveStreamMaxFps, AndroidLogcatSettings.kLiveStreamMaxFps);
 
             EditorGUILayout.HelpBox(
@@ -190,7 +212,7 @@ namespace Unity.Android.Logcat
         /// A slider whose ends come from the setting's own range, so the UI cannot offer
         /// what the setter would clamp away.
         /// </summary>
-        static int LiveStreamSlider(GUIContent label, int value, SettingsRange range)
+        static int RangeSlider(GUIContent label, int value, SettingsRange range)
         {
             return EditorGUILayout.IntSlider(label, value, range.Min, range.Max);
         }

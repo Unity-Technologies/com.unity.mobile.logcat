@@ -47,7 +47,7 @@ class AndroidLogcatNetTests
             "UnityEngine.UIElementsModule",
             "UnityEngine.ImageConversionModule",
             "UnityEngine.JSONSerializeModule",
-            "UnityEditor.CoreModule"
+            "UnityEditor.CoreModule",
         });
 #if UNITY_6000_1_OR_NEWER
         // While running tests in Yamato in logcat package, the active build target is Android
@@ -60,6 +60,13 @@ class AndroidLogcatNetTests
                 "UnityEditor.Android.Extensions"
             });
         };
+#endif
+#if UNITY_6000_3_OR_NEWER
+        expectedReferences.AddRange(new[]
+        {
+            "UnityEditor.VideoModule",
+            "UnityEditor.MediaModule",
+        });
 #endif
 #if UNITY_6000_5_OR_NEWER
         expectedReferences.AddRange(new[]

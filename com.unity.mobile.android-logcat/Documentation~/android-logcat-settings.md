@@ -8,6 +8,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Memory Window](#memory-window)
 * [Packages](#packages)
 * [Capture Settings](#capture-settings)
+    * [Recording](#recording)
     * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
@@ -64,15 +65,23 @@ The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Asse
 
 Changing the folder takes effect immediately. Unity doesn't move existing captures to the new folder: they stay in the old folder, and the [Capture list](screen-capture-window-reference.md#capture-list) displays only the captures in the new folder. To keep using earlier captures, move them to the new folder yourself, together with their `.json` files.
 
+### Recording
+
+|**Setting**|**Description**|
+|---|---|
+|**Time Limit (minutes)**|Specifies how long a recording runs before it stops on its own, between 1 and 60 minutes. The default value is 10.|
+|**Square Video**|Records a square video, as wide and tall as the longest side of the stream, so turning the device or unfolding a foldable keeps the picture at full size. When disabled, the video is the size of the screen when recording starts, and a turned or unfolded screen is scaled down to fit. Enabled by default.|
+|**Record Touches**|Saves the clicks and drags you send from the live view with a recording. When the recording plays in the Screen Capture window, a marker shows where the screen was touched: green when pressed, blue while dragging, and white, fading, once released, or red if the touch was cancelled. Other video players don't show the markers. Enabled by default.|
+
 ### Live Stream
 
-Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
+Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Recordings are made from the live view, so these settings also set the size and quality of a recording. Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
 
 |**Setting**|**Description**|
 |---|---|
 |**Max Size**|Specifies the longest side of the streamed image in pixels, between 256 and 2048. The device's display is scaled down to fit. The default value is 1024.|
 |**JPEG Quality**|Specifies the quality of each streamed frame, between 1 and 100. Lower values produce smaller frames and use less bandwidth. The default value is 70.|
-|**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 120. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
+|**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 60, and the frame rate recordings are made at. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
 
 These settings apply when a stream starts. To apply them to a stream that is already running, turn **Live** off and on again in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list).
 
