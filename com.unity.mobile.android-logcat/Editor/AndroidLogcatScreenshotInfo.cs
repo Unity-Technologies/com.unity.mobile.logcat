@@ -45,6 +45,9 @@ namespace Unity.Android.Logcat
             public DisplayInfo display = new DisplayInfo();
             public ContentInfo content = new ContentInfo();
             public List<TouchInfo> touches = new List<TouchInfo>();
+            // Logged since the frame before this one, up to this one, filtered as the
+            // Android Logcat window was when recording started.
+            public List<LogcatEntry> logs = new List<LogcatEntry>();
         }
 
         /// <summary>

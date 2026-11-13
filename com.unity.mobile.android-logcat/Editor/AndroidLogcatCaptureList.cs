@@ -122,6 +122,8 @@ namespace Unity.Android.Logcat
         Selection m_Restore;
         // The frame the restored video was on, for when it opens. -1 for none.
         long m_RestoreVideoFrame = -1;
+        // The selected recording's logcat messages, null for a screenshot.
+        AndroidLogcatRecordingLogView m_LogView;
 
         /// <summary>What is selected, which the window keeps across a domain reload.</summary>
         [Serializable]
@@ -337,6 +339,14 @@ namespace Unity.Android.Logcat
 
             AndroidLogcatStatsColumn.DrawBox(rc);
 
+            // Full width under everything else, as log lines are long.
+            if (PreviewIsVideo && m_LogView != null && m_LogView.HasMessages)
+            {
+                var frameRate = m_VideoPlayer.FrameRate;
+                rc = m_LogView.DoGUI(rc, m_VideoPlayer.TimeOf(m_VideoPlayer.Frame),
+                    frameRate > 0 ? 1 / frameRate : 0, SeekToTime);
+            }
+
             // The same column the live view draws, so the two look alike. Taken out of
             // the area before the image is fitted, or the image would be drawn
             // underneath it, and sized to its text, or a device name is cut in half.
@@ -387,6 +397,13 @@ namespace Unity.Android.Logcat
             // or turns: the column stays put, as in the live view, whatever is selected.
             DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, previewArea));
             return true;
+        }
+
+        void SeekToTime(double time)
+        {
+            var frameRate = m_VideoPlayer.FrameRate;
+            if (frameRate > 0)
+                m_VideoPlayer.SeekTo((long)Math.Round(time * frameRate));
         }
 
         void DoStatsGUI(Rect rc)
@@ -662,10 +679,12 @@ namespace Unity.Android.Logcat
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return;
 
+            m_LogView = null;
             if (IsVideo(path))
             {
-                m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
-                    AndroidLogcatScreenshotInfo.Load(path));
+                var info = AndroidLogcatScreenshotInfo.Load(path);
+                m_PreviewDetails = new PreviewDetails(null, new FileInfo(path), info);
+                m_LogView = new AndroidLogcatRecordingLogView(m_Runtime, info?.frameChanges);
                 m_VideoPlayer.Open(path, m_RestoreVideoFrame);
                 m_RestoreVideoFrame = -1;
                 return;

@@ -44,6 +44,7 @@ namespace Unity.Android.Logcat
         {
             internal byte[] Data;
             internal long PtsUs;
+            internal long RealtimeUs;
             internal long ArrivalUs;
             internal int Rotation;
             internal int DisplayWidth;
@@ -91,6 +92,13 @@ namespace Unity.Android.Logcat
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
+        // Logcat messages, placed among the frames on Stop: a frame has to arrive before
+        // the device's clock can be read against the recording's.
+        readonly List<LogcatEntry> m_Logs = new List<LogcatEntry>();
+        // A device wall clock time and where it falls on the recording's clock: the first
+        // frame's, or until one arrives, the live view's last.
+        long m_AnchorRealtimeUs = -1;
+        long m_AnchorUs;
 
         // Stats, logged when a recording stops.
         int m_Received;
@@ -120,10 +128,21 @@ namespace Unity.Android.Logcat
         /// The video is a square of this, so any frame fits it turned either way. 0 sizes
         /// it to the first frame instead.
         /// </param>
+        /// <param name="currentRealtimeUs">
+        /// The device wall clock of <paramref name="current"/>, -1 when unknown, and
+        /// <paramref name="currentArrivalTicks"/> when it arrived, in Stopwatch ticks.
+        /// </param>
         internal AndroidLogcatStreamRecorder(string path, int frameRate, Texture2D current, int currentRotation,
-            Vector2Int currentDisplaySize, Func<int, int> quarterTurnsFor, int side = 0)
+            Vector2Int currentDisplaySize, Func<int, int> quarterTurnsFor, int side = 0,
+            long currentRealtimeUs = -1, long currentArrivalTicks = 0)
         {
             m_Path = path;
+            if (currentRealtimeUs >= 0)
+            {
+                m_AnchorRealtimeUs = currentRealtimeUs;
+                var startTicks = Stopwatch.GetTimestamp() - m_Clock.ElapsedTicks;
+                m_AnchorUs = (currentArrivalTicks - startTicks) * 1000000 / Stopwatch.Frequency;
+            }
             m_Side = side;
             m_FrameRate = Math.Max(1, frameRate);
             // After the frame rate, which turns its slot into a time.
@@ -156,7 +175,7 @@ namespace Unity.Android.Logcat
         long SlotAt(long us) => (long)Math.Round(us * (double)m_FrameRate / 1000000);
 
         /// <summary>Reader thread. Copies the frame, since the reader reuses its buffers.</summary>
-        internal void Enqueue(byte[] data, int size, long ptsUs, int rotation, int displayWidth, int displayHeight)
+        internal void Enqueue(byte[] data, int size, long ptsUs, long realtimeUs, int rotation, int displayWidth, int displayHeight)
         {
             lock (m_Lock)
             {
@@ -175,6 +194,7 @@ namespace Unity.Android.Logcat
                 {
                     Data = copy,
                     PtsUs = ptsUs,
+                    RealtimeUs = realtimeUs,
                     ArrivalUs = NowUs,
                     Rotation = rotation,
                     DisplayWidth = displayWidth,
@@ -297,6 +317,12 @@ namespace Unity.Android.Logcat
             {
                 m_FirstPtsUs = frame.PtsUs;
                 m_FirstArrivalUs = frame.ArrivalUs;
+                // The same anchor as the frames, so a message lands where they do.
+                if (frame.RealtimeUs > 0)
+                {
+                    m_AnchorRealtimeUs = frame.RealtimeUs;
+                    m_AnchorUs = frame.ArrivalUs;
+                }
             }
             var slot = SlotAt(m_FirstArrivalUs + frame.PtsUs - m_FirstPtsUs);
 
@@ -346,6 +372,32 @@ namespace Unity.Android.Logcat
         /// 0 to 1 from the top left. Android does not draw injected touches, so a player
         /// draws these instead. Only the last move of a frame is kept.
         /// </summary>
+        /// <summary>Logcat messages, as the Android Logcat window filters them.</summary>
+        internal void NoteLogs(IEnumerable<LogcatEntry> entries)
+        {
+            m_Logs.AddRange(entries);
+        }
+
+        /// <summary>
+        /// Each message goes to the frame whose slot it was logged in, so a frame lists
+        /// what was logged since the one before it.
+        /// </summary>
+        void PlaceLogs(long lastSlot)
+        {
+            if (m_AnchorRealtimeUs < 0 || lastSlot < 0)
+                return;
+            foreach (var entry in m_Logs)
+            {
+                var realtimeUs = (entry.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10;
+                var slot = SlotAt(m_AnchorUs + realtimeUs - m_AnchorRealtimeUs);
+                // Logged before the recording started.
+                if (slot < 0)
+                    continue;
+                ChangeAt((double)Math.Min(slot, lastSlot) / m_FrameRate).logs.Add(entry);
+            }
+            m_Logs.Clear();
+        }
+
         internal void NoteTouch(AndroidLogcatLiveStream.TouchAction action, float x, float y)
         {
             var change = ChangeAt((double)SlotAt(NowUs) / m_FrameRate);
@@ -510,6 +562,7 @@ namespace Unity.Android.Logcat
             }
             finally
             {
+                PlaceLogs(m_Written - 1);
                 try
                 {
                     m_Encoder?.Dispose();

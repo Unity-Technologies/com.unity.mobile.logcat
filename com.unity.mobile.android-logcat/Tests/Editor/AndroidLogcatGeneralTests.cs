@@ -303,6 +303,8 @@ class AndroidLogcatGeneralTests
         settings.RecordingSquareVideo = false;
         Assert.IsTrue(settings.RecordTouches, "Recording touches should be on by default");
         settings.RecordTouches = false;
+        Assert.IsFalse(settings.RecordLogcatMessages, "Recording logcat messages should be off by default");
+        settings.RecordLogcatMessages = true;
 
         // And the whole page Reset takes them with everything else.
         settings.LiveStreamMaxSize = 512;
@@ -310,6 +312,7 @@ class AndroidLogcatGeneralTests
         Assert.AreEqual(AndroidLogcatSettings.kRecordingTimeLimit.Default, settings.RecordingTimeLimit);
         Assert.IsTrue(settings.RecordingSquareVideo, "Reset should turn square video back on");
         Assert.IsTrue(settings.RecordTouches, "Reset should turn recording touches back on");
+        Assert.IsFalse(settings.RecordLogcatMessages, "Reset should turn recording logcat messages back off");
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxSize.Default, settings.LiveStreamMaxSize);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamQuality.Default, settings.LiveStreamQuality);
         Assert.AreEqual(AndroidLogcatSettings.kLiveStreamMaxFps.Default, settings.LiveStreamMaxFps);

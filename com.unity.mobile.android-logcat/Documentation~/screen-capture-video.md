@@ -17,6 +17,17 @@ To change the size, quality, and frame rate of a recording, use **Max Size**, **
 
 The device sends a frame only when its screen changes. While the screen is still, the recording repeats the last frame. A recording stops automatically after the **Time Limit** in the [Recording settings](android-logcat-settings.md#recording), which is 10 minutes by default. A recording also stops and is saved when Unity reloads scripts, for example after you change a script.
 
+## Record logcat messages
+
+A recording can also save the logcat messages the device logs while you record, so that you can see what the device logged at each frame when you play the recording back.
+
+1. Select the arrow next to **Start Recording** in the [Live view details](screen-capture-window-reference.md#live-view-details).
+2. Select **Include Logcat Messages**. This option is disabled by default, and applies from the next recording you start.
+
+The recording saves the messages the [Android Logcat window](android-logcat-window.md) would display: the selected package, priority, tags, and filter text when recording starts. The messages are saved in the `.json` file next to the recording.
+
+When you play the recording in the [Capture preview](screen-capture-window-reference.md#capture-preview), the messages appear in a panel under the video. Each message belongs to the first frame captured after it was logged, and starts with that frame's time in the video, as the player displays it, followed by the time on the device. The messages of the current frame, logged since the previous frame, are highlighted, and messages logged after the current frame are dimmed. Select a message to go to its frame. Drag the divider above the panel to resize it.
+
 ## Recording limitations
 
 * When recording a video, the Screen Recorder Tool doesn't capture sound.
