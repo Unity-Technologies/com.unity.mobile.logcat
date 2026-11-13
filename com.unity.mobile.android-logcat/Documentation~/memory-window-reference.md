@@ -34,6 +34,9 @@ The memory details panel displays the amount of memory for each memory type. It 
 
 The Memory window can display different memory groups allocated for your application.
 
+![The memory group drop-down](images/memory-groups.png)
+> The memory group drop-down.
+
 | **Memory group**                | **Description**                                              |
 | ------------------------------- | ------------------------------------------------------------ |
 | **Resident Set Size (RSS)**     | The total amount of memory in RAM that the application allocated. This includes both shared and non-shared memory pages. For example, applications that access the same library share memory pages.<br/> **Note**: This metric is only visible on Android 11 or higher. |
