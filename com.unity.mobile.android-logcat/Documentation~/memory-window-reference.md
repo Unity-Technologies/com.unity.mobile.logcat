@@ -9,7 +9,7 @@ To open the Memory window in the Unity Editor:
 
 If you select **Auto Capture**, Unity periodically captures memory snapshots for the selected application. If you deselect **Auto Capture**, the memory window provides a **Capture** button which you can use to manually capture a memory snapshot. This is useful if the automatic memory requests affect the application's performance.
 
-![The memory window](images/MemoryWindow.png)
+![The memory window](images/memory-window.png)
 > The memory window.
 
 | **Label**               | **Description**                                              |
@@ -60,14 +60,14 @@ To make memory requests, the Memory window uses `adb shell dumpsys meminfo packa
 
 The following screenshot shows the memory dump that `dumpsys` produces:
 
-![A raw dumpsys memory dump](images/MemoryDump.png)
+![A raw dumpsys memory dump](images/memory-dump.png)
 > A raw `dumpsys` memory dump.
 
 ## Memory chart
 
 The memory chart displays the memory allocated for the connected application over time.
 
- ![The memory chart](images/MemoryWindowChart.png)
+ ![The memory chart](images/memory-window-chart.png)
 > The memory chart.
 
 To view a snapshot in the [memory details panel](#memory-details-panel), click on the chart at the part you want to view.
