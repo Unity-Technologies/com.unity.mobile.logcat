@@ -8,6 +8,7 @@ To open the Android Logcat Settings window in the Unity Editor, go to **Edit** >
 * [Memory Window](#memory-window)
 * [Packages](#packages)
 * [Capture Settings](#capture-settings)
+    * [Recording](#recording)
     * [Live Stream](#live-stream)
 * [Stacktrace Regex](#stacktrace-regex)
 * [Symbol Extensions](#symbol-extensions)
@@ -64,15 +65,25 @@ The default, `AndroidLogcat/Captures`, is a folder in your project, beside `Asse
 
 Changing the folder takes effect immediately. Unity doesn't move existing captures to the new folder: they stay in the old folder, and the [Capture list](screen-capture-window-reference.md#capture-list) displays only the captures in the new folder. To keep using earlier captures, move them to the new folder yourself, together with their `.json` files.
 
+### Recording
+
+Use the **Recording** settings to control the duration, dimensions, and touch data of a recording captured from the [live view](screen-capture-live-stream.md).
+
+|**Setting**|**Description**|
+|---|---|
+|**Time Limit (minutes)**|Specifies how long you can record a video, from 1 to 60 minutes. Recording automatically stops when it reaches this limit. The default value is 10.|
+|**Square Video**|Records a square video using the longest dimension of the live stream for both width and height. This keeps the display at full size when you rotate the device or unfold a foldable device. When disabled, the video matches the size of the screen when recording starts and Unity scales down a rotated or unfolded screen to fit. This setting is enabled by default.|
+|**Record Touches**|Saves the position of each click and drag you send from the live view during a recording, in the `.json` file next to the recording. When you play the recording in the **Screen Capture** window, a marker appears over the video where the screen was touched. The marker is green when the screen is pressed and blue while a touch is dragged. When the touch is released, the marker turns white and fades out. A red marker indicates a canceled touch. The markers aren't part of the video, so they don't appear when you play the recording outside the **Screen Capture** window. This setting is enabled by default.|
+
 ### Live Stream
 
-Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
+Use the **Live Stream** settings to control the [live view of the device's screen](screen-capture-live-stream.md). Recordings are made from the live view, so these settings also set the size and quality of a recording. Streaming a display uses the device's CPU to compress each frame and the connection to your computer to carry it, so these settings trade image quality for both.
 
 |**Setting**|**Description**|
 |---|---|
 |**Max Size**|Specifies the longest side of the streamed image in pixels, between 256 and 2048. The device's display is scaled down to fit. The default value is 1024.|
 |**JPEG Quality**|Specifies the quality of each streamed frame, between 1 and 100. Lower values produce smaller frames and use less bandwidth. The default value is 70.|
-|**Max Frame Rate**|Specifies the highest number of frames per second the device sends, between 1 and 120. The device only sends a frame when its screen changes, so this is a limit rather than a rate. The default value is 30.|
+|**Max Frame Rate**|Specifies the maximum number of frames per second the device streams and records, from 1 to 60. The device only sends a frame when its screen changes, so this is a limit rather than a rate. A higher frame rate records fast movement more smoothly, but uses more Editor processing time, and at a large **Max Size** the device might not deliver frames at that rate. The default value is 30.|
 
 These settings apply when a stream starts. To apply them to a stream that is already running, turn **Live** off and on again in the [Device Screen Capture window](screen-capture-window-reference.md#capture-list).
 

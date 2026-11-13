@@ -23,7 +23,10 @@ namespace Unity.Android.Logcat
         // hand edited settings file is held to.
         internal static readonly SettingsRange kLiveStreamMaxSize = new SettingsRange(1024, 256, 2048);
         internal static readonly SettingsRange kLiveStreamQuality = new SettingsRange(70, 1, 100);
-        internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 120);
+        internal static readonly SettingsRange kLiveStreamMaxFps = new SettingsRange(30, 1, 60);
+
+        // Minutes a recording runs before it stops on its own.
+        internal static readonly SettingsRange kRecordingTimeLimit = new SettingsRange(10, 1, 60);
 
         // Where captures go unless told otherwise, relative to the project. Library is
         // local to the machine and outside any build, which suits output that is cheap
@@ -83,6 +86,15 @@ namespace Unity.Android.Logcat
 
         [SerializeField]
         private int m_LiveStreamMaxFps;
+
+        [SerializeField]
+        private int m_RecordingTimeLimit;
+
+        [SerializeField]
+        private bool m_RecordingSquareVideo;
+
+        [SerializeField]
+        private bool m_RecordTouches;
 
         internal int MemoryRequestIntervalMS
         {
@@ -176,6 +188,15 @@ namespace Unity.Android.Logcat
             }
         }
 
+        /// <summary>Assigns and reports the change, for the settings that just store a value.</summary>
+        void Set<T>(ref T field, T value)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value))
+                return;
+            field = value;
+            InvokeOnSettingsChanged();
+        }
+
         internal int LiveStreamMaxSize
         {
             set
@@ -207,6 +228,43 @@ namespace Unity.Android.Logcat
             {
                 return m_LiveStreamQuality;
             }
+        }
+
+        /// <summary>In minutes.</summary>
+        internal int RecordingTimeLimit
+        {
+            set
+            {
+                var corrected = kRecordingTimeLimit.Clamp(value);
+                if (m_RecordingTimeLimit == corrected)
+                    return;
+                m_RecordingTimeLimit = corrected;
+                InvokeOnSettingsChanged();
+            }
+            get
+            {
+                return m_RecordingTimeLimit;
+            }
+        }
+
+        /// <summary>
+        /// Whether a recording is a square of the stream's longest side, so turning the
+        /// device or unfolding it keeps the picture at full size.
+        /// </summary>
+        internal bool RecordingSquareVideo
+        {
+            set => Set(ref m_RecordingSquareVideo, value);
+            get => m_RecordingSquareVideo;
+        }
+
+        /// <summary>
+        /// Whether touches sent from the live view are saved with a recording, for its
+        /// player to draw.
+        /// </summary>
+        internal bool RecordTouches
+        {
+            set => Set(ref m_RecordTouches, value);
+            get => m_RecordTouches;
         }
 
         /// <summary>
@@ -310,6 +368,9 @@ namespace Unity.Android.Logcat
             m_MessageFontSize = 11;
             m_MaxExitedPackagesToShow = 4;
             m_CaptureOutputDirectory = kDefaultCaptureOutputDirectory;
+            m_RecordingTimeLimit = kRecordingTimeLimit.Default;
+            m_RecordingSquareVideo = true;
+            m_RecordTouches = true;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");
@@ -445,7 +506,9 @@ namespace Unity.Android.Logcat
             // regexes along with them.
             m_LiveStreamMaxSize = kLiveStreamMaxSize.OrDefault(m_LiveStreamMaxSize);
             m_LiveStreamQuality = kLiveStreamQuality.OrDefault(m_LiveStreamQuality);
-            m_LiveStreamMaxFps = kLiveStreamMaxFps.OrDefault(m_LiveStreamMaxFps);
+            // Clamped rather than reset: the cap used to go up to 120.
+            m_LiveStreamMaxFps = m_LiveStreamMaxFps == 0 ? kLiveStreamMaxFps.Default : kLiveStreamMaxFps.Clamp(m_LiveStreamMaxFps);
+            m_RecordingTimeLimit = kRecordingTimeLimit.OrDefault(m_RecordingTimeLimit);
         }
 
         internal static AndroidLogcatSettings Load()

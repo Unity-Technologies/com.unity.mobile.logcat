@@ -1020,15 +1020,6 @@ namespace Unity.Android.Logcat
             return false;
         }
 
-        internal static void KillScreenRecordProcess(AndroidLogcatRuntimeBase runtime, IAndroidLogcatDevice device)
-        {
-            if (device == null)
-                return;
-            var pid = GetPidFromPackageName(runtime.Tools.ADB, device, "screenrecord");
-            if (pid != -1)
-                KillProcesss(runtime.Tools.ADB, device, pid);
-        }
-
         internal static void ShowAndroidIsNotInstalledMessage()
         {
             UnityEditor.EditorGUILayout.HelpBox("Android Logcat requires Android support to be installed.", UnityEditor.MessageType.Info);
@@ -1155,7 +1146,9 @@ namespace Unity.Android.Logcat
                 int frame = (int)Mathf.Repeat(Time.realtimeSinceStartup * 10, 11.99f);
                 statusIcon = AndroidLogcatStyles.Status.GetContent(frame);
             }
-            GUILayout.Label(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            var rect = GUILayoutUtility.GetRect(statusIcon, AndroidLogcatStyles.StatusIcon, GUILayout.Width(30));
+            if (Event.current.type == EventType.Repaint)
+                AndroidLogcatStyles.StatusIcon.Draw(rect, statusIcon, false, false, false, false);
         }
         internal static void DrawRectangle(Rect area, int frameWidth, Color color)
         {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -30,6 +31,60 @@ namespace Unity.Android.Logcat
         public string abi;
         public int displayWidth;
         public int displayHeight;
+        // What changes over a recording, in time order. Only a recording has these.
+        public FrameChange[] frameChanges;
+
+        /// <summary>
+        /// What changed <see cref="time"/> seconds into a recording. Each kind of change is
+        /// a field of its own, unset where that kind did not change.
+        /// </summary>
+        [Serializable]
+        internal class FrameChange
+        {
+            public double time;
+            public DisplayInfo display = new DisplayInfo();
+            public ContentInfo content = new ContentInfo();
+            public List<TouchInfo> touches = new List<TouchInfo>();
+        }
+
+        /// <summary>
+        /// A touch sent from the Editor, at a position on the picture from 0 to 1, top left
+        /// first - so it lands on the content rect whatever size the video is.
+        /// </summary>
+        [Serializable]
+        internal class TouchInfo
+        {
+            // Down, Move, Up or Cancel.
+            public string action;
+            public float x;
+            public float y;
+        }
+
+        /// <summary>
+        /// Where the picture sits in the video, in its pixels. The rest is black: the video
+        /// keeps one size while the picture is turned, folded or resized inside it.
+        /// </summary>
+        [Serializable]
+        internal class ContentInfo
+        {
+            public int x;
+            public int y;
+            public int width;
+            public int height;
+
+            internal bool IsSet => width > 0 && height > 0;
+        }
+
+        /// <summary>The device's display, which folding or turning it changes.</summary>
+        [Serializable]
+        internal class DisplayInfo
+        {
+            public int width;
+            public int height;
+
+            // JsonUtility writes a nested class even when it is empty, so empty means unset.
+            internal bool IsSet => width > 0 && height > 0;
+        }
 
         internal static string PathFor(string imagePath)
         {
