@@ -26,7 +26,10 @@ jobs:
 
             const yamatoBadge = "[![Yamato CI](https://img.shields.io/badge/Yamato-CI-blue?logo=unity&logoColor=white)](" + yamatoUrl + ")";
 
-            const buttons = MARKER + "\n" + yamatoBadge + "\n" + MARKER;
+            const docsUrl = "https://yamato.ds.unity3d.com/project/277/branch/" + branch + "/jobDefinition/.yamato%2Fdocs.yml%23build_docs";
+            const docsBadge = "[![Docs preview](https://img.shields.io/badge/Docs-preview-green?logo=readthedocs&logoColor=white)](" + docsUrl + ")";
+
+            const buttons = MARKER + "\n" + yamatoBadge + " " + docsBadge + "\n" + MARKER;
 
             await github.rest.pulls.update({
               owner: context.repo.owner,
