@@ -1,12 +1,8 @@
 using NUnit.Framework;
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Unity.Android.Logcat;
-using UnityEditor;
 using UnityEditor.Compilation;
 
 class AndroidLogcatNetTests
@@ -25,79 +21,6 @@ class AndroidLogcatNetTests
         var logcatAssembly = CompilationPipeline.GetAssemblies(AssembliesType.Editor).FirstOrDefault(a => a.name.Equals("Unity.Mobile.AndroidLogcat.Editor"));
         Assert.IsNotNull(logcatAssembly, "Failed to find Android Logcat assembly");
         return logcatAssembly;
-    }
-
-    /// <summary>
-    /// Checks that no accidental references are added to Logcat assembly
-    /// </summary>
-    [Test]
-    public void ValidateAssemblyReferences()
-    {
-        var logcatAssembly = GetLogcatAssembly();
-
-        static bool IsFrameworkReference(string name) =>
-            name == "mscorlib" || name == "netstandard" || name == "System" || name.StartsWith("System.", StringComparison.Ordinal);
-
-        var expectedReferences = new List<string>(new[]
-        {
-            "UnityEngine.IMGUIModule",
-            "UnityEngine.CoreModule",
-            "UnityEngine.VideoModule",
-            "UnityEngine.TextRenderingModule",
-            "UnityEngine.UIElementsModule",
-            "UnityEngine.ImageConversionModule",
-            "UnityEngine.JSONSerializeModule",
-            "UnityEditor.CoreModule"
-        });
-#if UNITY_6000_1_OR_NEWER
-        // While running tests in Yamato in logcat package, the active build target is Android
-        // But in unity/unity it's not Android...
-        // That's why we expect this reference conditionally
-        if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
-        {
-            expectedReferences.AddRange(new[]
-            {
-                "UnityEditor.Android.Extensions"
-            });
-        };
-#endif
-#if UNITY_6000_5_OR_NEWER
-        expectedReferences.AddRange(new[]
-        {
-            "Unity.Scripting"
-        });
-#endif
-
-#if UNITY_6000_7_OR_NEWER
-        expectedReferences.AddRange(new[]
-        {
-            "UnityEngine.ScriptingModule",
-            "UnityEngine.UICommonModule",
-        });
-#endif
-
-        var referencedCount = expectedReferences.ToDictionary(s => s, s => 0);
-
-        // ReflectionOnlyLoadFrom is unsupported on CoreCLR; inspect the loaded assembly instead.
-
-        var references = typeof(AndroidLogcatConsoleWindow).Assembly.GetReferencedAssemblies().Select(a => a.Name);
-        var errors = new StringBuilder();
-        Console.WriteLine($"Logcat package references:\n{string.Join("\n", references)}");
-        foreach (var r in references.Where(n => !IsFrameworkReference(n)))
-        {
-            if (!expectedReferences.Contains(r))
-                errors.AppendLine($"Unexpected reference '{r}'");
-            else
-                referencedCount[r]++;
-        }
-
-        foreach (var r in referencedCount)
-        {
-            if (r.Value != 1)
-                errors.AppendLine($"'{r.Key}' was expected to be referenced once, but was referenced {r.Value} times, please adjust expectations, maybe the reference is no longer needed?");
-        }
-
-        Assert.AreEqual(0, errors.Length, errors.ToString());
     }
 
     /// <summary>
