@@ -1,5 +1,5 @@
 build_docs:
-  name: Build documentation
+  name: Preview documentation
   agent:
     type: Unity::VM
     image: unity-docs-engineering/packagedocs-cli-build:latest
