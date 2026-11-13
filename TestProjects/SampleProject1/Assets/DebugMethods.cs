@@ -4,20 +4,71 @@ using UnityEngine;
 
 public class DebugMethods : MonoBehaviour
 {
+    const int kMaxTypedLength = 200;
+
+    // What was typed, as Input.inputString reports it: backspace removes the last
+    // character and Enter starts a new line.
+    string m_Typed = string.Empty;
+    GUIStyle m_TypedStyle;
+
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine("runner");
+        TestDebug();
     }
 
-    IEnumerator runner()
+    void Update()
     {
-        while (true)
+        var input = Input.inputString;
+        if (string.IsNullOrEmpty(input))
+            return;
+
+        foreach (var c in input)
         {
-            TestDebug();
-            yield return new WaitForSeconds(2);
+            if (c == '\b')
+            {
+                if (m_Typed.Length > 0)
+                    m_Typed = m_Typed.Substring(0, m_Typed.Length - 1);
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                m_Typed += '\n';
+            }
+            else
+            {
+                m_Typed += c;
+            }
         }
+
+        if (m_Typed.Length > kMaxTypedLength)
+            m_Typed = m_Typed.Substring(m_Typed.Length - kMaxTypedLength);
+
+        // Logged too, so typing shows up in logcat.
+        Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Typed: '{0}'", Escape(input));
     }
+
+    void OnGUI()
+    {
+        if (m_TypedStyle == null)
+        {
+            m_TypedStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.Max(24, Screen.height / 30),
+                wordWrap = true
+            };
+            m_TypedStyle.normal.textColor = Color.white;
+        }
+
+        var margin = Screen.width * 0.05f;
+        var rect = new Rect(margin, margin, Screen.width - 2 * margin, Screen.height - 2 * margin);
+        GUI.Label(rect, "Typed: " + m_Typed + "_", m_TypedStyle);
+    }
+
+    static string Escape(string input)
+    {
+        return input.Replace("\b", "\\b").Replace("\n", "\\n").Replace("\r", "\\r");
+    }
+
 
     public void TestDebug()
     {
