@@ -51,8 +51,8 @@ class AndroidLogcatStreamRecorderTests
         var portrait = Jpeg(64, 128);
         m_Recorder = new AndroidLogcatStreamRecorder(Path.Combine(m_Folder, "touch.mp4"), kFrameRate,
             null, 0, Vector2Int.zero, rotation => 0);
-        m_Recorder.Enqueue(landscape, landscape.Length, 0, 0, 2424, 1080);
-        m_Recorder.Enqueue(portrait, portrait.Length, kFrameUs, 0, 1080, 2424);
+        m_Recorder.Enqueue(landscape, landscape.Length, 0, 0, 0, 2424, 1080);
+        m_Recorder.Enqueue(portrait, portrait.Length, kFrameUs, 0, 0, 1080, 2424);
 
         // Well past both frames' slots, on the recording's clock.
         Thread.Sleep(300);
@@ -75,6 +75,53 @@ class AndroidLogcatStreamRecorderTests
         Assert.IsTrue(turned.content.IsSet, "The portrait frame sits differently in the video, so its crop should change too");
         Assert.IsEmpty(turned.touches, "The touch was merged into the frame's change");
         Assert.IsFalse(touch.display.IsSet, "The frame's display change was merged into the touch");
+    }
+
+    [Test]
+    public void LogsLandOnTheFrameTheyWereLoggedBeforeAndSurviveSaving()
+    {
+        // The device's wall clock when the only frame was captured.
+        const long kFrameRealtimeUs = 1794578375000000;
+        var frame = Jpeg(64, 128);
+        m_Recorder = new AndroidLogcatStreamRecorder(Path.Combine(m_Folder, "logs.mp4"), kFrameRate,
+            null, 0, Vector2Int.zero, rotation => 0);
+        m_Recorder.Enqueue(frame, frame.Length, 0, kFrameRealtimeUs, 0, 1080, 2424);
+        m_Recorder.NoteLogs(new[]
+        {
+            Log(kFrameRealtimeUs - 1000000, "before the recording"),
+            Log(kFrameRealtimeUs + 2 * kFrameUs, "two frames in"),
+            Log(kFrameRealtimeUs + 60 * 1000000L, "after it stopped")
+        });
+
+        // Long enough for several frames, so the messages have somewhere to go.
+        Thread.Sleep(300);
+        var recorder = m_Recorder;
+        m_Recorder = null;
+        Assert.IsTrue(recorder.Stop(), $"Nothing was recorded. {recorder.Error}");
+
+        var logged = recorder.FrameChanges.Where(change => change.logs.Count > 0).ToArray();
+        Assert.IsFalse(logged.SelectMany(change => change.logs).Any(entry => entry.message == "before the recording"),
+            "A message logged before the recording started should be left out");
+        var twoIn = logged.Single(change => change.logs.Any(entry => entry.message == "two frames in"));
+        // Two frames after the only one, give or take how long queueing took.
+        Assert.That(twoIn.time, Is.InRange(1.0 / kFrameRate, 4.0 / kFrameRate));
+        var last = recorder.FrameChanges.Max(change => change.time);
+        var after = logged.Single(change => change.logs.Any(entry => entry.message == "after it stopped"));
+        Assert.AreEqual(last, after.time, "A message after the last frame should land on the last frame");
+
+        var info = new AndroidLogcatCaptureInfo { frameChanges = recorder.FrameChanges.ToArray() };
+        var loaded = JsonUtility.FromJson<AndroidLogcatCaptureInfo>(JsonUtility.ToJson(info));
+        var saved = loaded.frameChanges.SelectMany(change => change.logs).Single(entry => entry.message == "two frames in");
+        Assert.AreEqual(kFrameRealtimeUs + 2 * kFrameUs, (saved.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10);
+        Assert.AreEqual(Priority.Warn, saved.priority);
+        Assert.AreEqual("Tag", saved.tag);
+        Assert.AreEqual(12, saved.processId);
+    }
+
+    static LogcatEntry Log(long realtimeUs, string message)
+    {
+        var time = DateTime.SpecifyKind(DateTime.UnixEpoch.AddTicks(realtimeUs * 10), DateTimeKind.Utc);
+        return new LogcatEntry(time, 12, 34, Priority.Warn, "Tag", message);
     }
 
     static byte[] Jpeg(int width, int height)

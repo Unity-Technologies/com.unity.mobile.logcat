@@ -19,6 +19,8 @@ namespace Unity.Android.Logcat
 
         readonly AndroidLogcatRuntimeBase m_Runtime;
         AndroidLogcatStreamRecorder m_Recorder;
+        // Reads logcat for the recording, when it saves messages.
+        AndroidLogcat m_Logcat;
         Action<Result, string> m_OnStopRecording;
         // Not the wall clock, which a clock change would move the time limit with.
         readonly System.Diagnostics.Stopwatch m_Clock = new System.Diagnostics.Stopwatch();
@@ -86,7 +88,8 @@ namespace Unity.Android.Logcat
             // The constructor reports failures through Error rather than throwing.
             var recorder = new AndroidLogcatStreamRecorder(path, m_Runtime.Settings.LiveStreamMaxFps, stream.Texture,
                 stream.DisplayRotation, stream.DisplaySize, stream.QuarterTurnsFor,
-                m_Runtime.Settings.RecordingSquareVideo ? stream.LongestFrameSide() : 0);
+                m_Runtime.Settings.RecordingSquareVideo ? stream.LongestFrameSide() : 0,
+                stream.ShownRealtimeUs, stream.ShownArrivalTicks);
             // The encoder is created from the live view's frame, and failing to is
             // reported here rather than as a recording that never writes anything.
             if (!string.IsNullOrEmpty(recorder.Error))
@@ -101,10 +104,38 @@ namespace Unity.Android.Logcat
             RecordingPath = path;
             m_Recorder = recorder;
             // The same details a screenshot is saved with, so the list can say which device it came from.
-            AndroidLogcatScreenshotInfo.Create(device)?.Save(RecordingPath);
+            AndroidLogcatCaptureInfo.Create(device)?.Save(RecordingPath);
             m_OnStopRecording = onStopRecording;
             m_Clock.Restart();
             stream.Recorder = m_Recorder;
+            if (m_Runtime.Settings.RecordLogcatMessages)
+                StartLogcat(device, recorder);
+        }
+
+        /// <summary>
+        /// A logcat of the recording's own, filtered the way the Android Logcat window is
+        /// now, so the recording keeps what that window would show.
+        /// </summary>
+        void StartLogcat(IAndroidLogcatDevice device, AndroidLogcatStreamRecorder recorder)
+        {
+            if (m_Runtime.Tools == null)
+                return;
+            var user = m_Runtime.UserSettings;
+            var process = user.LastSelectedProcess;
+            var pid = process != null && process.deviceId == device.Id ? process.processId : 0;
+            m_Logcat = new AndroidLogcat(m_Runtime, m_Runtime.Tools.ADB, device, pid, user.SelectedPriority,
+                user.FilterOptions, user.Tags.GetSelectedTags(), forRecording: true);
+            m_Logcat.FilteredLogEntriesAdded += recorder.NoteLogs;
+            m_Logcat.Start();
+        }
+
+        void StopLogcat()
+        {
+            if (m_Logcat == null)
+                return;
+            m_Logcat.Flush();
+            m_Logcat.Stop();
+            m_Logcat = null;
         }
 
         /// <summary>Returns false when nothing was recording, or nothing was recorded.</summary>
@@ -121,6 +152,8 @@ namespace Unity.Android.Logcat
             var stream = m_Runtime.LiveStream;
             if (stream != null)
                 stream.Recorder = null;
+            // Before the recorder, which places the messages when it stops.
+            StopLogcat();
 
             var recorded = recorder.Stop();
             AndroidLogcatInternalLog.Log(recorder.Stats());
@@ -146,11 +179,11 @@ namespace Unity.Android.Logcat
         /// Folding or turning the device during a recording changes its display, so the
         /// details saved at the start get what changed over time.
         /// </summary>
-        static void SaveFrameChanges(string path, IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> changes)
+        static void SaveFrameChanges(string path, IReadOnlyList<AndroidLogcatCaptureInfo.FrameChange> changes)
         {
             if (changes.Count == 0)
                 return;
-            var info = AndroidLogcatScreenshotInfo.Load(path);
+            var info = AndroidLogcatCaptureInfo.Load(path);
             if (info == null)
                 return;
             var first = changes[0].display;
@@ -159,7 +192,7 @@ namespace Unity.Android.Logcat
                 info.displayWidth = first.width;
                 info.displayHeight = first.height;
             }
-            info.frameChanges = new AndroidLogcatScreenshotInfo.FrameChange[changes.Count];
+            info.frameChanges = new AndroidLogcatCaptureInfo.FrameChange[changes.Count];
             for (var i = 0; i < changes.Count; i++)
                 info.frameChanges[i] = changes[i];
             info.Save(path);
@@ -167,7 +200,7 @@ namespace Unity.Android.Logcat
 
         static void DeleteRecording(string path)
         {
-            AndroidLogcatScreenshotInfo.Delete(path);
+            AndroidLogcatCaptureInfo.Delete(path);
             try
             {
                 if (File.Exists(path))
