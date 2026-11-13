@@ -80,15 +80,15 @@ namespace Unity.Android.Logcat
         // The live view's texture the recording started from, until a frame is decoded.
         Texture2D m_Seed;
         readonly int m_Side;
-        readonly List<AndroidLogcatScreenshotInfo.FrameChange> m_FrameChanges =
-            new List<AndroidLogcatScreenshotInfo.FrameChange>();
+        readonly List<AndroidLogcatCaptureInfo.FrameChange> m_FrameChanges =
+            new List<AndroidLogcatCaptureInfo.FrameChange>();
         // The display and the picture's place in the video, as the last change set them.
         int m_DisplayWidth;
         int m_DisplayHeight;
         RectInt m_Content;
 
         /// <summary>What changed over the recording, from its start.</summary>
-        internal IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> FrameChanges => m_FrameChanges;
+        internal IReadOnlyList<AndroidLogcatCaptureInfo.FrameChange> FrameChanges => m_FrameChanges;
         long m_FirstPtsUs = -1;
         // Where the first device frame lands on the recording's clock.
         long m_FirstArrivalUs;
@@ -410,7 +410,7 @@ namespace Unity.Android.Logcat
                 last.y = y;
                 return;
             }
-            touches.Add(new AndroidLogcatScreenshotInfo.TouchInfo { action = name, x = x, y = y });
+            touches.Add(new AndroidLogcatCaptureInfo.TouchInfo { action = name, x = x, y = y });
         }
 
         /// <summary>Where Compose puts a frame in the video, so a player can leave out the black.</summary>
@@ -441,7 +441,7 @@ namespace Unity.Android.Logcat
         /// Not always last: a touch is timed when it is sent, while a frame still queued is
         /// timed by its slot, which can be earlier.
         /// </summary>
-        AndroidLogcatScreenshotInfo.FrameChange ChangeAt(double time)
+        AndroidLogcatCaptureInfo.FrameChange ChangeAt(double time)
         {
             var index = m_FrameChanges.Count;
             while (index > 0 && m_FrameChanges[index - 1].time > time)
@@ -449,7 +449,7 @@ namespace Unity.Android.Logcat
             // Times are slots over the frame rate, so the same slot gives the same time exactly.
             if (index > 0 && m_FrameChanges[index - 1].time == time)
                 return m_FrameChanges[index - 1];
-            var change = new AndroidLogcatScreenshotInfo.FrameChange { time = time };
+            var change = new AndroidLogcatCaptureInfo.FrameChange { time = time };
             m_FrameChanges.Insert(index, change);
             return change;
         }

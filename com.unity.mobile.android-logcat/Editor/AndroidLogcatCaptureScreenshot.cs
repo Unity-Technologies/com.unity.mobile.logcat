@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
             internal string reservedPath;
             internal string deviceId;
             internal string error;
-            internal AndroidLogcatScreenshotInfo info;
+            internal AndroidLogcatCaptureInfo info;
             internal int quarterTurns;
             internal Action onCompleted;
         }
@@ -197,7 +197,7 @@ namespace Unity.Android.Logcat
                 if (screenshot.Path == path || m_ReservedPaths.Contains(screenshot.Path))
                     continue;
                 DeleteQuietly(screenshot.Path);
-                AndroidLogcatScreenshotInfo.Delete(screenshot.Path);
+                AndroidLogcatCaptureInfo.Delete(screenshot.Path);
             }
 
             m_ReservedPaths.Add(path);
@@ -347,10 +347,10 @@ namespace Unity.Android.Logcat
             }
 
             // Checked before the image moves, so the two cannot end up apart.
-            if (!AndroidLogcatScreenshotInfo.CanWriteBeside(target))
+            if (!AndroidLogcatCaptureInfo.CanWriteBeside(target))
             {
                 UnityEngine.Debug.LogError(
-                    $"'{Path.GetFileName(AndroidLogcatScreenshotInfo.PathFor(target))}' already exists " +
+                    $"'{Path.GetFileName(AndroidLogcatCaptureInfo.PathFor(target))}' already exists " +
                     "and was not written by Android Logcat. Choose a different name.");
                 return false;
             }
@@ -365,7 +365,7 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
-            AndroidLogcatScreenshotInfo.Move(path, target);
+            AndroidLogcatCaptureInfo.Move(path, target);
 
             // Rescan, so the list picks up the new name and reorders.
             InvalidateScreenshots();
@@ -396,7 +396,7 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
-            AndroidLogcatScreenshotInfo.Delete(path);
+            AndroidLogcatCaptureInfo.Delete(path);
 
             // Rescan, so the list loses the row.
             InvalidateScreenshots();
@@ -488,7 +488,7 @@ namespace Unity.Android.Logcat
                 error = error,
                 // Read here because it asks the device; written on the main thread,
                 // where JsonUtility is safe to call.
-                info = result ? AndroidLogcatScreenshotInfo.Create(i.device) : null,
+                info = result ? AndroidLogcatCaptureInfo.Create(i.device) : null,
                 quarterTurns = i.quarterTurns,
                 onCompleted = i.onCompleted
             };

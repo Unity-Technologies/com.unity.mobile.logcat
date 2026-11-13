@@ -104,7 +104,7 @@ namespace Unity.Android.Logcat
             RecordingPath = path;
             m_Recorder = recorder;
             // The same details a screenshot is saved with, so the list can say which device it came from.
-            AndroidLogcatScreenshotInfo.Create(device)?.Save(RecordingPath);
+            AndroidLogcatCaptureInfo.Create(device)?.Save(RecordingPath);
             m_OnStopRecording = onStopRecording;
             m_Clock.Restart();
             stream.Recorder = m_Recorder;
@@ -179,11 +179,11 @@ namespace Unity.Android.Logcat
         /// Folding or turning the device during a recording changes its display, so the
         /// details saved at the start get what changed over time.
         /// </summary>
-        static void SaveFrameChanges(string path, IReadOnlyList<AndroidLogcatScreenshotInfo.FrameChange> changes)
+        static void SaveFrameChanges(string path, IReadOnlyList<AndroidLogcatCaptureInfo.FrameChange> changes)
         {
             if (changes.Count == 0)
                 return;
-            var info = AndroidLogcatScreenshotInfo.Load(path);
+            var info = AndroidLogcatCaptureInfo.Load(path);
             if (info == null)
                 return;
             var first = changes[0].display;
@@ -192,7 +192,7 @@ namespace Unity.Android.Logcat
                 info.displayWidth = first.width;
                 info.displayHeight = first.height;
             }
-            info.frameChanges = new AndroidLogcatScreenshotInfo.FrameChange[changes.Count];
+            info.frameChanges = new AndroidLogcatCaptureInfo.FrameChange[changes.Count];
             for (var i = 0; i < changes.Count; i++)
                 info.frameChanges[i] = changes[i];
             info.Save(path);
@@ -200,7 +200,7 @@ namespace Unity.Android.Logcat
 
         static void DeleteRecording(string path)
         {
-            AndroidLogcatScreenshotInfo.Delete(path);
+            AndroidLogcatCaptureInfo.Delete(path);
             try
             {
                 if (File.Exists(path))

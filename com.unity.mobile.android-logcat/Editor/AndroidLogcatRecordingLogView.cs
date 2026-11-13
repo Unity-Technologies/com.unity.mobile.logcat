@@ -55,10 +55,10 @@ namespace Unity.Android.Logcat
 
         internal bool HasMessages => m_Entries.Length > 0;
 
-        internal AndroidLogcatRecordingLogView(AndroidLogcatRuntimeBase runtime, AndroidLogcatScreenshotInfo.FrameChange[] changes)
+        internal AndroidLogcatRecordingLogView(AndroidLogcatRuntimeBase runtime, AndroidLogcatCaptureInfo.FrameChange[] changes)
         {
             m_Runtime = runtime;
-            var rows = (changes ?? Array.Empty<AndroidLogcatScreenshotInfo.FrameChange>())
+            var rows = (changes ?? Array.Empty<AndroidLogcatCaptureInfo.FrameChange>())
                 .Where(change => change?.logs != null)
                 .OrderBy(change => change.time)
                 .SelectMany(change => change.logs.Select(entry => (change.time, entry)))

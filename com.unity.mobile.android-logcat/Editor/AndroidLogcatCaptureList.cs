@@ -549,12 +549,12 @@ namespace Unity.Android.Logcat
             internal string[] Values { get; }
             // A recording's changes split by kind, each in time order, so a lookup is a
             // binary search rather than a walk past every touch of a long recording.
-            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_DisplayChanges;
-            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_ContentChanges;
-            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_TouchChanges;
+            readonly AndroidLogcatCaptureInfo.FrameChange[] m_DisplayChanges;
+            readonly AndroidLogcatCaptureInfo.FrameChange[] m_ContentChanges;
+            readonly AndroidLogcatCaptureInfo.FrameChange[] m_TouchChanges;
 
             /// <summary>A recording has no texture, so it has no image size either.</summary>
-            internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
+            internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatCaptureInfo info)
             {
                 Device = info == null || string.IsNullOrEmpty(info.deviceName) ? kUndefined : info.deviceName;
                 DeviceId = info?.deviceId;
@@ -562,7 +562,7 @@ namespace Unity.Android.Logcat
                 DisplaySize = info == null || info.displayWidth <= 0
                     ? kUndefined
                     : $"{info.displayWidth}x{info.displayHeight}";
-                var changes = info?.frameChanges ?? Array.Empty<AndroidLogcatScreenshotInfo.FrameChange>();
+                var changes = info?.frameChanges ?? Array.Empty<AndroidLogcatCaptureInfo.FrameChange>();
                 m_DisplayChanges = Ordered(changes, change => change.display != null && change.display.IsSet);
                 m_ContentChanges = Ordered(changes, change => change.content != null && change.content.IsSet);
                 m_TouchChanges = Ordered(changes, change => change.touches != null && change.touches.Count > 0);
@@ -629,15 +629,15 @@ namespace Unity.Android.Logcat
                 return true;
             }
 
-            static AndroidLogcatScreenshotInfo.FrameChange[] Ordered(
-                AndroidLogcatScreenshotInfo.FrameChange[] changes, Func<AndroidLogcatScreenshotInfo.FrameChange, bool> has)
+            static AndroidLogcatCaptureInfo.FrameChange[] Ordered(
+                AndroidLogcatCaptureInfo.FrameChange[] changes, Func<AndroidLogcatCaptureInfo.FrameChange, bool> has)
             {
                 // Stable, as recordings made before the recorder kept them in order may not be.
                 return changes.Where(change => change != null && has(change)).OrderBy(change => change.time).ToArray();
             }
 
             /// <summary>The last of <paramref name="changes"/> at or before <paramref name="time"/>, or null.</summary>
-            static AndroidLogcatScreenshotInfo.FrameChange LatestAt(AndroidLogcatScreenshotInfo.FrameChange[] changes, double time)
+            static AndroidLogcatCaptureInfo.FrameChange LatestAt(AndroidLogcatCaptureInfo.FrameChange[] changes, double time)
             {
                 // A hair early, so the frame a change lands on already shows it.
                 time += 0.0005;
@@ -654,7 +654,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        static string OperatingSystem(AndroidLogcatScreenshotInfo info)
+        static string OperatingSystem(AndroidLogcatCaptureInfo info)
         {
             if (string.IsNullOrEmpty(info.osVersion))
                 return info.apiLevel > 0 ? $"API {info.apiLevel}" : kUndefined;
@@ -682,7 +682,7 @@ namespace Unity.Android.Logcat
             m_LogView = null;
             if (IsVideo(path))
             {
-                var info = AndroidLogcatScreenshotInfo.Load(path);
+                var info = AndroidLogcatCaptureInfo.Load(path);
                 m_PreviewDetails = new PreviewDetails(null, new FileInfo(path), info);
                 m_LogView = new AndroidLogcatRecordingLogView(m_Runtime, info?.frameChanges);
                 m_VideoPlayer.Open(path, m_RestoreVideoFrame);
@@ -699,7 +699,7 @@ namespace Unity.Android.Logcat
             {
                 m_PreviewTexture = texture;
                 m_PreviewDetails = new PreviewDetails(texture, new FileInfo(path),
-                    AndroidLogcatScreenshotInfo.Load(path));
+                    AndroidLogcatCaptureInfo.Load(path));
             }
             else
             {

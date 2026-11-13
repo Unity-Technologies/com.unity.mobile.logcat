@@ -102,12 +102,12 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         var path = Runtime.CaptureScreenshot.GetLatestImagePath(Device);
         CopyToArtifacts("screenshot.png", path);
 
-        var info = AndroidLogcatScreenshotInfo.Load(path);
+        var info = AndroidLogcatCaptureInfo.Load(path);
         Assert.IsNotNull(info, "Expected details to be saved beside the screenshot");
         Assert.AreEqual(Device.Id, info.deviceId);
         Assert.AreEqual(Device.APILevel, info.apiLevel);
         Assert.Greater(info.displayWidth, 0, $"Expected a display size, got {info.displayWidth}x{info.displayHeight}");
-        CopyToArtifacts("screenshot.json", AndroidLogcatScreenshotInfo.PathFor(path));
+        CopyToArtifacts("screenshot.json", AndroidLogcatCaptureInfo.PathFor(path));
     }
 
     /// <summary>
@@ -179,7 +179,7 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.IsTrue(Runtime.CaptureScreenshot.DeleteScreenshot(path), "Delete should have succeeded");
 
         Assert.IsFalse(File.Exists(path), "The file should be gone from disk");
-        Assert.IsNull(AndroidLogcatScreenshotInfo.Load(path), "Its details should go with it");
+        Assert.IsNull(AndroidLogcatCaptureInfo.Load(path), "Its details should go with it");
         Assert.AreEqual(before - 1, Runtime.CaptureScreenshot.GetScreenshots().Count,
             "The list should have lost the row");
         // It was the displayed one, so the image is cleared rather than left pointing at
@@ -221,8 +221,8 @@ internal class AndroidLogcatRuntimeIntegrationScreenCapture : AndroidLogcatInteg
         Assert.AreEqual(renamed, Runtime.CaptureScreenshot.SelectedImagePath,
             "The displayed image should follow the rename");
 
-        Assert.IsNull(AndroidLogcatScreenshotInfo.Load(path), "The details should not be left behind");
-        Assert.IsNotNull(AndroidLogcatScreenshotInfo.Load(renamed), "The details should follow the image");
+        Assert.IsNull(AndroidLogcatCaptureInfo.Load(path), "The details should not be left behind");
+        Assert.IsNotNull(AndroidLogcatCaptureInfo.Load(renamed), "The details should follow the image");
 
         var entry = screenshots.First(s => s.Path == renamed);
         Assert.AreEqual(newName, entry.Name);

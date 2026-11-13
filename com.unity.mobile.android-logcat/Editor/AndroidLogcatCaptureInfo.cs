@@ -6,13 +6,14 @@ using UnityEngine;
 namespace Unity.Android.Logcat
 {
     /// <summary>
-    /// What a screenshot cannot say about itself: the device it came from, and when.
-    /// Written beside the image as <c>&lt;name&gt;.json</c> when it is captured, and
-    /// moved and deleted with it. A screenshot that has none - captured before this
-    /// existed, or dropped into the folder by hand - shows Undefined instead.
+    /// What a capture - a screenshot or a recording - cannot say about itself: the device
+    /// it came from, and when, and for a recording what changed while it ran. Written
+    /// beside the capture as <c>&lt;name&gt;.json</c>, and moved and deleted with it. A
+    /// capture that has none - taken before this existed, or dropped into the folder by
+    /// hand - shows Undefined instead.
     /// </summary>
     [Serializable]
-    internal class AndroidLogcatScreenshotInfo
+    internal class AndroidLogcatCaptureInfo
     {
         internal const string kExtension = ".json";
 
@@ -98,7 +99,7 @@ namespace Unity.Android.Logcat
         /// Reads the device. Talks to adb for the display size, so this belongs on the
         /// thread the capture itself runs on, not on the GUI's.
         /// </summary>
-        internal static AndroidLogcatScreenshotInfo Create(IAndroidLogcatDevice device)
+        internal static AndroidLogcatCaptureInfo Create(IAndroidLogcatDevice device)
         {
             if (device == null)
                 return null;
@@ -117,7 +118,7 @@ namespace Unity.Android.Logcat
             var manufacturer = device.Manufacturer ?? string.Empty;
             var model = device.Model ?? string.Empty;
 
-            return new AndroidLogcatScreenshotInfo()
+            return new AndroidLogcatCaptureInfo()
             {
                 capturedAt = DateTime.Now.ToString("o"),
                 deviceId = device.Id,
@@ -132,7 +133,7 @@ namespace Unity.Android.Logcat
             };
         }
 
-        static bool IsDetails(AndroidLogcatScreenshotInfo info)
+        static bool IsDetails(AndroidLogcatCaptureInfo info)
         {
             return info != null && info.version > 0 && !string.IsNullOrEmpty(info.capturedAt);
         }
@@ -144,7 +145,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                return IsDetails(JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(File.ReadAllText(path)));
+                return IsDetails(JsonUtility.FromJson<AndroidLogcatCaptureInfo>(File.ReadAllText(path)));
             }
             catch (Exception)
             {
@@ -193,7 +194,7 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>Returns null when there is no file, or it cannot be read.</summary>
-        internal static AndroidLogcatScreenshotInfo Load(string imagePath)
+        internal static AndroidLogcatCaptureInfo Load(string imagePath)
         {
             var path = PathFor(imagePath);
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
@@ -201,7 +202,7 @@ namespace Unity.Android.Logcat
 
             try
             {
-                var info = JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(File.ReadAllText(path));
+                var info = JsonUtility.FromJson<AndroidLogcatCaptureInfo>(File.ReadAllText(path));
                 // A file of someone else's that shares the name is not details, and
                 // its defaults would be shown as a device of empty strings and zeroes.
                 return IsDetails(info) ? info : null;

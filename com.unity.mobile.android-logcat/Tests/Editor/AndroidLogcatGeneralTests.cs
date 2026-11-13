@@ -188,7 +188,7 @@ class AndroidLogcatGeneralTests
 
             System.IO.File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
             System.IO.File.WriteAllBytes(recording, new byte[] { 4, 5, 6 });
-            new AndroidLogcatScreenshotInfo { deviceName = "The recording's device" }.Save(recording);
+            new AndroidLogcatCaptureInfo { deviceName = "The recording's device" }.Save(recording);
             var recordingDetails = System.IO.File.ReadAllText(details);
 
             try
@@ -459,7 +459,7 @@ class AndroidLogcatGeneralTests
     /// the same calls, and the rest is a file next to a file.
     /// </summary>
     [Test]
-    public void ScreenshotInfoRoundTripsAndFollowsTheImage()
+    public void CaptureInfoRoundTripsAndFollowsTheImage()
     {
         var directory = CreateCapturesFolder();
 
@@ -469,13 +469,13 @@ class AndroidLogcatGeneralTests
 
         try
         {
-            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(image),
+            Assert.IsNull(AndroidLogcatCaptureInfo.Load(image),
                 "A screenshot with no details file has nothing to read");
 
             var device = new AndroidLogcatFakeDevice90("unittest-device");
             device.SetRawDisplayInfo("Physical size: 1080x2400\nOverride size: 540x1200");
 
-            var info = AndroidLogcatScreenshotInfo.Create(device);
+            var info = AndroidLogcatCaptureInfo.Create(device);
             Assert.AreEqual("unittest-device", info.deviceId);
             // An overridden size is what the device composes, so that is what a
             // screenshot of it was taken at.
@@ -483,32 +483,32 @@ class AndroidLogcatGeneralTests
             Assert.AreEqual(1200, info.displayHeight);
 
             info.Save(image);
-            FileAssert.Exists(AndroidLogcatScreenshotInfo.PathFor(image));
+            FileAssert.Exists(AndroidLogcatCaptureInfo.PathFor(image));
 
-            var loaded = AndroidLogcatScreenshotInfo.Load(image);
-            Assert.AreEqual(AndroidLogcatScreenshotInfo.kVersion, loaded.version);
+            var loaded = AndroidLogcatCaptureInfo.Load(image);
+            Assert.AreEqual(AndroidLogcatCaptureInfo.kVersion, loaded.version);
             Assert.AreEqual(info.deviceId, loaded.deviceId);
             Assert.AreEqual(info.deviceName, loaded.deviceName);
             Assert.AreEqual(info.capturedAt, loaded.capturedAt);
             Assert.AreEqual(info.displayWidth, loaded.displayWidth);
             Assert.AreEqual(info.displayHeight, loaded.displayHeight);
 
-            AndroidLogcatScreenshotInfo.Move(image, renamed);
-            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(image),
+            AndroidLogcatCaptureInfo.Move(image, renamed);
+            Assert.IsNull(AndroidLogcatCaptureInfo.Load(image),
                 "The details should have moved with the image");
-            Assert.AreEqual(info.deviceId, AndroidLogcatScreenshotInfo.Load(renamed).deviceId);
+            Assert.AreEqual(info.deviceId, AndroidLogcatCaptureInfo.Load(renamed).deviceId);
 
-            AndroidLogcatScreenshotInfo.Delete(renamed);
-            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(renamed));
+            AndroidLogcatCaptureInfo.Delete(renamed);
+            Assert.IsNull(AndroidLogcatCaptureInfo.Load(renamed));
 
             // The details take the image's name with a .json extension, which is a
             // name someone else's file can already have - saving a capture as
             // settings.png beside an unrelated settings.json must not eat it.
-            var foreignJson = AndroidLogcatScreenshotInfo.PathFor(foreign);
+            var foreignJson = AndroidLogcatCaptureInfo.PathFor(foreign);
             const string keep = "{\"keep\":\"me\"}";
             System.IO.File.WriteAllText(foreignJson, keep);
 
-            Assert.IsNull(AndroidLogcatScreenshotInfo.Load(foreign),
+            Assert.IsNull(AndroidLogcatCaptureInfo.Load(foreign),
                 "Someone else's json is not a details file");
 
             LogAssert.Expect(LogType.Warning, new Regex("not written by Android Logcat"));
@@ -517,7 +517,7 @@ class AndroidLogcatGeneralTests
                 "Saving details should not overwrite a file we did not write");
 
             LogAssert.Expect(LogType.Warning, new Regex("not written by Android Logcat"));
-            AndroidLogcatScreenshotInfo.Delete(foreign);
+            AndroidLogcatCaptureInfo.Delete(foreign);
             FileAssert.Exists(foreignJson);
         }
         finally

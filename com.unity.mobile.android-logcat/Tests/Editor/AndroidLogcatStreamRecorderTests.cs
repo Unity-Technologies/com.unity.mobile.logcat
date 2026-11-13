@@ -109,8 +109,8 @@ class AndroidLogcatStreamRecorderTests
         var after = logged.Single(change => change.logs.Any(entry => entry.message == "after it stopped"));
         Assert.AreEqual(last, after.time, "A message after the last frame should land on the last frame");
 
-        var info = new AndroidLogcatScreenshotInfo { frameChanges = recorder.FrameChanges.ToArray() };
-        var loaded = JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(JsonUtility.ToJson(info));
+        var info = new AndroidLogcatCaptureInfo { frameChanges = recorder.FrameChanges.ToArray() };
+        var loaded = JsonUtility.FromJson<AndroidLogcatCaptureInfo>(JsonUtility.ToJson(info));
         var saved = loaded.frameChanges.SelectMany(change => change.logs).Single(entry => entry.message == "two frames in");
         Assert.AreEqual(kFrameRealtimeUs + 2 * kFrameUs, (saved.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10);
         Assert.AreEqual(Priority.Warn, saved.priority);
