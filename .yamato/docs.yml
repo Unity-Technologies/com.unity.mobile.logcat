@@ -15,11 +15,14 @@ build_docs:
     # The status path must be absolute: the Editor resolves it against its own temporary project.
     - command: packagedocs-cli build --package-path com.unity.mobile.android-logcat --output docs~ --built-in-code-project-gen --validate --path-to-pmdt-status-output %YAMATO_SOURCE_DIR%\pmdt_status.json
     - command: copy .yamato\docs\preview-docs.* docs~\
+    - command: .yamato\docs\write-index.bat
   artifacts:
     # To view the docs, run docs~/preview-docs.bat (Windows) or `sh docs~/preview-docs.sh` (macOS, Linux) from the downloaded zip.
     docs:
       paths:
         - "docs~/**/*"
+      # Unzip the docs as soon as the job ends, so the artifact viewer can serve them without a manual Unzip.
+      browsable: always
     logs:
       paths:
         - "UnityEditor.log"
