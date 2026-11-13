@@ -17,8 +17,9 @@ import java.io.OutputStream;
  *   u32  flags            FLAG_CONTROL_SUPPORTED if touch can be injected
  *   u32  serverPid        this process on the device, so the Editor can name it
  *
- * Frame, repeated, 32 byte header + payload:
+ * Frame, repeated, 40 byte header + payload:
  *   u64  ptsUs            microseconds since the first frame
+ *   u64  realtimeUs       wall clock at capture, microseconds since the epoch
  *   u32  width            pixels of the streamed image
  *   u32  height           pixels of the streamed image
  *   u32  displayWidth     pixels of the display it was captured from
@@ -70,6 +71,9 @@ public final class Protocol {
             firstFrameNs = captureNs;
         }
         out.writeLong((captureNs - firstFrameNs) / 1000L);
+        // The clock logcat stamps messages with, so the Editor can place them among
+        // the frames. Taken back by the frame's age, as it was captured a moment ago.
+        out.writeLong(System.currentTimeMillis() * 1000L - (System.nanoTime() - captureNs) / 1000L);
         out.writeInt(width);
         out.writeInt(height);
         out.writeInt(displayWidth);
