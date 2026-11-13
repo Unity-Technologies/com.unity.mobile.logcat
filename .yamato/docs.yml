@@ -14,8 +14,9 @@ build_docs:
     # Without --unity-editor the CLI installs the Editor version from package.json itself.
     # The status path must be absolute: the Editor resolves it against its own temporary project.
     - command: packagedocs-cli build --package-path com.unity.mobile.android-logcat --output docs~ --built-in-code-project-gen --validate --path-to-pmdt-status-output %YAMATO_SOURCE_DIR%\pmdt_status.json
+    - command: copy .yamato\docs\preview-docs.* docs~\
   artifacts:
-    # Open docs~/com.unity.mobile.android-logcat@<version>/manual/index.html from the downloaded zip.
+    # To view the docs, run docs~/preview-docs.bat (Windows) or `sh docs~/preview-docs.sh` (macOS, Linux) from the downloaded zip.
     docs:
       paths:
         - "docs~/**/*"
