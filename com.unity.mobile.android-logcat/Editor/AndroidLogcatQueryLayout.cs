@@ -9,7 +9,7 @@ namespace Unity.Android.Logcat
 {
     internal class AndroidLogcatQueryLayout
     {
-        static Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
+        static readonly Regex BoundsRegex = new Regex(@"\[(?<x1>\d+),(?<y1>\d+)\]\[(?<x2>\d+),(?<y2>\d+)\]");
 
         const string NodeTag = "node";
         const string ClassTag = "class";

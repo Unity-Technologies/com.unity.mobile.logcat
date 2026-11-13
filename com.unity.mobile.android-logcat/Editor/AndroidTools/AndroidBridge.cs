@@ -9,6 +9,7 @@ using Object = System.Object;
 #if UNITY_6000_5_OR_NEWER
 using UnityEngine.Assemblies;
 #endif
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
@@ -17,6 +18,7 @@ namespace Unity.Android.Logcat
     /// It solves the problem where if you have logcat package installed, but there's no Android Support installed, you won't get compiler errors
     /// It also enables to use Logcat package when active platform is not Android
     /// </summary>
+    [NoAutoStaticsCleanup]
     class AndroidBridge
     {
         enum ExtensionState
@@ -64,6 +66,7 @@ namespace Unity.Android.Logcat
 
         internal static bool AndroidExtensionsInstalled => AndroidExtensions != null;
 
+        [NoAutoStaticsCleanup]
         internal class ADB
         {
             private static Type s_ADBType;
@@ -146,6 +149,7 @@ namespace Unity.Android.Logcat
             }
         }
 
+        [NoAutoStaticsCleanup]
         internal class AndroidDevice
         {
             private static Type s_AndroidDeviceType;
@@ -207,6 +211,7 @@ namespace Unity.Android.Logcat
             public PropertiesTable Properties => new PropertiesTable(PropertiesPropertyInfo.GetValue(m_AndroidDeviceObject, null));
         }
 
+        [NoAutoStaticsCleanup]
         internal class AndroidExternalToolsSettings
         {
             private static Type s_AndroidExternalToolsSettingsType;

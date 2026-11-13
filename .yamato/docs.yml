@@ -1,0 +1,32 @@
+build_docs:
+  name: Preview documentation
+  agent:
+    type: Unity::VM
+    image: unity-docs-engineering/packagedocs-cli-build:latest
+    flavor: b1.large
+  variables:
+    # Without it the CLI takes package-manager-doctools at HEAD, so its changes could break this job.
+    DOCTOOLS_REVISION: stable
+  commands:
+    - command: npm install -g @docs-tools/packagedocs-cli --@docs-tools:registry=https://artifactory.prd.it.unity3d.com/artifactory/api/npm/docs-tools-npm/
+      timeout: 20
+      retries: 5
+    # Without --unity-editor the CLI installs the Editor version from package.json itself.
+    # The status path must be absolute: the Editor resolves it against its own temporary project.
+    - command: packagedocs-cli build --package-path com.unity.mobile.android-logcat --output docs~ --built-in-code-project-gen --validate --path-to-pmdt-status-output %YAMATO_SOURCE_DIR%\pmdt_status.json
+    - command: copy .yamato\docs\preview-docs.* docs~\
+    - command: .yamato\docs\write-index.bat
+  artifacts:
+    # To view the docs, run docs~/preview-docs.bat (Windows) or `sh docs~/preview-docs.sh` (macOS, Linux) from the downloaded zip.
+    docs:
+      paths:
+        - "docs~/**/*"
+      # Unzip the docs as soon as the job ends, so the artifact viewer can serve them without a manual Unzip.
+      browsable: always
+    logs:
+      paths:
+        - "UnityEditor.log"
+        - "pmdt_status.json"
+  triggers:
+    cancel_old_ci: true
+    expression: pull_request.target eq "master" AND (pull_request.changes.any match "com.unity.mobile.android-logcat/Documentation~/**/*" OR pull_request.changes.any match "com.unity.mobile.android-logcat/**/*.cs")

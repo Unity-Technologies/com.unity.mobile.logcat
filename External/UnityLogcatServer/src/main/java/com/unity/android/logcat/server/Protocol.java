@@ -17,20 +17,25 @@ import java.io.OutputStream;
  *   u32  flags            FLAG_CONTROL_SUPPORTED if touch can be injected
  *   u32  serverPid        this process on the device, so the Editor can name it
  *
- * Frame, repeated, 28 byte header + payload:
+ * Frame, repeated, 32 byte header + payload:
  *   u64  ptsUs            microseconds since the first frame
  *   u32  width            pixels of the streamed image
  *   u32  height           pixels of the streamed image
  *   u32  displayWidth     pixels of the display it was captured from
  *   u32  displayHeight    pixels of the display it was captured from
+ *   u32  rotation         Surface.ROTATION_* the display was at, 0..3
  *   u32  payloadSize      bytes of encoded frame that follow
  *   u8[] payload
  * </pre>
  *
- * All four sizes travel with every frame because they change when the device is
+ * The geometry travels with every frame because it changes when the device is
  * rotated or folded, and the server starts a new capture session without saying so
  * on the socket. The reader is therefore never told out of band that the geometry
  * moved - it just reads the next frame.
+ * <p>
+ * The rotation is sent as well as the sizes because the two can disagree: an app
+ * that pins its orientation keeps the display at its own rotation however the user
+ * rotation is set, and the Editor needs to know which it got.
  */
 public final class Protocol {
     public static final int MAGIC = 0x554C5331;
@@ -60,7 +65,7 @@ public final class Protocol {
     }
 
     public void writeFrame(long captureNs, int width, int height, int displayWidth, int displayHeight,
-                           byte[] payload, int payloadSize) throws IOException {
+                           int rotation, byte[] payload, int payloadSize) throws IOException {
         if (firstFrameNs < 0) {
             firstFrameNs = captureNs;
         }
@@ -69,6 +74,7 @@ public final class Protocol {
         out.writeInt(height);
         out.writeInt(displayWidth);
         out.writeInt(displayHeight);
+        out.writeInt(rotation);
         out.writeInt(payloadSize);
         out.write(payload, 0, payloadSize);
         // Flushed per frame: this is a live stream, buffering a frame to fill the

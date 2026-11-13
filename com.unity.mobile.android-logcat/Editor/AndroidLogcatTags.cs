@@ -199,7 +199,7 @@ namespace Unity.Android.Logcat
         private int m_SelectedTagIndex = -1;
         private string m_InputTagName = String.Empty;
         private const string kTagInputTextFieldControlId = "TagInputTextFieldControl";
-        private static GUIContent kIconToolbarMinus = EditorGUIUtility.TrIconContent("Toolbar Minus", "Remove from list");
+        private static readonly GUIContent kIconToolbarMinus = EditorGUIUtility.TrIconContent("Toolbar Minus", "Remove from list");
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 

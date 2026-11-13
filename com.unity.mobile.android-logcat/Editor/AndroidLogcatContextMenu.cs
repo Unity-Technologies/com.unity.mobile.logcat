@@ -40,6 +40,17 @@ namespace Unity.Android.Logcat
         MatchCase
     }
 
+    internal enum ScreenshotContextMenu
+    {
+        None,
+        ShowInFileBrowser,
+        Open,
+        CopyTo,
+        Rename,
+        Delete,
+        SelectAll
+    }
+
     class AndroidContextMenu<T>
     {
         internal class MenuItemData

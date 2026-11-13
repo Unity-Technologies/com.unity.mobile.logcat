@@ -67,6 +67,9 @@ You can access the **Process Manager** from the message log section when you rig
 
 The following options in the **Process Manager** help you to force an application to terminate.
 
+![Send Unix signal options in the Process Manager](images/android-logcat-send-unix-signal.png)
+> Send Unix signal options.
+
 | **Type** | **Description**                                              |
 | - | - |
 | **Send Unix signal** | Sends a signal to the process using command **adb shell run-as <package_name> kill -s <posix_signal> <process_id>**. For more information, refer to [standard signals](https://man7.org/linux/man-pages/man7/signal.7.html).<br><br>You can use **SIGILL**, **SIGTRAP**, **SIGABRT**, **SIGBUS**, **SIGFPE**, **SIGSEGV**, **SIGPIPE**, **SIGSTKFLT** signals to test Unity Android [crash handler](https://docs.unity3d.com/Manual/android-handle-crashes.html). |
@@ -76,6 +79,9 @@ The following options in the **Process Manager** help you to force an applicatio
 #### Send trim memory
 
 The **Send Trim Memory** option allows you to send a memory trim signal to the selected process to help you understand how your application handles low memory events. The control sends a memory trim event to a process using command **adb shell am send-trim-memory <process_id> <trim_level>**. For more information about the trim levels, refer to [Android developer documentation](https://developer.android.com/reference/android/content/ComponentCallbacks2#constants_1).
+
+![Send Trim Memory options in the Process Manager](images/android-logcat-app-trim-memory.png)
+> Send Trim Memory options.
 
 For example, by using **RUNNING_CRITICAL** trim level you can test the following Unity APIs:
 * [Application.lowMemory](https://docs.unity3d.com/ScriptReference/Application-lowMemory.html)

@@ -22,8 +22,8 @@ namespace Unity.Android.Logcat
         private int m_SelectedIndex = -1;
         private string m_InputFieldText = String.Empty;
         private const string kInputTextFieldControlId = "ReordableListInputTextFieldControl";
-        private static GUIContent kIconToolbarMinus = EditorGUIUtility.TrIconContent("Toolbar Minus");
-        private static GUIContent kIconToolbarPlus = EditorGUIUtility.TrIconContent("Toolbar Plus");
+        private static readonly GUIContent kIconToolbarMinus = EditorGUIUtility.TrIconContent("Toolbar Minus");
+        private static readonly GUIContent kIconToolbarPlus = EditorGUIUtility.TrIconContent("Toolbar Plus");
 
         public Vector2 m_ScrollPosition = Vector2.zero;
 

@@ -5,9 +5,11 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal partial class AndroidLogcatConsoleWindow : EditorWindow, IHasCustomMenu
     {
         private GUIContent kAutoRunText = new GUIContent(L10n.Tr("Auto Run"), L10n.Tr("Automatically launch logcat window during build & run."));
@@ -40,7 +42,7 @@ namespace Unity.Android.Logcat
         private AndroidLogcatInputs m_Inputs;
         private DateTime m_TimeOfLastMemoryRequest;
 
-        private static string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
+        private const string kAutoShowLogcatDuringBuildRun = "AutoShowLogcatDuringBuildRun";
 
         private ProcessInformation SelectedProcess
         {
@@ -154,7 +156,7 @@ namespace Unity.Android.Logcat
             RestartLogCat();
         }
 
-        private void FilterByProcessId(int processId)
+        internal void FilterByProcessId(int processId)
         {
             var selectedDevice = m_Runtime.DeviceQuery.SelectedDevice;
             var processes = m_Runtime.UserSettings.GetKnownProcesses(selectedDevice);

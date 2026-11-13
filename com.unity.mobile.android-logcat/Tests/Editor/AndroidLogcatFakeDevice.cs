@@ -44,6 +44,15 @@ internal abstract class AndroidLogcatFakeDevice : IAndroidLogcatDevice
     {
     }
 
+    /// <summary>Nothing that folds.</summary>
+    internal override FoldStates QueryFoldStates() => FoldStates.None;
+
+    internal override IReadOnlyList<Vector2Int> QueryPhysicalDisplaySizes() => Array.Empty<Vector2Int>();
+
+    internal override void SetDeviceState(int identifier)
+    {
+    }
+
     internal override void QueryDisplaySize(out Vector2 displaySize, out Vector2? overridenDisplaySize)
     {
         ParseDisplaySize(m_DisplayInfo, out displaySize, out overridenDisplaySize);

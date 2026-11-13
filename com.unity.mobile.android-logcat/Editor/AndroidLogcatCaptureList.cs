@@ -1,0 +1,1533 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Unity.Profiling;
+using UnityEditor;
+using Unity.Scripting.LifecycleManagement;
+using UnityEngine;
+
+namespace Unity.Android.Logcat
+{
+    /// <summary>
+    /// The captures taken from a device - screenshots, and recordings once there are
+    /// any - with the Live button above them, and the splitter that separates the
+    /// column from whatever is being shown on the right.
+    /// <para>
+    /// One per window rather than one per runtime: the scroll position, the splitter
+    /// width and which row is selected are all view state, while
+    /// <see cref="AndroidLogcatCaptureScreenshot"/> is runtime-wide. Files, numbering
+    /// and the image itself stay there; this only decides what to look at.
+    /// </para>
+    /// </summary>
+    [NoAutoStaticsCleanup]
+    internal class AndroidLogcatCaptureList
+    {
+        [NoAutoStaticsCleanup]
+        static class Styles
+        {
+            internal static readonly GUIContent Live = new GUIContent("Live",
+                "Show the device screen live. Streaming stops when a capture is selected.");
+            // The Editor's own asset icons, so a row reads as what it holds before it
+            // is read. Through IconContent, which is what picks the icon for the skin.
+            static readonly GUIContent kImage = EditorGUIUtility.IconContent("Image Icon");
+            static readonly GUIContent kVideo = EditorGUIUtility.IconContent("VideoPlayer Icon");
+
+            /// <summary>The icon for a capture, by what kind of file it is.</summary>
+            internal static Texture IconFor(string path)
+            {
+                var icon = IsVideo(path) ? kVideo : kImage;
+                return icon != null ? icon.image : null;
+            }
+
+            internal static readonly GUIContent Captures = new GUIContent("Captures",
+                "Everything captured from a device, from every device. Shift click and " +
+                "Ctrl click select more than one; Ctrl+A selects all.");
+            internal static readonly GUIContent Device = new GUIContent("Device",
+                "The device the screenshot was captured from, as its details file records it.");
+            internal static readonly GUIContent OS = new GUIContent("OS",
+                "The Android version the device was running.");
+            internal static readonly GUIContent DisplaySize = new GUIContent("Display Size",
+                "The device's display resolution at the time, which is not the image size when the display was rotated or its size overridden.");
+            internal static readonly GUIContent ImageSize = new GUIContent("Image Size",
+                "Size of the image in pixels, which is the resolution of the display it was captured from.");
+            internal static readonly GUIContent FileSize = new GUIContent("File Size",
+                "Size of the file on disk.");
+            internal static readonly GUIContent Captured = new GUIContent("Captured",
+                "When the file was last written.");
+            internal static readonly GUIContent VideoSize = new GUIContent("Video Size",
+                "Size of the recording in pixels.");
+            internal static readonly GUIContent FrameRate = new GUIContent("Frame Rate",
+                "Frames per second the recording plays at.");
+            // The selected row draws on a coloured background, where the default label
+            // colour is hard to read.
+            static GUIStyle s_SelectedRow;
+            internal static GUIStyle SelectedRow
+            {
+                get
+                {
+                    if (s_SelectedRow == null)
+                    {
+                        s_SelectedRow = new GUIStyle(EditorStyles.label);
+                        s_SelectedRow.normal.textColor = Color.white;
+                    }
+                    return s_SelectedRow;
+                }
+            }
+        }
+
+        static readonly ProfilerMarker k_LoadPreview = new ProfilerMarker("AndroidLogcat.LoadPreview");
+
+        internal const float kDefaultWidth = 220;
+        const float kMinWidth = 150;
+        const float kMaxWidth = 400;
+        const float kSplitterWidth = 5;
+        const float kMinPreviewWidth = 100;
+        const float kScrollbarWidth = 16;
+        const float kIconSize = 16;
+        const float kIconMargin = 2;
+        // Air between the Live button and the captures under it.
+        const float kGroupGap = 5;
+        // How long a new capture's row is lit, and how bright it starts.
+        const double kFlashSeconds = 0.6;
+        const float kFlashStrength = 0.6f;
+
+        readonly AndroidLogcatRuntimeBase m_Runtime;
+        readonly AndroidLogcatCaptureScreenshot m_CaptureScreenshot;
+        readonly AndroidLogcatLiveStream m_LiveStream;
+        readonly Action m_Repaint;
+
+        const string kRenameControlName = "ScreenshotRenameField";
+        const string kUndefined = "Undefined";
+
+        readonly Splitter m_Splitter = new Splitter(Splitter.SplitterType.Horizontal, kMinWidth, kMaxWidth);
+        Vector2 m_Scroll;
+        bool m_LiveSelected;
+
+        // The selection, by path: a rescan renumbers rows, where a path stays itself.
+        // The one being previewed is the capture screenshot's own selection, which is
+        // always one of these.
+        readonly HashSet<string> m_Selected = new HashSet<string>();
+        // Where a shift click measures from.
+        string m_SelectionAnchor;
+        // The device the column was last drawn with. A context menu is answered after
+        // the frame that opened it, so it cannot be handed one then.
+        IAndroidLogcatDevice m_SelectedDevice;
+        // What the list held last pass, so a selection can be pruned of files that
+        // have gone without walking it on every repaint.
+        int m_KnownCount = -1;
+        // Whether the one-off "what should this window open on" decision has been made.
+        bool m_InitialSelectionDone;
+        // Taken up in place of that decision, after a domain reload.
+        Selection m_Restore;
+        // The frame the restored video was on, for when it opens. -1 for none.
+        long m_RestoreVideoFrame = -1;
+
+        /// <summary>What is selected, which the window keeps across a domain reload.</summary>
+        [Serializable]
+        internal class Selection
+        {
+            // Unity deserializes a missing one as an empty instance rather than null.
+            public bool Saved;
+            public bool Live;
+            public List<string> Paths = new List<string>();
+            public string Anchor;
+            public string Previewed;
+            public long VideoFrame = -1;
+            public float Zoom = AndroidLogcatImageViewer.kMinZoom;
+            public Vector2 Scroll;
+            public float LiveZoom = AndroidLogcatImageViewer.kMinZoom;
+            public Vector2 LiveScroll;
+        }
+
+        // The capture that has just landed, lit until m_FlashUntil. The window is
+        // showing the device rather than the list when one arrives, so the row is what
+        // says where it went.
+        string m_FlashPath;
+        double m_FlashUntil;
+        bool m_FlashNeedsScroll;
+
+        // Which row is being renamed, and the text so far. The field is focused once,
+        // the frame after it first appears.
+        string m_RenamingPath;
+        string m_RenameText;
+        bool m_RenameNeedsFocus;
+        // The list's own control id, remembered so that focus can go back to it once a
+        // rename ends - otherwise the keys would need another click to work again.
+        int m_ListControlId;
+
+        // The selected screenshot, drawn by this window and nothing else. It is
+        // deliberately not AndroidLogcatCaptureScreenshot's texture: that one is the
+        // last capture, and swapping it for a screenshot picked out of this list would
+        // lose it. Only the selected path is shared.
+        Texture2D m_PreviewTexture;
+        // A recording is previewed by playing it, where a screenshot is drawn. Only
+        // one of the two is ever loaded, since only one row is selected.
+        readonly AndroidLogcatVideoPlayer m_VideoPlayer;
+        string m_PreviewPath;
+        PreviewDetails m_PreviewDetails;
+
+        bool PreviewIsVideo => m_PreviewDetails != null && m_PreviewTexture == null;
+
+        // A video opens asynchronously; there is no frame and no size until it has.
+        bool VideoOpening => string.IsNullOrEmpty(m_VideoPlayer.Error)
+            && (m_VideoPlayer.Texture == null || m_VideoPlayer.Aspect <= 0);
+
+        /// <summary>
+        /// Whether the preview changes on its own, so the window has to keep repainting.
+        /// A repaint asked for from OnGUI alone can be lost while the Editor starts up.
+        /// </summary>
+        internal bool NeedsRepaint => PreviewIsVideo && (VideoOpening || m_VideoPlayer.NeedsRepaint);
+
+        // Zoom and pan for the preview. Its own, separate from the live view's: they
+        // show different things, and a zoom set on one is rarely the one wanted on the
+        // other. Kept across screenshots, though - screenshots from the same device are
+        // the same size, so comparing two of them at the same zoom is the point.
+        readonly AndroidLogcatImageViewer m_Viewer = new AndroidLogcatImageViewer();
+
+        /// <summary>
+        /// Whether the Live row is the selected one, so the caller knows to show the
+        /// stream rather than an image, and that there is no file to open or save.
+        /// </summary>
+        internal bool LiveSelected => m_LiveSelected;
+
+        internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime, Action repaint)
+            : this(runtime, runtime.CaptureScreenshot, repaint, AndroidLogcatVideoPlayer.kDefaultName)
+        {
+        }
+
+        /// <summary>For tests: own captures and player.</summary>
+        internal AndroidLogcatCaptureList(AndroidLogcatRuntimeBase runtime,
+            AndroidLogcatCaptureScreenshot captureScreenshot, Action repaint, string playerName)
+        {
+            m_Runtime = runtime;
+            m_CaptureScreenshot = captureScreenshot;
+            m_LiveStream = runtime.LiveStream;
+            m_Repaint = repaint;
+            m_VideoPlayer = new AndroidLogcatVideoPlayer(playerName);
+
+            // Settings saved before the width existed deserialize it as 0, which would
+            // collapse the list to nothing.
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            if (settings.CaptureListWidth < kMinWidth)
+                settings.CaptureListWidth = kDefaultWidth;
+        }
+
+        /// <summary>The player holds a texture and a VideoPlayer of its own.</summary>
+        internal void Dispose()
+        {
+            m_VideoPlayer.Dispose();
+            DestroyPreview();
+        }
+
+        internal Selection SaveSelection()
+        {
+            return new Selection
+            {
+                Saved = true,
+                Live = m_LiveSelected,
+                Paths = new List<string>(m_Selected),
+                Anchor = m_SelectionAnchor,
+                Previewed = m_CaptureScreenshot.SelectedImagePath,
+                VideoFrame = PreviewIsVideo ? m_VideoPlayer.Frame : -1,
+                Zoom = m_Viewer.Zoom,
+                Scroll = m_Viewer.Scroll,
+                LiveZoom = m_LiveStream.Viewer.Zoom,
+                LiveScroll = m_LiveStream.Viewer.Scroll
+            };
+        }
+
+        /// <summary>Applied on the first draw, in place of opening on the live view.</summary>
+        internal void RestoreSelection(Selection selection)
+        {
+            m_Restore = selection != null && selection.Saved ? selection : null;
+            if (m_Restore != null)
+            {
+                m_Viewer.Restore(m_Restore.Zoom, m_Restore.Scroll);
+                m_LiveStream.Viewer.Restore(m_Restore.LiveZoom, m_Restore.LiveScroll);
+            }
+        }
+
+        void ApplyRestore(Selection selection, IAndroidLogcatDevice device)
+        {
+            if (selection.Live)
+            {
+                SetLive(true, device);
+                return;
+            }
+            foreach (var path in selection.Paths)
+            {
+                if (File.Exists(path))
+                    m_Selected.Add(path);
+            }
+            m_SelectionAnchor = m_Selected.Contains(selection.Anchor) ? selection.Anchor : null;
+            if (m_Selected.Count == 0)
+                return;
+            if (m_Selected.Contains(selection.Previewed))
+            {
+                m_CaptureScreenshot.SelectImage(selection.Previewed);
+                m_RestoreVideoFrame = selection.VideoFrame;
+            }
+            else
+            {
+                m_CaptureScreenshot.SelectImage(First(m_Selected));
+            }
+        }
+
+        /// <summary>
+        /// Stops the stream and drops the selection, for a window that is going away.
+        /// The initial selection is forgotten with it, so coming back decides what to
+        /// open on again.
+        /// </summary>
+        internal void Deselect()
+        {
+            if (m_LiveSelected)
+                StopLive();
+            m_LiveSelected = false;
+            m_Selected.Clear();
+            m_SelectionAnchor = null;
+            m_InitialSelectionDone = false;
+            DestroyPreview();
+        }
+
+        /// <summary>
+        /// Forgets the loaded preview, so the next pass reads it from disk again even
+        /// though the selected path has not changed. The file behind that path can have
+        /// been replaced while the Editor was not looking.
+        /// </summary>
+        internal void InvalidatePreview()
+        {
+            // Reloading a recording opens it again at the start, so one that has not
+            // changed on disk is left where it was, and paused if it was.
+            if (PreviewIsVideo && m_VideoPlayer.IsShowing(m_PreviewPath))
+                return;
+            DestroyPreview();
+        }
+
+        /// <summary>
+        /// Lights a row, for a capture that has just been taken. The selection is left
+        /// alone: it was taken from the live view, which is worth staying on.
+        /// </summary>
+        internal void Flash(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            m_FlashPath = path;
+            m_FlashUntil = EditorApplication.timeSinceStartup + kFlashSeconds;
+            m_FlashNeedsScroll = true;
+            m_Repaint();
+        }
+
+        /// <summary>
+        /// Draws the selected screenshot, or the last capture's error if there is one.
+        /// Returns false when there is nothing to show, so the caller can say so.
+        /// </summary>
+        internal bool DoPreviewGUI(Rect rc)
+        {
+            var error = m_CaptureScreenshot.Error;
+            if (!string.IsNullOrEmpty(error))
+            {
+                EditorGUI.HelpBox(rc, error, MessageType.Error);
+                return true;
+            }
+
+            if (m_PreviewDetails == null)
+                return false;
+
+            AndroidLogcatStatsColumn.DrawBox(rc);
+
+            // The same column the live view draws, so the two look alike. Taken out of
+            // the area before the image is fitted, or the image would be drawn
+            // underneath it, and sized to its text, or a device name is cut in half.
+            var statsWidth = AndroidLogcatStatsColumn.WidthFor(rc, m_PreviewDetails.Values);
+            var previewArea = new Rect(rc.x, rc.y, Mathf.Max(0, rc.width - statsWidth), rc.height);
+
+            if (PreviewIsVideo)
+            {
+                var frame = m_VideoPlayer.Texture;
+                var aspect = m_VideoPlayer.Aspect;
+                var failed = !string.IsNullOrEmpty(m_VideoPlayer.Error);
+                var opening = VideoOpening;
+                if (failed)
+                {
+                    EditorGUI.HelpBox(previewArea, $"The recording cannot be played.\n{m_VideoPlayer.Error}",
+                        MessageType.Error);
+                }
+                else if (opening)
+                {
+                    EditorGUI.HelpBox(previewArea, "Opening the recording...", MessageType.Info);
+                }
+                else
+                {
+                    // Only the picture: the rest of a recording is black, wherever folding or
+                    // turning the device left it.
+                    var uv = m_PreviewDetails.ContentAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame), frame.width, frame.height);
+                    var shown = new Vector2(uv.width * frame.width, uv.height * frame.height);
+                    var time = m_VideoPlayer.TimeOf(m_VideoPlayer.Frame);
+                    m_Viewer.DoGUI(previewArea, shown.y > 0 ? shown.x / shown.y : aspect,
+                        videoRect =>
+                        {
+                            GUI.DrawTextureWithTexCoords(videoRect, frame, uv);
+                            DrawTouch(videoRect, time);
+                        }, m_Repaint);
+                }
+
+                if (opening || m_VideoPlayer.NeedsRepaint)
+                    m_Repaint();
+            }
+            else
+            {
+                m_Viewer.DoGUI(previewArea,
+                    (float)m_PreviewTexture.width / m_PreviewTexture.height,
+                    imageRect => GUI.DrawTexture(imageRect, m_PreviewTexture), m_Repaint);
+            }
+
+            // Beside the area rather than the picture, which changes shape as the device folds
+            // or turns: the column stays put, as in the live view, whatever is selected.
+            DoStatsGUI(AndroidLogcatStatsColumn.RectBeside(rc, previewArea));
+            return true;
+        }
+
+        void DoStatsGUI(Rect rc)
+        {
+            const float kLabelWidth = AndroidLogcatStatsColumn.kLabelWidth;
+            var y = rc.y;
+            var details = m_PreviewDetails;
+
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Device, details.Device, details.DeviceId);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.OS, details.OS);
+            // A recording's changes as the device is folded or turned, at the time shown.
+            var displaySize = PreviewIsVideo
+                ? details.DisplaySizeAt(m_VideoPlayer.TimeOf(m_VideoPlayer.Frame))
+                : details.DisplaySize;
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.DisplaySize, displaySize);
+
+            // A recording's size and length are known only once the player has opened it.
+            if (PreviewIsVideo)
+            {
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.VideoSize,
+                    Undefined(m_VideoPlayer.Dimensions));
+                var frameRate = m_VideoPlayer.FrameRate;
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FrameRate,
+                    frameRate > 0 ? $"{frameRate:0.##} fps" : kUndefined);
+            }
+            else
+            {
+                AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.ImageSize, details.ImageSize);
+            }
+
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.FileSize, details.FileSize);
+            AndroidLogcatStatsColumn.Row(rc, kLabelWidth, ref y, Styles.Captured, details.Captured, details.CapturedInFull);
+
+            if (PreviewIsVideo)
+            {
+                y += kGroupGap;
+                m_VideoPlayer.DoControlsGUI(rc, ref y);
+            }
+            else if (Unsupported.IsDeveloperMode())
+            {
+                y += kGroupGap;
+                AndroidLogcatStatsColumn.DeveloperModeGUI(rc, ref y);
+            }
+        }
+
+        // On screen, whatever the zoom: it marks a finger, not an area of the picture.
+        const float kTouchSize = 36;
+        // How long a lifted touch takes to fade, so a quick tap is still seen.
+        const double kTouchFadeSeconds = 0.3;
+        static Texture2D s_TouchMarker;
+
+        // Tints for the marker's light parts, by what the touch was last doing. The dark
+        // rim stays dark, so each reads on any screen.
+        static readonly Color kTouchDown = new Color(0.3f, 0.9f, 0.4f);
+        static readonly Color kTouchMove = new Color(0.3f, 0.7f, 1f);
+        static readonly Color kTouchUp = Color.white;
+        static readonly Color kTouchCancel = new Color(1f, 0.35f, 0.35f);
+
+        static Color TouchColor(string action)
+        {
+            switch (action)
+            {
+                case nameof(AndroidLogcatLiveStream.TouchAction.Down): return kTouchDown;
+                case nameof(AndroidLogcatLiveStream.TouchAction.Move): return kTouchMove;
+                case nameof(AndroidLogcatLiveStream.TouchAction.Cancel): return kTouchCancel;
+                default: return kTouchUp;
+            }
+        }
+
+        /// <summary>
+        /// The touch the Editor sent at <paramref name="time"/>, if any. Android does not
+        /// draw injected touches into the screen, so the recording only has them as data.
+        /// </summary>
+        void DrawTouch(Rect videoRect, double time)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            if (!m_PreviewDetails.TouchAt(time, kTouchFadeSeconds, out var position, out var alpha, out var action))
+                return;
+
+            var centre = new Vector2(videoRect.x + position.x * videoRect.width, videoRect.y + position.y * videoRect.height);
+            var previous = GUI.color;
+            var color = TouchColor(action);
+            color.a = alpha;
+            GUI.color = color;
+            GUI.DrawTexture(new Rect(centre.x - kTouchSize / 2, centre.y - kTouchSize / 2, kTouchSize, kTouchSize),
+                TouchMarker);
+            GUI.color = previous;
+        }
+
+        /// <summary>A light disc with a dark rim, visible on light and dark screens alike.</summary>
+        static Texture2D TouchMarker
+        {
+            get
+            {
+                if (s_TouchMarker != null)
+                    return s_TouchMarker;
+                const int kSize = 64;
+                s_TouchMarker = new Texture2D(kSize, kSize, TextureFormat.RGBA32, false)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear
+                };
+                var pixels = new Color32[kSize * kSize];
+                var radius = kSize / 2f - 1;
+                for (var y = 0; y < kSize; y++)
+                {
+                    for (var x = 0; x < kSize; x++)
+                    {
+                        var distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(kSize / 2f, kSize / 2f));
+                        // Antialiased edge, a dark rim, a white ring inside it, and a soft fill.
+                        var edge = Mathf.Clamp01(radius - distance + 0.5f);
+                        Color color = distance > radius - 3 ? new Color(0, 0, 0, 0.8f)
+                            : distance > radius - 7 ? new Color(1, 1, 1, 0.95f)
+                            : new Color(1, 1, 1, 0.45f);
+                        color.a *= edge;
+                        pixels[y * kSize + x] = color;
+                    }
+                }
+                s_TouchMarker.SetPixels32(pixels);
+                s_TouchMarker.Apply();
+                return s_TouchMarker;
+            }
+        }
+
+        static string Undefined(string value) => string.IsNullOrEmpty(value) ? kUndefined : value;
+
+        /// <summary>
+        /// What the details column says about the selected screenshot, worked out when
+        /// it is loaded: the column is measured against these before the image is
+        /// fitted, and none of it changes while the same screenshot is shown.
+        /// </summary>
+        internal class PreviewDetails
+        {
+            internal string Device { get; }
+            internal string DeviceId { get; }
+            internal string OS { get; }
+            internal string DisplaySize { get; }
+            internal string ImageSize { get; }
+            internal string FileSize { get; }
+            internal string Captured { get; }
+            internal string CapturedInFull { get; }
+            internal string[] Values { get; }
+            // A recording's changes split by kind, each in time order, so a lookup is a
+            // binary search rather than a walk past every touch of a long recording.
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_DisplayChanges;
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_ContentChanges;
+            readonly AndroidLogcatScreenshotInfo.FrameChange[] m_TouchChanges;
+
+            /// <summary>A recording has no texture, so it has no image size either.</summary>
+            internal PreviewDetails(Texture2D texture, FileInfo file, AndroidLogcatScreenshotInfo info)
+            {
+                Device = info == null || string.IsNullOrEmpty(info.deviceName) ? kUndefined : info.deviceName;
+                DeviceId = info?.deviceId;
+                OS = info == null ? kUndefined : OperatingSystem(info);
+                DisplaySize = info == null || info.displayWidth <= 0
+                    ? kUndefined
+                    : $"{info.displayWidth}x{info.displayHeight}";
+                var changes = info?.frameChanges ?? Array.Empty<AndroidLogcatScreenshotInfo.FrameChange>();
+                m_DisplayChanges = Ordered(changes, change => change.display != null && change.display.IsSet);
+                m_ContentChanges = Ordered(changes, change => change.content != null && change.content.IsSet);
+                m_TouchChanges = Ordered(changes, change => change.touches != null && change.touches.Count > 0);
+                ImageSize = texture != null ? $"{texture.width}x{texture.height}" : kUndefined;
+                FileSize = EditorUtility.FormatBytes(file.Length);
+                Captured = file.LastWriteTime.ToString("g");
+                CapturedInFull = file.LastWriteTime.ToString("F");
+                Values = new[] { Device, OS, DisplaySize, ImageSize, FileSize, Captured };
+            }
+
+            /// <summary>The display size <paramref name="time"/> seconds into a recording.</summary>
+            internal string DisplaySizeAt(double time)
+            {
+                var display = LatestAt(m_DisplayChanges, time)?.display;
+                return display != null ? $"{display.width}x{display.height}" : DisplaySize;
+            }
+
+            /// <summary>
+            /// The part of a recording's frame with the picture in it at <paramref name="time"/>,
+            /// as texture coordinates. All of it for a recording that does not say.
+            /// </summary>
+            internal Rect ContentAt(double time, int videoWidth, int videoHeight)
+            {
+                var content = LatestAt(m_ContentChanges, time)?.content;
+                if (content == null || videoWidth <= 0 || videoHeight <= 0)
+                    return new Rect(0, 0, 1, 1);
+                // A pixel in from each side: compression bleeds the black into the edge.
+                // Centred, so the flip between pixel rows and texture coordinates cancels out.
+                const int kInset = 1;
+                var width = Mathf.Max(1, content.width - 2 * kInset);
+                var height = Mathf.Max(1, content.height - 2 * kInset);
+                return new Rect((float)(content.x + kInset) / videoWidth, (float)(content.y + kInset) / videoHeight,
+                    (float)width / videoWidth, (float)height / videoHeight);
+            }
+
+            /// <summary>
+            /// Where an Editor touch was at <paramref name="time"/>: held down, or lifted less
+            /// than <paramref name="fadeSeconds"/> before, fading out. False when there is none.
+            /// </summary>
+            internal bool TouchAt(double time, double fadeSeconds, out Vector2 position, out float alpha, out string action)
+            {
+                position = default;
+                alpha = 0;
+                action = null;
+                var change = LatestAt(m_TouchChanges, time);
+                if (change == null)
+                    return false;
+                var last = change.touches[change.touches.Count - 1];
+                var lastTime = change.time;
+
+                position = new Vector2(last.x, last.y);
+                action = last.action;
+                var down = last.action == nameof(AndroidLogcatLiveStream.TouchAction.Down)
+                    || last.action == nameof(AndroidLogcatLiveStream.TouchAction.Move);
+                if (down)
+                {
+                    alpha = 1;
+                    return true;
+                }
+                var since = time - lastTime;
+                if (since > fadeSeconds)
+                    return false;
+                alpha = (float)(1 - since / fadeSeconds);
+                return true;
+            }
+
+            static AndroidLogcatScreenshotInfo.FrameChange[] Ordered(
+                AndroidLogcatScreenshotInfo.FrameChange[] changes, Func<AndroidLogcatScreenshotInfo.FrameChange, bool> has)
+            {
+                // Stable, as recordings made before the recorder kept them in order may not be.
+                return changes.Where(change => change != null && has(change)).OrderBy(change => change.time).ToArray();
+            }
+
+            /// <summary>The last of <paramref name="changes"/> at or before <paramref name="time"/>, or null.</summary>
+            static AndroidLogcatScreenshotInfo.FrameChange LatestAt(AndroidLogcatScreenshotInfo.FrameChange[] changes, double time)
+            {
+                // A hair early, so the frame a change lands on already shows it.
+                time += 0.0005;
+                int low = 0, high = changes.Length;
+                while (low < high)
+                {
+                    var middle = low + (high - low) / 2;
+                    if (changes[middle].time > time)
+                        high = middle;
+                    else
+                        low = middle + 1;
+                }
+                return low > 0 ? changes[low - 1] : null;
+            }
+        }
+
+        static string OperatingSystem(AndroidLogcatScreenshotInfo info)
+        {
+            if (string.IsNullOrEmpty(info.osVersion))
+                return info.apiLevel > 0 ? $"API {info.apiLevel}" : kUndefined;
+            return info.apiLevel > 0 ? $"Android {info.osVersion} (API {info.apiLevel})" : $"Android {info.osVersion}";
+        }
+
+        /// <summary>
+        /// Loads whatever the selection points at, if it is not already loaded. Called
+        /// every pass rather than from each place that can change the selection - a
+        /// capture landing, a delete, a rename - so there is one path to get wrong
+        /// instead of four.
+        /// </summary>
+        internal void SyncPreview()
+        {
+            var path = m_CaptureScreenshot.SelectedImagePath;
+            if (path == m_PreviewPath)
+                return;
+
+            DestroyPreview();
+            m_PreviewPath = path;
+
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return;
+
+            if (IsVideo(path))
+            {
+                m_PreviewDetails = new PreviewDetails(null, new FileInfo(path),
+                    AndroidLogcatScreenshotInfo.Load(path));
+                m_VideoPlayer.Open(path, m_RestoreVideoFrame);
+                m_RestoreVideoFrame = -1;
+                return;
+            }
+
+            var texture = new Texture2D(2, 2);
+            bool loaded;
+            using (k_LoadPreview.Auto())
+                loaded = texture.LoadImage(File.ReadAllBytes(path));
+
+            if (loaded)
+            {
+                m_PreviewTexture = texture;
+                m_PreviewDetails = new PreviewDetails(texture, new FileInfo(path),
+                    AndroidLogcatScreenshotInfo.Load(path));
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        internal static bool IsVideo(string path)
+        {
+            var extension = Path.GetExtension(path);
+            return string.Equals(extension, ".mp4", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".webm", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Null when nothing is loaded.</summary>
+        internal string PreviewPath => m_PreviewPath;
+
+        internal AndroidLogcatVideoPlayer VideoPlayer => m_VideoPlayer;
+
+        void DestroyPreview()
+        {
+            if (PreviewIsVideo)
+                m_VideoPlayer.Open(null);
+            if (m_PreviewTexture != null)
+                UnityEngine.Object.DestroyImmediate(m_PreviewTexture);
+            m_PreviewTexture = null;
+            m_PreviewPath = null;
+            m_PreviewDetails = null;
+        }
+
+        /// <summary>
+        /// A stream belongs to the device it was started on, so it has to be restarted
+        /// against a new one.
+        /// </summary>
+        internal void OnDeviceChanged(IAndroidLogcatDevice device)
+        {
+            // A recording belongs to the device it started on, so it ends before the
+            // stream moves to another.
+            m_Runtime.CaptureVideo?.StopRecording();
+            if (m_LiveSelected)
+                m_LiveStream.RestartStreaming(device);
+        }
+
+        /// <summary>
+        /// Draws the list and the splitter, and returns what is left for the caller to
+        /// draw the image or the stream into.
+        /// </summary>
+        internal Rect DoGUI(Rect rc, IAndroidLogcatDevice device)
+        {
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+            var width = Mathf.Min(settings.CaptureListWidth,
+                Mathf.Max(0, rc.width - kSplitterWidth - kMinPreviewWidth));
+
+            // The fade runs on a clock, and a clock only moves here if something
+            // repaints. Expired centrally rather than in the row, which is not drawn
+            // at all while it is scrolled out of sight.
+            if (m_FlashPath != null)
+            {
+                if (EditorApplication.timeSinceStartup >= m_FlashUntil)
+                    m_FlashPath = null;
+                else
+                    m_Repaint();
+            }
+
+            var listRect = new Rect(rc.x, rc.y, width, rc.height);
+            var splitterRect = new Rect(listRect.xMax, rc.y, kSplitterWidth, rc.height);
+
+            // A recording only runs while the live view is showing, and selecting a
+            // capture would end it - so nothing in the column can be picked until it stops.
+            using (new EditorGUI.DisabledScope(m_Runtime.CaptureVideo.IsRecording))
+                DoColumnGUI(listRect, device);
+
+            // Clamped to the window, so storing it unmoved would shrink a saved width
+            // that this window is too narrow to show.
+            var before = width;
+            if (m_Splitter.DoGUI(splitterRect, ref width))
+            {
+                if (!Mathf.Approximately(width, before))
+                    settings.CaptureListWidth = width;
+                m_Repaint();
+            }
+
+            return new Rect(splitterRect.xMax, rc.y, Mathf.Max(0, rc.xMax - splitterRect.xMax), rc.height);
+        }
+
+        /// <summary>
+        /// The Live button, and under it the captures. Live is a button rather than a
+        /// row in the list: it is a view of the device rather than a file, it is not
+        /// one of the things a selection can span, and it stays put while the list
+        /// scrolls.
+        /// </summary>
+        void DoColumnGUI(Rect rc, IAndroidLogcatDevice device)
+        {
+            m_SelectedDevice = device;
+            var rowHeight = EditorGUIUtility.singleLineHeight;
+
+            var liveRect = new Rect(rc.x, rc.y, rc.width, rowHeight);
+            DoLiveGUI(liveRect, device);
+
+            var headerRect = new Rect(rc.x, liveRect.yMax + kGroupGap, rc.width, rowHeight);
+            GUI.Label(headerRect, Styles.Captures, EditorStyles.miniBoldLabel);
+
+            var listRect = new Rect(rc.x, headerRect.yMax, rc.width,
+                Mathf.Max(0, rc.yMax - headerRect.yMax));
+            DoCapturesGUI(listRect, device);
+        }
+
+        void DoLiveGUI(Rect rc, IAndroidLogcatDevice device)
+        {
+            // A toggle for the pressed look, but it only ever switches on here: what
+            // switches it off is selecting a capture, the way one row of a list gives
+            // way to another rather than being clicked off.
+            EditorGUI.BeginChangeCheck();
+            GUI.Toggle(rc, m_LiveSelected, Styles.Live, EditorStyles.miniButton);
+            if (EditorGUI.EndChangeCheck())
+                SetLive(true, device);
+        }
+
+        void DoCapturesGUI(Rect rc, IAndroidLogcatDevice device)
+        {
+            // Allocated on every pass, before any early return, so control ids do not
+            // shift between the Layout and Repaint passes.
+            var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
+            m_ListControlId = controlId;
+
+            GUI.Box(rc, GUIContent.none, EditorStyles.helpBox);
+
+            // Every device, not just the selected one: a capture is worth looking at
+            // whichever device it came from, and the file name says which that was.
+            var captures = m_CaptureScreenshot.GetScreenshots();
+
+            SyncPreview();
+            PruneSelection(captures);
+
+            // A domain reload puts back what was selected. Otherwise, with nothing
+            // selected, open on the live view rather than on an empty pane. Once per
+            // window: deleting the last capture deliberately leaves nothing selected
+            // rather than starting a stream.
+            if (!m_InitialSelectionDone)
+            {
+                m_InitialSelectionDone = true;
+                if (m_Restore != null)
+                    ApplyRestore(m_Restore, device);
+                else if (!m_LiveSelected && m_Selected.Count == 0)
+                    SetLive(true, device);
+                m_Restore = null;
+            }
+
+            var rowHeight = EditorGUIUtility.singleLineHeight;
+            var inner = new Rect(rc.x + 1, rc.y + 1, rc.width - 2, rc.height - 2);
+
+            // Room for the scrollbar is reserved only when there will be one. Reserving
+            // it unconditionally leaves a dead strip that pushes the delete buttons away
+            // from the right edge.
+            var contentHeight = captures.Count * rowHeight;
+            var scrollbarWidth = contentHeight > inner.height ? kScrollbarWidth : 0;
+            var content = new Rect(0, 0, inner.width - scrollbarWidth, contentHeight);
+            var hasFocus = GUIUtility.keyboardControl == controlId;
+            // The rows read mouse and key events themselves, which GUI.enabled does not stop.
+            var interactive = GUI.enabled;
+            // Any button when none is given.
+            bool Pressed(Rect rect, EventType type, int button = -1) =>
+                interactive && Event.current.type == type && (button < 0 || Event.current.button == button)
+                && rect.Contains(Event.current.mousePosition);
+
+            // A row that cannot be seen cannot say anything.
+            if (m_FlashNeedsScroll && m_FlashPath != null)
+            {
+                m_FlashNeedsScroll = false;
+                var flashed = IndexOf(captures, m_FlashPath);
+                if (flashed >= 0)
+                    ScrollIntoView(flashed, rowHeight, inner.height);
+            }
+
+            // Acted on after the loop: a menu has to be positioned in window
+            // coordinates rather than the scroll view's, and answering it can
+            // invalidate the cached list that is being iterated here.
+            string menuPath = null;
+            var menuScreenPosition = Vector2.zero;
+
+            m_Scroll = GUI.BeginScrollView(inner, m_Scroll, content);
+            for (var row = 0; row < captures.Count; row++)
+            {
+                var path = captures[row].Path;
+                var rowRect = new Rect(0, row * rowHeight, content.width, rowHeight);
+                var isSelected = m_Selected.Contains(path);
+
+                if (Event.current.type == EventType.Repaint && isSelected)
+                {
+                    // Dimmer when the list is not focused, the way editor lists behave.
+                    EditorGUI.DrawRect(rowRect, hasFocus
+                        ? new Color(0.24f, 0.48f, 0.90f, 0.85f)
+                        : new Color(0.30f, 0.30f, 0.30f, 0.85f));
+                }
+
+                if (Event.current.type == EventType.Repaint && path == m_FlashPath)
+                {
+                    var left = (float)((m_FlashUntil - EditorApplication.timeSinceStartup) / kFlashSeconds);
+                    EditorGUI.DrawRect(rowRect, new Color(1, 1, 1, Mathf.Clamp01(left) * kFlashStrength));
+                }
+
+                var iconRect = new Rect(rowRect.x + 4, rowRect.y + (rowRect.height - kIconSize) * 0.5f,
+                    kIconSize, kIconSize);
+                var labelRect = new Rect(iconRect.xMax + kIconMargin, rowRect.y,
+                    Mathf.Max(0, rowRect.xMax - iconRect.xMax - kIconMargin), rowRect.height);
+
+                var icon = Styles.IconFor(path);
+                if (icon != null && Event.current.type == EventType.Repaint)
+                {
+                    // DrawTexture ignores GUI.enabled, so it is faded by hand the way
+                    // disabled styles fade their text.
+                    var color = GUI.color;
+                    if (!interactive)
+                        GUI.color = new Color(color.r, color.g, color.b, color.a * 0.5f);
+                    GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit);
+                    GUI.color = color;
+                }
+
+                if (path == m_RenamingPath)
+                {
+                    DoRenameFieldGUI(labelRect);
+                }
+                else
+                {
+                    // Tooltip relative to the project, because the absolute path is
+                    // mostly project folder and covers the rows around it.
+                    var label = new GUIContent(captures[row].Name,
+                        AndroidLogcatUtilities.ProjectRelativePath(path));
+                    var style = isSelected ? Styles.SelectedRow : EditorStyles.label;
+                    GUI.Label(labelRect, label, style);
+                }
+
+                // The whole row, icon included. Skipped while this row is being
+                // renamed, so clicking into the text field does not count as selecting
+                // the row.
+                if (Pressed(rowRect, EventType.MouseDown, 0) && path != m_RenamingPath)
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    ClickRow(captures, path, Event.current, device);
+
+                    if (Event.current.clickCount == 2)
+                        AndroidLogcatUtilities.OpenFile(path);
+
+                    Event.current.Use();
+                }
+
+                // On the press, so the row is drawn selected before the menu opens
+                // over it. Not consumed: the ContextClick is made from this event.
+                if (Pressed(rowRect, EventType.MouseDown, 1) && path != m_RenamingPath
+                    && !m_Selected.Contains(path))
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    SelectOnly(path, device);
+                }
+
+                if (Pressed(rowRect, EventType.ContextClick))
+                {
+                    GUIUtility.keyboardControl = controlId;
+                    // A click inside the selection acts on the whole of it; one
+                    // outside moves the selection there first.
+                    if (!m_Selected.Contains(path))
+                        SelectOnly(path, device);
+
+                    menuPath = path;
+                    // Captured in screen space: inside the scroll view the mouse
+                    // position is in content coordinates, which the menu would misplace.
+                    menuScreenPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+                    Event.current.Use();
+                }
+            }
+
+            GUI.EndScrollView();
+
+            // Deselect when clicking on empty space
+            if (Pressed(inner, EventType.MouseDown, 0) && m_RenamingPath == null)
+            {
+                GUIUtility.keyboardControl = controlId;
+                DeselectAll();
+                Event.current.Use();
+            }
+
+            if (interactive)
+                HandleKeys(controlId, captures, rowHeight, inner.height, device);
+
+            if (menuPath != null)
+                ShowRowContextMenu(captures, menuPath, GUIUtility.ScreenToGUIPoint(menuScreenPosition));
+        }
+
+        // ------------------------------------------------------------------
+        // Selection
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Drops paths whose files are gone, so that a selection cannot act on them.
+        /// Only when the list has changed length: the common case is that it has not.
+        /// </summary>
+        void PruneSelection(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures)
+        {
+            if (captures.Count == m_KnownCount)
+                return;
+            m_KnownCount = captures.Count;
+
+            if (m_Selected.Count == 0)
+                return;
+
+            m_Selected.RemoveWhere(path => IndexOf(captures, path) < 0);
+            if (m_SelectionAnchor != null && !m_Selected.Contains(m_SelectionAnchor))
+                m_SelectionAnchor = null;
+        }
+
+        /// <summary>
+        /// Points the selection at a renamed row: it is held by path, and the old one
+        /// would match nothing.
+        /// </summary>
+        void FollowRename(string path, string renamed)
+        {
+            if (string.IsNullOrEmpty(renamed) || !m_Selected.Remove(path))
+                return;
+
+            m_Selected.Add(renamed);
+            if (m_SelectionAnchor == path)
+                m_SelectionAnchor = renamed;
+        }
+
+        static int IndexOf(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures, string path)
+        {
+            for (var i = 0; i < captures.Count; i++)
+            {
+                if (captures[i].Path == path)
+                    return i;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Watching the device and looking at a capture are the same piece of screen,
+        /// so turning one on turns the other off.
+        /// </summary>
+        void SetLive(bool live, IAndroidLogcatDevice device)
+        {
+            if (m_LiveSelected == live)
+                return;
+
+            m_LiveSelected = live;
+            if (live)
+            {
+                m_Selected.Clear();
+                m_SelectionAnchor = null;
+                m_CaptureScreenshot.SelectImage(null);
+                m_LiveStream.RestartStreaming(device);
+            }
+            else
+            {
+                StopLive();
+            }
+            m_Repaint();
+        }
+
+        /// <summary>
+        /// A recording is taken while watching the device, and once the live view is
+        /// gone nothing says one is still running - so it ends with it. The stream goes
+        /// first, so the status bar ends up saying where the recording landed.
+        /// </summary>
+        void StopLive()
+        {
+            m_LiveStream.StopStreaming();
+            m_Runtime.CaptureVideo.StopRecording();
+        }
+
+        /// <summary>
+        /// Shift extends from the last click, Ctrl - Cmd on macOS - adds and removes
+        /// one, and a plain click replaces the selection, as lists elsewhere behave.
+        /// </summary>
+        void ClickRow(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures, string path,
+            Event e, IAndroidLogcatDevice device)
+        {
+            if (e.shift && m_SelectionAnchor != null)
+                SelectRange(captures, m_SelectionAnchor, path, device);
+            else if (EditorGUI.actionKey)
+                ToggleSelected(path, device);
+            else
+                SelectOnly(path, device);
+        }
+
+        void SelectOnly(string path, IAndroidLogcatDevice device)
+        {
+            SetLive(false, device);
+            m_Selected.Clear();
+            m_Selected.Add(path);
+            m_SelectionAnchor = path;
+            m_CaptureScreenshot.SelectImage(path);
+            m_Repaint();
+        }
+
+        /// <summary>Clears the selection, leaving the Live button where it is.</summary>
+        void DeselectAll()
+        {
+            if (m_Selected.Count == 0)
+                return;
+
+            m_Selected.Clear();
+            m_SelectionAnchor = null;
+            m_CaptureScreenshot.SelectImage(null);
+            m_Repaint();
+        }
+
+        void ToggleSelected(string path, IAndroidLogcatDevice device)
+        {
+            SetLive(false, device);
+
+            if (!m_Selected.Remove(path))
+            {
+                m_Selected.Add(path);
+                m_SelectionAnchor = path;
+                // The one just added is the one to look at.
+                m_CaptureScreenshot.SelectImage(path);
+            }
+            else if (m_CaptureScreenshot.SelectedImagePath == path)
+            {
+                // The previewed one was removed from the selection, so the preview
+                // moves to whatever is still selected, or to nothing.
+                m_CaptureScreenshot.SelectImage(m_Selected.Count > 0 ? First(m_Selected) : null);
+            }
+
+            m_Repaint();
+        }
+
+        void SelectRange(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            string fromPath, string toPath, IAndroidLogcatDevice device)
+        {
+            var from = IndexOf(captures, fromPath);
+            var to = IndexOf(captures, toPath);
+            if (from < 0 || to < 0)
+            {
+                SelectOnly(toPath, device);
+                return;
+            }
+
+            SetLive(false, device);
+            m_Selected.Clear();
+            for (var i = Mathf.Min(from, to); i <= Mathf.Max(from, to); i++)
+                m_Selected.Add(captures[i].Path);
+
+            // The anchor stays where the range started, so dragging the other end
+            // back and forth keeps measuring from the same row.
+            m_SelectionAnchor = fromPath;
+            m_CaptureScreenshot.SelectImage(toPath);
+            m_Repaint();
+        }
+
+        void SelectAll(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            IAndroidLogcatDevice device)
+        {
+            if (captures.Count == 0)
+                return;
+
+            SetLive(false, device);
+            m_Selected.Clear();
+            foreach (var capture in captures)
+                m_Selected.Add(capture.Path);
+
+            m_SelectionAnchor = captures[0].Path;
+            m_CaptureScreenshot.SelectImage(captures[captures.Count - 1].Path);
+            m_Repaint();
+        }
+
+        static string First(HashSet<string> paths)
+        {
+            foreach (var path in paths)
+                return path;
+            return null;
+        }
+
+        /// <summary>The selection in the order it is shown, which is how it is deleted.</summary>
+        List<string> SelectedInOrder(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures)
+        {
+            var paths = new List<string>(m_Selected.Count);
+            foreach (var capture in captures)
+            {
+                if (m_Selected.Contains(capture.Path))
+                    paths.Add(capture.Path);
+            }
+            return paths;
+        }
+
+        /// <summary>
+        /// What can be done with the row that was clicked, and with the selection it
+        /// belongs to. The single item entries act on that row: opening, saving and
+        /// renaming several at once means several dialogs, which is not what a menu
+        /// click asks for.
+        /// </summary>
+        void ShowRowContextMenu(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            string path, Vector2 position)
+        {
+            var single = m_Selected.Count <= 1;
+            var menu = new AndroidContextMenu<ScreenshotContextMenu>();
+
+            menu.Add(ScreenshotContextMenu.ShowInFileBrowser,
+                AndroidLogcatUtilities.RevealInFileBrowserLabel, enabled: single, userData: path);
+            menu.Add(ScreenshotContextMenu.Open, "Open", enabled: single, userData: path);
+            menu.Add(ScreenshotContextMenu.CopyTo,
+                single ? "Copy To..." : $"Copy {m_Selected.Count} Captures To...");
+            menu.Add(ScreenshotContextMenu.Rename, "Rename", enabled: single, userData: path);
+            menu.Add(ScreenshotContextMenu.Delete,
+                single ? "Delete" : $"Delete {m_Selected.Count} Captures");
+            menu.Add(ScreenshotContextMenu.SelectAll, "Select All",
+                enabled: m_Selected.Count < captures.Count);
+
+            menu.Show(position, OnContextMenuSelection);
+        }
+
+        /// <summary>
+        /// The row's label replaced by a text field. Enter commits, Escape cancels, and
+        /// losing focus commits as well - clicking away is not a reason to throw the name
+        /// the user typed away.
+        /// </summary>
+        void DoRenameFieldGUI(Rect rc)
+        {
+            var e = Event.current;
+            if (e.type == EventType.KeyDown)
+            {
+                if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
+                {
+                    CommitRename();
+                    e.Use();
+                    return;
+                }
+                if (e.keyCode == KeyCode.Escape)
+                {
+                    CancelRename();
+                    e.Use();
+                    return;
+                }
+            }
+
+            GUI.SetNextControlName(kRenameControlName);
+            m_RenameText = EditorGUI.TextField(rc, m_RenameText);
+
+            if (m_RenameNeedsFocus)
+            {
+                // Has to happen after the field exists, so a frame later than the menu.
+                GUI.FocusControl(kRenameControlName);
+                m_RenameNeedsFocus = false;
+            }
+            else if (GUI.GetNameOfFocusedControl() != kRenameControlName)
+            {
+                CommitRename();
+            }
+        }
+
+        void BeginRename(string path)
+        {
+            m_RenamingPath = path;
+            m_RenameText = Path.GetFileNameWithoutExtension(path);
+            m_RenameNeedsFocus = true;
+            m_Repaint();
+        }
+
+        void CommitRename()
+        {
+            var path = m_RenamingPath;
+            var name = m_RenameText;
+            CancelRename();
+
+            if (path == null)
+                return;
+
+            // An unchanged or unusable name is not an error; the row just goes back to
+            // showing what it showed before.
+            RenameCapture(path, name);
+            m_Repaint();
+        }
+
+        /// <summary>The selection follows the rename.</summary>
+        internal bool RenameCapture(string path, string name)
+        {
+            ClosePreviewOf(path);
+            if (!m_CaptureScreenshot.RenameScreenshot(path, name, out var renamed))
+                return false;
+            FollowRename(path, renamed);
+            return true;
+        }
+
+        /// <summary>
+        /// Windows cannot move or delete a file the player has open. The next pass
+        /// reopens whatever is selected.
+        /// </summary>
+        void ClosePreviewOf(string path)
+        {
+            if (PreviewIsVideo && m_PreviewPath == path)
+                DestroyPreview();
+        }
+
+        void CancelRename()
+        {
+            m_RenamingPath = null;
+            m_RenameText = null;
+            m_RenameNeedsFocus = false;
+            if (GUI.GetNameOfFocusedControl() == kRenameControlName)
+                GUIUtility.keyboardControl = m_ListControlId;
+        }
+
+        void OnContextMenuSelection(object userData, string[] options, int selected)
+        {
+            var menu = (AndroidContextMenu<ScreenshotContextMenu>)userData;
+            var item = menu.GetItemAt(selected);
+            if (item == null)
+                return;
+
+            // What UserData holds depends on the item: a path for the screenshot rows,
+            // the device for the Live row.
+            switch (item.Item)
+            {
+                case ScreenshotContextMenu.ShowInFileBrowser:
+                    AndroidLogcatUtilities.RevealInFileBrowser((string)item.UserData);
+                    break;
+                case ScreenshotContextMenu.Open:
+                    AndroidLogcatUtilities.OpenFile((string)item.UserData);
+                    break;
+                case ScreenshotContextMenu.CopyTo:
+                    // Read when the menu is answered, not when it was opened.
+                    CopyTo(SelectedInOrder(m_CaptureScreenshot.GetScreenshots()));
+                    break;
+                case ScreenshotContextMenu.Rename:
+                    BeginRename((string)item.UserData);
+                    break;
+                case ScreenshotContextMenu.Delete:
+                    {
+                        // Read again rather than carried in the menu item: the menu is
+                        // answered long after it was opened.
+                        var captures = m_CaptureScreenshot.GetScreenshots();
+                        ConfirmAndDelete(captures, SelectedInOrder(captures), m_SelectedDevice);
+                        break;
+                    }
+                case ScreenshotContextMenu.SelectAll:
+                    SelectAll(m_CaptureScreenshot.GetScreenshots(), m_SelectedDevice);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Copies captures somewhere they will be kept. One is copied under a name of
+        /// the user's choosing, several into a folder under the names they have - a
+        /// dialog per file is not what one click asks for.
+        /// </summary>
+        void CopyTo(IReadOnlyList<string> paths)
+        {
+            if (paths.Count == 0)
+                return;
+
+            var settings = m_Runtime.UserSettings.CaptureSettings;
+
+            if (paths.Count == 1)
+            {
+                settings.SaveFileAs(paths[0], "Copy Capture");
+                return;
+            }
+
+            var directory = EditorUtility.OpenFolderPanel($"Copy {paths.Count} Captures",
+                settings.LastSaveLocation, string.Empty);
+            if (string.IsNullOrEmpty(directory))
+                return;
+
+            if (!ConfirmOverwrites(paths, directory))
+                return;
+
+            var copied = 0;
+            foreach (var path in paths)
+            {
+                if (AndroidLogcatUtilities.CopyInto(path, directory))
+                    copied++;
+            }
+
+            if (copied > 0)
+                settings.LastSaveLocation = Path.GetFullPath(directory);
+        }
+
+        /// <summary>
+        /// Asks once about the files already in the folder, rather than once each.
+        /// </summary>
+        static bool ConfirmOverwrites(IReadOnlyList<string> paths, string directory)
+        {
+            var existing = 0;
+            foreach (var path in paths)
+            {
+                if (File.Exists(Path.Combine(directory, Path.GetFileName(path))))
+                    existing++;
+            }
+
+            if (existing == 0)
+                return true;
+
+            var what = existing == 1 ? "One capture" : $"{existing} captures";
+            return EditorUtility.DisplayDialog("Copy Captures",
+                $"{what} of the same name already exist in {directory}.\n\nReplace them?",
+                "Replace", "Cancel");
+        }
+
+        /// <summary>
+        /// F2 everywhere, and Enter as well on macOS - the same bindings the Project
+        /// window uses, so whichever one the user reaches for works.
+        /// </summary>
+        static bool IsRenameShortcut(Event e)
+        {
+            if (e.keyCode == KeyCode.F2)
+                return true;
+            return Application.platform == RuntimePlatform.OSXEditor
+                && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
+        }
+
+        /// <summary>
+        /// Delete everywhere, and Command+Backspace on macOS, where compact keyboards
+        /// have no forward delete key - again what the Project window takes.
+        /// </summary>
+        static bool IsDeleteShortcut(Event e)
+        {
+            if (e.keyCode == KeyCode.Delete)
+                return true;
+            return Application.platform == RuntimePlatform.OSXEditor
+                && e.keyCode == KeyCode.Backspace && e.command;
+        }
+
+        /// <summary>
+        /// Up and Down cycle through the list once it has focus, F2 renames and Delete
+        /// deletes.
+        /// </summary>
+        void HandleKeys(int controlId, IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            float rowHeight, float viewHeight, IAndroidLogcatDevice device)
+        {
+            // While the rename field has focus it owns the keyboard, so none of this runs.
+            if (GUIUtility.keyboardControl != controlId || Event.current.type != EventType.KeyDown)
+                return;
+
+            var e = Event.current;
+            var selectedRow = IndexOf(captures, m_CaptureScreenshot.SelectedImagePath);
+
+            if (e.keyCode == KeyCode.A && EditorGUI.actionKey)
+            {
+                SelectAll(captures, device);
+                e.Use();
+                return;
+            }
+
+            if (IsRenameShortcut(e))
+            {
+                // One name at a time: renaming is a text field on a row.
+                if (m_Selected.Count == 1 && selectedRow >= 0)
+                    BeginRename(captures[selectedRow].Path);
+                e.Use();
+                return;
+            }
+
+            if (IsDeleteShortcut(e))
+            {
+                // Used before the dialog, which pumps its own events.
+                e.Use();
+                // Same confirmation as a row's own button, and it runs from the same
+                // place in the frame - after the scroll view has closed.
+                ConfirmAndDelete(captures, SelectedInOrder(captures), device);
+                return;
+            }
+
+            if (captures.Count == 0)
+                return;
+
+            var last = captures.Count - 1;
+            int next;
+            switch (e.keyCode)
+            {
+                // With nothing selected, Down starts at the top and Up at the bottom.
+                case KeyCode.Home: next = 0; break;
+                case KeyCode.End: next = last; break;
+                case KeyCode.UpArrow: next = selectedRow < 0 ? last : selectedRow - 1; break;
+                case KeyCode.DownArrow: next = selectedRow < 0 ? 0 : selectedRow + 1; break;
+                default: return;
+            }
+
+            next = Mathf.Clamp(next, 0, last);
+
+            if (next != selectedRow)
+            {
+                // Shift grows the selection the way shift clicking does, from wherever
+                // the last plain click left the anchor.
+                if (e.shift && m_SelectionAnchor != null)
+                    SelectRange(captures, m_SelectionAnchor, captures[next].Path, device);
+                else
+                    SelectOnly(captures[next].Path, device);
+
+                ScrollIntoView(next, rowHeight, viewHeight);
+            }
+            e.Use();
+        }
+
+        /// <summary>
+        /// Deletes what was asked for, with one confirmation for the lot of it, and
+        /// leaves the selection on whatever took the place of the first one deleted.
+        /// </summary>
+        void ConfirmAndDelete(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            IReadOnlyList<string> paths, IAndroidLogcatDevice device)
+        {
+            if (paths.Count == 0)
+                return;
+
+            var what = paths.Count == 1
+                ? $"Delete {Path.GetFileNameWithoutExtension(paths[0])}?"
+                : $"Delete {paths.Count} captures?";
+            var files = paths.Count == 1 ? "The file is" : "The files are";
+            if (!EditorUtility.DisplayDialog(paths.Count == 1 ? "Delete Capture" : "Delete Captures",
+                $"{what}\n\n{files} removed from disk and this cannot be undone.",
+                "Delete", "Cancel"))
+                return;
+
+            DeleteCaptures(captures, paths, device);
+        }
+
+        /// <summary>Deletes without asking, then selects the row that took the first one's place.</summary>
+        internal void DeleteCaptures(IReadOnlyList<AndroidLogcatCaptureScreenshot.Screenshot> captures,
+            IReadOnlyList<string> paths, IAndroidLogcatDevice device)
+        {
+            var firstRow = IndexOf(captures, paths[0]);
+            foreach (var path in paths)
+            {
+                ClosePreviewOf(path);
+                if (m_CaptureScreenshot.DeleteScreenshot(path))
+                    m_Selected.Remove(path);
+            }
+            m_SelectionAnchor = null;
+
+            // Whatever took the place of the first one, else the one before it.
+            // Deliberately not Live, which would start streaming because a file was
+            // deleted.
+            var remaining = m_CaptureScreenshot.GetScreenshots();
+            if (m_Selected.Count == 0 && remaining.Count > 0 && firstRow >= 0)
+                SelectOnly(remaining[Mathf.Clamp(firstRow, 0, remaining.Count - 1)].Path, device);
+            else if (remaining.Count == 0)
+                m_CaptureScreenshot.SelectImage(null);
+
+            m_Repaint();
+        }
+
+        void ScrollIntoView(int index, float rowHeight, float viewHeight)
+        {
+            var top = index * rowHeight;
+            if (top < m_Scroll.y)
+                m_Scroll.y = top;
+            else if (top + rowHeight > m_Scroll.y + viewHeight)
+                m_Scroll.y = top + rowHeight - viewHeight;
+        }
+    }
+}

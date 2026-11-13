@@ -4,6 +4,7 @@ using Unity.Android.Logcat;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Unity.Scripting.LifecycleManagement;
 
 internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBase
 {
@@ -72,10 +73,11 @@ internal class AndroidLogcatFakeMessageProvider : AndroidLogcatMessageProviderBa
     }
 }
 
+[NoAutoStaticsCleanup]
 internal class AndroidLogcatMessagerProvideTests : AndroidLogcatRuntimeTestBase
 {
-    private static IAndroidLogcatDevice kDefaultDevice = new AndroidLogcatFakeDevice90("Fake90");
-    private static IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), kDefaultDevice };
+    private static readonly IAndroidLogcatDevice kDefaultDevice = new AndroidLogcatFakeDevice90("Fake90");
+    private static readonly IAndroidLogcatDevice[] kDevices = new IAndroidLogcatDevice[] { new AndroidLogcatFakeDevice60("Fake60"), kDefaultDevice };
 
     private static void SupplyFakeMessages(AndroidLogcatFakeMessageProvider provider, IAndroidLogcatDevice device, string[] messages)
     {

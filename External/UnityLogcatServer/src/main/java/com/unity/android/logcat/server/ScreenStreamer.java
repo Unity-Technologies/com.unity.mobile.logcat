@@ -76,6 +76,8 @@ public final class ScreenStreamer implements Closeable {
     private volatile IOException streamError;
     /** Read by TouchInjector from the control thread, hence volatile. */
     private volatile Size displaySize;
+    /** Read by the capture thread, written by whoever starts the session. */
+    private volatile int displayRotation;
 
     /**
      * Logical size of the display being captured, or null before capture starts. This
@@ -161,6 +163,7 @@ public final class ScreenStreamer implements Closeable {
             }
 
             displaySize = info.getSize();
+            displayRotation = info.getRotation();
             videoSize = info.getSize().limit(options.getMaxSize());
             int width = videoSize.getWidth();
             int height = videoSize.getHeight();
@@ -338,6 +341,7 @@ public final class ScreenStreamer implements Closeable {
         protocol.writeFrame(captureNs, width, height,
             display == null ? 0 : display.getWidth(),
             display == null ? 0 : display.getHeight(),
+            displayRotation,
             jpeg.buffer(), jpeg.size());
 
         statsFrames++;

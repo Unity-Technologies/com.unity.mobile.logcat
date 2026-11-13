@@ -2,55 +2,163 @@
 
 This page introduces the Device Screen Capture window's interface.
 
-To open the Device Screen Capture window:
+To open the Device Screen Capture window, from the main menu in Unity select **Window** > **Analysis** > **Android Screen Capture**.
+
+You can also open it from the Android Logcat window:
 
 1. Open the [Android Logcat window](android-logcat-window.md).
 2. From the [toolbar](android-logcat-window-reference.md#toolbar), select **Tools** > **Screen Capture**.
 
-![](images/capture_video.png)
-> The Device Screen Capture window.
+The Device Screen Capture window contains the following areas.
 
-| **Label**               | **Description**                                              |
-| ----------------------- | ------------------------------------------------------------ |
-| ![Label A](images/label-a.png) | [Toolbar](#toolbar): Contains options for the Device Screen Capture window. |
-| ![Label B](images/label-b.png) | [Recorder settings](#recorder-settings): Contains settings for video recording. |
-| ![Label C](images/label-c.png) | [Capture preview](#capture-preview): A preview of the screenshot or video captured from the device. |
+| **Area**                                | **Description**                                              |
+| --------------------------------------- | ------------------------------------------------------------ |
+| [Toolbar](#toolbar)                     | Contains options for the Device Screen Capture window.       |
+| [Capture list](#capture-list)           | The live view and every capture you have taken. Drag the divider to resize it. |
+| [Capture preview](#capture-preview)     | The screenshot, recording, or live view that you select in the list. |
+| [Capture details](#capture-details)     | Information about the selected screenshot or recording.      |
+| [Live view details](#live-view-details) | Information about the live stream, and the device controls.  |
+| [Status bar](#status-bar)               | Where the last screenshot or video was saved.                |
 
 ## Toolbar
 
 The toolbar contains options to control the Screen Capture tool.
 
-![The Device Screen Capture window toolbar](images/device-screen-capture-window-toolbar.png)
-> The Device Screen Capture window toolbar.
-
 | **Toolbar option**      | **Description**                                              |
 | ----------------------- | ------------------------------------------------------------ |
 | **Device Selector**     | Specifies the Android device to capture the screen of.       |
-| **Screen Capture Mode** | Specifies the screen capture mode to use. The options are: <br/>&#8226; **Screenshot**: Switches the Screen Capture tool to screenshot mode. When you click **Capture**, the Screen Capture tool takes a screenshot and displays it in the [Capture preview](#capture-preview). <br/>&#8226; **Video**: Switches the Screen Capture tool to video mode. When you click **Capture**, the Screen Capture tool begins capturing a video of the selected device. When you click **Stop**, the Screen capture tool finishes capturing the video and displays it in the [Capture preview](#capture-preview). |
-| **Capture**             | If **Screen Capture Mode** is **Screenshot**, this captures a screenshot from the Android device. If **Screen Capture Mode** is **Video**, this begins video recording. |
-| **Stop**                | Stops video recording.<br/>This option only appears while the Screen Capture tool is recording a video. |
-| **Open**                | Opens the screen capture using the application associate with the file extension. The file extension is `.png` for screenshots and `.mp4` for videos. |
-| **Save As**             | Saves the screen capture as a file on your computer.         |
+| **More** (**⋮**) menu   | Opens a menu with **Preferences**, which gives access to the capture settings section in the [Android Logcat Settings](android-logcat-settings.md#capture-settings). |
 
-## Recorder settings
+## Capture list
 
-Contains settings for video recording. The Screen Capture tool contains default values for each setting. To override the default value for a setting, toggle the setting and enter your own value.
+The capture list contains the **Live** button and every capture you have taken from every device. Select **Live** to mirror the device's screen, or select a capture to display it in the [Capture preview](#capture-preview). The **Up Arrow** and **Down Arrow** keys move through the captures. Drag the divider between the list and the preview to resize the list.
+
+| **Item**           | **Description**                                              |
+| ------------------ | ------------------------------------------------------------ |
+| **Live**           | Displays the selected device's screen live. Select **Live** to view the screen, take screenshots, and record videos. For more information, refer to [View the device screen live](screen-capture-live-stream.md). |
+| A capture          | A screenshot or a recording that appears in the list with an icon and its file name without the extension. Each capture is saved when you take it and remains in the list until you delete it. Select a recording to open it in the [Capture preview](#capture-preview). The recording is paused on its first frame. |
+
+Captures are stored in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings), and are named `<device id>_<number>` with a `.png` or `.mp4` extension. The default folder, `AndroidLogcat/Captures`, is in your project but outside `Assets`, so it isn't part of your build. Deleting the `Library` folder doesn't delete captures.
+
+The following table describes the actions you can perform in the capture list.
+
+| **Action**                                | **Result**                                              |
+| ----------------------------------------- | ------------------------------------------------------- |
+| Select a row                              | Selects that capture and displays it in the [Capture preview](#capture-preview). |
+| **Shift**+click a row                     | Extends the selection from the last row you clicked. |
+| **Ctrl**+click a row (macOS: **Cmd**+click) | Adds a capture to the selection, or removes it. |
+| Press **Ctrl+A** (macOS: **Cmd+A**)       | Selects every capture. |
+| Double-click a row                        | Opens the capture in the application associated with its file type. |
+| Press **Delete** (macOS: **Cmd+Backspace**) | Deletes every selected capture from disk, after asking you to confirm. |
+| Right-click a row                         | Opens a menu with **Show In Explorer** (macOS: **Show In Finder**), **Open**, **Copy To...**, **Rename**, **Delete**, and **Select All**. **Show In Explorer**, **Open**, and **Rename** act on the row you clicked and are unavailable while several captures are selected. **Copy To...** and **Delete** act on the whole selection: copying one capture asks for a name, copying several asks for a folder to put them in. |
+| Press **F2** (macOS: **Enter**)           | Renames the selected capture. **Enter** confirms the new name and **Escape** cancels. |
+
+To empty the list, select every capture with **Ctrl+A** (macOS: **Cmd+A**) and press **Delete**.
 
 > [!NOTE]
-> This section only appears if you set **Screen Capture Mode** to **Video**.
-
-| **Property**   | **Description**                                              |
-| -------------- | ------------------------------------------------------------ |
-| **Time Limit** | The time limit of the screen video recording in seconds. The default value is 180 seconds. |
-| **Video Size** | The width and height of the video recording. The default value is the Android device's main display resolution. |
-| **Bit Rate**   | The bit rate of the video recording. The default bit rate is 20000000 bits per second. |
-| **Display Id** | The ID of the display being recorded. The default display ID is the primary display. To get display ids, execute `adb shell dumpsys SurfaceFlinger --display-id` in the terminal. |
+> Renaming a screenshot to something other than `<device id>_<number>` keeps it in the list, but it no longer counts towards that device's numbering.
 
 ## Capture preview
 
-After you capture a screenshot or video, this section of the window displays the screenshot or video captured from the device. You can use this to check the quality of the screen capture before you save it as a file on your computer.
+This section displays what you select in the [Capture list](#capture-list): a screenshot, a recording, or the live view of the device's screen. You can use this to check the quality of the screen capture before you save it as a file on your computer.
+
+### Zoom into the image
+
+A screenshot and the live view are both fitted to the window, which can be too small to read a log line or see a single pixel. To look closer:
+
+| **Action**                                             | **Result**                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------ |
+| **Ctrl**+scroll (macOS: **Cmd**+scroll) over the image | Zooms between 100% and 4000%, around the pointer, so whatever you point at stays where it is. The current zoom appears in the corner of the image while it is above 100%. |
+| **Ctrl**+drag with the left or middle mouse button (macOS: **Cmd**+drag) | Moves the zoomed image, to bring another part of it into view. |
+| The scrollbars                                         | Moves the zoomed image. The scrollbars appear as soon as the image is larger than the preview area. |
+| Right-click the zoom in the corner of the image        | Opens a menu to zoom to 100%, 200%, 400%, 800%, 1600%, 3200%, or 4000%, around the middle of the view. |
+
+Zooming and moving the image only change how you see it. In the live view, the device still receives your clicks, drags, and keys at the place on its screen you are pointing at, and scrolling without **Ctrl** still scrolls the device rather than the view.
+
+The zoom of the live view and the zoom of the screenshots are separate, and both stay as they are when scripts recompile.
+
+## Capture details
+
+This section appears beside the image while a screenshot or a recording is selected.
+
+| **Property**       | **Description**                                              |
+| ------------------ | ------------------------------------------------------------ |
+| **Device**         | The device the capture was taken from. Hover over it for the device ID. |
+| **OS**             | The Android version and API level the device was running.    |
+| **Display Size**   | The device's display resolution when the capture was taken. This differs from **Image Size** if the display was rotated or its size overridden. |
+| **Image Size**     | The size of the image in pixels. Screenshots only.           |
+| **Video Size**     | The size of the recording in pixels. Recordings only. |
+| **Frame Rate**     | How many frames per second the recording plays at. Recordings only. |
+| **File Size**      | The size of the file on disk.                                |
+| **Captured**       | When the file was last written. Hover over it for the full date and time. |
+
+**Device**, **OS**, and **Display Size** come from the details file, saved in the same folder as the capture. These properties display `Undefined` if a capture was taken with an earlier version of this package, or if the file was added to the folder by hand. **Video Size** and **Frame Rate** come from the recording itself, so they display `Undefined` until the recording has opened.
+
+When you select a recording, it opens on its first frame and is paused. The recording loops during playback. Use the play button to play and pause the recording. While the recording is paused, use the step buttons to go back or forward one frame. To move to another point in the recording, whether it is playing or paused, drag the slider. A playing recording pauses while you drag the slider, and resumes from the new point when you release it. Next to the step buttons is the current time and the length of the recording, in seconds and hundredths of a second. For a recording of one minute or longer, the time also includes minutes.
+
+## Live view details
+
+This section appears beside the image while **Live** is selected.
+
+| **Property**    | **Description**                                              |
+| --------------- | ------------------------------------------------------------ |
+| **Display Size** | The resolution of the display being mirrored. Compare it with **Stream Size** to see how much the stream is scaling down. It follows the device, so it changes when the device is rotated or a foldable is opened. |
+| **Stream Size** | The size of the streamed image. This is the device display scaled down to fit the **Max Size** setting, not the device's own resolution. |
+| **Frame Rate**  | How many frames per second are arriving. The device only sends a frame when its screen changes, so a device showing a still screen sends almost none. |
+| **Bandwidth**   | How much data per second is arriving from the device.        |
+| **Input**       | Whether the device accepts the touch, scroll, and key events this window sends it. Devices that refuse input injection still stream. |
+
+The device navigation buttons work while the live view is streaming and the device accepts input:
+
+| **Button** | **Description**                                              |
+| ---------- | ------------------------------------------------------------ |
+| **◄**      | Sends the Back key. The **Escape** key does the same once you click the image. |
+| **●**      | Sends the Home key.                                          |
+| **■**      | Sends the Overview (recent apps) key.                        |
+
+**Side Buttons** sends the hardware keys that the mirrored screen can't reach:
+
+| **Button**  | **Description**                                              |
+| ----------- | ------------------------------------------------------------ |
+| **Power**   | Sends the Power key, which turns the screen off. The device sends no frames while its screen is off, so the view stops updating until you select **Power** again. |
+| **Vol +**   | Sends the Volume Up key.                                     |
+| **Vol -**   | Sends the Volume Down key.                                   |
+
+**Device Rotation** rotates the device's screen:
+
+| **Button**  | **Description**                                              |
+| ----------- | ------------------------------------------------------------ |
+| **Auto**    | Returns rotation control to the device's accelerometer.      |
+| **0°**      | Locks the device to its natural orientation.                 |
+| **90°**     | Locks the device rotated 90°.                                |
+| **180°**    | Locks the device rotated 180°.                               |
+| **270°**    | Locks the device rotated 270°.                               |
+
+**Device Fold** folds and unfolds a foldable device without touching it, so that you can view its other display. These buttons appear only for a foldable device.
+
+| **Button**  | **Description**                                              |
+| ----------- | ------------------------------------------------------------ |
+| **Auto**    | Returns fold control to the device's hinge.                  |
+| **Fold**    | Holds the device folded, regardless of the hinge position.   |
+| **Half**    | Holds the device half open, regardless of the hinge position. Appears only for devices that report half open as a separate state. |
+| **Unfold**  | Holds the device unfolded, regardless of the hinge position. |
+
+Under **Device Capture**, **Take Screenshot** captures the device screen and adds it to the [Capture list](#capture-list). **Ctrl+Shift+S** (macOS: **Cmd+Shift+S**) does the same while this window has focus and **Live** is selected. The shortcut has no effect while a saved capture is selected. **Start Recording** records the live view and changes to **Stop Recording**, and the view shows how long it has been recording. The recording is added to the list when it stops. The [Capture list](#capture-list) is disabled while recording. Closing the window, or the live stream stopping, also stops the recording, so a recording never continues out of sight. Screenshots are taken on the device, so they are full resolution regardless of how the stream is scaled. Recordings are made from the stream, so they are the stream's size.
+
+For how to interact with the device and how to change the size, quality, and frame rate of the stream, refer to [View the device screen live](screen-capture-live-stream.md).
+
+## Status bar
+
+The status bar reports what the window last did:
+
+* Where a capture was written, for example `Screenshot saved to AndroidLogcat/Captures/<device id>_1.png`. A path inside your project is shown relative to it.
+* What the live view is streaming, once its first frame arrives, for example `Live stream: Google Pixel 7 Pro (36081FDH3002Q8), 1080x2340 scaled to 232x512, up to 15 fps`. It is reported again when the streamed size changes, which happens when the device is rotated or a foldable is opened, and `Live stream stopped` when it ends.
+
+Every capture is kept until you delete it, screenshots and recordings alike, in the folder set by [Captures Folder](android-logcat-settings.md#capture-settings).
 
 ## Additional resources
 
 * [Capture a screenshot](screen-capture-screenshot.md)
 * [Capture a video](screen-capture-video.md)
+* [View the device screen live](screen-capture-live-stream.md)
+* [Android Logcat Settings](android-logcat-settings.md#live-stream)
