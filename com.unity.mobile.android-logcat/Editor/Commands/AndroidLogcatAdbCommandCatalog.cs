@@ -1,5 +1,8 @@
+using Unity.Scripting.LifecycleManagement;
+
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal static class AndroidLogcatAdbCommandCatalog
     {
         internal static readonly AndroidLogcatCommandEntry[] All = new[]

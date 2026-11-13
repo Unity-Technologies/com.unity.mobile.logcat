@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal static class AndroidLogcatCommandPlaceholderHints
     {
         internal class Hint

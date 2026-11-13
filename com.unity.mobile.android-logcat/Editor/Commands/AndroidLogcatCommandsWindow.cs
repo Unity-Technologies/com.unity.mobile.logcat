@@ -6,9 +6,11 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Unity.Scripting.LifecycleManagement;
 
 namespace Unity.Android.Logcat
 {
+    [NoAutoStaticsCleanup]
     internal class AndroidLogcatCommandsWindow : EditorWindow
     {
         static readonly AndroidLogcatCommandEntry[] s_DefaultCommands = new[]
