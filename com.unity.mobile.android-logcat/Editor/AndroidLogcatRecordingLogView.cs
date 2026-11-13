@@ -19,26 +19,42 @@ namespace Unity.Android.Logcat
         {
             internal static readonly GUIContent Title = new GUIContent("Logcat Messages",
                 "Logged while recording, filtered as the Android Logcat window was when recording started. " +
-                "Each message starts with the video time of its frame, then the device's time. " +
+                "Video is the time of the frame each message belongs to. " +
                 "Highlighted: logged since the previous frame. Click a message to go to its frame.");
-            internal static readonly GUIStyle Row = new GUIStyle(EditorStyles.miniLabel) { clipping = TextClipping.Clip };
-            internal static readonly Color Current = new Color(0.24f, 0.48f, 0.9f, 0.35f);
+            internal static readonly GUIContent Video = new GUIContent("Video", "The time into the video of the frame the message belongs to.");
         }
 
-        const float kRowHeight = 16;
+        // The Logcat window's columns, with the video time first. The shared ones take
+        // their width and visibility from the Logcat window's settings, so both line up.
+        enum Column
+        {
+            Icon,
+            Video,
+            Time,
+            ProcessId,
+            ThreadId,
+            Priority,
+            Tag,
+            Message
+        }
+
         const float kSplitterHeight = 5;
         const float kMinHeight = 60;
         const float kMinVideoHeight = 100;
         const float kDefaultHeight = 160;
-        // The time into the video, as the player shows it, then the device's clock.
-        const float kVideoTimeWidth = 56;
-        const float kTimeWidth = 84;
-        const float kPriorityWidth = 14;
-        const float kTagWidth = 150;
-        const float kColumnGap = 6;
+        const float kVideoTimeWidth = 60;
+        // As the Logcat window indents a column's text.
+        const float kTextMargin = 5;
         const float kScrollbarWidth = 16;
         // Rows after the shown frame, which the video has not reached.
         const float kFutureAlpha = 0.45f;
+
+        // The Logcat window's message styles with the font and colours from Preferences,
+        // which only that window applies to its own.
+        readonly GUIStyle[] m_PriorityStyles = new GUIStyle[Enum.GetValues(typeof(Priority)).Length];
+        readonly float[] m_ColumnX = new float[Enum.GetValues(typeof(Column)).Length];
+        readonly float[] m_ColumnWidth = new float[Enum.GetValues(typeof(Column)).Length];
+        float m_RowHeight;
 
         readonly LogcatEntry[] m_Entries;
         // The time of the frame each message belongs to, in order.
@@ -91,11 +107,15 @@ namespace Unity.Android.Logcat
             var first = FirstAtOrAfter(time - tolerance);
             var end = FirstAtOrAfter(time + tolerance);
 
-            var header = new Rect(panel.x, panel.y, panel.width, EditorGUIUtility.singleLineHeight);
-            GUI.Label(header, Styles.Title, EditorStyles.miniBoldLabel);
+            var title = new Rect(panel.x, panel.y, panel.width, EditorGUIUtility.singleLineHeight);
+            GUI.Label(title, Styles.Title, EditorStyles.miniBoldLabel);
             var count = new GUIContent($"{end - first} at this frame, {m_Entries.Length} in all");
             var countWidth = EditorStyles.miniLabel.CalcSize(count).x;
-            GUI.Label(new Rect(header.xMax - countWidth - kColumnGap, header.y, countWidth, header.height), count, EditorStyles.miniLabel);
+            GUI.Label(new Rect(title.xMax - countWidth - kTextMargin, title.y, countWidth, title.height), count, EditorStyles.miniLabel);
+
+            ApplySettings();
+            var header = new Rect(panel.x, title.yMax, panel.width, AndroidLogcatStyles.columnHeader.CalcHeight(GUIContent.none, panel.width));
+            DoHeaderGUI(header);
 
             var list = new Rect(panel.x, header.yMax, panel.width, Mathf.Max(0, panel.yMax - header.yMax));
             FollowFrame(list, time, first, end);
@@ -160,25 +180,97 @@ namespace Unity.Android.Logcat
                 m_Scroll.y = 0;
                 return;
             }
-            var top = Mathf.Max(0, first < end ? first : last) * kRowHeight;
-            var bottom = (last + 1) * kRowHeight;
+            var top = Mathf.Max(0, first < end ? first : last) * m_RowHeight;
+            var bottom = (last + 1) * m_RowHeight;
             if (bottom - m_Scroll.y > list.height)
                 m_Scroll.y = bottom - list.height;
             if (top < m_Scroll.y)
                 m_Scroll.y = top;
         }
 
+        void ApplySettings()
+        {
+            var settings = m_Runtime.Settings;
+            m_RowHeight = settings.MessageFontSize + 5;
+            foreach (Priority priority in Enum.GetValues(typeof(Priority)))
+            {
+                var style = m_PriorityStyles[(int)priority] ??= new GUIStyle(AndroidLogcatStyles.priorityDefaultStyle);
+                style.font = settings.MessageFont;
+                style.fontSize = settings.MessageFontSize;
+                style.fixedHeight = 0;
+                style.normal.textColor = settings.GetMessageColor(priority);
+            }
+        }
+
+        bool Shows(Column column)
+        {
+            if (column == Column.Video)
+                return true;
+            var data = m_Runtime.Settings.ColumnData[(int)ConsoleColumn(column)];
+            // The Logcat window hides its icons when the font is too small for them.
+            if (column == Column.Icon)
+                return m_Runtime.Settings.MessageFontSize > 11 && data.enabled;
+            return data.enabled;
+        }
+
+        static AndroidLogcatConsoleWindow.Column ConsoleColumn(Column column)
+        {
+            switch (column)
+            {
+                case Column.Icon: return AndroidLogcatConsoleWindow.Column.Icon;
+                case Column.Time: return AndroidLogcatConsoleWindow.Column.Time;
+                case Column.ProcessId: return AndroidLogcatConsoleWindow.Column.ProcessId;
+                case Column.ThreadId: return AndroidLogcatConsoleWindow.Column.ThreadId;
+                case Column.Priority: return AndroidLogcatConsoleWindow.Column.Priority;
+                case Column.Tag: return AndroidLogcatConsoleWindow.Column.Tag;
+                default: return AndroidLogcatConsoleWindow.Column.Message;
+            }
+        }
+
+        static GUIContent HeaderFor(Column column)
+        {
+            switch (column)
+            {
+                case Column.Video: return Styles.Video;
+                case Column.Icon: return GUIContent.none;
+                case Column.ProcessId: return new GUIContent("Pid");
+                case Column.ThreadId: return new GUIContent("Tid");
+                default: return new GUIContent(column.ToString());
+            }
+        }
+
+        /// <summary>The header, which also places the columns for the rows under it. The message takes what is left.</summary>
+        void DoHeaderGUI(Rect header)
+        {
+            var x = 0f;
+            foreach (Column column in Enum.GetValues(typeof(Column)))
+            {
+                m_ColumnX[(int)column] = x;
+                if (!Shows(column))
+                {
+                    m_ColumnWidth[(int)column] = 0;
+                    continue;
+                }
+                var width = column == Column.Video ? kVideoTimeWidth
+                    : column == Column.Message ? Mathf.Max(0, header.width - x)
+                    : m_Runtime.Settings.ColumnData[(int)ConsoleColumn(column)].width;
+                m_ColumnWidth[(int)column] = width;
+                GUI.Label(new Rect(header.x + x, header.y, width, header.height), HeaderFor(column), AndroidLogcatStyles.columnHeader);
+                x += width;
+            }
+        }
+
         void DoRowsGUI(Rect list, int first, int end, Action<double> seek)
         {
-            var content = new Rect(0, 0, list.width - kScrollbarWidth, m_Entries.Length * kRowHeight);
+            var content = new Rect(0, 0, list.width - kScrollbarWidth, m_Entries.Length * m_RowHeight);
             m_Scroll = GUI.BeginScrollView(list, m_Scroll, content, false, true);
-            var from = Mathf.Max(0, Mathf.FloorToInt(m_Scroll.y / kRowHeight));
-            var to = Mathf.Min(m_Entries.Length, Mathf.CeilToInt((m_Scroll.y + list.height) / kRowHeight) + 1);
+            var from = Mathf.Max(0, Mathf.FloorToInt(m_Scroll.y / m_RowHeight));
+            var to = Mathf.Min(m_Entries.Length, Mathf.CeilToInt((m_Scroll.y + list.height) / m_RowHeight) + 1);
             var e = Event.current;
             var color = GUI.color;
             for (var i = from; i < to; i++)
             {
-                var row = new Rect(0, i * kRowHeight, content.width, kRowHeight);
+                var row = new Rect(0, i * m_RowHeight, content.width, m_RowHeight);
                 if (e.type == EventType.MouseDown && e.button == 0 && row.Contains(e.mousePosition))
                 {
                     seek(m_FrameTimes[i]);
@@ -186,8 +278,11 @@ namespace Unity.Android.Logcat
                 }
                 if (e.type != EventType.Repaint)
                     continue;
+                // The Logcat window's stripes, and its selection for the shown frame.
                 if (i >= first && i < end)
-                    EditorGUI.DrawRect(row, Styles.Current);
+                    AndroidLogcatStyles.background.Draw(row, false, false, true, false);
+                else
+                    (i % 2 == 0 ? AndroidLogcatStyles.backgroundEven : AndroidLogcatStyles.backgroundOdd).Draw(row, false, false, false, false);
                 GUI.color = i >= end ? new Color(color.r, color.g, color.b, color.a * kFutureAlpha) : color;
                 DoRowGUI(row, m_Entries[i], m_FrameTimes[i]);
             }
@@ -197,19 +292,44 @@ namespace Unity.Android.Logcat
 
         void DoRowGUI(Rect row, LogcatEntry entry, double frameTime)
         {
-            var style = Styles.Row;
-            style.normal.textColor = m_Runtime.Settings.GetMessageColor(entry.priority);
-            var x = row.x + kColumnGap;
-            GUI.Label(new Rect(x, row.y, kVideoTimeWidth, row.height),
-                AndroidLogcatVideoPlayer.FormatTime(frameTime, m_Minutes), style);
-            x += kVideoTimeWidth;
-            GUI.Label(new Rect(x, row.y, kTimeWidth, row.height), entry.dateTime.ToLocalTime().ToString("HH:mm:ss.fff"), style);
-            x += kTimeWidth;
-            GUI.Label(new Rect(x, row.y, kPriorityWidth, row.height), entry.priority.ToString().Substring(0, 1), style);
-            x += kPriorityWidth + kColumnGap;
-            GUI.Label(new Rect(x, row.y, kTagWidth, row.height), entry.tag, style);
-            x += kTagWidth + kColumnGap;
-            GUI.Label(new Rect(x, row.y, Mathf.Max(0, row.xMax - x), row.height), new GUIContent(entry.message, entry.message), style);
+            var style = m_PriorityStyles[(int)entry.priority];
+            if (Shows(Column.Icon))
+            {
+                var iconSize = AndroidLogcatStyles.kSmallIconSize;
+                var icon = new Rect(m_ColumnX[(int)Column.Icon] + (m_ColumnWidth[(int)Column.Icon] - iconSize.x) * 0.5f,
+                    row.y + (row.height - iconSize.y) * 0.5f, 0, 0);
+                IconStyleFor(entry.priority).Draw(icon, GUIContent.none, 0);
+            }
+            DoCellGUI(row, Column.Video, AndroidLogcatVideoPlayer.FormatTime(frameTime, m_Minutes), style);
+            DoCellGUI(row, Column.Time, entry.dateTime.ToLocalTime().ToString(LogcatEntry.s_TimeFormat), style);
+            DoCellGUI(row, Column.ProcessId, entry.processId.ToString(), style);
+            DoCellGUI(row, Column.ThreadId, entry.threadId.ToString(), style);
+            DoCellGUI(row, Column.Priority, entry.priority.ToString(), style);
+            DoCellGUI(row, Column.Tag, entry.tag, style);
+            DoCellGUI(row, Column.Message, entry.message, style);
+        }
+
+        void DoCellGUI(Rect row, Column column, string value, GUIStyle style)
+        {
+            var width = m_ColumnWidth[(int)column];
+            if (width <= kTextMargin)
+                return;
+            var cell = new Rect(m_ColumnX[(int)column] + kTextMargin, row.y, width - kTextMargin, row.height);
+            style.Draw(cell, new GUIContent(value), 0);
+        }
+
+        static GUIStyle IconStyleFor(Priority priority)
+        {
+            switch (priority)
+            {
+                case Priority.Warn:
+                    return AndroidLogcatStyles.warningSmallStyle;
+                case Priority.Error:
+                case Priority.Fatal:
+                    return AndroidLogcatStyles.errorSmallStyle;
+                default:
+                    return AndroidLogcatStyles.infoSmallStyle;
+            }
         }
 
         /// <summary>The first message belonging to a frame at or after <paramref name="time"/>.</summary>

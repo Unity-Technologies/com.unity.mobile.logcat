@@ -26,7 +26,7 @@ A recording can also save the logcat messages the device logs while you record, 
 
 The recording saves the messages the [Android Logcat window](android-logcat-window.md) would display: the selected package, priority, tags, and filter text when recording starts. The messages are saved in the `.json` file next to the recording.
 
-When you play the recording in the [Capture preview](screen-capture-window-reference.md#capture-preview), the messages appear in a panel under the video. Each message belongs to the first frame captured after it was logged, and starts with that frame's time in the video, as the player displays it, followed by the time on the device. The messages of the current frame, logged since the previous frame, are highlighted, and messages logged after the current frame are dimmed. Select a message to go to its frame. Drag the divider above the panel to resize it.
+When you play the recording in the [Capture preview](screen-capture-window-reference.md#capture-preview), the messages appear in a panel under the video, with the same columns, colors, and font as the Android Logcat window. Each message belongs to the first frame captured after it was logged, and the **Video** column shows that frame's time in the video, as the player displays it. The messages of the current frame, logged since the previous frame, are highlighted, and messages logged after the current frame are dimmed. Select a message to go to its frame. Drag the divider above the panel to resize it.
 
 ## Recording limitations
 
