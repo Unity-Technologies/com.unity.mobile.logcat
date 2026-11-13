@@ -19,9 +19,10 @@ namespace Unity.Android.Logcat
         {
             internal static readonly GUIContent Title = new GUIContent("Logcat Messages",
                 "Logged while recording, filtered as the Android Logcat window was when recording started. " +
-                "Video is the time of the frame each message belongs to. " +
+                "Video is the range of the video each message was logged in: after the previous frame, up to its frame. " +
                 "Highlighted: logged since the previous frame. Click a message to go to its frame.");
-            internal static readonly GUIContent Video = new GUIContent("Video", "The time into the video of the frame the message belongs to.");
+            internal static readonly GUIContent Video = new GUIContent("Video",
+                "When in the video the message was logged: after the previous frame, up to the frame it belongs to.");
         }
 
         // The Logcat window's columns, with the video time first. The shared ones take
@@ -42,7 +43,9 @@ namespace Unity.Android.Logcat
         const float kMinHeight = 60;
         const float kMinVideoHeight = 100;
         const float kDefaultHeight = 160;
-        const float kVideoTimeWidth = 60;
+        // Wide enough for a range, with minutes for a recording a minute or longer.
+        const float kVideoTimeWidth = 90;
+        const float kVideoTimeWithMinutesWidth = 115;
         // As the Logcat window indents a column's text.
         const float kTextMargin = 5;
         const float kScrollbarWidth = 16;
@@ -61,6 +64,7 @@ namespace Unity.Android.Logcat
         readonly double[] m_FrameTimes;
         // With minutes, as the player shows a recording a minute or longer.
         readonly bool m_Minutes;
+        double m_FrameDuration;
         readonly AndroidLogcatRuntimeBase m_Runtime;
         Vector2 m_Scroll;
         float m_Height = kDefaultHeight;
@@ -91,6 +95,7 @@ namespace Unity.Android.Logcat
         /// <param name="seek">Goes to the frame at a time, for a clicked message.</param>
         internal Rect DoGUI(Rect area, double time, double frameDuration, Action<double> seek)
         {
+            m_FrameDuration = frameDuration;
             // Clamped for this pass only: the layout pass hands a placeholder area, which
             // would shrink the height the user chose every time.
             var maxHeight = Mathf.Max(kMinHeight, area.height - kMinVideoHeight - kSplitterHeight);
@@ -251,7 +256,7 @@ namespace Unity.Android.Logcat
                     m_ColumnWidth[(int)column] = 0;
                     continue;
                 }
-                var width = column == Column.Video ? kVideoTimeWidth
+                var width = column == Column.Video ? (m_Minutes ? kVideoTimeWithMinutesWidth : kVideoTimeWidth)
                     : column == Column.Message ? Mathf.Max(0, header.width - x)
                     : m_Runtime.Settings.ColumnData[(int)ConsoleColumn(column)].width;
                 m_ColumnWidth[(int)column] = width;
@@ -300,7 +305,7 @@ namespace Unity.Android.Logcat
                     row.y + (row.height - iconSize.y) * 0.5f, 0, 0);
                 IconStyleFor(entry.priority).Draw(icon, GUIContent.none, 0);
             }
-            DoCellGUI(row, Column.Video, AndroidLogcatVideoPlayer.FormatTime(frameTime, m_Minutes), style);
+            DoCellGUI(row, Column.Video, VideoRange(frameTime), style);
             DoCellGUI(row, Column.Time, entry.dateTime.ToLocalTime().ToString(LogcatEntry.s_TimeFormat), style);
             DoCellGUI(row, Column.ProcessId, entry.processId.ToString(), style);
             DoCellGUI(row, Column.ThreadId, entry.threadId.ToString(), style);
@@ -316,6 +321,15 @@ namespace Unity.Android.Logcat
                 return;
             var cell = new Rect(m_ColumnX[(int)column] + kTextMargin, row.y, width - kTextMargin, row.height);
             style.Draw(cell, new GUIContent(value), 0);
+        }
+
+        /// <summary>From the frame before to this one, as the player shows times: what a message on this frame was logged within.</summary>
+        string VideoRange(double frameTime)
+        {
+            var to = AndroidLogcatVideoPlayer.FormatTime(frameTime, m_Minutes);
+            if (frameTime <= 0 || m_FrameDuration <= 0)
+                return to;
+            return $"{AndroidLogcatVideoPlayer.FormatTime(Math.Max(0, frameTime - m_FrameDuration), m_Minutes)} - {to}";
         }
 
         static GUIStyle IconStyleFor(Priority priority)

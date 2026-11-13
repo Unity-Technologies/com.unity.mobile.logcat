@@ -379,8 +379,8 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
-        /// Each message goes to the frame whose slot it was logged in, so a frame lists
-        /// what was logged since the one before it.
+        /// Each message goes to the first frame at or after it, so frame N lists what was
+        /// logged after frame N-1, up to frame N.
         /// </summary>
         void PlaceLogs(long lastSlot)
         {
@@ -389,7 +389,7 @@ namespace Unity.Android.Logcat
             foreach (var entry in m_Logs)
             {
                 var realtimeUs = (entry.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10;
-                var slot = SlotAt(m_AnchorUs + realtimeUs - m_AnchorRealtimeUs);
+                var slot = (long)Math.Ceiling((m_AnchorUs + realtimeUs - m_AnchorRealtimeUs) * (double)m_FrameRate / 1000000);
                 // Logged before the recording started.
                 if (slot < 0)
                     continue;
