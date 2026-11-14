@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Recordings can be played in the Screen Capture window, with play/pause, a time slider and buttons that step one frame back or forward.
  - Tools->Open Terminal is now supported on Linux Editor.
  - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
+ - Fixed logcat regex parser failing on empty log messages or messages without a space after the tag colon.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
