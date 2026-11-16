@@ -20,10 +20,6 @@ The output panel displays the output. Only one command runs at a time. If a comm
 
 To stop a running command, select **Cancel**. The current command finishes and the remaining commands don't run. If an adb command runs when no device is selected, the sequence stops.
 
-### Resolve placeholders
-
-If a command contains placeholders, the **Resolve Placeholders** dialog opens when you select **Run**. A placeholder is text in angle brackets, such as `<package>`. Enter a value for each placeholder, then select **Run**. Unity prefills `<package>` and `<package/activity>` from the Player settings. For some placeholders, such as `<permission>`, you can choose a common value from a dropdown.
-
 ## Share commands
 
 To share your commands, select **Export** to save them as a JSON file and share the file with other users. To use commands that someone shared with you, select **Import** and choose a JSON file.

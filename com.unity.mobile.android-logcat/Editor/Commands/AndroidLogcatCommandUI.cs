@@ -96,6 +96,25 @@ namespace Unity.Android.Logcat
             row.Add(spacer);
         }
 
+        /// <summary>
+        /// Adds the name and command labels for an entry to a row. Hovering either shows what the command does,
+        /// when it comes from the catalog, and the full command text.
+        /// </summary>
+        internal static void AddNameAndCommandLabels(VisualElement row, AndroidLogcatCommandEntry entry, string commandDisplay = null)
+        {
+            var description = !string.IsNullOrEmpty(entry.description)
+                ? entry.description
+                : AndroidLogcatAdbCommandCatalog.GetDescription(entry.command);
+
+            var nameLabel = CreateNameLabel(entry.name);
+            SetPointerTooltip(nameLabel, string.IsNullOrEmpty(description) ? entry.name : $"{entry.name}\n{description}");
+            row.Add(nameLabel);
+
+            var cmdLabel = CreateCommandLabel(commandDisplay ?? entry.command);
+            SetPointerTooltip(cmdLabel, string.IsNullOrEmpty(description) ? entry.command : $"{description}\n\n{entry.command}");
+            row.Add(cmdLabel);
+        }
+
         internal static void SetPointerTooltip(VisualElement element, string tooltip)
         {
             if (element == null || string.IsNullOrEmpty(tooltip))

@@ -39,7 +39,7 @@ The **Add Command** and **Edit Command** dialogs contain the following propertie
 
 ## Search Commands window
 
-The Search Commands window lists all commands, including the predefined commands in the built-in catalog and the commands that you add through the **Add Command** dialog. Commands that are already in your command list are labeled **Added**. The commands from the built-in catalog are labeled **Catalog**.
+The Search Commands window lists all commands, including the predefined commands in the built-in catalog and the commands that you add through the **Add Command** dialog. Commands that are already in your command list are labeled **Added**. The commands from the built-in catalog are labeled **Catalog**. To view a description of a catalog command, hover over its name or command text.
 
 | **Control**          | **Description**                                              |
 | -------------------- | ------------------------------------------------------------ |
@@ -66,6 +66,8 @@ This part of the window contains two lists:
 
 * **Favorites**: Commands that you use often.
 * **General**: All other commands, including the default commands and commands that you add from the catalog. By default, this section contains three commands: **List Devices**, **Kill Server**, and **Reboot Device**.
+
+To view the full text of a command, hover over the command text. For commands that you added from the catalog, the tooltip also displays a description of the command.
 
 Each command has a **Run** button. In Edit Mode, each command also has the following controls:
 

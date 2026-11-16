@@ -21,7 +21,8 @@ To add a command from the catalog:
 
 1. In the Commands window, select **Search Catalog**.
 2. Find a command by entering text in the search field or selecting a category button.
-3. Select **Add** next to the command.
+3. (Optional) To view a description of a command, hover over its name or command text.
+4. Select **Add** next to the command.
 
 The command appears in the **General** list. In the Search Commands window, commands that you already added have the **Added** label.
 

@@ -488,6 +488,38 @@ class AndroidLogcatCommandCatalogTests
     }
 
     [Test]
+    public void Catalog_EveryEntryHasADescription()
+    {
+        foreach (var entry in AndroidLogcatAdbCommandCatalog.All)
+            Assert.IsFalse(string.IsNullOrWhiteSpace(entry.description),
+                $"Catalog entry '{entry.name}' has no description, so its tooltip would not explain what it does");
+    }
+
+    [Test]
+    public void Catalog_GetDescription_MatchesSavedCopiesOfCatalogCommands()
+    {
+        var entry = AndroidLogcatAdbCommandCatalog.All[0];
+
+        Assert.AreEqual(entry.description, AndroidLogcatAdbCommandCatalog.GetDescription(entry.command));
+        Assert.AreEqual(entry.description, AndroidLogcatAdbCommandCatalog.GetDescription("  " + entry.command.ToUpperInvariant() + " "));
+        Assert.IsNull(AndroidLogcatAdbCommandCatalog.GetDescription("adb some-custom-command"));
+        Assert.IsNull(AndroidLogcatAdbCommandCatalog.GetDescription(null));
+    }
+
+    [Test]
+    public void Catalog_DescriptionIsNotWrittenToExportedJson()
+    {
+        var data = new AndroidLogcatCommandExportData
+        {
+            general = new[] { AndroidLogcatAdbCommandCatalog.All[0].Clone() }
+        };
+
+        var json = UnityEngine.JsonUtility.ToJson(data);
+
+        StringAssert.DoesNotContain("description", json);
+    }
+
+    [Test]
     public void Catalog_DoesNotDuplicateExistingPackageFeatures()
     {
         foreach (var entry in AndroidLogcatAdbCommandCatalog.All)

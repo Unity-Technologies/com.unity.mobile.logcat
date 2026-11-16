@@ -220,11 +220,7 @@ namespace Unity.Android.Logcat
         {
             var row = AndroidLogcatCommandUI.CreateRow();
 
-            row.Add(AndroidLogcatCommandUI.CreateNameLabel(entry.name));
-
-            var cmdLabel = AndroidLogcatCommandUI.CreateCommandLabel(entry.command);
-            AndroidLogcatCommandUI.SetPointerTooltip(cmdLabel, entry.command);
-            row.Add(cmdLabel);
+            AndroidLogcatCommandUI.AddNameAndCommandLabels(row, entry);
 
             var sourceLabel = new Label(alreadyAdded ? "Added" : source);
             sourceLabel.style.width = kSourceColumnWidth;

@@ -258,16 +258,12 @@ namespace Unity.Android.Logcat
                 ApplySelectionStyle(row, m_Selected.Contains(entry));
             }
 
-            row.Add(AndroidLogcatCommandUI.CreateNameLabel(entry.name));
-
             var cmdLines = AndroidLogcatCommandParser.SplitLines(entry.command);
             var cmdDisplay = cmdLines.Count == 0
                 ? string.Empty
                 : cmdLines.Count > 1 ? $"{cmdLines[0]} (+{cmdLines.Count - 1} more)" : cmdLines[0];
 
-            var cmdLabel = AndroidLogcatCommandUI.CreateCommandLabel(cmdDisplay);
-            AndroidLogcatCommandUI.SetPointerTooltip(cmdLabel, entry.command);
-            row.Add(cmdLabel);
+            AndroidLogcatCommandUI.AddNameAndCommandLabels(row, entry, cmdDisplay);
 
             if (m_EditMode)
             {
