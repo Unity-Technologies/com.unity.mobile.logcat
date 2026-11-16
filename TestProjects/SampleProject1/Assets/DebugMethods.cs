@@ -10,15 +10,31 @@ public class DebugMethods : MonoBehaviour
     // character and Enter starts a new line.
     string m_Typed = string.Empty;
     GUIStyle m_TypedStyle;
+    // Updated every frame, so the screen shows the time whatever the tick is doing.
+    float m_Time;
 
     // Start is called before the first frame update
     void Start()
     {
         TestDebug();
+        StartCoroutine(Tick());
+    }
+
+    // A steady message to line up against a recording's frames.
+    IEnumerator Tick()
+    {
+        var wait = new WaitForSeconds(3);
+        while (true)
+        {
+            Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "Tick: {0:0.00}", Time.time);
+            yield return wait;
+        }
     }
 
     void Update()
     {
+        m_Time = Time.time;
+
         var input = Input.inputString;
         if (string.IsNullOrEmpty(input))
             return;
@@ -61,7 +77,9 @@ public class DebugMethods : MonoBehaviour
 
         var margin = Screen.width * 0.05f;
         var rect = new Rect(margin, margin, Screen.width - 2 * margin, Screen.height - 2 * margin);
-        GUI.Label(rect, "Typed: " + m_Typed + "_", m_TypedStyle);
+        // The time running, to compare against the logcat panel.
+        var text = $"Time: {m_Time:0.00}\nTyped: {m_Typed}_";
+        GUI.Label(rect, text, m_TypedStyle);
     }
 
     static string Escape(string input)
