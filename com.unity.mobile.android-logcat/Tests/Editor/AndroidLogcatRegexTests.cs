@@ -135,6 +135,35 @@ class AndroidLogcatRegexTests
         Assert.IsTrue(matchThreadWithSpace.Success);
         Assert.AreEqual("ctxmgr", matchThreadWithSpace.Groups["tag"].Value);
         Assert.AreEqual(string.Empty, matchThreadWithSpace.Groups["msg"].Value);
+
+        // Tag containing a colon with empty message
+        var msgYearTagWithColonNoSpace = @"2018-10-25 14:27:29.803  1277 10543 E BarTender:BatteryStatsDumper:";
+        var matchYearTagWithColonNoSpace = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearTagWithColonNoSpace);
+        Assert.IsTrue(matchYearTagWithColonNoSpace.Success);
+        Assert.AreEqual("BarTender:BatteryStatsDumper", matchYearTagWithColonNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchYearTagWithColonNoSpace.Groups["msg"].Value);
+
+        var msgThreadTagWithColonNoSpace = "10-25 14:27:29.803  1277 10543 E BarTender:BatteryStatsDumper:";
+        var matchThreadTagWithColonNoSpace = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadTagWithColonNoSpace);
+        Assert.IsTrue(matchThreadTagWithColonNoSpace.Success);
+        Assert.AreEqual("BarTender:BatteryStatsDumper", matchThreadTagWithColonNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchThreadTagWithColonNoSpace.Groups["msg"].Value);
+    }
+
+    [Test]
+    public void TabAfterColonIsParsedAsMessageDelimiter()
+    {
+        var msgYearWithTab = "2018-10-25 14:27:29.803  1277 10543 E mytag:\thello";
+        var matchYearWithTab = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearWithTab);
+        Assert.IsTrue(matchYearWithTab.Success);
+        Assert.AreEqual("mytag", matchYearWithTab.Groups["tag"].Value);
+        Assert.AreEqual("hello", matchYearWithTab.Groups["msg"].Value);
+
+        var msgThreadWithTab = "10-25 14:27:29.803  1277 10543 E mytag:\thello";
+        var matchThreadWithTab = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadWithTab);
+        Assert.IsTrue(matchThreadWithTab.Success);
+        Assert.AreEqual("mytag", matchThreadWithTab.Groups["tag"].Value);
+        Assert.AreEqual("hello", matchThreadWithTab.Groups["msg"].Value);
     }
 
     [Test]
