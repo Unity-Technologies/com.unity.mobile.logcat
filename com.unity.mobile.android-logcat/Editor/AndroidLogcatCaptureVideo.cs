@@ -124,7 +124,10 @@ namespace Unity.Android.Logcat
             var process = user.LastSelectedProcess;
             var pid = process != null && process.deviceId == device.Id ? process.processId : 0;
             m_Logcat = new AndroidLogcat(m_Runtime, m_Runtime.Tools.ADB, device, pid, user.SelectedPriority,
-                user.FilterOptions, user.Tags.GetSelectedTags(), forRecording: true);
+                user.FilterOptions, user.Tags.GetSelectedTags(), forRecording: true,
+                // From the frame the recording started on, so nothing logged while adb
+                // was starting is missed. Earlier messages are left out when placed.
+                sinceRealtimeUs: m_Runtime.LiveStream.ShownRealtimeUs);
             m_Logcat.FilteredLogEntriesAdded += recorder.NoteLogs;
             m_Logcat.Start();
         }

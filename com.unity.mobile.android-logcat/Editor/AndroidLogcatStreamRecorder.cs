@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Media;
 using Unity.Profiling;
@@ -384,18 +385,46 @@ namespace Unity.Android.Logcat
         /// </summary>
         void PlaceLogs(long lastSlot)
         {
-            if (m_AnchorRealtimeUs < 0 || lastSlot < 0)
-                return;
-            foreach (var entry in m_Logs)
+            var placed = new List<(long slot, LogcatEntry entry)>(m_Logs.Count);
+            if (m_AnchorRealtimeUs >= 0 && lastSlot >= 0)
             {
-                var realtimeUs = (entry.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10;
-                var slot = (long)Math.Ceiling((m_AnchorUs + realtimeUs - m_AnchorRealtimeUs) * (double)m_FrameRate / 1000000);
-                // Logged before the recording started.
-                if (slot < 0)
-                    continue;
-                ChangeAt((double)Math.Min(slot, lastSlot) / m_FrameRate).logs.Add(entry);
+                foreach (var entry in m_Logs)
+                {
+                    var realtimeUs = (entry.dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10;
+                    var us = m_AnchorUs + realtimeUs - m_AnchorRealtimeUs;
+                    // Logged before the recording started.
+                    if (us < 0)
+                        continue;
+                    var slot = (long)Math.Ceiling(us * (double)m_FrameRate / 1000000);
+                    placed.Add((Math.Min(slot, lastSlot), entry));
+                }
             }
             m_Logs.Clear();
+            if (placed.Count == 0)
+                return;
+
+            // Merged with the changes in one pass: placing messages one at a time would
+            // search the changes for each. Stable, so a frame keeps its messages in order.
+            var ordered = placed.OrderBy(p => p.slot).ToList();
+            var merged = new List<AndroidLogcatCaptureInfo.FrameChange>(m_FrameChanges.Count + ordered.Count);
+            var next = 0;
+            for (var i = 0; i < ordered.Count;)
+            {
+                var slot = ordered[i].slot;
+                var time = (double)slot / m_FrameRate;
+                while (next < m_FrameChanges.Count && m_FrameChanges[next].time < time)
+                    merged.Add(m_FrameChanges[next++]);
+                var change = next < m_FrameChanges.Count && m_FrameChanges[next].time == time
+                    ? m_FrameChanges[next++]
+                    : new AndroidLogcatCaptureInfo.FrameChange { time = time };
+                merged.Add(change);
+                while (i < ordered.Count && ordered[i].slot == slot)
+                    change.logs.Add(ordered[i++].entry);
+            }
+            while (next < m_FrameChanges.Count)
+                merged.Add(m_FrameChanges[next++]);
+            m_FrameChanges.Clear();
+            m_FrameChanges.AddRange(merged);
         }
 
         internal void NoteTouch(AndroidLogcatLiveStream.TouchAction action, float x, float y)

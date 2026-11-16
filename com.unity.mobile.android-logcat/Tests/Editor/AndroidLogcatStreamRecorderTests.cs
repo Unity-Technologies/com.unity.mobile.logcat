@@ -89,6 +89,8 @@ class AndroidLogcatStreamRecorderTests
         m_Recorder.NoteLogs(new[]
         {
             Log(kFrameRealtimeUs - 1000000, "before the recording"),
+            // Less than a frame before: rounding it up would put it on the first frame.
+            Log(kFrameRealtimeUs - 20000, "just before the recording"),
             Log(kFrameRealtimeUs + 2 * kFrameUs, "two frames in"),
             Log(kFrameRealtimeUs + 60 * 1000000L, "after it stopped")
         });
@@ -100,7 +102,7 @@ class AndroidLogcatStreamRecorderTests
         Assert.IsTrue(recorder.Stop(), $"Nothing was recorded. {recorder.Error}");
 
         var logged = recorder.FrameChanges.Where(change => change.logs.Count > 0).ToArray();
-        Assert.IsFalse(logged.SelectMany(change => change.logs).Any(entry => entry.message == "before the recording"),
+        Assert.IsFalse(logged.SelectMany(change => change.logs).Any(entry => entry.message.EndsWith("before the recording")),
             "A message logged before the recording started should be left out");
         var twoIn = logged.Single(change => change.logs.Any(entry => entry.message == "two frames in"));
         // Two frames after the only one, give or take how long queueing took.

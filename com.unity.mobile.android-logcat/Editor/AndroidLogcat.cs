@@ -21,6 +21,8 @@ namespace Unity.Android.Logcat
         // Reading for a recording: messages from now on, stamped with the device's wall
         // clock so they can be placed among the frames.
         private readonly bool m_ForRecording;
+        // For a recording, the device wall clock to read messages from, -1 for the latest on.
+        private readonly long m_SinceRealtimeUs;
         private readonly LogcatFilterOptions m_FilterOptions;
         private FilterOptions m_LastUsedFilterOptions;
         private List<LogcatEntry> m_RawLogEntries = new List<LogcatEntry>();
@@ -126,7 +128,8 @@ namespace Unity.Android.Logcat
             Priority priority,
             FilterOptions filterOptions,
             string[] tags,
-            bool forRecording = false)
+            bool forRecording = false,
+            long sinceRealtimeUs = -1)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
@@ -137,6 +140,7 @@ namespace Unity.Android.Logcat
             this.m_LastUsedFilterOptions = new FilterOptions(m_FilterOptions);
             this.m_Tags = tags;
             this.m_ForRecording = forRecording;
+            this.m_SinceRealtimeUs = sinceRealtimeUs;
 
             m_FilterOptions.OnFilterChanged = OnFilterChanged;
 
@@ -497,7 +501,9 @@ namespace Unity.Android.Logcat
             get
             {
                 if (m_ForRecording)
-                    return kEpochFromNow;
+                    return kEpoch + (m_SinceRealtimeUs > 0
+                        ? (m_SinceRealtimeUs / 1000000.0).ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)
+                        : "1");
                 return m_Device.SupportYearFormat ? kYearTime : kThreadTime;
             }
         }
@@ -520,8 +526,9 @@ namespace Unity.Android.Logcat
         // Log PrintFormats
         internal const string kThreadTime = "threadtime";
         internal const string kYearTime = "year";
-        // Placed after '-v': seconds since the epoch to the microsecond, from the latest
-        // message on rather than the whole buffer.
-        internal const string kEpochFromNow = "epoch -v usec -T 1";
+        // Placed after '-v': seconds since the epoch to the microsecond, from a time, or
+        // from the latest message, rather than the whole buffer. A time is in the same
+        // seconds, and catches what was logged while logcat was starting.
+        internal const string kEpoch = "epoch -v usec -T ";
     }
 }
