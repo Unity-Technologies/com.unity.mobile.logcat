@@ -63,7 +63,7 @@ namespace Unity.Android.Logcat
         // window first - the Screen Capture window is useful on its own. A device with
         // no Android support installed gets the same message here as anywhere else, from
         // OnGUI, rather than the item being hidden.
-        [MenuItem("Window/Analysis/Android Screen Capture")]
+        [MenuItem("Window/Analysis/Android Screen Capture &7")]
         public static void ShowWindow()
         {
             GetWindow<AndroidLogcatScreenCaptureWindow>("Device Screen Capture");

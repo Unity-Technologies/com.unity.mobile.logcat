@@ -22,4 +22,8 @@
     * [Memory window](memory-window.md)
       * [Memory window reference](memory-window-reference.md)
     * [Input window](inputs-window.md)
+  * [Commands window](commands-window.md)
+    * [Commands window reference](commands-window-reference.md)
+    * [Add a command](commands-window-add.md)
+    * [Manage and share commands](commands-window-manage.md)
 * [Android Logcat Settings](android-logcat-settings.md)
