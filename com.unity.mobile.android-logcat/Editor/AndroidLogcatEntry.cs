@@ -1,10 +1,16 @@
 using System;
 using Unity.Scripting.LifecycleManagement;
+using UnityEngine;
 
 namespace Unity.Android.Logcat
 {
+    /// <summary>
+    /// Serializable for a recording, which saves the messages logged while it ran. A
+    /// recording's entries are in UTC, read with '-v epoch'.
+    /// </summary>
     [NoAutoStaticsCleanup]
-    class LogcatEntry
+    [Serializable]
+    class LogcatEntry : ISerializationCallbackReceiver
     {
         [Flags]
         enum Flags
@@ -32,6 +38,15 @@ namespace Unity.Android.Logcat
             {
                 return m_Flags.HasFlag(Flags.Selected);
             }
+        }
+
+        // dateTime as saved, which JsonUtility cannot write: microseconds since the epoch.
+        [SerializeField]
+        long timeUs;
+
+        // For JsonUtility.
+        LogcatEntry()
+        {
         }
 
         public LogcatEntry(string msg)
@@ -62,6 +77,16 @@ namespace Unity.Android.Logcat
         public Priority priority;
         public string tag;
         public string message;
+
+        void ISerializationCallbackReceiver.OnBeforeSerialize()
+        {
+            timeUs = (dateTime.Ticks - DateTime.UnixEpoch.Ticks) / 10;
+        }
+
+        void ISerializationCallbackReceiver.OnAfterDeserialize()
+        {
+            dateTime = DateTime.SpecifyKind(DateTime.UnixEpoch.AddTicks(timeUs * 10), DateTimeKind.Utc);
+        }
 
         public override string ToString()
         {
