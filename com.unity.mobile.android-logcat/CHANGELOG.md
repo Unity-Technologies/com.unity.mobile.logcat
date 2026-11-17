@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Tools->Open Terminal is now supported on Linux Editor.
  - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
  - Added a Commands window, accessible via the Tools menu in the Android Logcat window. It lets you save, organize, search and run adb commands which don't have a dedicated UI in this package, such as package management, permissions, dumpsys, settings and Meta Quest properties. Commands run asynchronously so the Editor stays responsive, support `<placeholder>` substitution with per-token examples and suggestions, and can be imported and exported as JSON. Catalog commands display a description of what they do when you hover over them. Edit Mode supports selecting several commands and deleting them in one step.
+ - Fixed log lines with an empty message not being parsed. They appeared as unformatted text with no tag, process ID or priority, and were hidden when filtering by tag.
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements

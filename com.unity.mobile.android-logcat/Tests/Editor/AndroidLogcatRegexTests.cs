@@ -108,6 +108,65 @@ class AndroidLogcatRegexTests
     }
 
     [Test]
+    public void EmptyMessagesAreParsedCorrectly()
+    {
+        // Message ending with colon (no trailing space)
+        var msgYearNoSpace = @"2018-10-25 14:27:29.803  1277 10543 E ctxmgr  :";
+        var matchYearNoSpace = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearNoSpace);
+        Assert.IsTrue(matchYearNoSpace.Success);
+        Assert.AreEqual("ctxmgr", matchYearNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchYearNoSpace.Groups["msg"].Value);
+
+        var msgThreadNoSpace = "10-25 14:27:29.803  1277 10543 E ctxmgr  :";
+        var matchThreadNoSpace = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadNoSpace);
+        Assert.IsTrue(matchThreadNoSpace.Success);
+        Assert.AreEqual("ctxmgr", matchThreadNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchThreadNoSpace.Groups["msg"].Value);
+
+        // Message ending with colon and single space (empty message body)
+        var msgYearWithSpace = @"2018-10-25 14:27:29.803  1277 10543 E ctxmgr  : ";
+        var matchYearWithSpace = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearWithSpace);
+        Assert.IsTrue(matchYearWithSpace.Success);
+        Assert.AreEqual("ctxmgr", matchYearWithSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchYearWithSpace.Groups["msg"].Value);
+
+        var msgThreadWithSpace = "10-25 14:27:29.803  1277 10543 E ctxmgr  : ";
+        var matchThreadWithSpace = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadWithSpace);
+        Assert.IsTrue(matchThreadWithSpace.Success);
+        Assert.AreEqual("ctxmgr", matchThreadWithSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchThreadWithSpace.Groups["msg"].Value);
+
+        // Tag containing a colon with empty message
+        var msgYearTagWithColonNoSpace = @"2018-10-25 14:27:29.803  1277 10543 E BarTender:BatteryStatsDumper:";
+        var matchYearTagWithColonNoSpace = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearTagWithColonNoSpace);
+        Assert.IsTrue(matchYearTagWithColonNoSpace.Success);
+        Assert.AreEqual("BarTender:BatteryStatsDumper", matchYearTagWithColonNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchYearTagWithColonNoSpace.Groups["msg"].Value);
+
+        var msgThreadTagWithColonNoSpace = "10-25 14:27:29.803  1277 10543 E BarTender:BatteryStatsDumper:";
+        var matchThreadTagWithColonNoSpace = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadTagWithColonNoSpace);
+        Assert.IsTrue(matchThreadTagWithColonNoSpace.Success);
+        Assert.AreEqual("BarTender:BatteryStatsDumper", matchThreadTagWithColonNoSpace.Groups["tag"].Value);
+        Assert.AreEqual(string.Empty, matchThreadTagWithColonNoSpace.Groups["msg"].Value);
+    }
+
+    [Test]
+    public void TabAfterColonIsParsedAsMessageDelimiter()
+    {
+        var msgYearWithTab = "2018-10-25 14:27:29.803  1277 10543 E mytag:\thello";
+        var matchYearWithTab = AndroidLogcat.m_LogCatEntryYearRegex.Match(msgYearWithTab);
+        Assert.IsTrue(matchYearWithTab.Success);
+        Assert.AreEqual("mytag", matchYearWithTab.Groups["tag"].Value);
+        Assert.AreEqual("hello", matchYearWithTab.Groups["msg"].Value);
+
+        var msgThreadWithTab = "10-25 14:27:29.803  1277 10543 E mytag:\thello";
+        var matchThreadWithTab = AndroidLogcat.m_LogCatEntryThreadTimeRegex.Match(msgThreadWithTab);
+        Assert.IsTrue(matchThreadWithTab.Success);
+        Assert.AreEqual("mytag", matchThreadWithTab.Groups["tag"].Value);
+        Assert.AreEqual("hello", matchThreadWithTab.Groups["msg"].Value);
+    }
+
+    [Test]
     public void CorrectlyParsePidsWithWindowsEndlines()
     {
         CorrectlyParsePids("\r\n");
