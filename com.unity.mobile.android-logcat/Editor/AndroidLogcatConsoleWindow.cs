@@ -485,6 +485,7 @@ namespace Unity.Android.Logcat
             if (cannotKeepUp)
                 message += " (CAN'T KEEP UP!!!!)";
             GUILayout.Label(message, style);
+            GUILayout.Label($"Window: {position.width:F0}x{position.height:F0}");
             EditorGUILayout.EndHorizontal();
         }
 

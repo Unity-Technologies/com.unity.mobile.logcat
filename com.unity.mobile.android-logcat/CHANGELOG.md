@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Recordings can be played in the Screen Capture window, with play/pause, a time slider and buttons that step one frame back or forward.
  - Tools->Open Terminal is now supported on Linux Editor.
  - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
+ - Fixed auto scrolling not turning back on after scrolling to the last message when Scroll is set to Auto. It happened only at certain Logcat window heights. (UUM-162014)
 
 ## [1.4.7] - 2025-12-12
 ### Fixes & Improvements
