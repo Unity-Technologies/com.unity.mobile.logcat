@@ -28,6 +28,22 @@ namespace Unity.Android.Logcat
                 PerformScrollWhileInAuto = true;
             }
         }
+
+        // Extra message count ensures that there's an empty space below when we scrolling all the way down
+        // This way it's easier to see that there's no more messages
+        internal const int kExtraMessageCount = 5;
+
+        /// <summary>
+        /// Whether the last log entry is visible for the given scroll position.
+        /// Compared in pixels, since comparing rounded item counts fails at certain window heights,
+        /// when the fractional part of visible rows is bigger than the horizontal scrollbar height.
+        /// Note: visibleHeight includes horizontal scrollbar, so the entry might be partially hidden behind the scrollbar.
+        /// </summary>
+        internal static bool IsLastEntryVisible(float scrollY, float visibleHeight, int entryCount, int rowHeight)
+        {
+            return scrollY + visibleHeight >= rowHeight * entryCount;
+        }
+
         internal enum Column
         {
             Icon,
@@ -379,9 +395,6 @@ namespace Unity.Android.Logcat
             var visibleWindowRect = GUILayoutUtility.GetRect(GUIContent.none, AndroidLogcatStyles.priorityDefaultStyle, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             var totalWindowRect = visibleWindowRect;
             var maxVisibleItems = (int)(visibleWindowRect.height / AndroidLogcatStyles.kLogEntryFixedHeight);
-            // Extra message count ensures that there's an empty space below when we scrolling all the way down
-            // This way it's easier to see that there's no more messages
-            const int kExtraMessageCount = 5;
             totalWindowRect.height = AndroidLogcatStyles.kLogEntryFixedHeight * (FilteredEntries.Count + kExtraMessageCount);
             totalWindowRect.width = Mathf.Max(totalWindowRect.width, m_MaxLogEntryWidth);
 
@@ -429,7 +442,7 @@ namespace Unity.Android.Logcat
             if (m_Runtime.UserSettings.AutoScroll == AutoScroll.Auto)
             {
                 if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                    m_ScrollData.PerformScrollWhileInAuto = startItem + maxVisibleItems - kExtraMessageCount >= FilteredEntries.Count;
+                    m_ScrollData.PerformScrollWhileInAuto = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
                 else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
                     m_ScrollData.PerformScrollWhileInAuto = false;
             }
