@@ -8,3 +8,4 @@ The Android Logcat Package contains additional tools to help you debug your appl
 | [Stacktrace utility](stacktrace-utility.md) | Resolves stacktraces and displays custom logs.               |
 | [Memory window](memory-window.md)           | Displays the memory allocated for your application.          |
 | [Inputs window](inputs-window.md)           | Displays input injection window for your application.        |
+| [Commands window](commands-window.md)       | Saves, organizes, and runs adb and shell commands on a connected device. |

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changes & Improvements:
  - Unity 6.0 or later is required.
  - Screenshots are now saved to `AndroidLogcat/Captures` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
- - The Screen Capture window can be opened from **Window** > **Analysis** > **Android Screen Capture**, as well as from the Android Logcat window's **Tools** menu.
+ - The Screen Capture window can be opened from **Window** > **Analysis** > **Android Screen Capture** (Alt+7), as well as from the Android Logcat window's **Tools** menu.
  - The Screen Capture window now lists every saved screenshot. Click a row or use the Up and Down keys to cycle through them, or the cross next to a row to delete that screenshot.
  - Ctrl+Shift+S, or Cmd+Shift+S on macOS, captures a screenshot while the Screen Capture window has focus. It appears in Edit > Shortcuts under "Android Logcat" and can be rebound there.
  - Capturing a screenshot also writes a `.json` file beside it, recording the device it was captured from and when.
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Recordings can be played in the Screen Capture window, with play/pause, a time slider and buttons that step one frame back or forward.
  - Tools->Open Terminal is now supported on Linux Editor.
  - Fixed Tools->Open Terminal not opening a window on Windows Editor when running on CoreCLR.
+ - Added a Commands window, accessible via the Tools menu in the Android Logcat window. It lets you save, organize, search and run adb commands which don't have a dedicated UI in this package, such as package management, permissions, dumpsys, settings and Meta Quest properties. Commands run asynchronously so the Editor stays responsive, support `<placeholder>` substitution with per-token examples and suggestions, and can be imported and exported as JSON. Catalog commands display a description of what they do when you hover over them. Edit Mode supports selecting several commands and deleting them in one step.
+ - Fixed log lines with an empty message not being parsed. They appeared as unformatted text with no tag, process ID or priority, and were hidden when filtering by tag.
  - Fixed auto scrolling not turning back on after scrolling to the last message when Scroll is set to Auto. It happened only at certain Logcat window heights. (UUM-162014)
 
 ## [1.4.7] - 2025-12-12
