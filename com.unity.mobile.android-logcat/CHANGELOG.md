@@ -4,9 +4,8 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Changes & Improvements:
+## [1.5.0] - 2026-11-18
+### Fixes & Improvements
  - Unity 6.0 or later is required.
  - Screenshots are now saved to `AndroidLogcat/Captures` as `<device_id>_<number>.png`. Previously each capture overwrote a single file in the project's `Temp` folder, so earlier screenshots were lost.
  - The Screen Capture window can be opened from **Window** > **Analysis** > **Android Screen Capture** (Alt+7), as well as from the Android Logcat window's **Tools** menu.
