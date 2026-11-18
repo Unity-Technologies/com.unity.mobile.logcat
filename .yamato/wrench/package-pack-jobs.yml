@@ -29,8 +29,8 @@ package_pack_-_mobile_android-logcat:
   - path: .yamato/build-server-jar.yml#build_server_jar
   variables:
     UPMCI_ACK_LARGE_PACKAGE: 1
-    WRENCH_LOCALAPV_URL: https://artifactory.prd.it.unity3d.com/artifactory/stevedore-unity-internal/wrench-localapv/1-3-18_814805bc36916a15e7c4fffd9156635086c96203ca783d5e2fb2e47f160d4eca.zip
+    WRENCH_LOCALAPV_URL: https://artifactory.prd.it.unity3d.com/artifactory/stevedore-unity-internal/wrench-localapv/1-3-25_62e5de96ec03d5fbee3cd2b34aeef6e7c8b2437b7c040a16abb49a9653654cf9.zip
   metadata:
     Job Maintainers: '#rm-packageworks'
-    Wrench: 3.11.4.0
+    Wrench: 3.31.0.0
 
