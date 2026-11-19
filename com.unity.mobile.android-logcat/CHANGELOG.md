@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Capturing a screenshot also writes a `.json` file beside it, recording the device it was captured from and when.
  - The details beside a selected screenshot show the device, its Android version and display size, along with the image size, the file size and when it was captured. The device details read `Undefined` for a screenshot saved without them.
  - The screenshot and the live view can be zoomed with Ctrl+Wheel (Cmd+Wheel on macOS), and the zoomed image moved with a Ctrl+middle mouse button drag or with the scrollbars that appear.
- - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags, the scroll wheel and typing are sent to the device as touch, scroll and key events, and Ctrl+A, Ctrl+C and Ctrl+V (Cmd on macOS) select all, copy and paste on the device using its own clipboard, and Back / Home / Overview buttons sit beside the image with the stream details. 
+ - The device screen can be viewed live from the Screen Capture window: select the "Live" row at the top of the screenshot list. Clicks, drags, the scroll wheel and typing are sent to the device as touch, scroll and key events, and Ctrl+A, Ctrl+C and Ctrl+V (Cmd on macOS) select all, copy and paste on the device using its own clipboard, and Back / Home / Overview buttons sit beside the image with the stream details.
  - Screen recordings are now made from the live view, with **Start Recording** in the live view, instead of with `adb screenrecord`. They are saved as constant frame rate MP4 files beside the screenshots, at the live stream's **Max Frame Rate** (up to 60 fps), and follow the live view's rotation. A recording stops on its own after the **Time Limit** set in Preferences (10 minutes by default, up to 60). Recording is not available on Linux.
  - Recordings can be played in the Screen Capture window, with play/pause, a time slider and buttons that step one frame back or forward.
  - Tools->Open Terminal is now supported on Linux Editor.
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.4.5] - 2025-04-11
 ### Fixes & Improvements
  - Fixed `llvm-nm.exe: error: : unknown argument '-e'` error when resolving stacktraces on Windows with Unity version 6000.0.44f1.
- 
+
 ## [1.4.4] - 2024-12-07
 ### Fixes & Improvements
  - Set default AutoScroll to Auto when no logcat settings are saved.
@@ -89,7 +89,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - Max Displayed Messages - controls how many messages display on the list, you can remove the limit, but it might cause UI issues.
  - Fixed tiny issue, when right clicking on the log message, the tag and process id for context menu was being taken from the first selected item, now it will be taken from item which you're hovering on
  - Fixed issue, when right clicking on the log message with tag containing forward slash, the menu would be incorrectly displayed.
- - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device. 
+ - Fixed issue, where logcat package would freeze, if you would click Clear after disconnecting the device.
  - Add setting for controlling how many exited packages to show in package selection.
  - Add doc about known issue where logcat might work incorrectly if there more than one Editor instance running.
  - You can now navigate through messages using arrow keys.
@@ -111,8 +111,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixes & Improvements.
  - Removed limitation where Android Logcat could only be used while the active Editor platform is Android. Note: Android Support is still required to be installed for Android Logcat to work.
  - Fix Memory Window on Android 11. Android 11 started dumping RSS memory, which was previously unexpected by Memory Window.
- - Include RSS memory in Memory window. 
- - Moved ProjectSettings\AndroidLogcatSettings.asset to UserSettings\AndroidLogcatSettings.asset, since this file wasn't meant to be commited. 
+ - Include RSS memory in Memory window.
+ - Moved ProjectSettings\AndroidLogcatSettings.asset to UserSettings\AndroidLogcatSettings.asset, since this file wasn't meant to be commited.
  - Fix various issues where logcat would incorrectly perform search on the phone below Android 7.0
  - Display the information in status bar by which data the messages are filtered, this should help with situtions where no messages are displayed logcat, only because a very specific tag or search filter is set.
  - Correctly get process name on Android 5.0 devices, previously processes with names like /system/bin/netd, would be resolved incorrectly.
@@ -169,7 +169,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Right clicking log lines behavior will be consistent with other Unity windows.
  - Ctrl/CMD + C will copy log lines correctly.
  - Column seperators will be drawn correctly
-### Android Logcat Settings 
+### Android Logcat Settings
  - Introducing settings, accessible from Preferences. For ex., on Windows Edit->Preferences
 
 ## [1.0.0] - 2019-07-18
