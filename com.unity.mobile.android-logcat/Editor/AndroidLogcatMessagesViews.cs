@@ -741,9 +741,12 @@ namespace Unity.Android.Logcat
                 scrollViewRect.yMax - horizontalBar.fixedHeight - horizontalBar.margin.top,
                 scrollViewRect.xMax,
                 scrollViewRect.yMax);
-            // The icon is white, tinted like the scrollbar arrows of the current skin
+            // The icon is white, tinted like the scrollbar arrows of the current skin, and faded while off
             var orgContentColor = GUI.contentColor;
-            GUI.contentColor = EditorGUIUtility.isProSkin ? new Color(0.77f, 0.77f, 0.77f) : new Color(0.33f, 0.33f, 0.33f);
+            var iconColor = EditorGUIUtility.isProSkin ? new Color(0.77f, 0.77f, 0.77f) : new Color(0.33f, 0.33f, 0.33f);
+            if (!m_Runtime.UserSettings.AutoScroll)
+                iconColor.a = 0.35f;
+            GUI.contentColor = iconColor;
             var autoScroll = GUI.Toggle(corner, m_Runtime.UserSettings.AutoScroll, AndroidLogcatStyles.kIconAutoScroll, AndroidLogcatStyles.scrollCornerToggle);
             GUI.contentColor = orgContentColor;
             if (autoScroll != m_Runtime.UserSettings.AutoScroll)

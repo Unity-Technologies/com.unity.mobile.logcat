@@ -27,7 +27,7 @@ namespace Unity.Android.Logcat
 
         static GUIStyle ScaleScrollbar(string name)
         {
-            const float kScale = 1.1f;
+            const float kScale = 1.0f;
             // Keeps the name, which the scrollbar uses to find its thumb and button styles
             var style = new GUIStyle(name);
             style.fixedWidth *= kScale;
