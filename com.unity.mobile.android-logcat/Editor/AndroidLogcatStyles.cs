@@ -20,6 +20,20 @@ namespace Unity.Android.Logcat
         public static readonly GUIStyle toolbarLabelLeft = new GUIStyle("toolbarButton") { fontSize = kFontSize, fixedHeight = kFixedHeight, alignment = TextAnchor.MiddleLeft };
 
         public static readonly GUIStyle columnHeader = new GUIStyle("OL TITLE");
+        public static readonly GUIStyle scrollCornerToggle = new GUIStyle("toolbarButton") { padding = new RectOffset(), margin = new RectOffset(), fixedWidth = 0, fixedHeight = 0 };
+        // Thicker than default, so the auto scroll toggle in the corner between them is bigger
+        public static readonly GUIStyle messagesHorizontalScrollbar = ScaleScrollbar("horizontalscrollbar");
+        public static readonly GUIStyle messagesVerticalScrollbar = ScaleScrollbar("verticalscrollbar");
+
+        static GUIStyle ScaleScrollbar(string name)
+        {
+            const float kScale = 1.1f;
+            // Keeps the name, which the scrollbar uses to find its thumb and button styles
+            var style = new GUIStyle(name);
+            style.fixedWidth *= kScale;
+            style.fixedHeight *= kScale;
+            return style;
+        }
 
         public static int kLogEntryFontSize = 11;
         public static int kLogEntryFixedHeight = kLogEntryFontSize + 5;

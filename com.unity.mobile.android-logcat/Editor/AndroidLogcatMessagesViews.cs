@@ -19,7 +19,7 @@ namespace Unity.Android.Logcat
         /// Whether the last log entry is visible for the given scroll position.
         /// Compared in pixels, since comparing rounded item counts fails at certain window heights,
         /// when the fractional part of visible rows is bigger than the horizontal scrollbar height.
-        /// Note: visibleHeight includes horizontal scrollbar, so the entry might be partially hidden behind the scrollbar.
+        /// Note: if visibleHeight includes the horizontal scrollbar, the entry might be hidden behind the scrollbar.
         /// </summary>
         internal static bool IsLastEntryVisible(float scrollY, float visibleHeight, int entryCount, int rowHeight)
         {
@@ -380,6 +380,9 @@ namespace Unity.Android.Logcat
             totalWindowRect.height = AndroidLogcatStyles.kLogEntryFixedHeight * (FilteredEntries.Count + kExtraMessageCount);
             totalWindowRect.width = Mathf.Max(totalWindowRect.width, m_MaxLogEntryWidth);
 
+            // Before the scroll view, so turning auto scroll on scrolls to the end in this same event
+            DoAutoScrollToggle(visibleWindowRect);
+
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
             var scalar = (float)(kExtraMessageCount + FilteredEntries.Count) / totalWindowRect.height;
@@ -408,13 +411,16 @@ namespace Unity.Android.Logcat
             }
 
             EditorGUI.BeginChangeCheck();
-            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, false);
+            // Vertical scrollbar is always shown, so the auto scroll toggle always has the corner between the scrollbars
+            var horizontalBar = AndroidLogcatStyles.messagesHorizontalScrollbar;
+            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, true, horizontalBar, AndroidLogcatStyles.messagesVerticalScrollbar);
+            var horizontalBarHeight = horizontalBar.fixedHeight + horizontalBar.margin.top;
             var startItem = (int)(m_ScrollPosition.y * scalar);
 
             // Scrolling manually turns auto scroll off, unless it ends at the last message
             var scrollChanged = EditorGUI.EndChangeCheck();
             if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                m_Runtime.UserSettings.AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
+                m_Runtime.UserSettings.AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height - horizontalBarHeight, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
             else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
                 m_Runtime.UserSettings.AutoScroll = false;
 
@@ -466,8 +472,7 @@ namespace Unity.Android.Logcat
             GUI.EndScrollView();
 
             Rect rc = GUILayoutUtility.GetLastRect();
-            // Decrement horizontal scrollbar height
-            rc.height -= 15.0f;
+            rc.height -= horizontalBarHeight;
             DoColumnBorders(rc, Color.black, 1);
 
             return requestRepaint;
@@ -727,10 +732,20 @@ namespace Unity.Android.Logcat
             m_ScrollToItem = selectedItem;
         }
 
-        private void DoScrollOptionsGUI()
+        private void DoAutoScrollToggle(Rect scrollViewRect)
         {
-            // Turning auto scroll on scrolls to the last message right away, see DoGUIEntries
-            var autoScroll = GUILayout.Toggle(m_Runtime.UserSettings.AutoScroll, AndroidLogcatStyles.kIconAutoScroll, EditorStyles.miniButton, GUILayout.Width(24), GUILayout.Height(18));
+            var horizontalBar = AndroidLogcatStyles.messagesHorizontalScrollbar;
+            var verticalBar = AndroidLogcatStyles.messagesVerticalScrollbar;
+            var corner = Rect.MinMaxRect(
+                scrollViewRect.xMax - verticalBar.fixedWidth - verticalBar.margin.left,
+                scrollViewRect.yMax - horizontalBar.fixedHeight - horizontalBar.margin.top,
+                scrollViewRect.xMax,
+                scrollViewRect.yMax);
+            // The icon is white, tinted like the scrollbar arrows of the current skin
+            var orgContentColor = GUI.contentColor;
+            GUI.contentColor = EditorGUIUtility.isProSkin ? new Color(0.77f, 0.77f, 0.77f) : new Color(0.33f, 0.33f, 0.33f);
+            var autoScroll = GUI.Toggle(corner, m_Runtime.UserSettings.AutoScroll, AndroidLogcatStyles.kIconAutoScroll, AndroidLogcatStyles.scrollCornerToggle);
+            GUI.contentColor = orgContentColor;
             if (autoScroll != m_Runtime.UserSettings.AutoScroll)
             {
                 m_ScrollToItem = -1;
