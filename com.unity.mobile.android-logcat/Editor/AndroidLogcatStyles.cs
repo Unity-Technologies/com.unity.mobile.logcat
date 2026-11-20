@@ -154,6 +154,7 @@ namespace Unity.Android.Logcat
         internal static readonly GUIContent kIconToolbarDown = new GUIContent(LoadIcon("DownArrow"));
         internal static readonly GUIContent kIconToolbarUp = new GUIContent(LoadIcon("UpArrow"));
         internal static readonly GUIContent kIconReset = new GUIContent(LoadIcon("Reset"), "Reset");
+        internal static readonly GUIContent kIconAutoScroll = new GUIContent(LoadIcon("DownArrowToLine"), "Auto Scroll: scroll to the last message and follow new ones. Turns off when you scroll up, and back on when you scroll to the last message.");
         internal static readonly GUIContent[] kIconPlay = new[] {
             new GUIContent(LoadIcon("PlayOn")),
             new GUIContent(LoadIcon("PlayOff"))

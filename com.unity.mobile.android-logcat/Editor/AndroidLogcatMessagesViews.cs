@@ -11,24 +11,6 @@ namespace Unity.Android.Logcat
 {
     internal partial class AndroidLogcatConsoleWindow
     {
-        private GUIContent kScroll = new GUIContent(L10n.Tr("Scroll:"), L10n.Tr("Disabled - No scrolling\nScroll To End - Always scroll to end\nAuto - switch to 'scroll to end' when scrolling to the last message"));
-        class ScrollData
-        {
-            public int ScrollToItemWhileInDisabled { set; get; }
-            public bool PerformScrollWhileInAuto { set; get; }
-
-            public ScrollData()
-            {
-                Reset();
-            }
-
-            public void Reset()
-            {
-                ScrollToItemWhileInDisabled = -1;
-                PerformScrollWhileInAuto = true;
-            }
-        }
-
         // Extra message count ensures that there's an empty space below when we scrolling all the way down
         // This way it's easier to see that there's no more messages
         internal const int kExtraMessageCount = 5;
@@ -83,7 +65,7 @@ namespace Unity.Android.Logcat
 
         public IReadOnlyList<LogcatEntry> SelectedFilteredEntries => GetSelectedFilteredEntries(out var minIndex, out var maxIndex);
 
-        private ScrollData m_ScrollData = new ScrollData();
+        private int m_ScrollToItem = -1;
         private float doubleClickStart = -1;
 
         void CollectTagPrioritiesFromDevice()
@@ -401,51 +383,40 @@ namespace Unity.Android.Logcat
             var controlId = GUIUtility.GetControlID(FocusType.Keyboard);
 
             var scalar = (float)(kExtraMessageCount + FilteredEntries.Count) / totalWindowRect.height;
-            switch (m_Runtime.UserSettings.AutoScroll)
+            var scrollToItem = m_ScrollToItem;
+            if (scrollToItem >= 0)
             {
-                case AutoScroll.Disabled:
-                    var scrollToItem = m_ScrollData.ScrollToItemWhileInDisabled;
-                    if (scrollToItem >= 0)
-                    {
-                        // Do the scrolling in repain event since maxVisibleItems depends on visibleWindowRect
-                        // And that one is calculated correctly only in Repaint event
-                        if (e.type != EventType.Repaint)
-                            break;
+                // Do the scrolling in repain event since maxVisibleItems depends on visibleWindowRect
+                // And that one is calculated correctly only in Repaint event
+                if (e.type == EventType.Repaint)
+                {
+                    int minVisible = (int)(m_ScrollPosition.y * scalar);
+                    int maxVisible = minVisible + maxVisibleItems;
 
-                        int minVisible = (int)(m_ScrollPosition.y * scalar);
-                        int maxVisible = minVisible + maxVisibleItems;
+                    // Only adjust scroll if our selected items is not among visible items
+                    if (scrollToItem < minVisible)
+                        m_ScrollPosition.y = scrollToItem / scalar;
+                    if (scrollToItem > maxVisible - kExtraMessageCount)
+                        m_ScrollPosition.y = (scrollToItem - maxVisibleItems + kExtraMessageCount) / scalar;
 
-                        // Only adjust scroll if our selected items is not among visible items
-                        if (scrollToItem < minVisible)
-                            m_ScrollPosition.y = scrollToItem / scalar;
-                        if (scrollToItem > maxVisible - kExtraMessageCount)
-                            m_ScrollPosition.y = (scrollToItem - maxVisibleItems + kExtraMessageCount) / scalar;
-
-                        m_ScrollData.Reset();
-                    }
-                    break;
-                case AutoScroll.ScrollToEnd:
-                    m_ScrollPosition.y = totalWindowRect.height;
-                    break;
-                case AutoScroll.Auto:
-                    if (m_ScrollData.PerformScrollWhileInAuto)
-                        m_ScrollPosition.y = totalWindowRect.height;
-                    break;
+                    m_ScrollToItem = -1;
+                }
+            }
+            else if (m_Runtime.UserSettings.AutoScroll)
+            {
+                m_ScrollPosition.y = totalWindowRect.height;
             }
 
             EditorGUI.BeginChangeCheck();
             m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, false);
             var startItem = (int)(m_ScrollPosition.y * scalar);
 
-            // Check if we need to enable autoscrolling
+            // Scrolling manually turns auto scroll off, unless it ends at the last message
             var scrollChanged = EditorGUI.EndChangeCheck();
-            if (m_Runtime.UserSettings.AutoScroll == AutoScroll.Auto)
-            {
-                if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                    m_ScrollData.PerformScrollWhileInAuto = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
-                else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
-                    m_ScrollData.PerformScrollWhileInAuto = false;
-            }
+            if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
+                m_Runtime.UserSettings.AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
+            else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
+                m_Runtime.UserSettings.AutoScroll = false;
 
             if (e.type == EventType.Repaint)
             {
@@ -752,19 +723,18 @@ namespace Unity.Android.Logcat
             }
 
             m_Logcat.FilteredEntries[selectedItem].Selected = true;
-            m_Runtime.UserSettings.AutoScroll = AutoScroll.Disabled;
-            m_ScrollData.ScrollToItemWhileInDisabled = selectedItem;
+            m_Runtime.UserSettings.AutoScroll = false;
+            m_ScrollToItem = selectedItem;
         }
 
         private void DoScrollOptionsGUI()
         {
-            GUILayout.Label(kScroll, GUILayout.ExpandWidth(false));
-            EditorGUI.BeginChangeCheck();
-            var scroll = (AutoScroll)EditorGUILayout.EnumPopup(m_Runtime.UserSettings.AutoScroll, GUILayout.ExpandWidth(false));
-            if (EditorGUI.EndChangeCheck())
+            // Turning auto scroll on scrolls to the last message right away, see DoGUIEntries
+            var autoScroll = GUILayout.Toggle(m_Runtime.UserSettings.AutoScroll, AndroidLogcatStyles.kIconAutoScroll, EditorStyles.miniButton, GUILayout.Width(24), GUILayout.Height(18));
+            if (autoScroll != m_Runtime.UserSettings.AutoScroll)
             {
-                m_ScrollData.Reset();
-                m_Runtime.UserSettings.AutoScroll = scroll;
+                m_ScrollToItem = -1;
+                m_Runtime.UserSettings.AutoScroll = autoScroll;
             }
         }
 
