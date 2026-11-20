@@ -412,8 +412,8 @@ namespace Unity.Android.Logcat
 
             EditorGUI.BeginChangeCheck();
             // Vertical scrollbar is always shown, so the auto scroll toggle always has the corner between the scrollbars
-            var horizontalBar = AndroidLogcatStyles.messagesHorizontalScrollbar;
-            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, true, horizontalBar, AndroidLogcatStyles.messagesVerticalScrollbar);
+            m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, true);
+            var horizontalBar = GUI.skin.horizontalScrollbar;
             var horizontalBarHeight = horizontalBar.fixedHeight + horizontalBar.margin.top;
             var startItem = (int)(m_ScrollPosition.y * scalar);
 
@@ -734,8 +734,8 @@ namespace Unity.Android.Logcat
 
         private void DoAutoScrollToggle(Rect scrollViewRect)
         {
-            var horizontalBar = AndroidLogcatStyles.messagesHorizontalScrollbar;
-            var verticalBar = AndroidLogcatStyles.messagesVerticalScrollbar;
+            var horizontalBar = GUI.skin.horizontalScrollbar;
+            var verticalBar = GUI.skin.verticalScrollbar;
             var corner = Rect.MinMaxRect(
                 scrollViewRect.xMax - verticalBar.fixedWidth - verticalBar.margin.left,
                 scrollViewRect.yMax - horizontalBar.fixedHeight - horizontalBar.margin.top,
