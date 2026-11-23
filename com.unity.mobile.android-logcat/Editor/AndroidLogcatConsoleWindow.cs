@@ -809,6 +809,7 @@ namespace Unity.Android.Logcat
             m_Logcat.Connected += OnLogcatConnected;
 
             m_Logcat.Start();
+            m_AutoScroll = true;
         }
 
         private void StopLogCat()
