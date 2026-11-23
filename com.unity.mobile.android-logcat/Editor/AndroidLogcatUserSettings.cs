@@ -102,10 +102,6 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private CommandsSettingsData m_CommandsSettings;
 
-        // Not m_AutoScroll, which held the former Disabled/ScrollToEnd/Auto enum, so older saved settings aren't misread as a bool
-        [SerializeField]
-        private bool m_AutoScrollEnabled;
-
         public string LastSelectedDeviceId
         {
             set
@@ -164,8 +160,6 @@ namespace Unity.Android.Logcat
         public QueryLayoutSettings LayoutSettings { set => m_QueryLayoutSettings = value; get => m_QueryLayoutSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
         public CommandsSettingsData CommandsSettings { set => m_CommandsSettings = value; get => m_CommandsSettings; }
-
-        public bool AutoScroll { set => m_AutoScrollEnabled = value; get => m_AutoScrollEnabled; }
 
         private void RefreshProcessesForSerialization()
         {
@@ -334,7 +328,6 @@ namespace Unity.Android.Logcat
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
-            m_AutoScrollEnabled = true;
 
             ResetScreenCaptureSettings();
 

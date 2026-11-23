@@ -66,6 +66,9 @@ namespace Unity.Android.Logcat
         public IReadOnlyList<LogcatEntry> SelectedFilteredEntries => GetSelectedFilteredEntries(out var minIndex, out var maxIndex);
 
         private int m_ScrollToItem = -1;
+        // Not saved, so it's back on after the window, Unity or scripts reload
+        [NonSerialized]
+        private bool m_AutoScroll = true;
         private float doubleClickStart = -1;
 
         void CollectTagPrioritiesFromDevice()
@@ -405,7 +408,7 @@ namespace Unity.Android.Logcat
                     m_ScrollToItem = -1;
                 }
             }
-            else if (m_Runtime.UserSettings.AutoScroll)
+            else if (m_AutoScroll)
             {
                 m_ScrollPosition.y = totalWindowRect.height;
             }
@@ -420,9 +423,9 @@ namespace Unity.Android.Logcat
             // Scrolling manually turns auto scroll off, unless it ends at the last message
             var scrollChanged = EditorGUI.EndChangeCheck();
             if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
-                m_Runtime.UserSettings.AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height - horizontalBarHeight, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
+                m_AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height - horizontalBarHeight, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
             else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
-                m_Runtime.UserSettings.AutoScroll = false;
+                m_AutoScroll = false;
 
             if (e.type == EventType.Repaint)
             {
@@ -728,7 +731,7 @@ namespace Unity.Android.Logcat
             }
 
             m_Logcat.FilteredEntries[selectedItem].Selected = true;
-            m_Runtime.UserSettings.AutoScroll = false;
+            m_AutoScroll = false;
             m_ScrollToItem = selectedItem;
         }
 
@@ -744,15 +747,15 @@ namespace Unity.Android.Logcat
             // The icon is white, tinted like the scrollbar arrows of the current skin, and faded while off
             var orgContentColor = GUI.contentColor;
             var iconColor = EditorGUIUtility.isProSkin ? new Color(0.77f, 0.77f, 0.77f) : new Color(0.33f, 0.33f, 0.33f);
-            if (!m_Runtime.UserSettings.AutoScroll)
+            if (!m_AutoScroll)
                 iconColor.a = 0.35f;
             GUI.contentColor = iconColor;
-            var autoScroll = GUI.Toggle(corner, m_Runtime.UserSettings.AutoScroll, AndroidLogcatStyles.kIconAutoScroll, AndroidLogcatStyles.scrollCornerToggle);
+            var autoScroll = GUI.Toggle(corner, m_AutoScroll, AndroidLogcatStyles.kIconAutoScroll, AndroidLogcatStyles.scrollCornerToggle);
             GUI.contentColor = orgContentColor;
-            if (autoScroll != m_Runtime.UserSettings.AutoScroll)
+            if (autoScroll != m_AutoScroll)
             {
                 m_ScrollToItem = -1;
-                m_Runtime.UserSettings.AutoScroll = autoScroll;
+                m_AutoScroll = autoScroll;
             }
         }
 

@@ -829,6 +829,7 @@ namespace Unity.Android.Logcat
             m_Logcat.Stop();
             m_Logcat.Clear();
             m_Logcat.Start();
+            m_AutoScroll = true;
         }
 
         public static void ShowInternalLog()
