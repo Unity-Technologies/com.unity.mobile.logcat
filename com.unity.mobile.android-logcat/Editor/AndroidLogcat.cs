@@ -361,18 +361,7 @@ namespace Unity.Android.Logcat
         {
             DateTime dateTime;
             var dateValue = m.Groups["date"].Value;
-            if (LogPrintFormat == kThreadTime)
-                dateValue = "1999-" + dateValue;
-
-            try
-            {
-                dateTime = DateTime.Parse(dateValue);
-            }
-            catch (Exception ex)
-            {
-                dateTime = new DateTime();
-                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
-            }
+            dateTime = ParseDate(dateValue);
 
             var entry = new LogcatEntry(
                 dateTime,
@@ -383,6 +372,22 @@ namespace Unity.Android.Logcat
                 m.Groups["msg"].Value);
 
             return entry;
+        }
+
+        DateTime ParseDate(string dateValue)
+        {
+            if (LogPrintFormat == kThreadTime)
+                dateValue = "1999-" + dateValue;
+
+            try
+            {
+                return DateTime.Parse(dateValue);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
+                return new DateTime();
+            }
         }
 
         private Priority PriorityStringToEnum(string priority)

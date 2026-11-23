@@ -157,7 +157,7 @@ namespace Unity.Android.Logcat
 
             // A screenshot's details file goes with the copy. Nothing to do for a
             // file that has none, which is every video.
-            AndroidLogcatScreenshotInfo.CopyBeside(sourcePath, path);
+            AndroidLogcatCaptureInfo.CopyBeside(sourcePath, path);
 
             return Path.GetFullPath(Path.GetDirectoryName(path));
         }
@@ -180,7 +180,7 @@ namespace Unity.Android.Logcat
                 return false;
             }
 
-            AndroidLogcatScreenshotInfo.CopyBeside(sourcePath, target);
+            AndroidLogcatCaptureInfo.CopyBeside(sourcePath, target);
             return true;
         }
 

@@ -194,12 +194,13 @@ Stream header, once, 20 bytes:
   u32  flags            bit 0: the server can inject input
   u32  serverPid        this process on the device, so the Editor can name it
 
-Frame, repeated, 28 byte header + payload:
+Frame, repeated, 32 byte header + payload:
   u64  ptsUs            microseconds since the first frame
   u32  width            pixels of the streamed image
   u32  height           pixels of the streamed image
   u32  displayWidth     pixels of the display it was captured from
   u32  displayHeight    pixels of the display it was captured from
+  u32  rotation         Surface.ROTATION_* the display was at, 0..3
   u32  payloadSize      bytes of encoded frame that follow
   u8[] payload          JPEG
 ```
