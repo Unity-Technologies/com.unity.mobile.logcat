@@ -96,6 +96,9 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private bool m_RecordTouches;
 
+        [SerializeField]
+        private bool m_RecordLogcatMessages;
+
         internal int MemoryRequestIntervalMS
         {
             set
@@ -268,6 +271,17 @@ namespace Unity.Android.Logcat
         }
 
         /// <summary>
+        /// Whether a recording also saves the logcat messages the Android Logcat window
+        /// would show, for its player to list frame by frame. Off by default: a busy
+        /// device can log a lot.
+        /// </summary>
+        internal bool RecordLogcatMessages
+        {
+            set => Set(ref m_RecordLogcatMessages, value);
+            get => m_RecordLogcatMessages;
+        }
+
+        /// <summary>
         /// Frame rate cap of the live stream. A mirrored display only produces a frame
         /// when the screen changes, so this is a ceiling rather than a rate.
         /// </summary>
@@ -371,6 +385,7 @@ namespace Unity.Android.Logcat
             m_RecordingTimeLimit = kRecordingTimeLimit.Default;
             m_RecordingSquareVideo = true;
             m_RecordTouches = true;
+            m_RecordLogcatMessages = false;
             ResetLiveStreamFields();
             if (Enum.GetValues(typeof(Priority)).Length != 6)
                 throw new Exception("Unexpected length of Priority enum.");

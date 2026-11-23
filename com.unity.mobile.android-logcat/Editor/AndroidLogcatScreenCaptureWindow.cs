@@ -23,11 +23,12 @@ namespace Unity.Android.Logcat
                 + "Shortcut: Ctrl+Shift+S, Cmd+Shift+S on macOS, while this view is showing.");
             public static readonly GUIContent StartRecording = new GUIContent("Start Recording",
                 "Record the live view, at the stream's size, and add the recording to the list when "
-                + "it stops. Leaving the live view stops it.");
+                + "it stops. Leaving the live view stops it. The arrow beside it chooses what else is saved with the recording.");
             public static readonly GUIContent StopRecording = new GUIContent("Stop Recording",
                 "Stop recording and add the recording to the list.");
             public static readonly GUIContent RecordingUnsupported = new GUIContent("Start Recording",
                 "Recording isn't available on Linux, the Linux Editor has no H.264 encoder.");
+            public static readonly GUIContent IncludeLogcatMessages = new GUIContent("Include Logcat Messages");
         }
         private AndroidLogcatRuntimeBase m_Runtime;
 
@@ -97,7 +98,7 @@ namespace Unity.Android.Logcat
                 // not, and two buttons would leave one of them dead most of the time.
                 new AndroidLogcatLiveStream.CaptureAction(
                     () => m_CaptureVideo.IsRecording ? Styles.StopRecording : RecordingSupported ? Styles.StartRecording : Styles.RecordingUnsupported,
-                    ToggleRecording, () => CanRecord)
+                    ToggleRecording, () => CanRecord, ShowRecordingOptions)
             };
 
             m_Runtime.DeviceQuery.UpdateConnectedDevicesList(true);
@@ -184,6 +185,19 @@ namespace Unity.Android.Logcat
                 m_StatusBar.Message = "Recording failed. See the Console for details.";
                 Debug.LogError($"Recording failed to start.\n{ex.Message}");
             }
+        }
+
+        /// <summary>What a recording saves besides the video. Applies to the next one.</summary>
+        private void ShowRecordingOptions(Rect rect)
+        {
+            var settings = m_Runtime.Settings;
+            var menu = new GenericMenu();
+            if (m_CaptureVideo.IsRecording)
+                menu.AddDisabledItem(Styles.IncludeLogcatMessages, settings.RecordLogcatMessages);
+            else
+                menu.AddItem(Styles.IncludeLogcatMessages, settings.RecordLogcatMessages,
+                    () => settings.RecordLogcatMessages = !settings.RecordLogcatMessages);
+            menu.DropDown(rect);
         }
 
         private void QueueScreenCapture()

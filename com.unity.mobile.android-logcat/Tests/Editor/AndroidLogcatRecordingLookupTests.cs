@@ -38,26 +38,26 @@ class AndroidLogcatRecordingLookupTests
     public void LookupsNearTheEndOfALongRecordingStayWithinBudget()
     {
         var frames = kFrameRate * 60 * kMinutes;
-        var changes = new AndroidLogcatScreenshotInfo.FrameChange[frames];
+        var changes = new AndroidLogcatCaptureInfo.FrameChange[frames];
         for (var i = 0; i < frames; i++)
         {
-            var change = new AndroidLogcatScreenshotInfo.FrameChange { time = (double)i / kFrameRate };
+            var change = new AndroidLogcatCaptureInfo.FrameChange { time = (double)i / kFrameRate };
             var action = i == 0 ? AndroidLogcatLiveStream.TouchAction.Down : AndroidLogcatLiveStream.TouchAction.Move;
-            change.touches.Add(new AndroidLogcatScreenshotInfo.TouchInfo { action = action.ToString(), x = (i % 100) / 100f, y = 0.5f });
+            change.touches.Add(new AndroidLogcatCaptureInfo.TouchInfo { action = action.ToString(), x = (i % 100) / 100f, y = 0.5f });
             changes[i] = change;
         }
         // Folded at the start, unfolded at a minute in, then only touches: the slowest
         // case for finding the latest display change.
-        changes[0].display = new AndroidLogcatScreenshotInfo.DisplayInfo { width = 1080, height = 2424 };
-        changes[0].content = new AndroidLogcatScreenshotInfo.ContentInfo { x = 284, y = 0, width = 456, height = 1024 };
+        changes[0].display = new AndroidLogcatCaptureInfo.DisplayInfo { width = 1080, height = 2424 };
+        changes[0].content = new AndroidLogcatCaptureInfo.ContentInfo { x = 284, y = 0, width = 456, height = 1024 };
         var unfold = kFrameRate * 60;
-        changes[unfold].display = new AndroidLogcatScreenshotInfo.DisplayInfo { width = 2076, height = 2152 };
-        changes[unfold].content = new AndroidLogcatScreenshotInfo.ContentInfo { x = 18, y = 0, width = 988, height = 1024 };
+        changes[unfold].display = new AndroidLogcatCaptureInfo.DisplayInfo { width = 2076, height = 2152 };
+        changes[unfold].content = new AndroidLogcatCaptureInfo.ContentInfo { x = 18, y = 0, width = 988, height = 1024 };
 
-        var info = new AndroidLogcatScreenshotInfo { displayWidth = 1080, displayHeight = 2424, frameChanges = changes };
+        var info = new AndroidLogcatCaptureInfo { displayWidth = 1080, displayHeight = 2424, frameChanges = changes };
         var json = JsonUtility.ToJson(info);
         var load = Stopwatch.StartNew();
-        info = JsonUtility.FromJson<AndroidLogcatScreenshotInfo>(json);
+        info = JsonUtility.FromJson<AndroidLogcatCaptureInfo>(json);
         load.Stop();
         var details = new AndroidLogcatCaptureList.PreviewDetails(null, new FileInfo(m_File), info);
 

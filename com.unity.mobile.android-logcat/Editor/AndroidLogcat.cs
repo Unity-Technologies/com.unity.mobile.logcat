@@ -18,6 +18,11 @@ namespace Unity.Android.Logcat
         private readonly int m_ProcessId;
         private readonly Priority m_MessagePriority;
         private readonly string[] m_Tags;
+        // Reading for a recording: messages from now on, stamped with the device's wall
+        // clock so they can be placed among the frames.
+        private readonly bool m_ForRecording;
+        // For a recording, the device wall clock to read messages from, -1 for the latest on.
+        private readonly long m_SinceRealtimeUs;
         private readonly LogcatFilterOptions m_FilterOptions;
         private FilterOptions m_LastUsedFilterOptions;
         private List<LogcatEntry> m_RawLogEntries = new List<LogcatEntry>();
@@ -122,7 +127,9 @@ namespace Unity.Android.Logcat
             int processId,
             Priority priority,
             FilterOptions filterOptions,
-            string[] tags)
+            string[] tags,
+            bool forRecording = false,
+            long sinceRealtimeUs = -1)
         {
             this.m_Runtime = runtime;
             this.adb = adb;
@@ -132,10 +139,14 @@ namespace Unity.Android.Logcat
             this.m_FilterOptions = new LogcatFilterOptions(filterOptions);
             this.m_LastUsedFilterOptions = new FilterOptions(m_FilterOptions);
             this.m_Tags = tags;
+            this.m_ForRecording = forRecording;
+            this.m_SinceRealtimeUs = sinceRealtimeUs;
 
             m_FilterOptions.OnFilterChanged = OnFilterChanged;
 
-            LogcatEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogcatEntry.kTimeFormatWithYear : LogcatEntry.kTimeFormatWithoutYear);
+            // Shared by every entry, and a recording's are never shown in the Logcat window.
+            if (!forRecording)
+                LogcatEntry.SetTimeFormat(m_Device.SupportYearFormat ? LogcatEntry.kTimeFormatWithYear : LogcatEntry.kTimeFormatWithoutYear);
         }
 
         private void ClearEntries()
@@ -255,6 +266,9 @@ namespace Unity.Android.Logcat
                     var m = regex.Match(logLine);
                     if (!m.Success)
                     {
+                        // A recording places messages by their time, which these have none of.
+                        if (m_ForRecording)
+                            continue;
                         // The reason we need to check `needFilterByTags` is we don't really want to show the error logs that we can't parse if a tag is chosen.
                         // For logs we can't parse, please refer to https://gitlab.cds.internal.unity3d.com/upm-packages/mobile/mobile-android-logcat/issues/44
                         // And we should remove this check once #44 is fixed completely.
@@ -282,6 +296,13 @@ namespace Unity.Android.Logcat
             StripRawEntriesIfNeeded();
 
             FilterEntriesUsingRawEntries(entries);
+        }
+
+        /// <summary>Hands on what has arrived without waiting for the next update, before stopping.</summary>
+        internal void Flush()
+        {
+            if (m_MessageProvider != null)
+                ProcessCachedLogLines();
         }
 
         public void StripRawEntriesIfNeeded()
@@ -361,18 +382,10 @@ namespace Unity.Android.Logcat
         {
             DateTime dateTime;
             var dateValue = m.Groups["date"].Value;
-            if (LogPrintFormat == kThreadTime)
-                dateValue = "1999-" + dateValue;
-
-            try
-            {
-                dateTime = DateTime.Parse(dateValue);
-            }
-            catch (Exception ex)
-            {
-                dateTime = new DateTime();
-                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
-            }
+            if (m_ForRecording)
+                dateTime = EpochToDateTime(dateValue);
+            else
+                dateTime = ParseDate(dateValue);
 
             var entry = new LogcatEntry(
                 dateTime,
@@ -383,6 +396,29 @@ namespace Unity.Android.Logcat
                 m.Groups["msg"].Value);
 
             return entry;
+        }
+
+        DateTime ParseDate(string dateValue)
+        {
+            if (LogPrintFormat == kThreadTime)
+                dateValue = "1999-" + dateValue;
+
+            try
+            {
+                return DateTime.Parse(dateValue);
+            }
+            catch (Exception ex)
+            {
+                AndroidLogcatInternalLog.Log("Failed to parse date: " + dateValue + "\n" + ex.Message);
+                return new DateTime();
+            }
+        }
+
+        /// <summary>'-v epoch -v usec' seconds, in UTC: decimal keeps the microseconds a double would round.</summary>
+        static DateTime EpochToDateTime(string seconds)
+        {
+            var value = decimal.Parse(seconds, System.Globalization.CultureInfo.InvariantCulture);
+            return DateTime.SpecifyKind(DateTime.UnixEpoch.AddTicks((long)(value * TimeSpan.TicksPerSecond)), DateTimeKind.Utc);
         }
 
         private Priority PriorityStringToEnum(string priority)
@@ -446,7 +482,12 @@ namespace Unity.Android.Logcat
 
         internal Regex LogParseRegex
         {
-            get { return m_Device.SupportYearFormat ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex; }
+            get
+            {
+                if (m_ForRecording)
+                    return m_LogCatEntryEpochRegex;
+                return m_Device.SupportYearFormat ? m_LogCatEntryYearRegex : m_LogCatEntryThreadTimeRegex;
+            }
         }
 
         /// <summary>
@@ -457,12 +498,22 @@ namespace Unity.Android.Logcat
         /// </summary>
         internal string LogPrintFormat
         {
-            get { return m_Device.SupportYearFormat ? kYearTime : kThreadTime; }
+            get
+            {
+                if (m_ForRecording)
+                    return kEpoch + (m_SinceRealtimeUs > 0
+                        ? (m_SinceRealtimeUs / 1000000.0).ToString("0.000000", System.Globalization.CultureInfo.InvariantCulture)
+                        : "1");
+                return m_Device.SupportYearFormat ? kYearTime : kThreadTime;
+            }
         }
 
         internal static readonly Regex m_CrashMessageRegex = new Regex(@"^\s*#\d{2}\s*pc\s([a-fA-F0-9]{8}).*(libunity\.so|libmain\.so)", RegexOptions.Compiled);
         // Regex for messages produced via 'adb logcat -s -v year *:V'
         internal static readonly Regex m_LogCatEntryYearRegex = new Regex(@"(?<date>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>.+?)\s*:(?:\s(?<msg>.*)|$)", RegexOptions.Compiled);
+
+        // Regex for messages produced via 'adb logcat -s -v epoch -v usec *:V'
+        internal static readonly Regex m_LogCatEntryEpochRegex = new Regex(@"(?<date>\d+\.\d+)\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>.+?)\s*:\s(?<msg>.*)", RegexOptions.Compiled);
 
         // Regex for messages produced via 'adb logcat -s -v threadtime *:V'
         internal static readonly Regex m_LogCatEntryThreadTimeRegex = new Regex(@"(?<date>\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<pid>\d+)\s+(?<tid>\d+)\s+(?<priority>[VDIWEFS])\s+(?<tag>.+?)\s*:(?:\s(?<msg>.*)|$)", RegexOptions.Compiled);
@@ -475,5 +526,9 @@ namespace Unity.Android.Logcat
         // Log PrintFormats
         internal const string kThreadTime = "threadtime";
         internal const string kYearTime = "year";
+        // Placed after '-v': seconds since the epoch to the microsecond, from a time, or
+        // from the latest message, rather than the whole buffer. A time is in the same
+        // seconds, and catches what was logged while logcat was starting.
+        internal const string kEpoch = "epoch -v usec -T ";
     }
 }

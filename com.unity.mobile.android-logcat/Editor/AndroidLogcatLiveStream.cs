@@ -112,11 +112,11 @@ namespace Unity.Android.Logcat
         // gradle.properties. The server sends its version in the stream header, so a
         // mismatch is reported rather than misparsed.
         const uint kProtocolMagic = 0x554C5331; // "ULS1"
-        const int kProtocolVersion = 2;
+        const int kProtocolVersion = 3;
         const int kCodecMjpeg = 1;
         const int kStreamHeaderSize = 20; // magic + version + codec + flags + serverPid
-        // ptsUs + width + height + displayWidth + displayHeight + rotation + payloadSize
-        const int kFrameHeaderSize = 32;
+        // ptsUs + realtimeUs + width + height + displayWidth + displayHeight + rotation + payloadSize
+        const int kFrameHeaderSize = 40;
 
         // Protocol.FLAG_CONTROL_SUPPORTED: the server was able to set up input
         // injection, so touch messages will actually do something.
@@ -161,6 +161,8 @@ namespace Unity.Android.Logcat
         const float kNavigationSpacing = 6;
         const float kBuildJarButtonWidth = 180;
         const float kReconnectButtonWidth = 100;
+        // The arrow beside a capture button that has options.
+        const float kDropdownWidth = 16;
         const float kNavigationButtonWidth = 60;
         // A row each: both labels are too wide for the two of them to share the stats
         // column without being clipped.
@@ -236,6 +238,7 @@ namespace Unity.Android.Logcat
                 "Where the server jar was pushed on the device.");
             internal static readonly GUIContent ServerPid = new GUIContent("Server PID",
                 "Process id of the server on the device, for adb shell kill or ps.");
+            internal static readonly GUIContent Dropdown = new GUIContent(EditorGUIUtility.IconContent("icon dropdown").image, "Options");
             internal static readonly GUIContent RebuildJar = new GUIContent("Rebuild Server",
                 "Run 'gradlew dexJar' on External/UnityLogcatServer, which also copies the jar into the " +
                 "package, then restart the stream so the device picks the new one up and point the " +
@@ -298,12 +301,18 @@ namespace Unity.Android.Logcat
             internal readonly Action Action;
             /// <summary>Asked on every repaint. Null is a button that is always enabled.</summary>
             internal readonly Func<bool> Enabled;
+            /// <summary>
+            /// Shows options for the action under the given rect, from an arrow on the
+            /// button's right. Null is a plain button.
+            /// </summary>
+            internal readonly Action<Rect> Dropdown;
 
-            internal CaptureAction(Func<GUIContent> label, Action action, Func<bool> enabled = null)
+            internal CaptureAction(Func<GUIContent> label, Action action, Func<bool> enabled = null, Action<Rect> dropdown = null)
             {
                 Label = label;
                 Action = action;
                 Enabled = enabled;
+                Dropdown = dropdown;
             }
         }
 
@@ -342,6 +351,12 @@ namespace Unity.Android.Logcat
         int m_PendingDisplayHeight;
         int m_PendingRotation;
         long m_PendingPtsUs;
+        long m_PendingRealtimeUs;
+        long m_PendingArrivalTicks;
+        // The shown frame's device wall clock, and when it arrived on the Stopwatch's
+        // clock: where a recording places logcat messages until a frame of its own arrives.
+        long m_ShownRealtimeUs = -1;
+        long m_ShownArrivalTicks;
         long m_ReceivedBytes;
         int m_ReceivedFrames;
 
@@ -432,6 +447,12 @@ namespace Unity.Android.Logcat
         internal Vector2Int DisplaySize => new Vector2Int(m_DisplayWidth, m_DisplayHeight);
         internal string Errors => m_Errors.ToString();
         internal Texture2D Texture => m_Texture;
+
+        /// <summary>The shown frame's device wall clock in microseconds since the epoch, -1 before the first.</summary>
+        internal long ShownRealtimeUs => m_ShownRealtimeUs;
+
+        /// <summary>When the shown frame arrived, in <see cref="Stopwatch.GetTimestamp"/> ticks.</summary>
+        internal long ShownArrivalTicks => m_ShownArrivalTicks;
 
         /// <summary>
         /// Whether the server can inject input. False means the device refused to set it
@@ -525,6 +546,7 @@ namespace Unity.Android.Logcat
             m_FoldStatesQueried = false;
             m_PhysicalDisplaySizes = null;
             m_FrameWidth = 0;
+            m_ShownRealtimeUs = -1;
             m_FrameHeight = 0;
             m_DisplayWidth = 0;
             m_DisplayHeight = 0;
@@ -774,7 +796,7 @@ namespace Unity.Android.Logcat
             int size;
             int width, height;
             int displayWidth, displayHeight, rotation;
-            long ptsUs;
+            long ptsUs, realtimeUs, arrivalTicks;
 
             lock (m_FrameLock)
             {
@@ -788,6 +810,8 @@ namespace Unity.Android.Logcat
                 displayHeight = m_PendingDisplayHeight;
                 rotation = m_PendingRotation;
                 ptsUs = m_PendingPtsUs;
+                realtimeUs = m_PendingRealtimeUs;
+                arrivalTicks = m_PendingArrivalTicks;
             }
 
             if (frame != null)
@@ -834,6 +858,8 @@ namespace Unity.Android.Logcat
                     m_DisplayWidth = displayWidth;
                     m_DisplayHeight = displayHeight;
                     m_DisplayRotation = rotation;
+                    m_ShownRealtimeUs = realtimeUs;
+                    m_ShownArrivalTicks = arrivalTicks;
 
                     // The first frame counts as a resize, since everything was zero
                     // until it arrived.
@@ -1071,12 +1097,14 @@ namespace Unity.Android.Logcat
                     // Bytes 0..7 are the presentation timestamp, in microseconds. The
                     // view shows frames as they arrive; only a recording uses it.
                     var ptsUs = (long)ReadInt32BE(header, 0) << 32 | (uint)ReadInt32BE(header, 4);
-                    var width = ReadInt32BE(header, 8);
-                    var height = ReadInt32BE(header, 12);
-                    var displayWidth = ReadInt32BE(header, 16);
-                    var displayHeight = ReadInt32BE(header, 20);
-                    var rotation = ReadInt32BE(header, 24);
-                    var size = ReadInt32BE(header, 28);
+                    // The device's wall clock, which logcat stamps messages with.
+                    var realtimeUs = (long)ReadInt32BE(header, 8) << 32 | (uint)ReadInt32BE(header, 12);
+                    var width = ReadInt32BE(header, 16);
+                    var height = ReadInt32BE(header, 20);
+                    var displayWidth = ReadInt32BE(header, 24);
+                    var displayHeight = ReadInt32BE(header, 28);
+                    var rotation = ReadInt32BE(header, 32);
+                    var size = ReadInt32BE(header, 36);
 
                     if (size <= 0 || size > kMaxFrameSize)
                         throw new IOException($"Frame size {size} is out of range, the stream is out of sync");
@@ -1087,7 +1115,7 @@ namespace Unity.Android.Logcat
                     if (session != m_Session)
                         break;
 
-                    m_Recorder?.Enqueue(payload, size, ptsUs, rotation, displayWidth, displayHeight);
+                    m_Recorder?.Enqueue(payload, size, ptsUs, realtimeUs, rotation, displayWidth, displayHeight);
 
                     lock (m_FrameLock)
                     {
@@ -1111,6 +1139,8 @@ namespace Unity.Android.Logcat
                         m_PendingDisplayHeight = displayHeight;
                         m_PendingRotation = rotation;
                         m_PendingPtsUs = ptsUs;
+                        m_PendingRealtimeUs = realtimeUs;
+                        m_PendingArrivalTicks = Stopwatch.GetTimestamp();
                         m_ReceivedBytes += size;
                         m_ReceivedFrames++;
                     }
@@ -1926,13 +1956,23 @@ namespace Unity.Android.Logcat
                     return;
 
                 var enabled = capture.Action != null && (capture.Enabled == null || capture.Enabled());
+                var buttonRect = new Rect(rc.x, y, ButtonRowWidth(rc), height);
+                var dropdownRect = Rect.zero;
+                if (capture.Dropdown != null)
+                {
+                    dropdownRect = new Rect(buttonRect.xMax - kDropdownWidth, y, kDropdownWidth, height);
+                    buttonRect.width -= kDropdownWidth;
+                }
                 EditorGUI.BeginDisabledGroup(!enabled);
-                if (GUI.Button(new Rect(rc.x, y, ButtonRowWidth(rc), height),
-                    capture.Label(), EditorStyles.miniButton))
+                if (GUI.Button(buttonRect, capture.Label(),
+                    capture.Dropdown != null ? EditorStyles.miniButtonLeft : EditorStyles.miniButton))
                 {
                     capture.Action();
                 }
                 EditorGUI.EndDisabledGroup();
+                // Options are for the next time, so they can be set before there is a stream.
+                if (capture.Dropdown != null && GUI.Button(dropdownRect, Styles.Dropdown, EditorStyles.miniButtonRight))
+                    capture.Dropdown(new Rect(rc.x, y, ButtonRowWidth(rc), height));
 
                 y += height;
             }
