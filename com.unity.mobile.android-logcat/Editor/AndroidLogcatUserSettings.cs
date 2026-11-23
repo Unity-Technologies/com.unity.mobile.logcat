@@ -102,9 +102,6 @@ namespace Unity.Android.Logcat
         [SerializeField]
         private CommandsSettingsData m_CommandsSettings;
 
-        [SerializeField]
-        private AutoScroll m_AutoScroll;
-
         public string LastSelectedDeviceId
         {
             set
@@ -163,8 +160,6 @@ namespace Unity.Android.Logcat
         public QueryLayoutSettings LayoutSettings { set => m_QueryLayoutSettings = value; get => m_QueryLayoutSettings; }
         public InputSettings DeviceInputSettings { set => m_InputSettings = value; get => m_InputSettings; }
         public CommandsSettingsData CommandsSettings { set => m_CommandsSettings = value; get => m_CommandsSettings; }
-
-        public AutoScroll AutoScroll { set => m_AutoScroll = value; get => m_AutoScroll; }
 
         private void RefreshProcessesForSerialization()
         {
@@ -333,7 +328,6 @@ namespace Unity.Android.Logcat
             m_MemoryViewerState = new AndroidLogcatMemoryViewerState();
             m_SymbolPaths = new List<ReordableListItem>();
             m_FilterOptions = new FilterOptions();
-            m_AutoScroll = AutoScroll.Auto;
 
             ResetScreenCaptureSettings();
 

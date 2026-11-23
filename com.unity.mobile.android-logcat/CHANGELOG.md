@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [1.5.1] - 2026-11-19
+### Fixes & Improvements
+ - Replaced the Scroll dropdown (Disabled / Scroll To End / Auto) below the message log with an Auto Scroll toggle button in the corner between the message log's scrollbars. Turning it on scrolls to the last message and keeps following new ones. Scrolling up or selecting messages with the Up and Down keys turns it off, and scrolling back to the last message turns it back on. It's also back on after clearing the messages, reconnecting, or reopening the window, and is no longer saved in the settings.
 
 ## [1.5.0] - 2026-11-18
 ### Fixes & Improvements

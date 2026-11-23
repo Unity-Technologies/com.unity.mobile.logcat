@@ -444,11 +444,8 @@ namespace Unity.Android.Logcat
                     break;
             }
 
-            EditorGUILayout.BeginHorizontal();
             if (m_StatusBar != null)
                 m_StatusBar.DoGUI();
-            DoScrollOptionsGUI();
-            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
         }
@@ -478,8 +475,6 @@ namespace Unity.Android.Logcat
             }
 
             m_Logcat?.DoDebuggingGUI();
-            if (m_Runtime.UserSettings.AutoScroll == AutoScroll.Auto)
-                GUILayout.Label($"Auto Scrolling: {m_ScrollData.PerformScrollWhileInAuto}");
             // Have a sane number which represents that we cannot keep up with async items in queue
             // Usually this indicates a bug, since async operations starts being more and more delayed
             const int kMaxAsyncItemsInQueue = 100;
@@ -814,6 +809,7 @@ namespace Unity.Android.Logcat
             m_Logcat.Connected += OnLogcatConnected;
 
             m_Logcat.Start();
+            m_AutoScroll = true;
         }
 
         private void StopLogCat()
@@ -834,6 +830,7 @@ namespace Unity.Android.Logcat
             m_Logcat.Stop();
             m_Logcat.Clear();
             m_Logcat.Start();
+            m_AutoScroll = true;
         }
 
         public static void ShowInternalLog()

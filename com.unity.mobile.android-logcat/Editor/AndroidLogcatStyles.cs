@@ -20,6 +20,7 @@ namespace Unity.Android.Logcat
         public static readonly GUIStyle toolbarLabelLeft = new GUIStyle("toolbarButton") { fontSize = kFontSize, fixedHeight = kFixedHeight, alignment = TextAnchor.MiddleLeft };
 
         public static readonly GUIStyle columnHeader = new GUIStyle("OL TITLE");
+        public static readonly GUIStyle scrollCornerToggle = new GUIStyle("toolbarButton") { padding = new RectOffset(), margin = new RectOffset(), fixedWidth = 0, fixedHeight = 0 };
 
         public static int kLogEntryFontSize = 11;
         public static int kLogEntryFixedHeight = kLogEntryFontSize + 5;
@@ -154,6 +155,7 @@ namespace Unity.Android.Logcat
         internal static readonly GUIContent kIconToolbarDown = new GUIContent(LoadIcon("DownArrow"));
         internal static readonly GUIContent kIconToolbarUp = new GUIContent(LoadIcon("UpArrow"));
         internal static readonly GUIContent kIconReset = new GUIContent(LoadIcon("Reset"), "Reset");
+        internal static readonly GUIContent kIconAutoScroll = new GUIContent(LoadIcon("DownArrowToLine"), "Auto Scroll: scroll to the last message and follow new ones. Turns off when you scroll up, and back on when you scroll to the last message.");
         internal static readonly GUIContent[] kIconPlay = new[] {
             new GUIContent(LoadIcon("PlayOn")),
             new GUIContent(LoadIcon("PlayOff"))
