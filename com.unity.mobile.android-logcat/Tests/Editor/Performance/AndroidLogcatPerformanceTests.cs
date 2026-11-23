@@ -13,7 +13,7 @@ class AndroidLogcatPerformanceTests
     public void SetupLogMessages()
     {
         m_LogMessageByPs = File.ReadAllText("../../com.unity.mobile.android-logcat/Tests/Editor/LogMessageByShellPS.txt");
-        m_LogMessageByDumpsys = File.ReadAllText("../../com.unity.mobile.android-logcat/Tests/Editor/LogMessageByShellDumpsys.txt");
+        m_LogMessageByDumpsys = File.ReadAllText("../../com.unity.mobile.android-logcat/Tests/Editor/LogMessageByShellDumpsys.log");
     }
 
     // Test parsing messages produced by "adb shell ps".
