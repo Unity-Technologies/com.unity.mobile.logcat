@@ -392,7 +392,7 @@ namespace Unity.Android.Logcat
             var scrollToItem = m_ScrollToItem;
             if (scrollToItem >= 0)
             {
-                // Do the scrolling in repain event since maxVisibleItems depends on visibleWindowRect
+                // Do the scrolling in repaint event since maxVisibleItems depends on visibleWindowRect
                 // And that one is calculated correctly only in Repaint event
                 if (e.type == EventType.Repaint)
                 {
@@ -413,6 +413,7 @@ namespace Unity.Android.Logcat
                 m_ScrollPosition.y = totalWindowRect.height;
             }
 
+            var scrollYBefore = m_ScrollPosition.y;
             EditorGUI.BeginChangeCheck();
             // Vertical scrollbar is always shown, so the auto scroll toggle always has the corner between the scrollbars
             m_ScrollPosition = GUI.BeginScrollView(visibleWindowRect, m_ScrollPosition, totalWindowRect, true, true);
@@ -421,8 +422,9 @@ namespace Unity.Android.Logcat
             var startItem = (int)(m_ScrollPosition.y * scalar);
 
             // Scrolling manually turns auto scroll off, unless it ends at the last message
-            var scrollChanged = EditorGUI.EndChangeCheck();
-            if (scrollChanged || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
+            // Horizontal scrolling is ignored, otherwise it would turn auto scroll on while the last message is visible
+            var scrolledVertically = EditorGUI.EndChangeCheck() && m_ScrollPosition.y != scrollYBefore;
+            if (scrolledVertically || (e.type == EventType.ScrollWheel && e.delta.y > 0.0f))
                 m_AutoScroll = IsLastEntryVisible(m_ScrollPosition.y, visibleWindowRect.height - horizontalBarHeight, FilteredEntries.Count, AndroidLogcatStyles.kLogEntryFixedHeight);
             else if (e.type == EventType.ScrollWheel && e.delta.y < 0.0f)
                 m_AutoScroll = false;
