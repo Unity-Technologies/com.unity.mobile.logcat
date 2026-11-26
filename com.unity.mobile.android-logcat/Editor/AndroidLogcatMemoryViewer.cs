@@ -30,6 +30,7 @@ namespace Unity.Android.Logcat
             internal int packageProcessId;
             internal string packageName;
             internal string deviceId;
+            internal bool queryMeminfo;
         }
 
         class AndroidLogcatQueryMemoryResult : IAndroidLogcatTaskResult
@@ -37,7 +38,55 @@ namespace Unity.Android.Logcat
             internal int packageProcessId;
             internal string packageName;
             internal string contents;
+            internal string procStatusContents;
             internal string deviceId;
+        }
+
+        /// <summary>
+        /// Ring buffer of memory captures, oldest first.
+        /// </summary>
+        class MemoryHistory
+        {
+            private readonly AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
+            private int m_CurrentEntry;
+
+            internal int Count { get; private set; }
+            internal int SelectedEntry { get; set; }
+            internal AndroidMemoryStatistics LastEntry { get; private set; }
+
+            internal MemoryHistory()
+            {
+                for (int i = 0; i < kMaxEntries; i++)
+                    m_Entries[i] = new AndroidMemoryStatistics();
+                Clear();
+            }
+
+            internal void Clear()
+            {
+                SelectedEntry = -1;
+                Count = 0;
+                m_CurrentEntry = 0;
+                LastEntry = new AndroidMemoryStatistics();
+            }
+
+            internal AndroidMemoryStatistics Allocate()
+            {
+                LastEntry = m_Entries[m_CurrentEntry++];
+                // Entries are reused, clear values from an older capture
+                LastEntry.Clear();
+                if (m_CurrentEntry >= kMaxEntries)
+                    m_CurrentEntry = 0;
+                Count = Math.Min(Count + 1, kMaxEntries);
+
+                if (SelectedEntry >= 0 && Count == kMaxEntries)
+                    SelectedEntry--;
+                return LastEntry;
+            }
+
+            /// <summary>
+            /// Returns capture by its index, 0 is the oldest one, Count - 1 the latest one.
+            /// </summary>
+            internal AndroidMemoryStatistics this[int entry] => m_Entries[(int)Mathf.Repeat(entry + m_CurrentEntry - Count, kMaxEntries)];
         }
 
         private EditorWindow m_Parent;
@@ -49,13 +98,13 @@ namespace Unity.Android.Logcat
         const float kMaxMemoryWindowHeight = 400.0f;
         const float kMinMemoryWindowWidth = 170.0f;
         const float kMaxMemoryWindowWidth = 500.0f;
-        private AndroidMemoryStatistics[] m_Entries = new AndroidMemoryStatistics[kMaxEntries];
-        private AndroidMemoryStatistics m_LastAllocatedEntry = new AndroidMemoryStatistics();
-        private int m_CurrentEntry = 0;
-        private int m_EntryCount = 0;
+        // Captures from dumpsys meminfo, used by every group except Anonymous RSS + Swap.
+        // Only added when dumpsys meminfo was run, so these groups don't show gaps for captures without it.
+        private MemoryHistory m_MeminfoHistory = new MemoryHistory();
+        // Captures from /proc/<pid>/status, used by Anonymous RSS + Swap group. Added on every capture.
+        private MemoryHistory m_ProcStatusHistory = new MemoryHistory();
         private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
         private int m_RequestsInQueue;
-        private int m_SelectedEntry;
 
         Splitter m_HorizontalSplitter;
         Splitter m_VerticalSplitter;
@@ -77,6 +126,11 @@ namespace Unity.Android.Logcat
             MemoryType.JavaHeap,
         };
 
+        private MemoryType[] m_OrderMemoryTypesAnonymousRSSAndSwap = new[]
+        {
+            MemoryType.AnonymousRSS,
+            MemoryType.Swap,
+        };
 
         private IAndroidLogcatDevice m_ExpectedDevice;
         private ProcessInformation m_ExpectedProcessFromRequest;
@@ -85,8 +139,18 @@ namespace Unity.Android.Logcat
 
         private MemoryType[] GetOrderMemoryTypes()
         {
-            return m_State.MemoryGroup == MemoryGroup.ProportionalSetSize ? m_OrderMemoryTypesPSS : m_OrderMemoryTypesHeap;
+            switch (m_State.MemoryGroup)
+            {
+                case MemoryGroup.ProportionalSetSize:
+                    return m_OrderMemoryTypesPSS;
+                case MemoryGroup.AnonymousRSSAndSwap:
+                    return m_OrderMemoryTypesAnonymousRSSAndSwap;
+                default:
+                    return m_OrderMemoryTypesHeap;
+            }
         }
+
+        private MemoryHistory ActiveHistory => m_State.MemoryGroup == MemoryGroup.AnonymousRSSAndSwap ? m_ProcStatusHistory : m_MeminfoHistory;
 
         Dictionary<MemoryType, Color> m_MemoryTypeColors = new Dictionary<MemoryType, Color>();
 
@@ -96,9 +160,6 @@ namespace Unity.Android.Logcat
             m_Runtime = runtime;
             m_Material = (Material)EditorGUIUtility.LoadRequired("SceneView/HandleLines.mat");
             m_State = m_Runtime.UserSettings.MemoryViewerState;
-
-            for (int i = 0; i < kMaxEntries; i++)
-                m_Entries[i] = new AndroidMemoryStatistics();
 
             m_RequestsInQueue = 0;
 
@@ -120,6 +181,8 @@ namespace Unity.Android.Logcat
             m_MemoryTypeColors[MemoryType.Graphics] = Color.green;
             m_MemoryTypeColors[MemoryType.PrivateOther] = Color.grey;
             m_MemoryTypeColors[MemoryType.System] = Color.magenta;
+            m_MemoryTypeColors[MemoryType.AnonymousRSS] = Color.red;
+            m_MemoryTypeColors[MemoryType.Swap] = new Color(1.0f, 0.5f, 0.0f);
             m_MemoryTypeColors[MemoryType.Total] = Color.white;
             ClearEntries();
             ValidateSettings();
@@ -144,9 +207,8 @@ namespace Unity.Android.Logcat
 
         internal void ClearEntries()
         {
-            m_SelectedEntry = -1;
-            m_EntryCount = 0;
-            m_CurrentEntry = 0;
+            m_MeminfoHistory.Clear();
+            m_ProcStatusHistory.Clear();
 
             m_UpperMemoryBoundry = 32 * 1000 * 1000;
             m_ExpectedProcessFromRequest = null;
@@ -177,7 +239,10 @@ namespace Unity.Android.Logcat
                     adb = AndroidBridge.ADB.GetInstance(),
                     packageProcessId = m_ExpectedProcessFromRequest.processId,
                     packageName = m_ExpectedProcessFromRequest.name,
-                    deviceId = device.Id
+                    deviceId = device.Id,
+                    // Anonymous RSS + Swap only needs /proc/<pid>/status. Skip dumpsys meminfo for it, since it's
+                    // much heavier and triggers a garbage collection in the application, which affects the measurement.
+                    queryMeminfo = m_State.MemoryGroup != MemoryGroup.AnonymousRSSAndSwap
                 },
                 QueryMemoryAsync,
                 IntegrateQueryMemory,
@@ -213,70 +278,75 @@ namespace Unity.Android.Logcat
             if (adb == null)
                 throw new NullReferenceException("ADB interface has to be valid");
 
-            // Note: Using package name sometimes fails to dump memory, that's why we use process id
-            //       Also using process id you can query memory from system apps which are not packages.
-            var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageProcessId;
-            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
-
             string outputMsg = string.Empty;
+            if (workInput.queryMeminfo)
+            {
+                // Note: Using package name sometimes fails to dump memory, that's why we use process id
+                //       Also using process id you can query memory from system apps which are not packages.
+                var cmd = "-s " + workInput.deviceId + " shell dumpsys meminfo " + workInput.packageProcessId;
+                AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), cmd);
+
+                try
+                {
+                    outputMsg = adb.Run(new[] { cmd }, $"Failed to query memory for {workInput.packageName} (PID = {workInput.packageProcessId}");
+                }
+                catch (Exception ex)
+                {
+                    AndroidLogcatInternalLog.Log("Failed to query memory: \n" + ex.Message);
+                }
+            }
+
+            // RssAnon and VmSwap from /proc/<pid>/status make up Anonymous RSS + Swap, the memory usage metric in Google Play's Android vitals
+            string procStatus = string.Empty;
+            var statusCmd = "-s " + workInput.deviceId + " shell cat /proc/" + workInput.packageProcessId + "/status";
+            AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), statusCmd);
             try
             {
-                outputMsg = adb.Run(new[] { cmd }, $"Failed to query memory for {workInput.packageName} (PID = {workInput.packageProcessId}");
+                procStatus = adb.Run(new[] { statusCmd }, $"Failed to query process status for {workInput.packageName} (PID = {workInput.packageProcessId})");
             }
             catch (Exception ex)
             {
-                AndroidLogcatInternalLog.Log("Failed to query memory: \n" + ex.Message);
+                AndroidLogcatInternalLog.Log("Failed to query process status: \n" + ex.Message);
             }
+
             var result = new AndroidLogcatQueryMemoryResult();
             result.deviceId = workInput.deviceId;
             result.packageName = workInput.packageName;
             result.packageProcessId = workInput.packageProcessId;
             result.contents = outputMsg;
+            result.procStatusContents = procStatus;
             //AndroidLogcatInternalLog.Log(outputMsg);
 
             return result;
         }
 
-        private AndroidMemoryStatistics AllocateMemoryStatistics()
-        {
-            m_LastAllocatedEntry = m_Entries[m_CurrentEntry++];
-            if (m_CurrentEntry >= kMaxEntries)
-                m_CurrentEntry = 0;
-            m_EntryCount = Math.Min(m_EntryCount + 1, kMaxEntries);
-
-            if (m_SelectedEntry >= 0 && m_EntryCount == kMaxEntries)
-                m_SelectedEntry--;
-            return m_LastAllocatedEntry;
-        }
-
         private void UpdateGeneralStats()
         {
-            // Set the upper boundry depending on total memory from all groups
-            foreach (var m in (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup)))
+            // Set the upper boundry depending on total memory of the selected group
+            var history = ActiveHistory;
+            UInt64 maxMemory = 0;
+            for (int i = 0; i < history.Count; i++)
             {
-                UInt64 maxMemory = 0;
-                for (int i = 0; i < m_EntryCount; i++)
+                UInt64 localTotal = 0;
+                foreach (var t in GetOrderMemoryTypes())
                 {
-                    UInt64 localTotal = 0;
-                    foreach (var t in GetOrderMemoryTypes())
-                    {
-                        if (!m_State.MemoryTypeEnabled[(int)t])
-                            continue;
-                        localTotal += m_Entries[ResolveEntryIndex(i)].GetValue(m_State.MemoryGroup, t);
-                    }
-                    maxMemory = Math.Max(maxMemory, localTotal);
+                    if (!m_State.MemoryTypeEnabled[(int)t])
+                        continue;
+                    localTotal += history[i].GetValue(m_State.MemoryGroup, t);
                 }
-                // Keep boundry by 10% higher, so there would be visible room from the top of the window
-                m_UpperMemoryBoundry = (UInt64)(1.1f * maxMemory);
+                maxMemory = Math.Max(maxMemory, localTotal);
             }
+            // Keep boundry by 10% higher, so there would be visible room from the top of the window
+            m_UpperMemoryBoundry = (UInt64)(1.1f * maxMemory);
         }
 
         private void InjectFakeMemoryStatistics(UInt64 totalMemory)
         {
-            var stats = AllocateMemoryStatistics();
+            var stats = m_MeminfoHistory.Allocate();
             stats.SetPSSFakeData(totalMemory, totalMemory);
             stats.SetHeapAllocData(totalMemory, totalMemory);
             stats.SetHeapSizeData(totalMemory, totalMemory);
+            m_ProcStatusHistory.Allocate().SetAnonymousRSSAndSwapData(totalMemory, totalMemory / 10);
             UpdateGeneralStats();
         }
 
@@ -296,28 +366,51 @@ namespace Unity.Android.Logcat
                 return;
 
             if (memoryResult.packageProcessId != m_ExpectedProcessFromRequest.processId ||
-                memoryResult.deviceId != m_ExpectedDevice.Id ||
-                string.IsNullOrEmpty(memoryResult.contents))
+                memoryResult.deviceId != m_ExpectedDevice.Id)
                 return;
 
-            if (memoryResult.contents.Contains("No process found for:"))
+            // Both are empty when the queries failed, contents is also empty when dumpsys meminfo wasn't run
+            var hasMeminfo = !string.IsNullOrEmpty(memoryResult.contents);
+            var hasProcStatus = !string.IsNullOrEmpty(memoryResult.procStatusContents);
+            if (!hasMeminfo && !hasProcStatus)
+                return;
+
+            if (hasMeminfo && memoryResult.contents.Contains("No process found for:"))
             {
                 m_ExpectedProcessFromRequest.SetExited();
                 m_Parent.Repaint();
                 return;
             }
 
-            var stats = AllocateMemoryStatistics();
-            try
+            m_LastError = string.Empty;
+            if (hasMeminfo)
             {
-                m_LastError = string.Empty;
-                stats.Parse(memoryResult.contents);
+                var stats = m_MeminfoHistory.Allocate();
+                try
+                {
+                    stats.Parse(memoryResult.contents);
+                }
+                catch (Exception ex)
+                {
+                    m_LastError = ex.Message;
+                    stats.Clear();
+                    AndroidLogcatInternalLog.Log(ex.Message);
+                }
             }
-            catch (Exception ex)
+
+            if (hasProcStatus)
             {
-                m_LastError = ex.Message;
-                stats.Clear();
-                AndroidLogcatInternalLog.Log(ex.Message);
+                var stats = m_ProcStatusHistory.Allocate();
+                try
+                {
+                    stats.ParseProcStatus(memoryResult.procStatusContents);
+                }
+                catch (Exception ex)
+                {
+                    m_LastError = ex.Message;
+                    stats.Clear();
+                    AndroidLogcatInternalLog.Log(ex.Message);
+                }
             }
             UpdateGeneralStats();
 
@@ -327,11 +420,6 @@ namespace Unity.Android.Logcat
         private float GetEntryWidth(Rect windowSize)
         {
             return windowSize.width / (kMaxEntries - 1);
-        }
-
-        private int ResolveEntryIndex(int entry)
-        {
-            return (int)Mathf.Repeat(entry + m_CurrentEntry - m_EntryCount, kMaxEntries);
         }
 
         private Color GetMemoryColor(MemoryType type)
@@ -348,7 +436,7 @@ namespace Unity.Android.Logcat
             GUILayout.BeginHorizontal();
             GUILayout.Space(10);
             Color oldColor = GUI.backgroundColor;
-            var memory = m_ExpectedProcessFromRequest == null ? "0" : UInt64ToSizeString(m_LastAllocatedEntry.GetValue(m_State.MemoryGroup, type));
+            var memory = m_ExpectedProcessFromRequest == null ? "0" : UInt64ToSizeString(ActiveHistory.LastEntry.GetValue(m_State.MemoryGroup, type));
             var name = String.Format("{0} ({1})", type, memory);
             if (type == MemoryType.Total)
             {
@@ -423,13 +511,14 @@ namespace Unity.Android.Logcat
             size.height -= 4;
 
 
-            if (m_EntryCount > 0)
-                DoEntriesGUI(size);
+            var history = ActiveHistory;
+            if (history.Count > 0)
+                DoEntriesGUI(size, history);
 
             DoGuidelinesGUI(size, m_UpperMemoryBoundry);
 
-            if (m_EntryCount > 0)
-                DoSelectedStatsGUI(size);
+            if (history.Count > 0)
+                DoSelectedStatsGUI(size, history);
 
             GUI.Box(new Rect(rc.x + 4, size.y, rc.width - 4, size.height + 1), GUIContent.none, EditorStyles.helpBox);
             GUI.Box(new Rect(size.x, size.y, size.width + 1, size.height + 1), GUIContent.none, EditorStyles.helpBox);
@@ -458,7 +547,7 @@ namespace Unity.Android.Logcat
             {
                 if (types[i] == type)
                     return total;
-                if (!m_State.MemoryTypeEnabled[i])
+                if (!m_State.MemoryTypeEnabled[(int)types[i]])
                     continue;
                 total += stats.GetValue(m_State.MemoryGroup, types[i]);
             }
@@ -494,7 +583,7 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private void DoEntriesGUI(Rect windowSize)
+        private void DoEntriesGUI(Rect windowSize, MemoryHistory history)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
@@ -510,7 +599,7 @@ namespace Unity.Android.Logcat
             var multiplier = windowSize.height / m_UpperMemoryBoundry;
             var t = windowSize.y;
             var b = windowSize.height + windowSize.y;
-            var xOffset = windowSize.x + windowSize.width - (m_EntryCount - 1) * width;
+            var xOffset = windowSize.x + windowSize.width - (history.Count - 1) * width;
 
             foreach (var m in GetOrderMemoryTypes())
             {
@@ -519,11 +608,11 @@ namespace Unity.Android.Logcat
                 GL.Begin(GL.TRIANGLE_STRIP);
                 GL.Color(GetMemoryColor(m));
 
-                for (int i = 0; i < m_EntryCount; i++)
+                for (int i = 0; i < history.Count; i++)
                 {
-                    var idx = ResolveEntryIndex(i);
-                    var agr = AggregateMemorySize(m_Entries[idx], m);
-                    var val = m_Entries[idx].GetValue(m_State.MemoryGroup, m);
+                    var entry = history[i];
+                    var agr = AggregateMemorySize(entry, m);
+                    var val = entry.GetValue(m_State.MemoryGroup, m);
                     var x = xOffset + i * width;
                     var y1 = b - multiplier * (val + agr);
                     var y2 = b - multiplier * agr;
@@ -534,22 +623,22 @@ namespace Unity.Android.Logcat
             }
         }
 
-        private void DoSelectedStatsGUI(Rect windowSize)
+        private void DoSelectedStatsGUI(Rect windowSize, MemoryHistory history)
         {
             var e = Event.current;
             if (e.type == EventType.MouseDown && windowSize.Contains(e.mousePosition))
             {
                 float wd = GetEntryWidth(windowSize);
-                m_SelectedEntry = (int)((e.mousePosition.x - windowSize.x + wd * 0.5f) / wd);
+                var selectedEntry = (int)((e.mousePosition.x - windowSize.x + wd * 0.5f) / wd);
                 // Correct entry for cases where we don't have enough entries to fill the full array
-                m_SelectedEntry += m_EntryCount - kMaxEntries;
+                history.SelectedEntry = selectedEntry + history.Count - kMaxEntries;
                 m_Parent.Repaint();
             }
 
-            if (m_SelectedEntry < 0)
+            if (history.SelectedEntry < 0)
                 return;
             var width = GetEntryWidth(windowSize);
-            var x = windowSize.x + windowSize.width - (m_EntryCount - 1) * width + m_SelectedEntry * width;
+            var x = windowSize.x + windowSize.width - (history.Count - 1) * width + history.SelectedEntry * width;
             var t = windowSize.y;
             var b = windowSize.height + windowSize.y;
             if (e.type == EventType.Repaint)
@@ -562,7 +651,7 @@ namespace Unity.Android.Logcat
                 GL.End();
             }
 
-            var idx = ResolveEntryIndex(m_SelectedEntry);
+            var selected = history[history.SelectedEntry];
             var info = new StringBuilder();
 
             int enabledCount = 0;
@@ -570,11 +659,11 @@ namespace Unity.Android.Logcat
             {
                 if (!m_State.MemoryTypeEnabled[(int)m])
                     continue;
-                info.AppendLine(m.ToString() + " : " + UInt64ToSizeString(m_Entries[idx].GetValue(m_State.MemoryGroup, m)));
+                info.AppendLine(m.ToString() + " : " + UInt64ToSizeString(selected.GetValue(m_State.MemoryGroup, m)));
                 enabledCount++;
             }
 
-            info.AppendLine("Total: " + UInt64ToSizeString(m_Entries[idx].GetValue(m_State.MemoryGroup, MemoryType.Total)));
+            info.AppendLine("Total: " + UInt64ToSizeString(selected.GetValue(m_State.MemoryGroup, MemoryType.Total)));
 
             const float kInfoWidth = 150;
             var infoX = x + 5;

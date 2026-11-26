@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.5.1] - 2026-11-19
 ### Fixes & Improvements
+ - Added an **Anonymous RSS And Swap** group to the Memory window. It shows the application's anonymous memory in RAM and in swap (zRAM), read from `/proc/<pid>/status`. This is the memory usage metric Google Play reports in Android vitals and checks against its memory thresholds. While this group is selected, `dumpsys meminfo` isn't run, so it doesn't trigger garbage collections in the application, and the other groups don't get new snapshots during that time.
  - Replaced the Scroll dropdown (Disabled / Scroll To End / Auto) below the message log with an Auto Scroll toggle button in the corner between the message log's scrollbars. Turning it on scrolls to the last message and keeps following new ones. Scrolling up or selecting messages with the Up and Down keys turns it off, and scrolling back to the last message turns it back on. It's also back on after clearing the messages, reconnecting, or reopening the window, and is no longer saved in the settings.
 
 ## [1.5.0] - 2026-11-18

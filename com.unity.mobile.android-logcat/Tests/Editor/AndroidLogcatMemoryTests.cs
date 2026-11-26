@@ -173,6 +173,49 @@ Uptime: 278194816 Realtime: 525880208
                TOTAL:     1383       TOTAL SWAP PSS:      880
 ".Replace("\r", "");
 
+    // adb.exe shell cat /proc/2111/status, taken from Google Pixel with Android 16 (trimmed)
+    readonly string kProcStatus = @"Name:	ndroid.systemui
+Umask:	0077
+State:	S (sleeping)
+Tgid:	2111
+Pid:	2111
+VmPeak:	22410108 kB
+VmSize:	20530548 kB
+VmHWM:	  412000 kB
+VmRSS:	  404788 kB
+RssAnon:	  147772 kB
+RssFile:	  254160 kB
+RssShmem:	    2856 kB
+VmData:	 3002312 kB
+VmSwap:	    2392 kB
+Threads:	95
+";
+
+    [Test]
+    public void CanParseProcStatus([Values(true, false)] bool windowsEndLines)
+    {
+        var stats = new AndroidMemoryStatistics();
+        stats.ParseProcStatus(windowsEndLines ? kProcStatus.Replace("\n", "\r\n") : kProcStatus);
+
+        Assert.AreEqual(147772 * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS));
+        Assert.AreEqual(2392 * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap));
+        Assert.AreEqual((147772 + 2392) * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total));
+    }
+
+    [Test]
+    public void ProcStatusWithoutRssAnonLeavesGroupEmpty()
+    {
+        // Linux kernels older than 4.5 don't report RssAnon
+        var stats = new AndroidMemoryStatistics();
+        stats.ParseProcStatus("Name:\tfoo\nVmRSS:\t  404788 kB\nVmSwap:\t    2392 kB\n");
+        stats.ParseProcStatus(string.Empty);
+        stats.ParseProcStatus(null);
+
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS));
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap));
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total));
+    }
+
     [Test]
     public void CanParseMemoryDumpFromPackage([Values(true, false)] bool windowsEndLines)
     {

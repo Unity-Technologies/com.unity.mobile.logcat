@@ -43,6 +43,7 @@ The Memory window can display different memory groups allocated for your applica
 | **Proportional Set Size (PSS)** | The total amount of memory in RAM that the application actively uses. This is not the total memory that the application allocates. For example, if the application allocates memory from the native heap but doesn't read from or write to the memory, the memory doesn't appear in PSS memory.<br/> Note: If several processes share a memory page, the size contribution of the page to PSS memory is proportional to the amount of memory and number of processes that share it. For example, if two processes share 20MB of graphics memory, the application's PSS memory only shows 10MB. |
 | **Heap Alloc**                  | The total amount of memory the application allocates using Dalvik (Java allocators) and native heap allocators. This includes both memory which is in RAM or is paged in storage. This is the best metric when checking if the application is leaking Native or Java memory. |
 | **Heap Size**                   | The total memory that the application reserves. This memory size will be always bigger than **Heap Alloc**. |
+| **Anonymous RSS And Swap**      | The application's memory that isn't backed by a file on storage, such as Java and native heap allocations and anonymous memory mappings. **Anonymous RSS** is the part held in RAM, and **Swap** is the part the system compressed into zRAM. This is the **Memory usage (Anonymous RSS + Swap)** metric that Google Play reports in [Android vitals](https://developer.android.com/topic/performance/vitals/memory-usage) and checks against the memory thresholds in the [Play Console technical quality requirements](https://support.google.com/googleplay/android-developer/answer/17492799). Play evaluates the 90th percentile of the values collected from users' devices, so a single measurement only gives an indication.<br/> **Note**: The values come from `RssAnon` and `VmSwap` in `/proc/<pid>/status`, which require Linux kernel 4.5 or later. On older devices this group is empty. |
 
 ### Memory types
 
@@ -59,7 +60,9 @@ To toggle which memory types appear in the [memory chart](#memory-chart), click 
 
 ### Memory requests
 
-To make memory requests, the Memory window uses `adb shell dumpsys meminfo package_name`. For more information, see [dumpsys](https://developer.android.com/studio/command-line/dumpsys#meminfo).
+To make memory requests, the Memory window uses `adb shell dumpsys meminfo package_name`. For more information, see [dumpsys](https://developer.android.com/studio/command-line/dumpsys#meminfo). For the **Anonymous RSS And Swap** group, it also reads `adb shell cat /proc/<pid>/status`.
+
+While the **Anonymous RSS And Swap** group is selected, the Memory window only reads `/proc/<pid>/status` and doesn't run `dumpsys meminfo`. `dumpsys meminfo` triggers a garbage collection in the application, which lowers the Java heap and affects the measurement. The charts of the other memory groups don't get new snapshots during that time. `/proc/<pid>/status` is read with every snapshot, so the **Anonymous RSS And Swap** chart keeps updating while other groups are selected.
 
 The following screenshot shows the memory dump that `dumpsys` produces:
 
