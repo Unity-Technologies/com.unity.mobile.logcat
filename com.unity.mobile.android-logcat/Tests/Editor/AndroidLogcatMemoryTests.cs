@@ -4,7 +4,8 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatMemoryTests
 {
-    const int kKiloByte = 1000;
+    // dumpsys meminfo and /proc/<pid>/status report kB, which are 1024 bytes
+    const int kKiloByte = 1024;
 
     // Produced by adb.exe shell dumpsys meminfo com.unity.TowerDefenceIncremental
     readonly string kPackageMemoryDump = @"
@@ -316,15 +317,21 @@ Threads:	95
     [Test]
     public void CanProvidePrettySizeText()
     {
-        const UInt64 kOneMegaByte = 1000 * 1000;
-        const UInt64 kOneGigabyte = 1000 * kOneMegaByte;
-        const UInt64 kOneTerabyte = 1000 * kOneGigabyte;
+        // Sizes are displayed in binary units (1 KB = 1024 bytes), like Android Studio and Google Play's Android vitals
+        const UInt64 kOneKiloByte = 1024;
+        const UInt64 kOneMegaByte = 1024 * kOneKiloByte;
+        const UInt64 kOneGigabyte = 1024 * kOneMegaByte;
+        const UInt64 kOneTerabyte = 1024 * kOneGigabyte;
 
-        Assert.AreEqual("1000 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneMegaByte));
+        Assert.AreEqual("1023 Bytes", AndroidLogcatMemoryViewer.UInt64ToSizeString(1023));
+        Assert.AreEqual("1 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneKiloByte));
+        Assert.AreEqual("1000 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneKiloByte));
+        Assert.AreEqual("1 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneMegaByte));
         Assert.AreEqual("2 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneMegaByte));
-        Assert.AreEqual("1000 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneGigabyte));
+        Assert.AreEqual("1000 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneMegaByte));
+        Assert.AreEqual("1.5 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1536 * kOneMegaByte));
         Assert.AreEqual("2 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneGigabyte));
-        Assert.AreEqual("1000 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneTerabyte));
+        Assert.AreEqual("1000 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneGigabyte));
         Assert.AreEqual("2 TB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneTerabyte));
     }
 }

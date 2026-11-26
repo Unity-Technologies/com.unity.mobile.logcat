@@ -103,7 +103,7 @@ namespace Unity.Android.Logcat
         private MemoryHistory m_MeminfoHistory = new MemoryHistory();
         // Captures from /proc/<pid>/status, used by Anonymous RSS + Swap group. Added on every capture.
         private MemoryHistory m_ProcStatusHistory = new MemoryHistory();
-        private UInt64 m_UpperMemoryBoundry = 32 * 1000 * 1000;
+        private UInt64 m_UpperMemoryBoundry = 32 * 1024 * 1024;
         private int m_RequestsInQueue;
 
         Splitter m_HorizontalSplitter;
@@ -210,7 +210,7 @@ namespace Unity.Android.Logcat
             m_MeminfoHistory.Clear();
             m_ProcStatusHistory.Clear();
 
-            m_UpperMemoryBoundry = 32 * 1000 * 1000;
+            m_UpperMemoryBoundry = 32 * 1024 * 1024;
             m_ExpectedProcessFromRequest = null;
             m_ExpectedDevice = null;
         }
@@ -255,12 +255,13 @@ namespace Unity.Android.Logcat
                 return "unknown";
             if (value == 0)
                 return "0 Bytes";
+            // Binary units (1 KB = 1024 bytes), like Android Studio and Google Play's Android vitals
             float val = (float)value;
             string[] scale = new string[] { "TB", "GB", "MB", "KB", "Bytes" };
             int idx = scale.Length - 1;
-            while (val > 1000.0f && idx >= 0)
+            while (val >= 1024.0f && idx >= 0)
             {
-                val /= 1000f;
+                val /= 1024f;
                 idx--;
             }
 
@@ -678,7 +679,7 @@ namespace Unity.Android.Logcat
         {
             GUILayout.Space(20);
             GUILayout.Label("Developer Options", EditorStyles.boldLabel);
-            const UInt64 kOneKiloByte = 1000;
+            const UInt64 kOneKiloByte = 1024;
             const UInt64 kOneMegaByte = kOneKiloByte * kOneKiloByte;
             const UInt64 kOneGigaByte = kOneKiloByte * kOneMegaByte;
             if (GUILayout.Button("Add 400MB", EditorStyles.miniButton))
