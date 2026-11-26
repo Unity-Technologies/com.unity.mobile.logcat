@@ -94,6 +94,8 @@ namespace Unity.Android.Logcat
         private Material m_Material;
 
         const int kMaxEntries = 300;
+        // Printed by dumpsys meminfo when the process doesn't exist
+        const string kProcessNotFound = "No process found for:";
         const float kMinMemoryWindowHeight = 255.0f;
         const float kMaxMemoryWindowHeight = 400.0f;
         const float kMinMemoryWindowWidth = 170.0f;
@@ -296,9 +298,10 @@ namespace Unity.Android.Logcat
                 }
             }
 
-            // RssAnon and VmSwap from /proc/<pid>/status make up Anonymous RSS + Swap, the memory usage metric in Google Play's Android vitals
+            // RssAnon and VmSwap from /proc/<pid>/status make up Anonymous RSS + Swap, the memory usage metric in Google Play's Android vitals.
+            // When the process has exited, the device shell prints the same message as dumpsys meminfo, so the exit is detected without dumpsys.
             string procStatus = string.Empty;
-            var statusCmd = "-s " + workInput.deviceId + " shell cat /proc/" + workInput.packageProcessId + "/status";
+            var statusCmd = "-s " + workInput.deviceId + " shell cat /proc/" + workInput.packageProcessId + "/status 2>/dev/null || echo " + kProcessNotFound + " " + workInput.packageProcessId;
             AndroidLogcatInternalLog.Log("{0} {1}", adb.GetADBPath(), statusCmd);
             try
             {
@@ -375,7 +378,8 @@ namespace Unity.Android.Logcat
             if (!hasMeminfo && !hasProcStatus)
                 return;
 
-            if (hasMeminfo && memoryResult.contents.Contains("No process found for:"))
+            if ((hasMeminfo && memoryResult.contents.Contains(kProcessNotFound)) ||
+                (hasProcStatus && memoryResult.procStatusContents.Contains(kProcessNotFound)))
             {
                 m_ExpectedProcessFromRequest.SetExited();
                 m_Parent.Repaint();

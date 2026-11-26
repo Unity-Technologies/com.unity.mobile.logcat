@@ -175,22 +175,23 @@ Uptime: 278194816 Realtime: 525880208
 ".Replace("\r", "");
 
     // adb.exe shell cat /proc/2111/status, taken from Google Pixel with Android 16 (trimmed)
-    readonly string kProcStatus = @"Name:	ndroid.systemui
-Umask:	0077
-State:	S (sleeping)
-Tgid:	2111
-Pid:	2111
-VmPeak:	22410108 kB
-VmSize:	20530548 kB
-VmHWM:	  412000 kB
-VmRSS:	  404788 kB
-RssAnon:	  147772 kB
-RssFile:	  254160 kB
-RssShmem:	    2856 kB
-VmData:	 3002312 kB
-VmSwap:	    2392 kB
-Threads:	95
-";
+    // Note: Fields are separated by tabs, written as \t so that formatting doesn't replace them with spaces
+    readonly string kProcStatus =
+        "Name:\tndroid.systemui\n" +
+        "Umask:\t0077\n" +
+        "State:\tS (sleeping)\n" +
+        "Tgid:\t2111\n" +
+        "Pid:\t2111\n" +
+        "VmPeak:\t22410108 kB\n" +
+        "VmSize:\t20530548 kB\n" +
+        "VmHWM:\t  412000 kB\n" +
+        "VmRSS:\t  404788 kB\n" +
+        "RssAnon:\t  147772 kB\n" +
+        "RssFile:\t  254160 kB\n" +
+        "RssShmem:\t    2856 kB\n" +
+        "VmData:\t 3002312 kB\n" +
+        "VmSwap:\t    2392 kB\n" +
+        "Threads:\t95\n";
 
     [Test]
     public void CanParseProcStatus([Values(true, false)] bool windowsEndLines)
