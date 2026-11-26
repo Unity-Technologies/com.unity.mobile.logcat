@@ -36,8 +36,11 @@ namespace Unity.Android.Logcat
 
     internal class AndroidMemoryStatistics
     {
-        // dumpsys meminfo and /proc/<pid>/status report kB, which are 1024 bytes
-        const UInt64 kOneKiloByte = 1024;
+        // Binary units. dumpsys meminfo and /proc/<pid>/status report kB of 1024 bytes,
+        // and sizes are displayed in these units, like Android Studio and Google Play's Android vitals.
+        internal const UInt64 kOneKiloByte = 1024;
+        internal const UInt64 kOneMegaByte = kOneKiloByte * kOneKiloByte;
+        internal const UInt64 kOneGigaByte = kOneKiloByte * kOneMegaByte;
         private MemoryGroup[] m_MemoryGroups = (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup));
         private Dictionary<MemoryType, UInt64>[] m_Data = new Dictionary<MemoryType, UInt64>[Enum.GetValues(typeof(MemoryGroup)).Length];
 
