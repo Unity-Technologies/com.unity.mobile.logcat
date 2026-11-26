@@ -13,7 +13,8 @@ namespace Unity.Android.Logcat
         ResidentSetSize,
         ProportionalSetSize,
         HeapAlloc,
-        HeapSize
+        HeapSize,
+        AnonymousRSSAndSwap
     }
 
     internal enum MemoryType
@@ -27,13 +28,19 @@ namespace Unity.Android.Logcat
         PrivateOther = 5,
         System = 6,
         Total = 7,
-        TotalSwapPss = 8
+        TotalSwapPss = 8,
+        AnonymousRSS = 9,
+        Swap = 10
     }
 
 
     internal class AndroidMemoryStatistics
     {
-        const UInt64 kOneKiloByte = 1000;
+        // Binary units. dumpsys meminfo and /proc/<pid>/status report kB of 1024 bytes,
+        // and sizes are displayed in these units, like Android Studio and Google Play's Android vitals.
+        internal const UInt64 kOneKiloByte = 1024;
+        internal const UInt64 kOneMegaByte = kOneKiloByte * kOneKiloByte;
+        internal const UInt64 kOneGigaByte = kOneKiloByte * kOneMegaByte;
         private MemoryGroup[] m_MemoryGroups = (MemoryGroup[])Enum.GetValues(typeof(MemoryGroup));
         private Dictionary<MemoryType, UInt64>[] m_Data = new Dictionary<MemoryType, UInt64>[Enum.GetValues(typeof(MemoryGroup)).Length];
 
@@ -41,6 +48,8 @@ namespace Unity.Android.Logcat
         private Regex m_PssOnlyData = new Regex(@"([\w\s]+):\s+(\d+).*", RegexOptions.IgnoreCase);
         private Regex m_PssAndRssData = new Regex(@"([\w\s]+):\s+(\d+)\s*(\d*)\n", RegexOptions.IgnoreCase);
         private Regex m_PssAndRssTotal = new Regex(@"\s+TOTAL PSS:\s+(\d+)\s+TOTAL RSS:\s+(\d+).*", RegexOptions.IgnoreCase);
+        private Regex m_ProcStatusRssAnon = new Regex(@"^RssAnon:\s+(\d+)\s+kB", RegexOptions.Multiline);
+        private Regex m_ProcStatusVmSwap = new Regex(@"^VmSwap:\s+(\d+)\s+kB", RegexOptions.Multiline);
 
         private Dictionary<MemoryType, UInt64> GetPSSMemoryGroup()
         {
@@ -217,6 +226,35 @@ namespace Unity.Android.Logcat
             contents = contents.Replace("\r", "");
             ParseHeapInformation(contents.Substring(0, appSummary));
             ParseAppSummary(contents.Substring(appSummary));
+        }
+
+        /// <summary>
+        /// Parses contents from command 'adb shell cat /proc/pid/status'.
+        /// Anonymous RSS + Swap is the memory usage metric Google Play's Android vitals reports.
+        /// RssAnon requires Linux kernel 4.5 or later, on older kernels the group stays empty.
+        /// </summary>
+        internal void ParseProcStatus(string contents)
+        {
+            if (string.IsNullOrEmpty(contents))
+                return;
+            contents = contents.Replace("\r", "");
+            var rssAnon = m_ProcStatusRssAnon.Match(contents);
+            if (!rssAnon.Success)
+                return;
+
+            var anon = UInt64.Parse(rssAnon.Groups[1].Value) * kOneKiloByte;
+            var vmSwap = m_ProcStatusVmSwap.Match(contents);
+            var swap = vmSwap.Success ? UInt64.Parse(vmSwap.Groups[1].Value) * kOneKiloByte : 0;
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS, anon);
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap, swap);
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total, anon + swap);
+        }
+
+        internal void SetAnonymousRSSAndSwapData(UInt64 anonymousRSS, UInt64 swap)
+        {
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS, anonymousRSS);
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap, swap);
+            SetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total, anonymousRSS + swap);
         }
 
         internal void SetPSSFakeData(UInt64 totalMemory, UInt64 nativeHeap)

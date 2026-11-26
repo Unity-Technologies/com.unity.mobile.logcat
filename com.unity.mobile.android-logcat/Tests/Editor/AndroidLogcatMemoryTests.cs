@@ -4,7 +4,8 @@ using Unity.Android.Logcat;
 
 class AndroidLogcatMemoryTests
 {
-    const int kKiloByte = 1000;
+    // dumpsys meminfo and /proc/<pid>/status report kB, which are 1024 bytes
+    const int kKiloByte = 1024;
 
     // Produced by adb.exe shell dumpsys meminfo com.unity.TowerDefenceIncremental
     readonly string kPackageMemoryDump = @"
@@ -173,6 +174,50 @@ Uptime: 278194816 Realtime: 525880208
                TOTAL:     1383       TOTAL SWAP PSS:      880
 ".Replace("\r", "");
 
+    // adb.exe shell cat /proc/2111/status, taken from Google Pixel with Android 16 (trimmed)
+    // Note: Fields are separated by tabs, written as \t so that formatting doesn't replace them with spaces
+    readonly string kProcStatus =
+        "Name:\tndroid.systemui\n" +
+        "Umask:\t0077\n" +
+        "State:\tS (sleeping)\n" +
+        "Tgid:\t2111\n" +
+        "Pid:\t2111\n" +
+        "VmPeak:\t22410108 kB\n" +
+        "VmSize:\t20530548 kB\n" +
+        "VmHWM:\t  412000 kB\n" +
+        "VmRSS:\t  404788 kB\n" +
+        "RssAnon:\t  147772 kB\n" +
+        "RssFile:\t  254160 kB\n" +
+        "RssShmem:\t    2856 kB\n" +
+        "VmData:\t 3002312 kB\n" +
+        "VmSwap:\t    2392 kB\n" +
+        "Threads:\t95\n";
+
+    [Test]
+    public void CanParseProcStatus([Values(true, false)] bool windowsEndLines)
+    {
+        var stats = new AndroidMemoryStatistics();
+        stats.ParseProcStatus(windowsEndLines ? kProcStatus.Replace("\n", "\r\n") : kProcStatus);
+
+        Assert.AreEqual(147772 * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS));
+        Assert.AreEqual(2392 * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap));
+        Assert.AreEqual((147772 + 2392) * kKiloByte, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total));
+    }
+
+    [Test]
+    public void ProcStatusWithoutRssAnonLeavesGroupEmpty()
+    {
+        // Linux kernels older than 4.5 don't report RssAnon
+        var stats = new AndroidMemoryStatistics();
+        stats.ParseProcStatus("Name:\tfoo\nVmRSS:\t  404788 kB\nVmSwap:\t    2392 kB\n");
+        stats.ParseProcStatus(string.Empty);
+        stats.ParseProcStatus(null);
+
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.AnonymousRSS));
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Swap));
+        Assert.AreEqual(0, stats.GetValue(MemoryGroup.AnonymousRSSAndSwap, MemoryType.Total));
+    }
+
     [Test]
     public void CanParseMemoryDumpFromPackage([Values(true, false)] bool windowsEndLines)
     {
@@ -273,15 +318,21 @@ Uptime: 278194816 Realtime: 525880208
     [Test]
     public void CanProvidePrettySizeText()
     {
-        const UInt64 kOneMegaByte = 1000 * 1000;
-        const UInt64 kOneGigabyte = 1000 * kOneMegaByte;
-        const UInt64 kOneTerabyte = 1000 * kOneGigabyte;
+        // Sizes are displayed in binary units (1 KB = 1024 bytes), like Android Studio and Google Play's Android vitals
+        const UInt64 kOneKiloByte = 1024;
+        const UInt64 kOneMegaByte = 1024 * kOneKiloByte;
+        const UInt64 kOneGigabyte = 1024 * kOneMegaByte;
+        const UInt64 kOneTerabyte = 1024 * kOneGigabyte;
 
-        Assert.AreEqual("1000 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneMegaByte));
+        Assert.AreEqual("1023 Bytes", AndroidLogcatMemoryViewer.UInt64ToSizeString(1023));
+        Assert.AreEqual("1 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneKiloByte));
+        Assert.AreEqual("1000 KB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneKiloByte));
+        Assert.AreEqual("1 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneMegaByte));
         Assert.AreEqual("2 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneMegaByte));
-        Assert.AreEqual("1000 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneGigabyte));
+        Assert.AreEqual("1000 MB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneMegaByte));
+        Assert.AreEqual("1.5 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1536 * kOneMegaByte));
         Assert.AreEqual("2 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneGigabyte));
-        Assert.AreEqual("1000 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(kOneTerabyte));
+        Assert.AreEqual("1000 GB", AndroidLogcatMemoryViewer.UInt64ToSizeString(1000 * kOneGigabyte));
         Assert.AreEqual("2 TB", AndroidLogcatMemoryViewer.UInt64ToSizeString(2 * kOneTerabyte));
     }
 }
